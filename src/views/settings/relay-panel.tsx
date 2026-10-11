@@ -34,6 +34,7 @@ import {
 } from "./kit";
 import { useRelayHealth, type PassiveRelayHealth } from "./relay-panel/use-relay-health";
 import { HoverTooltip } from "@/components/hover-tooltip";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 
 const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -285,8 +286,8 @@ export function TogetherRelayPanel({
         apiToken: settings.togetherCfToken,
       },
       notes: [
-        "Keep this file safe and offline. Cloudflare shows API tokens only once at creation. Without this token, Harbor cannot stop, redeploy, or update this relay through its UI.",
-        "To restore: open Settings -> Harbor Relay, paste the relayUrl, and re-enter the API token if you plan to manage from Harbor.",
+        `Keep this file safe and offline. Cloudflare shows API tokens only once at creation. Without this token, ${PRODUCT_NAME} cannot stop, redeploy, or update this relay through its UI.`,
+        `To restore: open Settings -> ${PRODUCT_NAME} Relay, paste the relayUrl, and re-enter the API token if you plan to manage from ${PRODUCT_NAME}.`,
         "You can always delete the underlying Worker manually at dash.cloudflare.com -> Workers & Pages, even without this file.",
       ],
     };
@@ -294,7 +295,7 @@ export function TogetherRelayPanel({
       `harbor-relay-backup-${new Date().toISOString().slice(0, 10)}.json`,
       JSON.stringify(payload, null, 2),
       ["json"],
-      "Harbor relay backup",
+      `${PRODUCT_NAME} relay backup`,
     );
   };
 

@@ -80,7 +80,7 @@ fn window(
         &label,
         WebviewUrl::External("about:blank".parse().unwrap()),
     )
-    .title(format!("{} · Harbor", host.title()))
+    .title(format!("{} · {}", host.title(), crate::brand::PRODUCT_NAME))
     .inner_size(960.0, 720.0)
     .min_inner_size(460.0, 400.0)
     .visible(false)

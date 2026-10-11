@@ -12,8 +12,6 @@ import { ROW_DESC } from "../kit";
 import { SButton } from "../ui";
 import { VERSION_BADGE } from "./badge";
 
-const RELEASES_URL = "https://github.com/harborstremio/harbor/releases";
-
 export function VersionNotesModal({
   entry,
   isCurrent,
@@ -126,7 +124,6 @@ export function VersionNotesModal({
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-2.5 px-6 pb-6 pt-5">
-        <SButton onClick={() => openUrl(RELEASES_URL)}>{t("All releases on GitHub")}</SButton>
         {isCurrent ? (
           <span className={`${VERSION_BADGE} bg-accent-soft text-accent`}>
             <Check size={13} strokeWidth={2.8} />

@@ -1,5 +1,6 @@
 import { Loader2, RotateCcw } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { HarborMark } from "@/components/icons/harbor-mark";
 
 const SHELL = "flex-1 overflow-y-auto overflow-x-hidden px-12 pb-16 pt-24";
 const INNER = "animate-fade-in mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center gap-6 text-center";
@@ -36,12 +37,7 @@ export function MangaBootstrapError({
   return (
     <main className={SHELL}>
       <div className={INNER}>
-      <img
-        src="/manga-paper-boat.png"
-        alt=""
-        draggable={false}
-        className="w-52 max-w-full object-contain drop-shadow-[0_16px_36px_rgba(0,0,0,0.4)]"
-      />
+      <HarborMark className="w-52 max-w-full drop-shadow-[0_16px_36px_rgba(0,0,0,0.4)]" />
       <div className="flex flex-col gap-2.5">
         <h1 className="font-display text-[26px] font-medium leading-tight text-ink">
           {t("Could not reach the source list")}

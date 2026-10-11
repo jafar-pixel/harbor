@@ -70,7 +70,7 @@ function nodes(tree) {
 
 test("installed experimental notes are exact-version, organized and offline", () => {
   const note = experimentalReleaseNote("0.999.4");
-  assert.equal(note.title, "Harbor Experimental 0.0.4");
+  assert.equal(note.title, "JL Media Vision Experimental 0.0.4");
   assert.ok(note.sections.some((s) => s.heading === "Please test"));
   assert.match(JSON.stringify(note), /X-Ray/);
   for (const version of [
@@ -95,7 +95,7 @@ test("installed notes open without an account or an available update", () => {
   assert.equal(button.props.children, "View experimental changelog");
   button.props.onClick({ currentTarget: { focus() {} } });
   const dialog = nodes(app.render("ExperimentalChangelog")).find((n) => n.props?.note);
-  assert.equal(dialog.props.note.title, "Harbor Experimental 0.0.4");
+  assert.equal(dialog.props.note.title, "JL Media Vision Experimental 0.0.4");
   dialog.props.onClose();
   assert.equal(
     nodes(app.render("ExperimentalChangelog")).some((n) => n.props?.note),

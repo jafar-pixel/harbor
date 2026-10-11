@@ -108,7 +108,7 @@ fn create_window(app: &tauri::AppHandle, profile: &str, id: &str, url: &reqwest:
     if !matches(&state().lock().map_err(|_| "source_verify_failed")?.active, profile, id) { return Err("source_verify_canceled"); }
     let origin = url.clone(); let expected = url.clone(); let close_profile = profile.to_owned(); let close_id = id.to_owned();
     let builder = WebviewWindowBuilder::new(app, label(profile, id), WebviewUrl::External("about:blank".parse().unwrap()))
-        .title(format!("{} · Harbor", url.host_str().unwrap_or("Harbor")))
+        .title(format!("{} · {}", url.host_str().unwrap_or(crate::brand::PRODUCT_NAME), crate::brand::PRODUCT_NAME))
         .inner_size(900.0, 680.0).min_inner_size(460.0, 400.0)
         .visible(false).focused(false).incognito(true).user_agent(agent)
         .initialization_script(READ_SCRIPT

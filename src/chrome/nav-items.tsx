@@ -10,7 +10,6 @@ import lotCatalogs from "@/assets/lottie/nav/catalogs.json";
 import lotMovies from "@/assets/lottie/nav/movies.json";
 import lotMusic from "@/assets/lottie/nav/music.json";
 import lotShows from "@/assets/lottie/nav/shows.json";
-import lotAnime from "@/assets/lottie/nav/anime.json";
 import lotManga from "@/assets/lottie/nav/manga.json";
 import lotEbook from "@/assets/lottie/nav/ebook.json";
 import lotLiveTv from "@/assets/lottie/nav/live-tv.json";
@@ -154,9 +153,7 @@ const NAV_ITEMS_ALL: NavItem[] = [
   {
     id: "anime",
     label: "nav.anime",
-    render: (active, hovered) => (
-      <NavLottie data={lotAnime} hovered={hovered} fallback={<AnimeIcon active={active} />} />
-    ),
+    render: (active) => <AnimeIcon active={active} />,
     view: "anime",
     parentalKey: "anime",
   },

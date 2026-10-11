@@ -19,6 +19,7 @@ import { configureRosterStore } from "./profile-sync/roster-store";
 import { noteProfileDeleted } from "./profile-sync/roster-section";
 import { refuseProfileSelect } from "./profile-sync/profile-lock";
 import type { LocalProfileLike } from "./profile-sync/types";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 
 export const PROFILE_COLORS = [
   "#7dd3fc",
@@ -495,7 +496,7 @@ export function CompanionProfilesProvider({ children }: { children: ReactNode })
   }, []);
   const value = useMemo<ProfilesValue>(() => {
     const mainWindowOnly = (): never => {
-      throw new Error("Profile changes must be made in the main Harbor window");
+      throw new Error(`Profile changes must be made in the main ${PRODUCT_NAME} window`);
     };
     return {
       ...state,

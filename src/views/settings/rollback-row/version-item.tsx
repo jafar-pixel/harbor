@@ -7,8 +7,6 @@ import { SButton } from "../ui";
 import { VERSION_BADGE } from "./badge";
 import { VersionNotesModal } from "./version-notes-modal";
 
-const RELEASES_URL = "https://github.com/harborstremio/harbor/releases";
-
 export function VersionItem({ entry, isCurrent }: { entry: VersionEntry; isCurrent: boolean }) {
   const t = useT();
   const url = installerUrl(entry);
@@ -56,9 +54,7 @@ export function VersionItem({ entry, isCurrent }: { entry: VersionEntry; isCurre
           <ArrowDownToLine size={16} strokeWidth={2.4} />
           {t("Download")}
         </SButton>
-      ) : (
-        <SButton onClick={() => openUrl(RELEASES_URL)}>{t("Releases")}</SButton>
-      )}
+      ) : null}
       {open && <VersionNotesModal entry={entry} isCurrent={isCurrent} onClose={() => setOpen(false)} />}
     </div>
   );

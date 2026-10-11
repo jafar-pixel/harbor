@@ -115,8 +115,8 @@ const catalog04: Record<string, string> = {
     "Harbor controlla automaticamente ogni poche ore.",
   "Harbor checks harbor.site for new versions and installs them in place.":
     "Harbor cerca nuove versioni su harbor.site e le installa direttamente.",
-  "Harbor checks harbor.site for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
-    "Harbor cerca nuove versioni su harbor.site e le installa direttamente. Non viene installato nulla finché non decidi tu e un aggiornamento ignorato non ti verrà più proposto.",
+  "Harbor checks for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
+    "Harbor cerca nuove versioni e le installa direttamente. Non viene installato nulla finché non decidi tu e un aggiornamento ignorato non ti verrà più proposto.",
   "Harbor could not find these": "Harbor non ha trovato questi elementi",
   "Harbor could not open its web server. Try again, or set this up on the TV.":
     "Harbor non è riuscito ad aprire il proprio server web. Riprova oppure esegui la configurazione sulla TV.",

@@ -85,7 +85,7 @@ export function UpdatesRow() {
     u.intent === "return-beta"
       ? t("Continue the return to beta in Experimental builds below.")
       : u.status === "checking"
-        ? t("Checking harbor.site for a newer build.")
+        ? t("Checking for updates")
         : u.status === "downloading"
           ? t("Downloading {pct}%", { pct: Math.round(u.progress * 100) })
           : u.status === "downloaded"

@@ -58,6 +58,7 @@ import {
   synthesizeNarration,
   type EdgeNarrationVoice,
 } from "@/lib/ebook/narration";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 
 type Props = {
   profile: string;
@@ -157,19 +158,19 @@ const fallbackNarrationVoices: ReaderNarrationVoice[] = narrationVoices.map((voi
 }));
 
 const VOICE_SAMPLE_TEXT: Record<string, string> = {
-  ar: "مرحباً، هذا نموذج قصير لاختبار نبرة الصوت ووضوح القراءة في هاربور.",
-  en: "Welcome to Harbor. This short sample helps you compare the voice, tone, and reading clarity.",
-  es: "Bienvenido a Harbor. Esta breve muestra permite comparar la voz, el tono y la claridad.",
-  fr: "Bienvenue dans Harbor. Ce court extrait permet de comparer la voix, le ton et la clarté.",
-  de: "Willkommen bei Harbor. Mit diesem kurzen Beispiel können Sie Stimme und Klarheit vergleichen.",
-  it: "Benvenuto in Harbor. Questo breve esempio aiuta a confrontare voce, tono e chiarezza.",
-  pt: "Bem-vindo ao Harbor. Esta breve amostra ajuda a comparar a voz, o tom e a clareza.",
-  ru: "Добро пожаловать в Harbor. Этот короткий пример поможет сравнить голос и ясность чтения.",
-  ja: "ハーバーへようこそ。この短いサンプルで、声の調子と読みやすさを比較できます。",
-  ko: "하버에 오신 것을 환영합니다. 이 짧은 샘플로 목소리와 읽기 명료도를 비교할 수 있습니다.",
-  zh: "欢迎使用 Harbor。这个简短示例可以帮助你比较声音、语调和朗读清晰度。",
-  hi: "हार्बर में आपका स्वागत है। यह छोटा नमूना आवाज़ और पढ़ने की स्पष्टता की तुलना करता है।",
-  tr: "Harbor'a hoş geldiniz. Bu kısa örnek ses tonunu ve okuma netliğini karşılaştırır.",
+  ar: `مرحباً، هذا نموذج قصير لاختبار نبرة الصوت ووضوح القراءة في ${PRODUCT_NAME}.`,
+  en: `Welcome to ${PRODUCT_NAME}. This short sample helps you compare the voice, tone, and reading clarity.`,
+  es: `Bienvenido a ${PRODUCT_NAME}. Esta breve muestra permite comparar la voz, el tono y la claridad.`,
+  fr: `Bienvenue dans ${PRODUCT_NAME}. Ce court extrait permet de comparer la voix, le ton et la clarté.`,
+  de: `Willkommen bei ${PRODUCT_NAME}. Mit diesem kurzen Beispiel können Sie Stimme und Klarheit vergleichen.`,
+  it: `Benvenuto in ${PRODUCT_NAME}. Questo breve esempio aiuta a confrontare voce, tono e chiarezza.`,
+  pt: `Bem-vindo ao ${PRODUCT_NAME}. Esta breve amostra ajuda a comparar a voz, o tom e a clareza.`,
+  ru: `Добро пожаловать в ${PRODUCT_NAME}. Этот короткий пример поможет сравнить голос и ясность чтения.`,
+  ja: `${PRODUCT_NAME}へようこそ。この短いサンプルで、声の調子と読みやすさを比較できます。`,
+  ko: `${PRODUCT_NAME}에 오신 것을 환영합니다. 이 짧은 샘플로 목소리와 읽기 명료도를 비교할 수 있습니다.`,
+  zh: `欢迎使用 ${PRODUCT_NAME}。这个简短示例可以帮助你比较声音、语调和朗读清晰度。`,
+  hi: `${PRODUCT_NAME} में आपका स्वागत है। यह छोटा नमूना आवाज़ और पढ़ने की स्पष्टता की तुलना करता है।`,
+  tr: `${PRODUCT_NAME}'a hoş geldiniz. Bu kısa örnek ses tonunu ve okuma netliğini karşılaştırır.`,
 };
 const VOICE_SAMPLE_BY_LOCALE: Record<string, string> = {
   "ar-SA": "هلا والله، كيف حالك؟ إن شاء الله أمورك طيبة. هذا صوت تجريبي من هاربور.",

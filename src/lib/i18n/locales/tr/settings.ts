@@ -1211,8 +1211,8 @@ const settings: Record<string, string> = {
     "Harbor birkaç saatte bir otomatik olarak kontrol eder.",
   "Harbor checks harbor.site for new versions and installs them in place.":
     "Harbor yeni sürümleri harbor.site üzerinden kontrol eder ve mevcut kurulumun üzerine yükler.",
-  "Harbor checks harbor.site for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
-    "Harbor, harbor.site üzerinden yeni sürümleri kontrol eder ve mevcut kurulumun üzerine yükler. Siz onaylamadan hiçbir şey yüklenmez ve reddettiğiniz bir güncelleme için bir daha bildirim almazsınız.",
+  "Harbor checks for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
+    "Harbor yeni sürümleri kontrol eder ve mevcut kurulumun üzerine yükler. Siz onaylamadan hiçbir şey yüklenmez ve reddettiğiniz bir güncelleme için bir daha bildirim almazsınız.",
   "Harbor couldn't analyze the audio for this source. Try again or adjust it manually.":
     "Harbor bu kaynağın sesini analiz edemedi. Tekrar deneyin veya elle ayarlayın.",
   "Harbor couldn't find a reliable timing correction for this subtitle.":

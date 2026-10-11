@@ -8,6 +8,7 @@ import { simsCancel, simsDisplayPath, simsError, type SimsProgress } from "@/lib
 import { readSimsInstallation, rememberSimsInstallation, simsCheckPacks, simsPackCode, simsPackName, simsPackStatus, type SimsPackReport, type SimsPackSelection } from "@/lib/games/sims-packs";
 import { simsInstallationKey, type SimsInstallation } from "@/lib/games/sims-installations";
 import { GameLauncherLogo } from "./game-launcher-logo";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 
 type PackContext = { report: SimsPackReport | null; selection: SimsPackSelection | null; busy: boolean; picking: boolean; error: string; path: string; installations: SimsInstallation[]; select: (path: string, trigger: HTMLElement) => void; choose: () => void; refresh: () => void; cancel: () => void };
 const Context = createContext<PackContext | null>(null);
@@ -101,7 +102,7 @@ function PackStatus({ status, incompatible = false }: { status: "found" | "missi
 }
 export function SimsPackLaunchInfo({ report }: { report: SimsPackReport }) {
   const t = useT(), value = report.launch;
-  return <div className="games-sims-pack-launch" role="status">{value?.state === "checked" ? <><small>{t("games.sims.packsLaunchChecked", { source: value.source === "custom" ? "Harbor" : value.source === "ea" ? "EA app" : "Steam" })}</small><small>{value.disabled.length ? t("games.sims.packsLaunchDisabled", { packs: value.disabled.map(code => simsPackName(code) ?? code).join(", ") }) : t("games.sims.packsLaunchClear")}</small></> : <small>{t(value?.state === "conflicting" ? "games.sims.packsLaunchConflict" : "games.sims.packsLaunchUnknown")}</small>}</div>;
+  return <div className="games-sims-pack-launch" role="status">{value?.state === "checked" ? <><small>{t("games.sims.packsLaunchChecked", { source: value.source === "custom" ? PRODUCT_NAME : value.source === "ea" ? "EA app" : "Steam" })}</small><small>{value.disabled.length ? t("games.sims.packsLaunchDisabled", { packs: value.disabled.map(code => simsPackName(code) ?? code).join(", ") }) : t("games.sims.packsLaunchClear")}</small></> : <small>{t(value?.state === "conflicting" ? "games.sims.packsLaunchConflict" : "games.sims.packsLaunchUnknown")}</small>}</div>;
 }
 export function GameSimsPacks() {
   const t = useT(), value = useContext(Context);

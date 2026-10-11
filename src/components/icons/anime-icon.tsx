@@ -1,5 +1,5 @@
-import { NavGlyph } from "./nav-glyph";
+import { Sparkles } from "lucide-react";
 
 export function AnimeIcon(_props: { active?: boolean }) {
-  return <NavGlyph name="anime" className="h-[26px] w-[26px] p-[2px]" />;
+  return <Sparkles size={26} strokeWidth={2.2} aria-hidden />;
 }

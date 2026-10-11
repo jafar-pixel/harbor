@@ -53,7 +53,7 @@ fn create(app: &tauri::AppHandle, root: &Path, ticket: &Ticket) -> Result<Webvie
         label(&ticket.request),
         WebviewUrl::External("about:blank".parse().unwrap()),
     )
-    .title("Battle.net · Harbor")
+    .title(concat!("Battle.net · ", crate::product_name!()))
     .inner_size(960.0, 740.0)
     .min_inner_size(480.0, 420.0)
     .visible(false)

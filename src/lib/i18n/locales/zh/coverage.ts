@@ -1,4 +1,5 @@
-const coverage: Record<string, string> = {
+const coverage: Record<string, string> = {
+
   "Sound descriptions": "声音描述",
   "Hide sound effects and speaker names": "隐藏音效和说话人姓名",
   "Removes bracketed descriptions like [door creaks] and shouted speaker labels like JOHN: while subtitles play, so a release that only ships an SDH track still reads as plain dialogue. Song lyrics, ordinary parentheses and non-Latin scripts are left alone. Skipped on forced and picture-based tracks.": "在字幕播放时移除 [门吱呀作响] 这类方括号描述，以及 JOHN: 这类全大写的说话人姓名，让只提供 SDH 字幕的片源也能当作普通对白来读。歌词、普通圆括号和非拉丁文字保持原样。强制字幕和图形字幕不受影响。",
@@ -460,8 +461,8 @@ const coverage: Record<string, string> = {
   "Save review": "保存短评",
   "Playlist URL": "播放列表 URL",
   "A new anime comes out": "有新动漫上线",
-  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://harbor.app. The only thing you need back is the API key.":
-    "TMDB 会在创建密钥时要求填写应用 URL。填写任意 URL 即可，例如 https://harbor.app。你只需获取 API 密钥。",
+  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://example.com. The only thing you need back is the API key.":
+    "TMDB 会在创建密钥时要求填写应用 URL。填写任意 URL 即可，例如 https://example.com。你只需获取 API 密钥。",
   "Reset to default": "恢复默认设置",
   "chrome.lockedRequiresPin": "{label}（已锁定，需要 PIN）",
   "Download video": "下载视频",

@@ -417,8 +417,8 @@ const settings: Record<string, string> = {
     "Dùng cho tình trạng có thể phát trực tuyến và khung thời gian phát hành Đang chiếu. Chọn một quốc gia để Harbor đồng bộ ngôn ngữ giao diện, siêu dữ liệu và phụ đề tương ứng.",
   "A free TMDB key is highly recommended. It unlocks the full Harbor experience. The rest are optional, and Cinemeta works out of the box without any.":
     "Rất nên dùng khóa TMDB miễn phí. Khóa này mở khóa đầy đủ trải nghiệm Harbor. Các khóa còn lại là tùy chọn, còn Cinemeta hoạt động ngay mà không cần khóa nào.",
-  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://harbor.app. The only thing you need back is the API key.":
-    "TMDB yêu cầu URL ứng dụng khi bạn tạo khóa. Nhập URL bất kỳ, chẳng hạn https://harbor.app. Thứ duy nhất bạn cần nhận lại là khóa API.",
+  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://example.com. The only thing you need back is the API key.":
+    "TMDB yêu cầu URL ứng dụng khi bạn tạo khóa. Nhập URL bất kỳ, chẳng hạn https://example.com. Thứ duy nhất bạn cần nhận lại là khóa API.",
   "RPDB already paints scores onto the poster. Toggle to override.":
     "RPDB đã hiển thị điểm số trên áp phích. Bật để ghi đè.",
   "MyAnimeList scores for anime titles. RPDB doesn't cover anime, so this stays optional.":
@@ -1379,8 +1379,8 @@ const settings: Record<string, string> = {
   "My library": "Thư viện của tôi",
   Anticipated: "Được mong đợi",
   "Custom calendar": "Lịch tùy chỉnh",
-  "Harbor checks harbor.site for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
-    "Harbor kiểm tra phiên bản mới trên harbor.site và cài đặt trực tiếp. Không có gì được cài đặt cho đến khi bạn chọn, và bản cập nhật đã bỏ qua sẽ không nhắc lại.",
+  "Harbor checks for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
+    "Harbor kiểm tra phiên bản mới và cài đặt trực tiếp. Không có gì được cài đặt cho đến khi bạn chọn, và bản cập nhật đã bỏ qua sẽ không nhắc lại.",
   "Library, watch progress, and addon collection sync from this account.":
     "Thư viện, tiến độ xem và bộ sưu tập tiện ích bổ sung được đồng bộ từ tài khoản này.",
   "Export your entire Harbor setup to a single file, then restore it on a new computer or keep it as a backup. Everything is included except your Stremio sign-in.":

@@ -1,16 +1,13 @@
 import { Angry, Frown, Laugh, Meh, Smile, ThumbsUp } from "./icons";
-import { GitHubIcon } from "@/components/github-icon";
 import { useRef, useState, type ComponentType } from "react";
-import { APP_VERSION, BUILD_LABEL, IS_BETA_BUILD } from "@/lib/build-info";
+import { APP_VERSION, IS_BETA_BUILD } from "@/lib/build-info";
 import { submitBuildFeedback } from "@/lib/build-feedback-submit";
-import { openUrl } from "@/lib/window";
 import { useT } from "@/lib/i18n";
 import { ROW_DESC, SettingRow } from "./kit";
 import { stripArrowKeys } from "./shared";
 import { SButton } from "./ui";
 
 const KEY = "harbor.build.rating.v1";
-const REPO_ISSUE = "https://github.com/harborstremio/harbor/issues/new";
 
 const QUAL =
   "inline-flex h-[22px] shrink-0 items-center rounded-[6px] px-2 text-[13px] font-bold uppercase leading-[17px] tracking-[0.72px]";
@@ -59,16 +56,6 @@ export function BuildFeedback() {
     void submitBuildFeedback(value);
   };
 
-  const openIssue = (rating: number) => {
-    const s = STOPS[rating];
-    const title = `Beta feedback: ${APP_VERSION} feels ${s.label.toLowerCase()}`;
-    const body = `**Build:** ${BUILD_LABEL}${IS_BETA_BUILD ? " (beta)" : ""}
-**Platform:** ${navigator.platform || "unknown"}\n**How it feels:** ${s.label}\n\n**What got worse, or what broke?**\n\n\n**Steps to make it happen (if any):**\n\n\n_A screenshot helps us a ton._`;
-    void openUrl(
-      `${REPO_ISSUE}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}&labels=feedback`,
-    );
-  };
-
   if (committed != null) {
     const s = STOPS[committed];
     const negative = committed <= 1;
@@ -87,10 +74,6 @@ export function BuildFeedback() {
               {t("Sorry this one is not better. Tell us what went wrong and we will fix it for you.")}
             </p>
             <div className="flex flex-wrap items-center gap-2.5">
-              <SButton variant="primary" onClick={() => openIssue(committed)}>
-                <GitHubIcon size={16} strokeWidth={2.2} />
-                {t("Open a quick issue")}
-              </SButton>
               <SButton onClick={() => setCommitted(null)}>{t("Change")}</SButton>
             </div>
           </div>

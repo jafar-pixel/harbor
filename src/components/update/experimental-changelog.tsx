@@ -7,7 +7,6 @@ import { captureFocusReturn } from "@/lib/keyboard-navigation";
 import { isBackKey } from "@/lib/keyboard-navigation/geometry";
 import { experimentalReleaseNote } from "@/lib/updater/experimental-notes";
 import type { ReleaseNote } from "@/lib/updater/release-notes";
-import { openUrl } from "@/lib/window";
 import { RichNote } from "./rich-notes";
 
 export function ExperimentalChangelog() {
@@ -85,15 +84,6 @@ function NotesDialog({ note, onClose }: { note: ReleaseNote; onClose: () => void
         >
           <RichNote note={{ ...note, title: undefined }} />
         </div>
-        <footer className="border-t border-edge p-5">
-          <button
-            type="button"
-            onClick={() => void openUrl("https://harborsystem.online")}
-            className="min-h-11 rounded-md px-3 text-accent hover:bg-elevated focus-visible:outline-2"
-          >
-            {t("Report an issue")}
-          </button>
-        </footer>
       </div>
     </dialog>,
     document.body,

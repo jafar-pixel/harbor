@@ -459,7 +459,7 @@ const settingsFill: Record<string, string> = {
     "Dein Avatar, dein Name und dein Benutzername in ganz Harbor.",
   "Your own private {name}, bundled with Debridge": "Dein privates {name}, zusammen mit Debridge",
   "cancel anytime": "jederzeit kündbar",
-  "https://sync.harbor.site": "https://sync.harbor.site",
+  "https://sync.example.com": "https://sync.example.com",
   packs: "Pakete",
   "with your @handle in the body so we can match it to your account.":
     "mit deinem @handle im Text, damit wir die Nachricht deinem Konto zuordnen können.",

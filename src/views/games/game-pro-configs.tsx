@@ -9,6 +9,7 @@ import { GuideSourceLink } from "./guide-shared";
 import { ProCrosshair } from "./pro-crosshair";
 import { ConfigCopy, ConfigGroups, groupText } from "./pro-config-groups";
 import { ProShowcases, ProSkinList, ProTeammates } from "./pro-config-extras";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 
 export function GameProConfigs({game,gameName,query,active}:{game:ProConfigGame;gameName:string;query:string;active:boolean}) {
   const t=useT(),[players,setPlayers]=useState<ProPlayer[]|null>(null),[selected,setSelected]=useState<ProPlayer|null>(null),[config,setConfig]=useState<ProConfig|null>(null);
@@ -74,7 +75,7 @@ export function GameProConfigs({game,gameName,query,active}:{game:ProConfigGame;
 function ConfigExport({text,name}:{text:string;name:string}) {
   const t=useT(),[busy,setBusy]=useState(false);
   const safe=name.replace(/[^\p{L}\p{N} ._-]/gu," ").replace(/\s+/g," ").trim()||"harbor-config";
-  return <span><button className="games-button" disabled={busy||!text} onClick={async()=>{setBusy(true);try{await downloadText(`${safe}.txt`,text,["txt"],"Harbor");}finally{setBusy(false);}}}><Download size={16}/> {t("games.guides.exportAll")}</button></span>;
+  return <span><button className="games-button" disabled={busy||!text} onClick={async()=>{setBusy(true);try{await downloadText(`${safe}.txt`,text,["txt"],PRODUCT_NAME);}finally{setBusy(false);}}}><Download size={16}/> {t("games.guides.exportAll")}</button></span>;
 }
 function ProSkeleton({detail=false}:{detail?:boolean}) {
   const t=useT();return <div className={detail?"games-pro-setting-groups":"games-pro-players"} role="status" aria-label={t("common.loading")}>{Array.from({length:detail?4:12},(_,i)=><div key={i} className={`games-pro-skeleton ${detail?"is-detail":""}`} aria-hidden><i/><span><b/><em/></span></div>)}</div>;

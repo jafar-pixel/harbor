@@ -41,6 +41,14 @@ export function subtitleFpsFromMetadata(
   return undefined;
 }
 
+// Live Sync tracks are saved with the pre-rebrand provider name. The stored value stays as it
+// is so saved tracks keep matching; only the name shown to people changes.
+const LIVE_SYNC_PROVIDER = "Harbor Live Sync";
+
+export function subtitleProviderDisplayName(provider: string | undefined): string | undefined {
+  return provider === LIVE_SYNC_PROVIDER ? "JL Live Sync" : provider;
+}
+
 export function providerLabel(r: Pick<SubResult, "source" | "title" | "upstreamProvider">): string {
   switch (r.source) {
     case "opensubtitles":

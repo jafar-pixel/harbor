@@ -9,6 +9,7 @@ import type {
   ImportedRating,
   RatingsSource,
 } from "../types";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 
 type BucketPath = "movies" | "shows" | "anime";
 
@@ -56,7 +57,7 @@ const SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/;
 
 const NO_SESSION_MESSAGE = "No Simkl account connected. Connect Simkl in Settings first.";
 const AUTH_MESSAGE = "Simkl sign-in expired. Reconnect your Simkl account in Settings.";
-const BLOCKED_MESSAGE = "Simkl is rate limiting Harbor right now. Wait a minute and try again.";
+const BLOCKED_MESSAGE = `Simkl is rate limiting ${PRODUCT_NAME} right now. Wait a minute and try again.`;
 
 const BUCKETS: Bucket[] = [
   { path: "movies", mediaType: "movie", label: "Movies" },

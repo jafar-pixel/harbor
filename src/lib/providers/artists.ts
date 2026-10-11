@@ -1,6 +1,7 @@
 import { registerEvictable } from "@/lib/maintenance";
 import { safeFetch } from "@/lib/safe-fetch";
 import type { FavoriteMedia, FavoriteSearchResult } from "./favorites-types";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 
 export type ArtistSource = "deezer";
 
@@ -147,7 +148,10 @@ async function run(
     if (json.error) {
       const detail = json.error.message ?? json.error.type ?? "unknown error";
       if (json.error.code === 4 || /quota/i.test(detail)) {
-        return { kind: "failed", message: "Deezer is rate limiting Harbor. Try again shortly." };
+        return {
+          kind: "failed",
+          message: `Deezer is rate limiting ${PRODUCT_NAME}. Try again shortly.`,
+        };
       }
       return { kind: "failed", message: `Deezer refused the search: ${detail}` };
     }

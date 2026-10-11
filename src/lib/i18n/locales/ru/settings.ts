@@ -421,8 +421,8 @@ const settings: Record<string, string> = {
     "Используется для доступности на стриминговых сервисах и окна премьер «Сейчас в прокате». Выберите страну, и Harbor подберёт под неё языки интерфейса, метаданных и субтитров.",
   "A free TMDB key is highly recommended. It unlocks the full Harbor experience. The rest are optional, and Cinemeta works out of the box without any.":
     "Бесплатный ключ TMDB настоятельно рекомендуется: он раскрывает все возможности Harbor. Остальные необязательны, а Cinemeta работает сразу и без ключей.",
-  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://harbor.app. The only thing you need back is the API key.":
-    "При создании ключа TMDB запросит URL приложения. Укажите любой URL, например https://harbor.app. Вам нужен только сам API-ключ.",
+  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://example.com. The only thing you need back is the API key.":
+    "При создании ключа TMDB запросит URL приложения. Укажите любой URL, например https://example.com. Вам нужен только сам API-ключ.",
   "RPDB already paints scores onto the poster. Toggle to override.":
     "RPDB уже наносит оценки на постер. Переключите, чтобы переопределить.",
   "MyAnimeList scores for anime titles. RPDB doesn't cover anime, so this stays optional.":
@@ -1455,8 +1455,8 @@ const settings: Record<string, string> = {
   "My library": "Моя библиотека",
   Anticipated: "Ожидаемое",
   "Custom calendar": "Свой календарь",
-  "Harbor checks harbor.site for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
-    "Harbor проверяет harbor.site на наличие новых версий и устанавливает их на месте. Ничего не устанавливается без вашего согласия, а отклонённое обновление больше не напоминает о себе.",
+  "Harbor checks for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
+    "Harbor проверяет наличие новых версий и устанавливает их на месте. Ничего не устанавливается без вашего согласия, а отклонённое обновление больше не напоминает о себе.",
   "Library, watch progress, and addon collection sync from this account.":
     "Библиотека, прогресс просмотра и набор Дополнений синхронизируются с этим аккаунтом.",
   "Export your entire Harbor setup to a single file, then restore it on a new computer or keep it as a backup. Everything is included except your Stremio sign-in.":

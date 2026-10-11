@@ -43,8 +43,8 @@ const system: Record<string, string> = {
   "That pack's file isn't valid JSON": "该包的文件不是有效的 JSON",
   "The window and taskbar icon updates right away. The installed shortcut refreshes on the next update.":
     "窗口和任务栏图标会立即更新。已安装的快捷方式将在下次更新时刷新。",
-  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://harbor.app. The only thing you need back is the API key.":
-    "TMDB 会在创建密钥时要求填写应用 URL。填写任意 URL 即可，例如 https://harbor.app。你只需获取 API 密钥。",
+  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://example.com. The only thing you need back is the API key.":
+    "TMDB 会在创建密钥时要求填写应用 URL。填写任意 URL 即可，例如 https://example.com。你只需获取 API 密钥。",
   "v3 API key": "v3 API 密钥",
   "subscriber API key": "订阅者 API 密钥",
   "mdblist api key": "MDBList API 密钥",
@@ -86,8 +86,8 @@ const system: Record<string, string> = {
   "Token name can be anything. The permission row must be exactly {b1} + {b2} + {b3}.":
     "令牌名称可随意填写。权限行必须严格设置为 {b1} + {b2} + {b3}。",
   Failed: "失败",
-  "Harbor checks harbor.site for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
-    "Harbor 会在 harbor.site 上检查新版本并就地安装更新。只有在你选择后才会安装，忽略的更新也不会再次提醒。",
+  "Harbor checks for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
+    "Harbor 会检查新版本并就地安装更新。只有在你选择后才会安装，忽略的更新也不会再次提醒。",
   "Export your entire Harbor setup to a single file, then restore it on a new computer or keep it as a backup. Everything is included except your Stremio sign-in.":
     "将完整的 Harbor 配置导出为单个文件，以便在新电脑上恢复或留作备份。除 Stremio 登录信息外，其他内容均会包含。",
   "Server address": "服务器地址",

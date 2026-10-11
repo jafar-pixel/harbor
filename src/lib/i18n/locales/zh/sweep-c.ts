@@ -225,8 +225,8 @@ const sweepC: Record<string, string> = {
   "For a link or image you usually want an attribute:": "对于链接或图片，通常需要使用属性：",
   "For an active ElfHosted subscription.": "保持有效的 ElfHosted 订阅即可获得。",
   "For an AI agent": "供 AI 智能体使用",
-  "For Application URL anything works, for example https://harbor.site. TMDB never visits it.":
-    "Application URL 可随意填写，例如 https://harbor.site。TMDB 不会访问它。",
+  "For Application URL anything works, for example https://example.com. TMDB never visits it.":
+    "Application URL 可随意填写，例如 https://example.com。TMDB 不会访问它。",
   "For donating to a charity.": "向慈善机构捐款即可获得。",
   "For Everyone": "老少皆宜",
   "For giving more than $100 to charity.": "向慈善机构捐款超过 $100 即可获得。",

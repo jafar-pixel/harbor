@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 /** Reference layouts only: these never establish the map or live coordinates of a match. */
 export type ExtraEsportsGameKind =
   | "rocketleague"
@@ -558,6 +559,5 @@ export const EXTRA_ESPORTS_MAPS: Record<ExtraEsportsGameKind, ExtraEsportsMap[]>
 export const PUBG_MAP_TERMS = {
   terms: "https://developer.pubg.com/tos",
   content: "https://pubg.com/en/clause/content_creation_guideline",
-  attribution:
-    "PUBG map artwork © KRAFTON, Inc. Harbor is not affiliated with or endorsed by KRAFTON.",
+  attribution: `PUBG map artwork © KRAFTON, Inc. ${PRODUCT_NAME} is not affiliated with or endorsed by KRAFTON.`,
 } as const;

@@ -2,14 +2,13 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { HarborMark } from "@/components/icons/harbor-mark";
 import { APP_VERSION } from "@/lib/build-info";
-import { close, openUrl } from "@/lib/window";
+import { close } from "@/lib/window";
 import { toggleWindowFullscreen } from "@/lib/fullscreen-state";
 import { checkForUpdate } from "@/lib/updater/use-update";
 import { useSettings } from "@/lib/settings";
 import { useView } from "@/lib/view";
 import { useT } from "@/lib/i18n";
 import { PRODUCT_NAME } from "@/lib/i18n/brand";
-import { HARBOR_BUGS_BASE } from "@/lib/config/endpoints";
 
 type Item =
   | { kind: "action"; label: string; hint?: string; onClick: () => void; danger?: boolean }
@@ -90,7 +89,6 @@ export function HybridMenuBar() {
       label: t("Help"),
       items: [
         { kind: "action", label: t("Check for Updates"), onClick: () => void checkForUpdate(true) },
-        { kind: "action", label: t("Report a Bug"), onClick: () => openUrl(HARBOR_BUGS_BASE) },
         { kind: "sep" },
         { kind: "label", label: `${PRODUCT_NAME} ${APP_VERSION}` },
       ],

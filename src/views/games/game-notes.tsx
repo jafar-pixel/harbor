@@ -10,6 +10,7 @@ import { guideNoteImport } from "@/lib/games/guide-note-import";
 import { NOTE_BODY_LIMIT, NOTE_LIMIT, NOTE_STORE_LIMIT, notebookDrafts as retained, mergeGameNotes, moveGameNote, notebookKey, noteUrl, parseNotebook, saveNotebook, type GameNote } from "@/lib/games/game-notes";
 import type { NotebookGuide } from "./game-notes-launcher";
 import "./game-notes.css";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 
 // Retain unsaved drafts across in-app game/profile navigation, never across identities.
 export function GameNotes({ profile, gameId, name, guide, onClose }: { profile: string; gameId: string; name: string; guide?: NotebookGuide; onClose: () => void }) {
@@ -81,7 +82,7 @@ export function GameNotes({ profile, gameId, name, guide, onClose }: { profile: 
     finally { lock.current = false; if (live.current) setBusy(false); }
   };
   const reload = () => { try { const next = localStorage.getItem(key), data = parseNotebook(next); retained.delete(key); setRaw(next); setNotes(data.notes); select(data.notes[0]?.id ?? ""); setUnreadable(false); setError(""); setConfirm(null); } catch { setError("games.notes.readError"); } };
-  const exportNotes = async () => { if (lock.current) return; lock.current = true; setBusy(true); try { const data = unreadable ? localStorage.getItem(key) ?? "" : JSON.stringify({ version: 1, revision: 0, notes }, null, 2); await saveTextFileWithPath("Harbor game notes.json", data, ["json"], "Harbor", { nativeFailure: "throw" }); } catch { if (live.current) setError("games.notes.saveError"); } finally { lock.current = false; if (live.current) setBusy(false); } };
+  const exportNotes = async () => { if (lock.current) return; lock.current = true; setBusy(true); try { const data = unreadable ? localStorage.getItem(key) ?? "" : JSON.stringify({ version: 1, revision: 0, notes }, null, 2); await saveTextFileWithPath(`${PRODUCT_NAME} game notes.json`, data, ["json"], PRODUCT_NAME, { nativeFailure: "throw" }); } catch { if (live.current) setError("games.notes.saveError"); } finally { lock.current = false; if (live.current) setBusy(false); } };
   const importFile = async (chosen: File | undefined) => { if (!chosen || lock.current) return; lock.current = true; setBusy(true); try { if (chosen.size > NOTE_STORE_LIMIT) throw Error(); const data = parseNotebook(await chosen.text()); if (live.current) { setIncoming(data.notes); setUsingGuide(false); setImporting(true); setReplace(false); } } catch { if (live.current) setError("games.notes.readError"); } finally { lock.current = false; if (live.current) setBusy(false); if (file.current) file.current.value = ""; } };
   const review = useMemo(() => { if (!importing) return { notes: [], error: false }; try { return { notes: guide && usingGuide ? guideNoteImport(guide.item, guide.article, split) : incoming, error: false }; } catch { return { notes: [], error: true }; } }, [importing, guide, usingGuide, split, incoming]);
   const applyImport = () => { try { const next = mergeGameNotes(notes, review.notes, replace); change(next); select(next[0]?.id ?? ""); setImporting(false); } catch { setError("games.notes.limit"); } };

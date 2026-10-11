@@ -26,8 +26,8 @@ const catalog06: Record<string, string> = {
     "Harbor automatycznie sprawdza dostępność aktualizacji co kilka godzin.",
   "Harbor checks harbor.site for new versions and installs them in place.":
     "Harbor sprawdza dostępność nowych wersji w witrynie harbor.site i instaluje je w miejscu bieżącej wersji.",
-  "Harbor checks harbor.site for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
-    "Harbor sprawdza w harbor.site dostępność nowych wersji i aktualizuje istniejącą instalację. Nic nie zostanie zainstalowane bez Twojej zgody, a odrzucona aktualizacja nie będzie ponownie wyświetlana.",
+  "Harbor checks for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
+    "Harbor sprawdza dostępność nowych wersji i aktualizuje istniejącą instalację. Nic nie zostanie zainstalowane bez Twojej zgody, a odrzucona aktualizacja nie będzie ponownie wyświetlana.",
   "Harbor could not find these": "Harbor nie znalazł tych pozycji",
   "Harbor could not open its web server. Try again, or set this up on the TV.":
     "Harbor nie mógł uruchomić serwera WWW. Spróbuj ponownie lub skonfiguruj to na telewizorze.",

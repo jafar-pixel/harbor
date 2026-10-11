@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import addons from "@/assets/nav-icons/addons.svg?raw";
-import anime from "@/assets/nav-icons/anime.svg?raw";
 import calendar from "@/assets/nav-icons/calendar.svg?raw";
 import catalogs from "@/assets/nav-icons/catalogs.svg?raw";
 import collections from "@/assets/nav-icons/collections.svg?raw";
@@ -37,7 +36,6 @@ function prep(raw: string): string {
 
 const GLYPHS = {
   addons: prep(addons),
-  anime: prep(anime),
   calendar: prep(calendar),
   catalogs: prep(catalogs),
   collections: prep(collections),

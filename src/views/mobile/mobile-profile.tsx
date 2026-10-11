@@ -1,12 +1,4 @@
-import {
-  Check,
-  ChevronRight,
-  FileText,
-  HelpCircle,
-  LogOut,
-  MonitorSmartphone,
-  Users,
-} from "lucide-react";
+import { Check, ChevronRight, FileText, LogOut, MonitorSmartphone, Users } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import { useProfiles } from "@/lib/profiles";
@@ -14,7 +6,6 @@ import { useT } from "@/lib/i18n";
 import { MobileWhosWatching } from "./mobile-whos-watching";
 import { useMobileRemote } from "./mobile-remote";
 import { setMobileRemoteStyle, useMobileRemoteStyle, type MobileRemoteStyle } from "./remote-style";
-import { HARBOR_BUGS_BASE } from "@/lib/config/endpoints";
 import { openUrl } from "@/lib/window";
 
 export function MobileProfile({ onOpenRemote }: { onOpenRemote: () => void }) {
@@ -71,12 +62,6 @@ export function MobileProfile({ onOpenRemote }: { onOpenRemote: () => void }) {
           icon={<MonitorSmartphone size={20} strokeWidth={2} />}
           label={t("Remote")}
           onClick={onOpenRemote}
-        />
-        <Divider />
-        <Row
-          icon={<HelpCircle size={20} strokeWidth={2} />}
-          label={t("Help & feedback")}
-          href={HARBOR_BUGS_BASE}
         />
         <Divider />
         <Row icon={<FileText size={20} strokeWidth={2} />} label={t("Legal")} onClick={() => {}} />

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Download, Link2 } from "../icons";
-import { type CommunityPack } from "@/lib/stream-badges";
+import { isBuiltInPackAuthor, type CommunityPack } from "@/lib/stream-badges";
 import { useT } from "@/lib/i18n";
 import { ROW_ACTION, ROW_ACTION_PRIMARY } from "../kit";
 import { ROW_DESC } from "../shared";
@@ -61,7 +61,7 @@ export function PackCard({
           {installed ? <Check size={18} strokeWidth={2.6} /> : <Download size={18} />}
           {busy ? t("Installing…") : installed ? t("Reinstall") : t("Install")}
         </button>
-        {pack.kind === "nuvio" && pack.author === "Harbor" && (
+        {pack.kind === "nuvio" && isBuiltInPackAuthor(pack.author) && (
           <button
             type="button"
             title={pack.url}

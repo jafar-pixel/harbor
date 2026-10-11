@@ -925,8 +925,8 @@ const settings: Record<string, string> = {
     "Harbor sucht automatisch alle paar Stunden nach Aktualisierungen.",
   "Harbor checks harbor.site for new versions and installs them in place.":
     "Harbor sucht auf harbor.site nach neuen Versionen und installiert sie direkt als Aktualisierung.",
-  "Harbor checks harbor.site for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
-    "Harbor sucht auf harbor.site nach neuen Versionen und installiert sie direkt über die vorhandene Version. Es wird nichts installiert, bevor du dich dafür entscheidest, und ein abgelehntes Update wird dir nie wieder angeboten.",
+  "Harbor checks for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
+    "Harbor sucht nach neuen Versionen und installiert sie direkt über die vorhandene Version. Es wird nichts installiert, bevor du dich dafür entscheidest, und ein abgelehntes Update wird dir nie wieder angeboten.",
   "Harbor curated": "Von Harbor kuratiert",
   "Harbor finds intro and credits timing from AniSkip, TheIntroDB, and the file's own chapters, then shows a Skip button at the right moment.":
     "Harbor ermittelt die Zeitpunkte von Intro und Abspann aus AniSkip, TheIntroDB und den Kapiteln der Datei und zeigt dann im richtigen Moment eine Schaltfläche zum Überspringen an.",
@@ -2202,8 +2202,8 @@ const settings: Record<string, string> = {
   "System default": "Systemstandard",
   "System tray": "Infobereich",
   "THEN notify on": "DANN Benachrichtigung aktivieren",
-  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://harbor.app. The only thing you need back is the API key.":
-    "TMDB verlangt beim Erstellen des Schlüssels eine App-URL. Gib eine beliebige URL ein, zum Beispiel https://harbor.app. Du benötigst anschließend nur den API-Schlüssel.",
+  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://example.com. The only thing you need back is the API key.":
+    "TMDB verlangt beim Erstellen des Schlüssels eine App-URL. Gib eine beliebige URL ein, zum Beispiel https://example.com. Du benötigst anschließend nur den API-Schlüssel.",
   "TMDB · catalogs and rails": "TMDB · Kataloge und Reihen",
   TRACKS: "TONSPUREN",
   "TV guide": "TV-Programm",

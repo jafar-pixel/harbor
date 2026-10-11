@@ -424,8 +424,8 @@ const settings: Record<string, string> = {
     "Usado para disponibilidade de streaming e a janela de lançamento do Em Reprodução. Escolha um país e o Harbor pode ajustar a interface, os metadados e os idiomas de legenda de acordo.",
   "A free TMDB key is highly recommended. It unlocks the full Harbor experience. The rest are optional, and Cinemeta works out of the box without any.":
     "Uma chave gratuita do TMDB é altamente recomendada. Ela desbloqueia toda a experiência do Harbor. As demais são opcionais, e o Cinemeta funciona de imediato sem nenhuma delas.",
-  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://harbor.app. The only thing you need back is the API key.":
-    "O TMDB pede uma URL de app ao criar a chave. Coloque qualquer URL, como https://harbor.app. A única coisa que você precisa de volta é a chave de API.",
+  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://example.com. The only thing you need back is the API key.":
+    "O TMDB pede uma URL de app ao criar a chave. Coloque qualquer URL, como https://example.com. A única coisa que você precisa de volta é a chave de API.",
   "RPDB already paints scores onto the poster. Toggle to override.":
     "O RPDB já pinta as notas no pôster. Ative para sobrescrever.",
   "MyAnimeList scores for anime titles. RPDB doesn't cover anime, so this stays optional.":
@@ -1455,8 +1455,8 @@ const settings: Record<string, string> = {
   "My library": "Minha biblioteca",
   Anticipated: "Mais aguardados",
   "Custom calendar": "Calendário personalizado",
-  "Harbor checks harbor.site for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
-    "O Harbor verifica o harbor.site em busca de novas versões e as instala no local. Nada é instalado até você decidir, e uma atualização dispensada nunca mais incomoda.",
+  "Harbor checks for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
+    "O Harbor verifica se há novas versões e as instala no local. Nada é instalado até você decidir, e uma atualização dispensada nunca mais incomoda.",
   "Library, watch progress, and addon collection sync from this account.":
     "Biblioteca, progresso de reprodução e coleção de addons são sincronizados a partir desta conta.",
   "Export your entire Harbor setup to a single file, then restore it on a new computer or keep it as a backup. Everything is included except your Stremio sign-in.":

@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { setItemWithRecovery } from "@/lib/storage-recovery";
 import type { BadgeKind } from "@/components/format-badge";
 import { HARBOR_API_BASE } from "@/lib/config/endpoints";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 
 const KEY = "harbor.streamBadges.v1";
 
@@ -480,12 +481,19 @@ const ABSTRACT = `${HARBOR_API_BASE}/badges/abstract`;
 const HARBORLIGHT = `${HARBOR_API_BASE}/badges/harbor-light`;
 const HARBORCOLOR = `${HARBOR_API_BASE}/badges/harbor-color`;
 
+const BUILT_IN_PACK_AUTHOR = PRODUCT_NAME;
+
+// Built-in packs were authored as "Harbor" before the rebrand; both names mark a built-in pack.
+export function isBuiltInPackAuthor(author: string | undefined): boolean {
+  return author === BUILT_IN_PACK_AUTHOR || author === "Harbor";
+}
+
 export const COMMUNITY_PACKS: CommunityPack[] = [
   {
     id: "minimal",
     kind: "nuvio",
     name: "Minimal",
-    author: "Harbor",
+    author: BUILT_IN_PACK_AUTHOR,
     description: "Clean minimal icons for common tags",
     count: "101 badges",
     previews: [
@@ -499,7 +507,7 @@ export const COMMUNITY_PACKS: CommunityPack[] = [
     id: "abstract",
     kind: "nuvio",
     name: "Abstract",
-    author: "Harbor",
+    author: BUILT_IN_PACK_AUTHOR,
     description: "Sleek abstract icons for common tags",
     count: "67 badges",
     previews: [
@@ -512,8 +520,8 @@ export const COMMUNITY_PACKS: CommunityPack[] = [
   {
     id: "harbor-light",
     kind: "nuvio",
-    name: "Harbor Light",
-    author: "Harbor",
+    name: "JL Light",
+    author: BUILT_IN_PACK_AUTHOR,
     description:
       "Premium light set spanning resolutions, audio, HDR, release tiers, torrent groups, quality ranks and languages.",
     count: "206 badges",
@@ -527,8 +535,8 @@ export const COMMUNITY_PACKS: CommunityPack[] = [
   {
     id: "harbor-color",
     kind: "nuvio",
-    name: "Harbor Color",
-    author: "Harbor",
+    name: "JL Color",
+    author: BUILT_IN_PACK_AUTHOR,
     description:
       "Full-color edition of the premium set: vivid resolution, audio, HDR, release tier and streaming marks.",
     count: "206 badges",
@@ -607,8 +615,7 @@ export const COMMUNITY_PACKS: CommunityPack[] = [
     kind: "art",
     name: "BetterFormatter Colored",
     author: "9mousaa",
-    description:
-      "Swaps Harbor's built-in badge art for BetterFormatter's colored set. No rules, pure art remap.",
+    description: `Swaps ${PRODUCT_NAME}'s built-in badge art for BetterFormatter's colored set. No rules, pure art remap.`,
     count: "21 remaps",
     previews: [`${BF}/colored-remux.png`, `${BF}/4k.png`, `${BF}/vision.png`],
     art: {

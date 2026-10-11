@@ -1,11 +1,8 @@
-import { Download } from "../icons";
 import { GitHubIcon } from "@/components/github-icon";
 import { openUrl } from "@/lib/window";
 import { useT } from "@/lib/i18n";
-import { HARBOR_API_BASE } from "@/lib/config/endpoints";
 import { ROW_DESC } from "../shared";
 
-const DOWNLOAD_URL = `${HARBOR_API_BASE}/download`;
 const SOURCE_URL = "https://github.com/harborstremio/harbor";
 
 const BANNER_BTN =
@@ -33,14 +30,6 @@ export function WebBuildBanner() {
           )}
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => openUrl(DOWNLOAD_URL)}
-            className={`${BANNER_BTN} bg-ink text-canvas`}
-          >
-            <Download size={16} strokeWidth={2.4} />
-            {t("Get Harbor for desktop")}
-          </button>
           <button
             type="button"
             onClick={() => openUrl(SOURCE_URL)}

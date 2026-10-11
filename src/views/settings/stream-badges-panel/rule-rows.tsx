@@ -26,8 +26,8 @@ function ruleSource(r: CustomBadgeRule): string | null {
   const id = r.id.startsWith("nuvio-") ? r.id.slice(6) : r.id;
   if (id.startsWith("minimal-")) return "Minimal";
   if (id.startsWith("abstract-")) return "Abstract";
-  if (id.startsWith("harborlight-")) return "Harbor Light";
-  if (id.startsWith("harborcolor-")) return "Harbor Color";
+  if (id.startsWith("harborlight-")) return "JL Light";
+  if (id.startsWith("harborcolor-")) return "JL Color";
   return r.id.startsWith("nuvio-") ? "Nuvio" : null;
 }
 

@@ -711,8 +711,8 @@ const settings: Record<string, string> = {
     "Harbor vérifie automatiquement toutes les quelques heures.",
   "Harbor checks harbor.site for new versions and installs them in place.":
     "Harbor recherche les nouvelles versions sur harbor.site et les installe directement.",
-  "Harbor checks harbor.site for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
-    "Harbor recherche les nouvelles versions sur harbor.site et les installe directement. Rien n’est installé sans votre accord, et une mise à jour ignorée ne vous sera plus proposée.",
+  "Harbor checks for new versions and installs them in place. Nothing installs until you choose to, and a dismissed update never nags you again.":
+    "Harbor recherche les nouvelles versions et les installe directement. Rien n’est installé sans votre accord, et une mise à jour ignorée ne vous sera plus proposée.",
   "Harbor curated": "Sélection Harbor",
   "Harbor finds intro and credits timing from AniSkip, TheIntroDB, and the file's own chapters, then shows a Skip button at the right moment.":
     "Harbor détermine le minutage du générique de début et de fin à partir d’AniSkip, de TheIntroDB et des chapitres du fichier, puis affiche un bouton Passer au bon moment.",
@@ -1832,8 +1832,8 @@ const settings: Record<string, string> = {
     "Les titres que vous ignorez depuis la carte d’avertissement ne l’affichent plus jamais.",
   "Titles, overviews, and taglines from TMDB display in this language when a translation exists. Needs a TMDB key.":
     "Les titres, résumés et slogans de TMDB s’affichent dans cette langue lorsqu’une traduction existe. Nécessite une clé TMDB.",
-  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://harbor.app. The only thing you need back is the API key.":
-    "TMDB demande l’URL d’une application lorsque vous créez la clé. Saisissez n’importe quelle URL, par exemple https://harbor.app. Vous aurez uniquement besoin de récupérer la clé API.",
+  "TMDB asks for an app URL when you create the key. Put any URL at all, like https://example.com. The only thing you need back is the API key.":
+    "TMDB demande l’URL d’une application lorsque vous créez la clé. Saisissez n’importe quelle URL, par exemple https://example.com. Vous aurez uniquement besoin de récupérer la clé API.",
   "TMDB · catalogs and rails": "TMDB · catalogues et rangées",
   "To run a public relay, post the": "Pour héberger un relais public, publiez le",
   "To run a public relay, post the {code} URL on r/Stremio or wherever your community lives. Other Harbor users paste it into Settings, Harbor Relay, {kbd}.":

@@ -4,6 +4,7 @@ import { HoverTooltip } from "@/components/hover-tooltip";
 import { useContextMenu, type ContextMenuTarget } from "@/lib/context-menu";
 import { isImageSubTrack } from "@/lib/player/sub-format";
 import { subtitleReleaseLabel } from "@/lib/subtitles/release-label";
+import { subtitleProviderDisplayName } from "@/lib/subtitles/provider-label";
 import { subtitleTrackLanguageLabel, subtitleTrackTitle } from "@/lib/subtitles/track-label";
 import { saveSubtitleToDisk } from "@/lib/subtitles/save-to-disk";
 import { useImportedSubs } from "@/lib/player/imported-subs";
@@ -65,7 +66,7 @@ export function VariantRow({
   const realRelease = track.release?.trim();
   const releaseLabel = subtitleReleaseLabel(realRelease);
   const titleText = releaseLabel || realRelease || subtitleTrackTitle(track);
-  const provider = track.provider?.trim();
+  const provider = subtitleProviderDisplayName(track.provider?.trim());
   const detailSource = provider && provider !== titleText ? provider : sourceLabel;
   const langName = subtitleTrackLanguageLabel(track);
   const releaseTags = parseRelease(`${realRelease ?? ""} ${track.title ?? ""}`);
