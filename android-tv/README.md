@@ -81,3 +81,13 @@ when it stops, which also frees the provider connection. The page calls `play` a
 HTTP requests allow redirects between `http` and `https`. URLs whose path ends in `.m3u8`, or
 with `output=hls` or `output=m3u8` in the query, play as HLS; anything else is detected from the
 content (MPEG-TS, MP4, MKV and other progressive formats).
+
+## Provider requests
+
+IPTV servers mostly answer over plain http without CORS headers, so the page can't read them with
+its own `fetch()`. When `window.JLNativeFetch?.isAvailable()` is true, the page requests
+`https://jl-native-fetch.invalid/?u=<url>&ua=<user agent>` instead (`src/lib/native-fetch.ts`).
+`MainActivity` intercepts that host and `NativeFetch` fetches the URL from the TV, following up
+to five redirects, and returns the status, body and content type with
+`Access-Control-Allow-Origin: *`. Only `GET` from an app page is served, and only `http`/`https`
+targets. A failed connection answers `502`.

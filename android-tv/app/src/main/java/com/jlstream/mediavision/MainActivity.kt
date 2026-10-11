@@ -12,6 +12,7 @@ import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -65,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         web.isFocusable = true
         web.isFocusableInTouchMode = true
         web.addJavascriptInterface(PlayerBridge(), "JLNativePlayer")
+        web.addJavascriptInterface(FetchBridge(), "JLNativeFetch")
         web.webViewClient = object : WebViewClient() {
             // The app stays in this view; any other site opens in the plain in-app browser.
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -88,6 +90,14 @@ class MainActivity : AppCompatActivity() {
 
             override fun onScaleChanged(view: WebView, oldScale: Float, newScale: Float) {
                 nativePlayer.cssScale = newScale
+            }
+
+            // Provider requests the page routes through the app (see NativeFetch). Called off the
+            // main thread, so the blocking fetch is fine here.
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                if (request.url.host != NativeFetch.HOST) return null
+                if (!onAppPage || request.method != "GET") return NativeFetch.refused()
+                return NativeFetch.handle(request.url)
             }
         }
         web.webChromeClient = object : WebChromeClient() {
@@ -231,6 +241,12 @@ class MainActivity : AppCompatActivity() {
             }
             return headers
         }
+    }
+
+    /** `window.JLNativeFetch`: tells the page it can route provider requests through [NativeFetch]. */
+    private inner class FetchBridge {
+        @JavascriptInterface
+        fun isAvailable(): Boolean = onAppPage
     }
 
     companion object {

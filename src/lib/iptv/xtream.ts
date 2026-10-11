@@ -1,5 +1,6 @@
 import type { IptvChannel } from "./types";
 import { fetchBoundedText } from "./bounded-response";
+import { nativeFetchUrl } from "../native-fetch";
 
 export type XtreamCreds = {
   base: string;
@@ -115,7 +116,7 @@ async function xtreamFetchText(url: string, parentSignal?: AbortSignal): Promise
         }
         return res;
       }
-      return fetch(url, { cache: "no-store", signal });
+      return fetch(nativeFetchUrl(url, XTREAM_UA) ?? url, { cache: "no-store", signal });
     },
     { signal: parentSignal },
   );

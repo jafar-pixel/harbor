@@ -1,4 +1,5 @@
 import type { EpgChannelMeta, EpgProgram, XmltvParseResult } from "./types";
+import { nativeFetchUrl } from "../native-fetch";
 
 const MAX_BYTES = 200 * 1024 * 1024;
 const CONNECT_TIMEOUT_MS = 30_000;
@@ -30,7 +31,10 @@ async function iptvFetch(url: string, signal: AbortSignal): Promise<Response> {
       });
     }
   }
-  return fetch(url, { cache: "no-store", signal });
+  return fetch(nativeFetchUrl(url, "VLC/3.0.20 LibVLC/3.0.20") ?? url, {
+    cache: "no-store",
+    signal,
+  });
 }
 
 export async function fetchAndParseXmltv(
