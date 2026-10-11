@@ -1,4 +1,4 @@
-import { Grid2x2, Home, LayoutGrid, ListTree } from "lucide-react";
+import { Grid2x2, Home, LayoutGrid, ListTree, Trophy } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { isWindowsDesktop } from "@/lib/platform";
 
@@ -38,13 +38,37 @@ export function ViewModeToggle({ mode, onChange }: { mode: ViewMode; onChange: (
   );
 }
 
+/** The guide's "Games" smart view: only channels carrying a game that is live or starts soon. */
+export function GuideGamesToggle({
+  on,
+  onChange,
+}: {
+  on: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  const t = useT();
+  return (
+    <div className="flex h-11 shrink-0 items-center rounded-xl border border-edge-soft/55 bg-elevated p-1">
+      <ToggleButton
+        active={on}
+        pressed={on}
+        onClick={() => onChange(!on)}
+        icon={<Trophy size={14} strokeWidth={2} />}
+        label={t("Games")}
+      />
+    </div>
+  );
+}
+
 function ToggleButton({
   active,
+  pressed,
   onClick,
   icon,
   label,
 }: {
   active: boolean;
+  pressed?: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
@@ -52,6 +76,7 @@ function ToggleButton({
   return (
     <button
       onClick={onClick}
+      aria-pressed={pressed}
       className={`flex h-full items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-colors ${
         active ? "bg-ink text-canvas" : "text-ink-muted hover:bg-raised hover:text-ink"
       }`}

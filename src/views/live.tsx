@@ -20,16 +20,18 @@ import { SourcePicker } from "./live/source-picker";
 import { LiveHome } from "./live/live-home";
 import { TopNetworksRows } from "./live/top-networks-rows";
 import { GuideView } from "./live/guide/guide-view";
+import { GuideGamesView } from "./live/guide/guide-games-view";
 import { useAllPlaylists } from "./live/hooks/use-all-playlists";
 import { useChannelPipeline } from "./live/hooks/use-channel-pipeline";
 import { useEpg, useNowTick } from "./live/hooks/use-epg";
 import { useXtreamEpgFallback } from "./live/hooks/use-xtream-epg-fallback";
 import { useIptvPlaylist } from "./live/hooks/use-iptv-playlist";
 import { MultiviewView } from "./multiview";
-import { ViewModeToggle, type ViewMode } from "./live/view-mode-toggle";
+import { GuideGamesToggle, ViewModeToggle, type ViewMode } from "./live/view-mode-toggle";
 import { isWindowsDesktop } from "@/lib/platform";
 
 const MODE_KEY = "harbor.iptv.viewMode";
+const GAMES_KEY = "jl.guide.games";
 const EMPTY_CHANNELS: IptvChannel[] = [];
 
 function readMode(): ViewMode {
@@ -47,6 +49,21 @@ function readMode(): ViewMode {
 function writeMode(m: ViewMode) {
   try {
     localStorage.setItem(MODE_KEY, m);
+  } catch {}
+}
+
+function readGamesOn(): boolean {
+  try {
+    return localStorage.getItem(GAMES_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeGamesOn(on: boolean) {
+  try {
+    if (on) localStorage.setItem(GAMES_KEY, "1");
+    else localStorage.removeItem(GAMES_KEY);
   } catch {}
 }
 
@@ -108,6 +125,12 @@ export function LiveView({ active }: { active: boolean }) {
     setModeState(m);
     writeMode(m);
   }, []);
+  const [gamesOn, setGamesOnState] = useState(() => readGamesOn());
+  const setGamesOn = useCallback((on: boolean) => {
+    setGamesOnState(on);
+    writeGamesOn(on);
+  }, []);
+  const showGames = mode === "guide" && gamesOn;
   const goLiveHome = useCallback(() => {
     setMode("home");
     setQuery("");
@@ -252,6 +275,7 @@ export function LiveView({ active }: { active: boolean }) {
         sortedGroups.length > 0 &&
         mode !== "multiview" &&
         mode !== "home" &&
+        !showGames &&
         state.kind !== "error" && (
           <CategorySidebar
             groups={sortedGroups}
@@ -292,6 +316,10 @@ export function LiveView({ active }: { active: boolean }) {
               <div className="flex h-11 flex-1 min-w-[220px] items-center px-1 text-[13px] text-ink-subtle">
                 {t("Pick channels into the grid below. Audio follows the highlighted tile.")}
               </div>
+            ) : showGames ? (
+              <div className="flex h-11 flex-1 min-w-[220px] items-center px-1 text-[13px] text-ink-subtle">
+                {t("Games on your channels, live now or starting in the next 4 hours.")}
+              </div>
             ) : (
               <div className="flex h-11 flex-1 min-w-[220px] items-center gap-2.5 rounded-xl border border-edge-soft/55 bg-elevated px-3.5">
                 <Search size={15} strokeWidth={2} className="text-ink-subtle" />
@@ -318,6 +346,15 @@ export function LiveView({ active }: { active: boolean }) {
                   </button>
                 )}
               </div>
+            )}
+            {mode !== "multiview" && (
+              <GuideGamesToggle
+                on={showGames}
+                onChange={(on) => {
+                  if (on) setMode("guide");
+                  setGamesOn(on);
+                }}
+              />
             )}
             <ViewModeToggle mode={mode} onChange={setMode} />
           </header>
@@ -386,7 +423,15 @@ export function LiveView({ active }: { active: boolean }) {
                     }}
                   />
                 )}
-                {mode !== "home" && playlist && visible.length === 0 && (
+                {showGames && playlist && (
+                  <GuideGamesView
+                    channels={shownChannels}
+                    epg={epg}
+                    nowMs={nowMs}
+                    onPlay={handlePlay}
+                  />
+                )}
+                {mode !== "home" && !showGames && playlist && visible.length === 0 && (
                   <EmptyResult
                     onClear={() => {
                       setQuery("");
@@ -413,7 +458,7 @@ export function LiveView({ active }: { active: boolean }) {
                     />
                   </div>
                 )}
-                {visible.length > 0 && mode === "guide" && (
+                {visible.length > 0 && mode === "guide" && !showGames && (
                   <GuideView
                     channels={visible}
                     epg={epg}
