@@ -210,7 +210,11 @@ function FavoritesTicker({
 function ctaLabel(item: JlHubGame, t: Translate): string {
   const n = item.channels.length;
   if (!n) return t("Ways to watch");
-  return isCurrentLiveGame(item.game) ? t("Watch live") : t("Watch · {n} channels", { n });
+  return isCurrentLiveGame(item.game) ? t("Watch live") : channelCount(n, t);
+}
+
+function channelCount(n: number, t: Translate): string {
+  return n === 1 ? t("Watch · 1 channel") : t("Watch · {n} channels", { n });
 }
 
 function StatusChip({ game, className = "" }: { game: SportsGame; className?: string }) {
@@ -285,7 +289,7 @@ function TopPoster({
                 className="h-[30%] w-[34%] max-h-20 min-h-14"
                 textClass="text-[18px]"
               />
-              <span className="jl-sports-display text-[11px] font-bold uppercase text-ink/75">
+              <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink/75">
                 {t("at")}
               </span>
               <TeamMark
@@ -479,7 +483,7 @@ function WallCard({
                 {game.home.score}
               </span>
             ) : (
-              <span className="jl-sports-display text-[15px] font-bold uppercase text-ink/75">
+              <span className="text-[15px] font-bold uppercase tracking-[0.12em] text-ink/75">
                 {t("at")}
               </span>
             )}
@@ -567,7 +571,7 @@ export function WatchButton({
       className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-ink px-3 text-[12.5px] font-semibold text-canvas transition-opacity hover:opacity-90"
     >
       <Play size={12} fill="currentColor" strokeWidth={0} />
-      {count > 0 ? t("Watch · {n} channels", { n: count }) : t("Ways to watch")}
+      {count > 0 ? channelCount(count, t) : t("Ways to watch")}
     </button>
   );
 }

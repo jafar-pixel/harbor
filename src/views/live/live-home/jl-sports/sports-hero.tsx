@@ -646,7 +646,9 @@ function watchLabel(item: JlHubGame, t: Translate): string {
 function watchAria(item: JlHubGame, t: Translate): string {
   const { game, channels } = item;
   const n = channels.length;
-  return `${n ? t("Watch · {n} channels", { n }) : t("Ways to watch")}: ${game.away.name} ${t("at")} ${game.home.name}`;
+  const watch =
+    n === 1 ? t("Watch · 1 channel") : n ? t("Watch · {n} channels", { n }) : t("Ways to watch");
+  return `${watch}: ${game.away.name} ${t("at")} ${game.home.name}`;
 }
 
 function GameSlide({
