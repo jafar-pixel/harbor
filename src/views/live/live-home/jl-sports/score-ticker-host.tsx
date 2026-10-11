@@ -51,12 +51,11 @@ export function ScoreTickerHost({
     }));
   }, [games, favorites, index, live.nowMs]);
 
+  // Live TV channels play as "iptv:<channel id>".
   const playingChannelId = channelIdOf(playing?.meta.id);
-  // Live TV channels play as "iptv:<channel id>", so a channel id means a live channel is on.
-  const watchingLive = playingChannelId !== null;
   const { play } = live;
-  // A game on one of your channels plays it as the Sports Hub's Watch does; any other opens its
-  // match centre.
+  // A game on one of your channels plays its best channel (channelsForGame puts the best picture
+  // first) as the Sports Hub's Watch does; any other opens its match centre.
   const select = useCallback(
     (item: ScoreTickerItem) => {
       const first = item.channels[0]?.channel;
@@ -68,8 +67,8 @@ export function ScoreTickerHost({
   const showOdds = settings.sportsShowOdds && !kid;
 
   useEffect(() => {
-    publishScoreTicker({ items, bar, overlay, watchingLive, playingChannelId, showOdds, select });
-  }, [items, bar, overlay, watchingLive, playingChannelId, showOdds, select]);
+    publishScoreTicker({ items, bar, overlay, playingChannelId, showOdds, select });
+  }, [items, bar, overlay, playingChannelId, showOdds, select]);
   useEffect(() => () => publishScoreTicker(null), []);
 
   return <ScoreTickerBar />;

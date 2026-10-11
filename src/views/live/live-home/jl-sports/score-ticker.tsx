@@ -1,6 +1,7 @@
-import { Play, Star, Trophy, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Star, Trophy, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useT } from "@/lib/i18n";
+import { qualityLabel } from "@/lib/jl/sports/channels";
 import { tickerExtras, tickerStatus, tickerTeamName } from "@/lib/jl/sports/ticker";
 import { visibleScore } from "@/lib/jl/sports/presentation";
 import { fmtClock } from "../now-format";
@@ -8,7 +9,6 @@ import {
   setTickerDismissed,
   useScoreTicker,
   useTickerDismissed,
-  useTickerOn,
   type ScoreTickerItem,
 } from "./score-ticker-store";
 import { useTickerScroll } from "./use-ticker-scroll";
@@ -16,20 +16,17 @@ import { useTickerScroll } from "./use-ticker-scroll";
 type Translate = ReturnType<typeof useT>;
 
 /**
- * Tickarr: the live-score crawl pinned to the very top of the window on the hubs. It is on for
- * five minutes and off for three (by the wall clock), and stays up while a live channel plays or
- * while you are hovering or focused on it. Space for it is reserved through `--harbor-top-inset`,
- * which the shell and the fixed top chrome follow, so it never covers the header.
+ * Tickarr: the live-score crawl pinned to the very top of the window on the hubs, up whenever
+ * there are games until ✕ turns it off. Picking a game plays its best channel straight away.
+ * Space for it is reserved through `--harbor-top-inset`, which the shell and the fixed top
+ * chrome follow, so it never covers the header.
  */
 export function ScoreTickerBar() {
   const t = useT();
   const ticker = useScoreTicker();
   const dismissed = useTickerDismissed();
-  const on = useTickerOn();
-  const [held, setHeld] = useState(false);
   const items = ticker?.items ?? [];
-  const shown = !!ticker?.bar && !dismissed && items.length > 0;
-  const up = shown && (on || held || !!ticker?.watchingLive);
+  const up = !!ticker?.bar && !dismissed && items.length > 0;
   const mode = up ? "bar" : ticker?.bar && dismissed ? "tab" : null;
 
   useEffect(() => {
@@ -39,17 +36,11 @@ export function ScoreTickerBar() {
   }, [mode]);
   useEffect(() => () => void delete document.documentElement.dataset.scoreTicker, []);
 
-  if (!ticker || (!shown && mode !== "tab")) return null;
+  if (!ticker || !mode) return null;
   return (
     <div
       data-score-ticker
       className="fixed inset-x-0 top-0 z-[110] h-(--harbor-top-inset) overflow-hidden"
-      onMouseEnter={() => setHeld(true)}
-      onMouseLeave={() => setHeld(false)}
-      onFocus={() => setHeld(true)}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHeld(false);
-      }}
     >
       {mode === "tab" ? (
         <div
@@ -71,9 +62,7 @@ export function ScoreTickerBar() {
           data-tauri-drag-region
           role="region"
           aria-label={t("Scores")}
-          aria-hidden={!up || undefined}
-          inert={!up}
-          className="absolute inset-x-0 bottom-0 flex h-10 items-center gap-2 border-b border-edge-soft bg-canvas/80 ps-3 pe-1.5 backdrop-blur-md"
+          className="absolute inset-x-0 bottom-0 flex h-14 items-center gap-2 border-b border-edge-soft bg-canvas/85 ps-3 pe-1.5 backdrop-blur-md"
         >
           <span
             data-tauri-drag-region
@@ -82,7 +71,7 @@ export function ScoreTickerBar() {
             <Trophy size={13} />
             {t("Scores")}
           </span>
-          <TickerTrack items={items} running={up} interactive />
+          <TickerTrack items={items} running interactive />
           <button
             type="button"
             onClick={() => setTickerDismissed(true)}
@@ -112,7 +101,7 @@ export function ScoreTickerOverlay({ chromeVisible }: { chromeVisible: boolean }
   return (
     <div
       aria-hidden
-      className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex h-10 items-center bg-black/55 px-2 text-white backdrop-blur-md transition-[transform,opacity] duration-500 motion-reduce:transition-none ${
+      className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex h-14 items-center bg-black/55 px-2 text-white backdrop-blur-md transition-[transform,opacity] duration-500 motion-reduce:transition-none ${
         up ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
       }`}
     >
@@ -133,7 +122,9 @@ function TickerTrack({
   const viewport = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLDivElement>(null);
   const firstSet = useRef<HTMLDivElement>(null);
+  const nudge = useRef<((dx: number) => void) | null>(null);
   const [loop, setLoop] = useState(false);
+  const t = useT();
 
   // Only a list wider than the window loops; a short one just sits still.
   useEffect(() => {
@@ -150,7 +141,8 @@ function TickerTrack({
   useEffect(() => {
     if (!loop && track.current) track.current.style.transform = "";
   }, [loop]);
-  useTickerScroll(viewport, track, running && loop);
+  useTickerScroll(viewport, track, running && loop, nudge);
+  const step = (dir: 1 | -1) => nudge.current?.(dir * (viewport.current?.clientWidth ?? 600) * 0.7);
 
   const set = (copy: boolean) =>
     items.map((item) => (
@@ -161,32 +153,48 @@ function TickerTrack({
         interactive={interactive}
       />
     ));
-  return (
-    // Laid out left to right in every language so the crawl's maths stays simple; names keep dir="auto".
-    <div
-      ref={viewport}
-      dir="ltr"
-      className={`relative min-w-0 flex-1 overflow-clip [touch-action:pan-y] ${interactive ? "cursor-grab" : ""}`}
+  const arrows = interactive && loop;
+  const arrow = (dir: 1 | -1) => (
+    <button
+      type="button"
+      onClick={() => step(dir)}
+      aria-label={dir < 0 ? t("Earlier games") : t("More games")}
+      title={dir < 0 ? t("Earlier games") : t("More games")}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-edge-soft bg-canvas/60 text-ink-muted transition-colors hover:border-edge hover:bg-ink/10 hover:text-ink"
     >
-      <div ref={track} className="flex w-max will-change-transform">
-        <div ref={firstSet} className="flex gap-2 pe-2">
-          {set(false)}
+      {dir < 0 ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+    </button>
+  );
+  return (
+    <>
+      {arrows && arrow(-1)}
+      {/* Laid out left to right in every language so the crawl's maths stays simple; names keep dir="auto". */}
+      <div
+        ref={viewport}
+        dir="ltr"
+        className={`relative min-w-0 flex-1 overflow-clip [touch-action:pan-y] ${interactive ? "cursor-grab" : ""}`}
+      >
+        <div ref={track} className="flex w-max will-change-transform">
+          <div ref={firstSet} className="flex gap-2 pe-2">
+            {set(false)}
+          </div>
+          {loop && <div className="flex gap-2 pe-2">{set(true)}</div>}
         </div>
-        {loop && <div className="flex gap-2 pe-2">{set(true)}</div>}
+        {loop && (
+          <>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-canvas/90 to-transparent"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-canvas/90 to-transparent"
+            />
+          </>
+        )}
       </div>
-      {loop && (
-        <>
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-canvas/90 to-transparent"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-canvas/90 to-transparent"
-          />
-        </>
-      )}
-    </div>
+      {arrows && arrow(1)}
+    </>
   );
 }
 
@@ -205,7 +213,7 @@ function TickerCell({
   const onNow =
     !!ticker?.playingChannelId && channels.some((c) => c.channel.id === ticker.playingChannelId);
   const body = <CellBody item={item} showOdds={!!ticker?.showOdds} t={t} />;
-  const look = `flex h-7 shrink-0 items-center gap-2 rounded-full border px-3 text-[12px] ${
+  const look = `flex h-11 shrink-0 items-center gap-2.5 rounded-xl border px-3 text-[13px] ${
     onNow
       ? "border-accent/60 bg-accent-soft"
       : mine
@@ -222,6 +230,7 @@ function TickerCell({
   const away = tickerTeamName(game.away, game.league);
   const home = tickerTeamName(game.home, game.league);
   const label = `${away} ${t("at")} ${home}`;
+  const best = channels[0]?.channel;
   return (
     <button
       type="button"
@@ -232,6 +241,7 @@ function TickerCell({
       aria-label={
         channels.length ? t("Watch {game}", { game: label }) : `${t("Game details")}: ${label}`
       }
+      title={best ? t("Watch on {channel}", { channel: best.name }) : undefined}
       draggable={false}
       onClick={() => ticker?.select(item)}
       className={`${look} text-ink transition-colors hover:border-edge hover:bg-ink/10`}
@@ -254,28 +264,22 @@ function CellBody({
   const status = tickerStatus(game);
   const statusText =
     status.kind === "live"
-      ? [t("Live"), status.detail].filter(Boolean).join(" ")
+      ? status.detail || t("Live")
       : status.kind === "final"
         ? status.detail || t("Final")
         : fmtClock(status.startMs);
+  const quality = channels[0] ? qualityLabel(channels[0].channel.name) : null;
   return (
     <>
       {mine && (
-        <Star size={10} fill="currentColor" strokeWidth={0} className="shrink-0 text-accent" />
+        <Star size={11} fill="currentColor" strokeWidth={0} className="shrink-0 text-accent" />
       )}
-      <span
-        className={`flex shrink-0 items-center gap-1 text-[10.5px] font-bold uppercase tracking-[0.06em] ${
-          status.kind === "live" ? "text-danger" : "text-ink-subtle"
-        }`}
-      >
-        {status.kind === "live" && (
-          <span className="h-1.5 w-1.5 rounded-full bg-danger motion-safe:animate-pulse" />
-        )}
-        {statusText}
-      </span>
       {[game.away, game.home].map((side, i) => (
-        <span key={i} className="flex shrink-0 items-center gap-1">
-          {i === 1 && <span className="text-ink-subtle">·</span>}
+        <span key={i} className="flex shrink-0 items-center gap-1.5">
+          {i === 1 && <span className="text-ink-subtle">-</span>}
+          {i === 1 && visibleScore(game, side) && (
+            <span className="text-[15px] font-bold tabular-nums">{visibleScore(game, side)}</span>
+          )}
           {side.logo && (
             <img
               src={side.logo}
@@ -286,27 +290,40 @@ function CellBody({
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}
-              className="h-4 w-4 object-contain"
+              className="h-6 w-6 object-contain"
             />
           )}
           {side.rank ? (
-            <span className="text-[10.5px] font-bold text-accent">#{side.rank}</span>
+            <span className="text-[11px] font-bold text-accent">#{side.rank}</span>
           ) : null}
-          <span dir="auto" className="font-medium">
+          <span dir="auto" className="font-semibold">
             {tickerTeamName(side, game.league)}
           </span>
-          {visibleScore(game, side) && (
-            <span className="font-bold tabular-nums">{visibleScore(game, side)}</span>
+          {i === 0 && visibleScore(game, side) && (
+            <span className="text-[15px] font-bold tabular-nums">{visibleScore(game, side)}</span>
           )}
         </span>
       ))}
+      <span
+        className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.04em] ${
+          status.kind === "live" ? "bg-danger text-white" : "bg-ink/10 text-ink-muted"
+        }`}
+      >
+        {status.kind === "live" && (
+          <span className="h-1.5 w-1.5 rounded-full bg-white motion-safe:animate-pulse" />
+        )}
+        {statusText}
+      </span>
       {tickerExtras(game, showOdds).map((extra) => (
-        <span key={extra} className="shrink-0 text-ink-subtle">
+        <span key={extra} className="shrink-0 text-[11.5px] text-ink-subtle">
           {extra}
         </span>
       ))}
       {channels.length > 0 && (
-        <Play size={10} fill="currentColor" strokeWidth={0} className="shrink-0 text-accent" />
+        <span className="flex shrink-0 items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[10.5px] font-bold text-white">
+          <Play size={9} fill="currentColor" strokeWidth={0} />
+          {quality ?? t("Watch")}
+        </span>
       )}
     </>
   );

@@ -1,31 +1,11 @@
 import type { SportsGame, SportsSide } from "../../sports/espn-types.ts";
 import { isFavoriteGame, type JlFavoriteTeam } from "./rank.ts";
 
-/**
- * Tickarr, the score ticker across the top of the hubs: today's games on a schedule of five
- * minutes on and three off. The schedule follows the wall clock, so every ticker on screen (the
- * bar and the player overlay) shows and hides together.
- */
-export const TICKER_ON_MS = 5 * 60_000;
-export const TICKER_OFF_MS = 3 * 60_000;
+/** Tickarr, the score ticker across the top of the hubs: today's games. */
 export const TICKER_LIMIT = 40;
 
-const CYCLE_MS = TICKER_ON_MS + TICKER_OFF_MS;
 const COLLEGE = new Set(["NCAAF", "NCAAB"]);
 const PRO_NICKNAMES = new Set(["NFL", "NBA", "NHL", "MLB"]);
-
-const cyclePos = (ms: number) => ((ms % CYCLE_MS) + CYCLE_MS) % CYCLE_MS;
-
-/** Is this moment in the "on" part of the cycle? */
-export function tickerOnAt(ms: number): boolean {
-  return cyclePos(ms) < TICKER_ON_MS;
-}
-
-/** Milliseconds until the ticker next shows or hides. */
-export function msToTickerFlip(ms: number): number {
-  const pos = cyclePos(ms);
-  return pos < TICKER_ON_MS ? TICKER_ON_MS - pos : CYCLE_MS - pos;
-}
 
 function sameLocalDay(a: number, b: number): boolean {
   return new Date(a).toDateString() === new Date(b).toDateString();

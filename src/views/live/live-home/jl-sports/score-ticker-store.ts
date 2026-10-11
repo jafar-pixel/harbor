@@ -1,6 +1,6 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import type { GameChannel } from "@/lib/jl/sports/channels";
-import { msToTickerFlip, tickerOnAt, type TickerGame } from "@/lib/jl/sports/ticker";
+import type { TickerGame } from "@/lib/jl/sports/ticker";
 
 export type ScoreTickerItem = TickerGame & { channels: GameChannel[] };
 
@@ -9,8 +9,6 @@ export type ScoreTickerState = {
   /** Where the ticker may show right now. */
   bar: boolean;
   overlay: boolean;
-  /** A live channel is playing, so the ticker skips its off minutes. */
-  watchingLive: boolean;
   playingChannelId: string | null;
   showOdds: boolean;
   select: (item: ScoreTickerItem) => void;
@@ -82,28 +80,4 @@ export function useTickerDismissed(): boolean {
     () => dismissed,
     () => false,
   );
-}
-
-/** Whether the ticker is in its "on" minutes; re-checked exactly when the schedule flips. */
-export function useTickerOn(): boolean {
-  const [on, setOn] = useState(() => tickerOnAt(Date.now()));
-  useEffect(() => {
-    let timer = 0;
-    const arm = () => {
-      window.clearTimeout(timer);
-      setOn(tickerOnAt(Date.now()));
-      timer = window.setTimeout(arm, msToTickerFlip(Date.now()) + 50);
-    };
-    arm();
-    // Hidden windows throttle timers; catch up as soon as the window shows again.
-    const onVisible = () => {
-      if (document.visibilityState === "visible") arm();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      window.clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, []);
-  return on;
 }

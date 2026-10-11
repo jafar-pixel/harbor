@@ -114,7 +114,7 @@ body {
 }
 
 :root[data-score-ticker="bar"] {
-  --harbor-top-inset: 40px;
+  --harbor-top-inset: 56px;
 }
 
 :root[data-score-ticker="tab"] {

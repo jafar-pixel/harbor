@@ -13,7 +13,13 @@ export type GameChannelSource = "event" | "network" | "guide";
 
 export type GameChannel = { channel: IptvChannel; via: GameChannelSource; alternate: boolean };
 
-type GuideProgram = { tvgId: string; title: string; description: string; startMs: number; endMs: number };
+type GuideProgram = {
+  tvgId: string;
+  title: string;
+  description: string;
+  startMs: number;
+  endMs: number;
+};
 
 export type SportsChannelIndex = {
   events: Array<{ channel: IptvChannel; event: ParsedEvent }>;
@@ -78,11 +84,16 @@ export function buildSportsChannelIndex(
 }
 
 function sideKeys(side: SportsSide): string[] {
-  return [side.location, side.name].filter((n): n is string => !!n).map(teamKey).filter((k) => k.length >= 2);
+  return [side.location, side.name]
+    .filter((n): n is string => !!n)
+    .map(teamKey)
+    .filter((k) => k.length >= 2);
 }
 
 function keysMatch(a: string, b: string): boolean {
-  return a === b || (a.length > 4 && b.length > 4 && (a.startsWith(`${b} `) || b.startsWith(`${a} `)));
+  return (
+    a === b || (a.length > 4 && b.length > 4 && (a.startsWith(`${b} `) || b.startsWith(`${a} `)))
+  );
 }
 
 function eventChannels(game: SportsGame, index: SportsChannelIndex): GameChannel[] {
@@ -129,12 +140,52 @@ const ALIASES: Record<string, string[]> = {
 };
 
 // Streaming-only services have no linear channel to match.
-const STREAMING_ONLY = /^(ESPN\+|Peacock|Prime Video|Paramount\+|Max|Apple TV\+?|Netflix|DAZN|YouTube)$/i;
+const STREAMING_ONLY =
+  /^(ESPN\+|Peacock|Prime Video|Paramount\+|Max|Apple TV\+?|Netflix|DAZN|YouTube)$/i;
 // Fallback picks skip spin-off feeds ("NBC NEWS NOW", "NBC CNBC", event PPV channels).
 const SPIN_OFF = /\b(NEWS|NOW|LX|SN|CNBC|MSNBC|PPV|EVENT|PLUS)\b|\+/i;
 const PREFIX = "^((US|USA)[:| ]*)?";
-const QUALITY_SUFFIX = "( (HD|FHD|SD|EAST|4K))*( ?\\*)?";
+const QUALITY_SUFFIX =
+  "( (HD|FHD|UHD|SD|EAST|4K|1080P?|720P?|HEVC|H265|HFR|(50|60) ?FPS))*( ?\\*)?";
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const RES_4K = /\b(4K|UHD|2160P?)\b/;
+const RES_1080 = /\b(FHD|1080[PI]?(50|60)?)\b/;
+const RES_720 = /\b(HD|720P?(50|60)?)\b/;
+const RES_SD = /\b(SD|480P?)\b/;
+const HIGH_FRAME_RATE = /\b(50|60) ?FPS\b|\bHFR\b|\b(1080|720)P?(50|60)\b/;
+
+/**
+ * How good a channel's picture is likely to be, from the tags providers put in names: 4K/UHD,
+ * then FHD/1080, then HD/720, then untagged, then SD; 50/60 fps is a step up within each, and
+ * backup feeds drop below their main feed.
+ */
+export function channelQuality(name: string): number {
+  const n = name.toUpperCase();
+  let q = RES_4K.test(n)
+    ? 40
+    : RES_1080.test(n)
+      ? 30
+      : RES_720.test(n)
+        ? 20
+        : RES_SD.test(n)
+          ? 0
+          : 10;
+  if (HIGH_FRAME_RATE.test(n)) q += 5;
+  if (/BACK ?UP/.test(n)) q -= 15;
+  return q;
+}
+
+/** A short badge for a channel's picture ("4K 60", "1080", "HD"); null when the name says nothing. */
+export function qualityLabel(name: string): string | null {
+  const n = name.toUpperCase();
+  const base = RES_4K.test(n) ? "4K" : RES_1080.test(n) ? "1080" : RES_720.test(n) ? "HD" : null;
+  if (!base) return null;
+  return HIGH_FRAME_RATE.test(n) ? `${base} 60` : base;
+}
+
+const byQuality = (a: IptvChannel, b: IptvChannel) =>
+  channelQuality(b.name) - channelQuality(a.name);
 
 /** A streaming-only service (ESPN+, Peacock, Prime Video…): watched in its own app, not on a channel. */
 export function isStreamingOnly(network: string): boolean {
@@ -142,11 +193,23 @@ export function isStreamingOnly(network: string): boolean {
 }
 
 function searchTerms(network: string): string[] {
-  return ALIASES[network] ?? [network.replace(/^The /i, "").replace(/ (Network|Channel)$/i, "").toUpperCase()];
+  return (
+    ALIASES[network] ?? [
+      network
+        .replace(/^The /i, "")
+        .replace(/ (Network|Channel)$/i, "")
+        .toUpperCase(),
+    ]
+  );
 }
 
 export function networkChannel(network: string, index: SportsChannelIndex): IptvChannel | null {
-  if (isStreamingOnly(network)) return null;
+  return networkChannels(network, index)[0] ?? null;
+}
+
+/** The network's channels in the playlist (its quality versions), best picture first. */
+export function networkChannels(network: string, index: SportsChannelIndex): IptvChannel[] {
+  if (isStreamingOnly(network)) return [];
   for (const term of searchTerms(network)) {
     const word = escapeRegex(term.trim());
     if (word.length < 2) continue;
@@ -155,12 +218,14 @@ export function networkChannel(network: string, index: SportsChannelIndex): Iptv
     if (!list.length) continue;
     const plain = new RegExp(`${PREFIX}${word}${QUALITY_SUFFIX}$`, "i");
     const rest = (name: string) => name.replace(new RegExp(`${PREFIX}${word}`, "i"), "");
-    const pick =
-      list.filter((n) => plain.test(n.upper)).sort((a, b) => a.upper.length - b.upper.length)[0] ??
-      list.filter((n) => !SPIN_OFF.test(rest(n.upper))).sort((a, b) => a.upper.length - b.upper.length)[0];
-    if (pick) return pick.channel;
+    const plainOnes = list.filter((n) => plain.test(n.upper));
+    const picks = plainOnes.length ? plainOnes : list.filter((n) => !SPIN_OFF.test(rest(n.upper)));
+    if (picks.length)
+      return picks
+        .sort((a, b) => byQuality(a.channel, b.channel) || a.upper.length - b.upper.length)
+        .map((n) => n.channel);
   }
-  return null;
+  return [];
 }
 
 function guideTerm(side: SportsSide, league: string): string {
@@ -174,7 +239,8 @@ function guideChannels(game: SportsGame, index: SportsChannelIndex, now: Date): 
   const near = index.guide.filter((p) => p.startMs <= at + 30 * 60000 && p.endMs > at - 60 * 60000);
   const a = guideTerm(game.away, game.league);
   const b = guideTerm(game.home, game.league);
-  const has = (title: string, term: string) => term.length >= 3 && ` ${title} `.includes(` ${term} `);
+  const has = (title: string, term: string) =>
+    term.length >= 3 && ` ${title} `.includes(` ${term} `);
   let hits = near.filter((p) => has(p.title, a) && has(p.title, b));
   const city = game.home.location?.toLowerCase();
   const listing = GENERIC_LISTINGS[game.league];
@@ -182,20 +248,29 @@ function guideChannels(game: SportsGame, index: SportsChannelIndex, now: Date): 
     hits = near.filter((p) => listing.test(p.title) && p.description.includes(` in ${city}`));
   }
   const tvgIds = [...new Set(hits.map((p) => p.tvgId))];
-  const rank = (c: IptvChannel) => (/back ?up/i.test(c.name) ? 3 : /^(USA|US)[ :|]/i.test(c.name) ? 0 : 1);
+  const rank = (c: IptvChannel) =>
+    /back ?up/i.test(c.name) ? 3 : /^(USA|US)[ :|]/i.test(c.name) ? 0 : 1;
   return tvgIds
     .flatMap((id) => index.byTvgId.get(id) ?? [])
-    .sort((x, y) => rank(x) - rank(y))
+    .sort((x, y) => rank(x) - rank(y) || byQuality(x, y))
     .map((channel) => ({ channel, via: "guide" as const, alternate: false }));
 }
 
-/** Channels for one game, best first: main event feeds, then the network, guide matches, then alternate feeds. */
-export function channelsForGame(game: SportsGame, index: SportsChannelIndex, now: Date): GameChannel[] {
-  const events = eventChannels(game, index);
-  const network = game.network ? networkChannel(game.network, index) : null;
+/**
+ * Channels for one game, best first: main event feeds, then the network, guide matches, then
+ * alternate feeds. Within each, the best picture leads (channelQuality), so the first channel is
+ * the one to play straight away.
+ */
+export function channelsForGame(
+  game: SportsGame,
+  index: SportsChannelIndex,
+  now: Date,
+): GameChannel[] {
+  const events = eventChannels(game, index).sort((a, b) => byQuality(a.channel, b.channel));
+  const network = game.network ? networkChannels(game.network, index) : [];
   const ordered: GameChannel[] = [
     ...events.filter((c) => !c.alternate),
-    ...(network ? [{ channel: network, via: "network" as const, alternate: false }] : []),
+    ...network.map((channel) => ({ channel, via: "network" as const, alternate: false })),
     ...guideChannels(game, index, now),
     ...events.filter((c) => c.alternate),
   ];

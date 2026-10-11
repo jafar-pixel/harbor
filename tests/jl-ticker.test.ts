@@ -4,12 +4,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { SportsGame, SportsSide } from "../src/lib/sports/espn-types.ts";
 import {
-  TICKER_OFF_MS,
-  TICKER_ON_MS,
-  msToTickerFlip,
   selectTickerGames,
   tickerExtras,
-  tickerOnAt,
   tickerStatus,
   tickerTeamName,
 } from "../src/lib/jl/sports/ticker.ts";
@@ -33,18 +29,6 @@ function game(id: string, extra: Partial<SportsGame> = {}): SportsGame {
     ...extra,
   };
 }
-
-test("schedule: five minutes on, three off, by the wall clock", () => {
-  const cycle = TICKER_ON_MS + TICKER_OFF_MS;
-  assert.equal(tickerOnAt(0), true);
-  assert.equal(tickerOnAt(TICKER_ON_MS - 1), true);
-  assert.equal(tickerOnAt(TICKER_ON_MS), false);
-  assert.equal(tickerOnAt(cycle - 1), false);
-  assert.equal(tickerOnAt(cycle), true);
-  assert.equal(msToTickerFlip(0), TICKER_ON_MS);
-  assert.equal(msToTickerFlip(TICKER_ON_MS + 1000), TICKER_OFF_MS - 1000);
-  assert.equal(tickerOnAt(10 * cycle + 1000) && tickerOnAt(1000), true);
-});
 
 test("selection: live games, today's kick-offs and finals; nothing from other days", () => {
   const games = [

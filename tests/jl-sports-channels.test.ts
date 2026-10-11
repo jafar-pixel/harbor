@@ -2,24 +2,56 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { EpgIndex, EpgProgram, IptvChannel } from "../src/lib/iptv/types.ts";
 import type { SportsGame, SportsSide } from "../src/lib/sports/espn.ts";
-import { buildSportsChannelIndex, channelsForGame, networkChannel } from "../src/lib/jl/sports/channels.ts";
+import {
+  buildSportsChannelIndex,
+  channelQuality,
+  qualityLabel,
+  channelsForGame,
+  networkChannel,
+  networkChannels,
+} from "../src/lib/jl/sports/channels.ts";
 
 function ch(id: string, name: string, group = "", tvgId: string | null = null): IptvChannel {
-  return { id, tvgId, name, logo: null, group, url: `http://example.test/${id}`, catchupSource: null, durationSec: null, attrs: {} };
+  return {
+    id,
+    tvgId,
+    name,
+    logo: null,
+    group,
+    url: `http://example.test/${id}`,
+    catchupSource: null,
+    durationSec: null,
+    attrs: {},
+  };
 }
 
 function side(name: string, extra: Partial<SportsSide> = {}): SportsSide {
   return { name, abbr: "", logo: "", score: "", winner: false, ...extra };
 }
 
-function program(tvgId: string, title: string, startIso: string, hours: number, description = ""): EpgProgram {
+function program(
+  tvgId: string,
+  title: string,
+  startIso: string,
+  hours: number,
+  description = "",
+): EpgProgram {
   const startMs = Date.parse(startIso);
-  return { channelTvgId: tvgId, title, description, startMs, endMs: startMs + hours * 3600000, category: null, iconUrl: null };
+  return {
+    channelTvgId: tvgId,
+    title,
+    description,
+    startMs,
+    endMs: startMs + hours * 3600000,
+    category: null,
+    iconUrl: null,
+  };
 }
 
 function epgOf(programs: EpgProgram[]): EpgIndex {
   const byChannel = new Map<string, EpgProgram[]>();
-  for (const p of programs) byChannel.set(p.channelTvgId, [...(byChannel.get(p.channelTvgId) ?? []), p]);
+  for (const p of programs)
+    byChannel.set(p.channelTvgId, [...(byChannel.get(p.channelTvgId) ?? []), p]);
   return { byChannel, fetchedAt: 0 };
 }
 
@@ -27,7 +59,11 @@ const NOW = new Date("2026-09-26T16:30:00Z");
 
 const CHANNELS = [
   ch("e1", "NCAAF 03: #1 Texas vs. #14 Tennessee @ 26 Sep 12:00 PM ET", "USA NCAAF"),
-  ch("e2", "USA ESPN+ 019: NCAA Football: #1 Texas vs. #14 Tennessee (ESP) (2026-09-26 12:00:05)", "ESPN Events"),
+  ch(
+    "e2",
+    "USA ESPN+ 019: NCAA Football: #1 Texas vs. #14 Tennessee (ESP) (2026-09-26 12:00:05)",
+    "ESPN Events",
+  ),
   ch("e3", "NCAAF 06: Bucknell vs. Pittsburgh @ 26 Sep 12:00 PM ET", "USA NCAAF"),
   ch("abc", "US: ABC HD", "USA Entertainment", "abc.us"),
   ch("espn", "US: ESPN HD", "USA Sports", "espn.us"),
@@ -86,7 +122,9 @@ test("network matching: plain channel beats spin-offs; aliases; streaming-only h
 });
 
 test("guide listings: both team names in a title; backups ranked last", () => {
-  const epg = epgOf([program("snp.us", "MLB Baseball: Phillies at Mets", "2026-09-26T16:00:00Z", 3)]);
+  const epg = epgOf([
+    program("snp.us", "MLB Baseball: Phillies at Mets", "2026-09-26T16:00:00Z", 3),
+  ]);
   const index = buildSportsChannelIndex(CHANNELS, epg, NOW);
   const game: SportsGame = {
     id: "3",
@@ -108,7 +146,13 @@ test("guide listings: both team names in a title; backups ranked last", () => {
 
 test("guide listings: the league's generic listing in the home city", () => {
   const epg = epgOf([
-    program("snp.us", "MLB Baseball", "2026-09-26T16:00:00Z", 3, "From Citizens Bank Park in Philadelphia."),
+    program(
+      "snp.us",
+      "MLB Baseball",
+      "2026-09-26T16:00:00Z",
+      3,
+      "From Citizens Bank Park in Philadelphia.",
+    ),
   ]);
   const index = buildSportsChannelIndex(CHANNELS, epg, NOW);
   const game: SportsGame = {
@@ -121,4 +165,86 @@ test("guide listings: the league's generic listing in the home city", () => {
     startMs: Date.parse("2026-09-26T16:05:00Z"),
   };
   assert.equal(channelsForGame(game, index, NOW)[0]?.channel.id, "snp");
+});
+
+test("quality: 4K, then 1080, then HD, then untagged, then SD; 60 fps and backups adjust", () => {
+  const names = [
+    "US: FOX SD",
+    "US: FOX",
+    "US: FOX HD",
+    "US: FOX FHD",
+    "US: FOX 4K",
+    "US: FOX FHD 60FPS",
+    "US: FOX 4K Backup",
+  ];
+  const order = [...names].sort((a, b) => channelQuality(b) - channelQuality(a));
+  assert.deepEqual(order, [
+    "US: FOX 4K",
+    "US: FOX FHD 60FPS",
+    "US: FOX FHD",
+    "US: FOX 4K Backup",
+    "US: FOX HD",
+    "US: FOX",
+    "US: FOX SD",
+  ]);
+  assert.equal(
+    channelQuality("NFL 1080p60: Bears vs Packers") > channelQuality("NFL 1080p: Bears vs Packers"),
+    true,
+  );
+  // Words that merely contain the tags don't count.
+  assert.equal(channelQuality("US: HDTV Classics"), channelQuality("US: Classics"));
+});
+
+test("network versions: best picture first, spin-offs still left out", () => {
+  const index = buildSportsChannelIndex(
+    [
+      ch("fox", "US: FOX", "USA", "fox.us"),
+      ch("fox-hd", "US: FOX HD", "USA", "fox.us"),
+      ch("fox-4k", "US: FOX 4K", "USA", "fox.us"),
+      ch("fox-fhd60", "US: FOX FHD 60FPS", "USA", "fox.us"),
+      ch("fox-news", "US: FOX NEWS", "USA", "foxnews.us"),
+    ],
+    null,
+    NOW,
+  );
+  assert.deepEqual(
+    networkChannels("FOX", index).map((c) => c.id),
+    ["fox-4k", "fox-fhd60", "fox-hd", "fox"],
+  );
+  assert.equal(networkChannel("FOX", index)?.id, "fox-4k");
+});
+
+test("a game's event feeds lead with the best picture", () => {
+  const index = buildSportsChannelIndex(
+    [
+      ch("sd", "NCAAF 03: #1 Texas vs. #14 Tennessee @ 26 Sep 12:00 PM ET", "USA NCAAF"),
+      ch("fhd", "NCAAF 04 FHD: #1 Texas vs. #14 Tennessee @ 26 Sep 12:00 PM ET", "USA NCAAF"),
+      ch("abc", "US: ABC HD", "USA Entertainment", "abc.us"),
+    ],
+    null,
+    NOW,
+  );
+  const game: SportsGame = {
+    id: "g",
+    league: "NCAAF",
+    state: "pre",
+    detail: "",
+    startMs: Date.parse("2026-09-26T16:00:00Z"),
+    away: side("Tennessee Volunteers", { location: "Tennessee" }),
+    home: side("Texas Longhorns", { location: "Texas" }),
+    network: "ABC",
+  } as SportsGame;
+  assert.deepEqual(
+    channelsForGame(game, index, NOW).map((c) => c.channel.id),
+    ["fhd", "sd", "abc"],
+  );
+});
+
+test("quality badges", () => {
+  assert.equal(qualityLabel("US: FOX 4K"), "4K");
+  assert.equal(qualityLabel("US: FOX UHD Backup"), "4K");
+  assert.equal(qualityLabel("NFL 1080p60: Bears vs Packers"), "1080 60");
+  assert.equal(qualityLabel("US: ESPN FHD"), "1080");
+  assert.equal(qualityLabel("US: ESPN HD"), "HD");
+  assert.equal(qualityLabel("US: ESPN"), null);
 });

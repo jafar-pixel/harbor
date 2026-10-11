@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from "react";
+import { useEffect, type MutableRefObject, type RefObject } from "react";
 
 const SPEED_PX_S = 40;
 const REDUCED_SPEED_PX_S = 12;
@@ -9,7 +9,8 @@ const DRAG_SLOP_PX = 4;
 
 /**
  * The score ticker's crawl. It moves the track itself in a loop (the track holds the games
- * twice) and can be moved by hand with the wheel, a mouse or touch drag, or focus. Hover, focus
+ * twice) and can be moved by hand with the wheel, a mouse or touch drag, the ‹ › buttons
+ * (through `nudgeRef`), or focus. Hover, focus
  * or any manual move pauses it; it picks up again a few seconds after you let go.
  *
  * The track is moved with a transform rather than by scrolling: Harbor closes tooltips and menus
@@ -19,6 +20,7 @@ export function useTickerScroll(
   viewportRef: RefObject<HTMLDivElement | null>,
   trackRef: RefObject<HTMLDivElement | null>,
   running: boolean,
+  nudgeRef?: MutableRefObject<((dx: number) => void) | null>,
 ) {
   useEffect(() => {
     const view = viewportRef.current;
@@ -55,6 +57,11 @@ export function useTickerScroll(
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
+    if (nudgeRef)
+      nudgeRef.current = (dx) => {
+        place(wrap(x + dx));
+        pause();
+      };
 
     const onWheel = (e: WheelEvent) => {
       const d = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
@@ -137,6 +144,7 @@ export function useTickerScroll(
     view.addEventListener("mouseleave", onLeave);
     return () => {
       cancelAnimationFrame(raf);
+      if (nudgeRef) nudgeRef.current = null;
       view.removeEventListener("wheel", onWheel);
       view.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointermove", onMove);
@@ -147,5 +155,5 @@ export function useTickerScroll(
       view.removeEventListener("mouseenter", onEnter);
       view.removeEventListener("mouseleave", onLeave);
     };
-  }, [viewportRef, trackRef, running]);
+  }, [viewportRef, trackRef, running, nudgeRef]);
 }
