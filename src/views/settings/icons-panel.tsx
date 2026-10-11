@@ -10,7 +10,6 @@ import { AssetDownloadFeedback, useAssetDownload, type AssetDownload } from "./a
 
 import abiyyuAvatar from "@/assets/artists/abiyyu.webp";
 import stassAvatar from "@/assets/artists/stass-motion.jpg";
-import wavingCat from "@/assets/artists/wave.svg";
 
 type Glob = Record<string, string>;
 type LazyGlob = Record<string, () => Promise<unknown>>;
@@ -90,14 +89,7 @@ const NAMES: Record<string, string> = {
   tv: "TV",
   xray: "X-Ray",
   ebook: "eBook",
-  "wt-waiting-dark": "Watch together (dark)",
-  "wt-waiting-white": "Watch together (light)",
-  "addons-boat-dark": "Addons boat (dark)",
-  "addons-boat-white": "Addons boat (light)",
-  "install-boat-white": "Install boat",
-  "harbor-loader": "Harbor loader",
   "flame-streak": "Flame streak",
-  "voyage-boat": "Voyage boat",
   "mark-unwatched": "Mark unwatched",
   "mark-watched": "Mark watched",
   "customize-subtitles": "Customize subtitles",
@@ -421,7 +413,7 @@ export function IconsPanel() {
           <AuthorCard
             avatar={abiyyuAvatar}
             name="Abiyyu Suryowibisono"
-            role="Icons, illustrations, and the cat"
+            role="Icons and illustrations"
             links={ABIYYU_LINKS}
           />
           <AuthorCard
@@ -465,7 +457,7 @@ export function IconsPanel() {
 
       <Section
         title={t("Everything else that moves")}
-        subtitle={t("Loaders, boats, and the bits between screens.")}
+        subtitle={t("Loaders and the bits between screens.")}
       >
         <AnimationSet glob={LOTTIE_MAIN} download={download} />
       </Section>
@@ -496,16 +488,6 @@ export function IconsPanel() {
               {" (CC0)."}
             </p>
           </div>
-          <img
-            src={wavingCat}
-            alt=""
-            width={600}
-            height={391.63}
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-            className="h-auto w-40 max-w-full shrink-0 select-none self-end object-contain min-[900px]:self-center xl:w-48"
-          />
         </div>
       </Section>
     </>

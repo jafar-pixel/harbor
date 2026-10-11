@@ -1,6 +1,5 @@
-import { Download, Lock } from "../icons";
+import { Download } from "../icons";
 import { GitHubIcon } from "@/components/github-icon";
-import cornerSvg from "@/assets/corner.svg";
 import { openUrl } from "@/lib/window";
 import { useT } from "@/lib/i18n";
 import { HARBOR_API_BASE } from "@/lib/config/endpoints";
@@ -16,21 +15,7 @@ export function WebBuildBanner() {
   const t = useT();
   return (
     <section className="relative overflow-hidden rounded-[10px] bg-elevated p-7">
-      <div className="group absolute -end-6 bottom-0 aspect-square h-[82%] cursor-default">
-        <img
-          src={cornerSvg}
-          alt=""
-          aria-hidden
-          draggable={false}
-          className="h-full w-full select-none transition-[filter] duration-[280ms] ease-out will-change-[filter] group-hover:blur-[7px] group-hover:brightness-[0.55]"
-        />
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <span className="flex h-14 w-14 scale-90 items-center justify-center rounded-[10px] bg-canvas/45 text-ink opacity-0 backdrop-blur-md transition-[opacity,transform] duration-[280ms] ease-out group-hover:scale-100 group-hover:opacity-100">
-            <Lock size={22} strokeWidth={2.1} />
-          </span>
-        </div>
-      </div>
-      <div className="relative z-10 flex max-w-[58%] flex-col gap-3">
+      <div className="relative z-10 flex flex-col gap-3">
         <span className="w-fit rounded-[6px] bg-canvas px-2 py-[3px] text-[13px] font-bold uppercase leading-[17px] tracking-[0.72px] text-ink-subtle">
           {t("Web build")}
         </span>
@@ -62,7 +47,7 @@ export function WebBuildBanner() {
             className={`${BANNER_BTN} bg-raised text-ink`}
           >
             <GitHubIcon size={16} strokeWidth={2.2} />
-            {t("Source code")}
+            {t("Open-source credits")}
           </button>
         </div>
       </div>

@@ -1298,9 +1298,6 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
       "screen saver",
       "idle screen",
       "when harbor sits idle",
-      "cat",
-      "cat and boat",
-      "boat",
       "illustration",
       "animation while idle",
       "cinematic backdrops",
@@ -1358,10 +1355,10 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     ],
   },
   {
-    label: "Harbors on your network",
+    label: "Devices on your network",
     section: "tv",
     tab: "devices",
-    anchorTitle: "Harbors on your network",
+    anchorTitle: "Devices on your network",
     keywords: [
       "devices",
       "instances",

@@ -1828,7 +1828,7 @@ export const FONT_PAIRS: Record<FontPairId, FontPair> = {
   "fraunces-inter": {
     id: "fraunces-inter",
     name: "Fraunces + Inter",
-    blurb: "Classic. Was Harbor's original pair.",
+    blurb: "Classic serif and sans.",
     display: '"Fraunces", "Iowan Old Style", "Georgia", serif',
     sans: '"Inter", system-ui, sans-serif',
   },

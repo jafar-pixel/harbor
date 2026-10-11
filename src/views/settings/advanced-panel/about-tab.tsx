@@ -5,6 +5,7 @@ import { Check, RotateCw } from "../icons";
 import { useEffect, useState } from "react";
 import { IS_BETA_BUILD } from "@/lib/build-info";
 import { useT } from "@/lib/i18n";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 import { readBetaReturnContext } from "@/lib/updater/beta-return";
 import { ROW_DESC, Section } from "../shared";
 import { SettingRow } from "../kit";
@@ -67,7 +68,7 @@ function LegalDisclaimer() {
   return (
     <Section title={t("Legal")}>
       <p className={`max-w-[70ch] ${ROW_DESC}`}>
-        {t("{app} is an independent, open-source desktop and web client.", { app: "Harbor" })}{" "}
+        {t("{app} is an independent, open-source desktop and web client.", { app: PRODUCT_NAME })}{" "}
         <span className="font-semibold text-ink">
           {t(
             "It is not affiliated with, endorsed by, sponsored by, or in any way associated with {company}.",

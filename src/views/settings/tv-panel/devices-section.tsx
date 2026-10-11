@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw } from "../icons";
 import { useT } from "@/lib/i18n";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 import { forgetPairing } from "@/lib/lan-trust";
 import { useSettings } from "@/lib/settings";
 import { openPairFlow } from "@/components/play-on-pair";
@@ -29,7 +30,7 @@ import {
 import { Section } from "../shared";
 import { SButton } from "../ui";
 
-export const TV_DEVICES_TITLE = "Harbors on your network";
+export const TV_DEVICES_TITLE = "Devices on your network";
 
 export function TvDevicesSection() {
   const t = useT();
@@ -93,7 +94,7 @@ export function TvDevicesSection() {
 
   const selfName = me?.name?.trim() || t("This computer");
   const selfDetail = me
-    ? [platformLabel(me.platform), `Harbor ${me.version}`, themeLabel(themeId)]
+    ? [platformLabel(me.platform), `${PRODUCT_NAME} ${me.version}`, themeLabel(themeId)]
         .filter(Boolean)
         .join(" / ")
     : t("Reading this device");

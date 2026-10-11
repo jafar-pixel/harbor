@@ -150,7 +150,8 @@ export const TV_GROUPS: TvGroup[] = [
   {
     id: "bingeing",
     title: "Between episodes",
-    subtitle: "Choose when the next episode starts and when Harbor checks that you are still watching.",
+    subtitle:
+      "Choose when the next episode starts and when the app checks that you are still watching.",
     wire: "settings",
     rows: [
       { kind: "toggle", key: "autoNext", label: "Auto-play next episode", def: true },

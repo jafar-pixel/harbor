@@ -382,6 +382,9 @@ function parseStoredSettings(raw: string | null): Settings {
       ...DEFAULT,
       ...parsed,
       ...posterCards,
+      // The bundled app icon presets were removed. A stored preset id means customAppIcon
+      // holds a copy of one of them, so both reset and the default icon returns.
+      ...(parsed.customAppIconPreset ? { customAppIcon: "", customAppIconPreset: "" } : {}),
       showQuickGameLibrary: parsed.showQuickGameLibrary === true,
       topbarAppearance: sanitizeTopbarAppearance(
         parsed.topbarAppearance,
@@ -401,9 +404,7 @@ function parseStoredSettings(raw: string | null): Settings {
           : DEFAULT.fullscreenClockEnabled,
       controllerCursor: sanitizeControllerCursor(parsed.controllerCursor),
       screensaverStyle:
-        parsed.screensaverStyle === "catBoat" ||
-        parsed.screensaverStyle === "halloween" ||
-        parsed.screensaverStyle === "custom"
+        parsed.screensaverStyle === "halloween" || parsed.screensaverStyle === "custom"
           ? parsed.screensaverStyle
           : "ambient",
       screensaverMedia: sanitizeScreensaverMedia(parsed.screensaverMedia),

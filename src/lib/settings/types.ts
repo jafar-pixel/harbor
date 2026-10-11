@@ -223,7 +223,7 @@ export type Settings = {
   navIconAnimations: boolean;
   bigPicturePlayerUi: "tenFoot" | "desktop";
   screensaver: boolean;
-  screensaverStyle: "ambient" | "catBoat" | "halloween" | "custom";
+  screensaverStyle: "ambient" | "halloween" | "custom";
   screensaverMedia: ScreensaverMedia[];
   screensaverMediaId: string | null;
   screensaverDelayMin: number;

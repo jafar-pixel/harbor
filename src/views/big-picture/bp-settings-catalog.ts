@@ -1,4 +1,5 @@
 import { LANGUAGES } from "@/lib/i18n";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 import { SERVICES } from "@/lib/providers/streaming";
 import type { StreamingService } from "@/lib/settings";
 import type { Settings } from "@/lib/settings/types";
@@ -136,7 +137,7 @@ export function bpConnectedNames(facts: {
   return [
     facts.tmdbKey.trim() ? "TMDB" : null,
     facts.stremioName ? "Stremio" : null,
-    facts.harborName ? "Harbor" : null,
+    facts.harborName ? PRODUCT_NAME : null,
   ].filter((v): v is string => v !== null);
 }
 

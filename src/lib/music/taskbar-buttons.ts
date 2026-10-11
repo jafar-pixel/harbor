@@ -131,7 +131,11 @@ function appIconFollowsArtwork(): boolean {
 async function restoreAppIcon(): Promise<void> {
   try {
     const raw = localStorage.getItem("harbor.settings");
-    const chosen = raw ? (JSON.parse(raw).customAppIcon as string | undefined) : undefined;
+    const stored = raw
+      ? (JSON.parse(raw) as { customAppIcon?: string; customAppIconPreset?: string })
+      : null;
+    // A stored preset id points at a removed bundled icon; fall back to the default.
+    const chosen = stored?.customAppIconPreset ? "" : stored?.customAppIcon;
     const { applyAppIcon } = await import("@/lib/app-icon");
     await applyAppIcon(chosen ?? "");
   } catch {}

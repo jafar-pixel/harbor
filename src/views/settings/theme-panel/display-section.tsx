@@ -8,7 +8,7 @@ import {
   MousePointer2,
   Moon,
   Palette,
-  Sailboat,
+  Image,
   Play,
   Sparkles,
   Text,
@@ -66,9 +66,9 @@ export function AmbienceSection() {
           <SettingRow
             label={t("Screensaver style")}
             desc={t(
-              "Default drifts through backdrops from what's trending. Boat plays a hand drawn illustration. Custom plays your own videos, GIFs, or images.",
+              "Default drifts through backdrops from what's trending. Custom plays your own videos, GIFs, or images.",
             )}
-            icon={<Sailboat size={18} strokeWidth={2} />}
+            icon={<Image size={18} strokeWidth={2} />}
           >
             <div className="flex items-center gap-2">
               <Dropdown
@@ -78,7 +78,6 @@ export function AmbienceSection() {
                 }
                 options={[
                   { value: "ambient", label: t("Default") },
-                  { value: "catBoat", label: t("Boat") },
                   { value: "halloween", label: t("Halloween") },
                   { value: "custom", label: t("Custom") },
                 ]}

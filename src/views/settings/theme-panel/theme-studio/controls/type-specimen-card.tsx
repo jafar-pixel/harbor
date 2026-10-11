@@ -1,5 +1,6 @@
 import { Trash2 } from "../../../icons";
 import { useT } from "@/lib/i18n";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 import { PickCard } from "./pick-grid";
 
 export function TypeSpecimenCard({
@@ -46,7 +47,7 @@ export function TypeSpecimenCard({
           className="truncate text-[24px] leading-none tracking-tight text-ink"
           style={{ fontFamily: display }}
         >
-          Harbor
+          {PRODUCT_NAME}
         </span>
         <span
           className="truncate text-[15.5px] leading-[22px] text-ink-muted"

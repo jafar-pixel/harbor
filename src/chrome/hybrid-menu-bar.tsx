@@ -8,6 +8,7 @@ import { checkForUpdate } from "@/lib/updater/use-update";
 import { useSettings } from "@/lib/settings";
 import { useView } from "@/lib/view";
 import { useT } from "@/lib/i18n";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 import { HARBOR_BUGS_BASE } from "@/lib/config/endpoints";
 
 type Item =
@@ -91,7 +92,7 @@ export function HybridMenuBar() {
         { kind: "action", label: t("Check for Updates"), onClick: () => void checkForUpdate(true) },
         { kind: "action", label: t("Report a Bug"), onClick: () => openUrl(HARBOR_BUGS_BASE) },
         { kind: "sep" },
-        { kind: "label", label: `Harbor ${APP_VERSION}` },
+        { kind: "label", label: `${PRODUCT_NAME} ${APP_VERSION}` },
       ],
     },
   ];

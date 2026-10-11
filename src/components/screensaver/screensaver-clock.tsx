@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { HarborMark } from "@/components/icons/harbor-mark";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 
 export function useScreensaverClock(): { time: string; date: string } {
   const [now, setNow] = useState(() => new Date());
@@ -22,7 +23,7 @@ export function ScreensaverBrand() {
     <div className="flex items-center gap-2">
       <HarborMark className="h-7 w-7 shrink-0 text-white/85 drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)]" />
       <span className="font-display text-[26px] font-semibold tracking-tight text-white/85 drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)]">
-        Harbor
+        {PRODUCT_NAME}
       </span>
     </div>
   );

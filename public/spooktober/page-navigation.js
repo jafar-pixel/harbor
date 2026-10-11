@@ -7,7 +7,7 @@ export function createPageNavigation(onLeave,restoreRoute){
  function activate(key,restore=false){
   const page=pages.get(key);if(!page)return;
   onLeave();current=key;main.hidden=key!=='event';host.hidden=key==='event';host.replaceChildren(...(page.node?[page.node]:[]));document.body.classList.toggle('viewing-page',key!=='event');
-  document.title=key==='event'?'Harbor · Spooktober':`${page.title} · Spooktober`;
+  document.title=key==='event'?'JL Media Vision · Spooktober':`${page.title} · Spooktober`;
   if(restore&&page.focus?.isConnected)page.focus.focus({preventScroll:true});
   else if(page.node){const title=page.node.querySelector('#page-title,h1');if(title){title.tabIndex=-1;title.focus({preventScroll:true})}}
   scrollTo({top:restore?page.scroll:0,behavior:'instant'});document.dispatchEvent(new Event('spook:navigate'));

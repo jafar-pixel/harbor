@@ -4,7 +4,6 @@ Sources for the film footage, posters and music artwork in Harbor's settings pre
 
 | Local asset | Work and source |
 | --- | --- |
-| `harbor-profile.png` | Harbor profile screenshot supplied by the project owner. |
 | `steamboat-willie.webp`, `steamboat-river.webp`, `steamboat-deck.webp` | **Steamboat Willie (1928)**, Walt Disney and Ub Iwerks. Frames at approximately 00:35, 00:25 and 01:00 from the [Internet Archive film](https://archive.org/details/SteamboatWillie). [Wikimedia Commons film and public-domain record](https://commons.wikimedia.org/wiki/File:Steamboat_Willie_(1928)_by_Walt_Disney.webm). Source pillarboxing removed; lossless WebP. |
 | `the-general-still.webp` | **The General (1926)**, Buster Keaton and Clyde Bruckman. [Original still and rights record](https://commons.wikimedia.org/wiki/File:The_General,_front.jpg). Resized and converted to WebP. |
 | `the-general-poster.webp` | **The General (1926)**, original theatrical artwork by Alvan “Hap” Hadley (signed). [Original poster and rights record](https://commons.wikimedia.org/wiki/File:The_general_movie_poster.jpg). Resized and converted to WebP. |

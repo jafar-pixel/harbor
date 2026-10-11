@@ -374,7 +374,7 @@ const DEPS: Dep[] = [
 
 const LICENSES: LicenseDoc[] = [
   { id: "miku-visualizer", title: "Hatsune Miku · MikuMikuDance", used: "music.miku.adaptation", file: "miku-visualizer" },
-  { id: "harbor", title: "Harbor, MIT License", used: "The licence Harbor itself is released under.", file: "Harbor" },
+  { id: "harbor", title: "Harbor (the open-source project JL Media Vision is built on), MIT License", used: "The licence covering the upstream project this app is built on.", file: "Harbor" },
   { id: "mit", title: "MIT License", used: "Used by the majority of Harbor's bundled components, including React and Tauri.", file: "MIT" },
   { id: "apache", title: "Apache License 2.0", used: "Used by Tauri, librqbit and other bundled components.", file: "Apache-2.0" },
   { id: "gpl2", title: "GNU General Public License v2.0", used: "Applies to mpv, and to FFmpeg builds configured with GPL components.", file: "GPL-2.0-or-later" },

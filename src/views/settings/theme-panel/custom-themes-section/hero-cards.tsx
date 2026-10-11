@@ -190,7 +190,7 @@ function ImportVisual() {
       <div className="flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-edge-soft text-ink-subtle transition-colors group-hover/act:text-ink-muted">
         <FileDown size={18} strokeWidth={2} />
         <span className="text-[13px] font-extrabold uppercase leading-[17px] tracking-[0.72px]">
-          {t("Drop a {extension}", { extension: ".harborstyle" })}
+          {t("Drop a theme file")}
         </span>
       </div>
     </div>

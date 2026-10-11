@@ -10,6 +10,7 @@ import { processLogoImage } from "./image-utils";
 import { APP_ICON_PRESETS } from "./app-icon-presets";
 
 const PRESET_SRCS = APP_ICON_PRESETS.map((p) => p.src);
+const HAS_PRESETS = APP_ICON_PRESETS.length > 0;
 
 async function srcToDataUrl(src: string): Promise<string | null> {
   try {
@@ -134,6 +135,7 @@ function AppIconPicker() {
   const active = presetId || hasCustom;
 
   useEffect(() => {
+    if (!HAS_PRESETS) return;
     const id = window.setInterval(() => setRot((i) => (i + 1) % APP_ICON_PRESETS.length), 3000);
     return () => window.clearInterval(id);
   }, []);
@@ -223,20 +225,22 @@ function AppIconPicker() {
         </div>
       </SettingRow>
 
-      <SRow
-        title={t("Or try one of ours")}
-        description={t("{n} Harbor icons", { n: APP_ICON_PRESETS.length })}
-        onClick={() => setOpen((o) => !o)}
-        trailing={
-          <ChevronDown
-            size={20}
-            strokeWidth={2.2}
-            className={`shrink-0 text-ink-subtle transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          />
-        }
-      />
+      {HAS_PRESETS && (
+        <SRow
+          title={t("Or try one of ours")}
+          description={t("{n} Harbor icons", { n: APP_ICON_PRESETS.length })}
+          onClick={() => setOpen((o) => !o)}
+          trailing={
+            <ChevronDown
+              size={20}
+              strokeWidth={2.2}
+              className={`shrink-0 text-ink-subtle transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            />
+          }
+        />
+      )}
 
-      {open && (
+      {HAS_PRESETS && open && (
         <div className="animate-fade-in flex flex-col gap-3 pt-1">
           <span className="harbor-settings-label">{t("On the taskbar")}</span>
           <div className="w-[172px]">
@@ -245,7 +249,7 @@ function AppIconPicker() {
         </div>
       )}
 
-      {open && (
+      {HAS_PRESETS && open && (
         <div className="animate-fade-in grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 pt-1">
           {APP_ICON_PRESETS.map((p) => {
             const selected = presetId === p.id;

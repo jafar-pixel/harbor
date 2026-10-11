@@ -4,6 +4,7 @@ import { WindowControlButton, WindowControlGlyph } from "@/chrome/window-control
 import { HarborMark } from "@/components/icons/harbor-mark";
 import { UiIcon } from "@/components/ui-icon";
 import { useT } from "@/lib/i18n";
+import { PRODUCT_NAME } from "@/lib/i18n/brand";
 import { osClass } from "@/lib/platform";
 
 type Style = "transparent" | "glass" | "filled";
@@ -48,7 +49,7 @@ export function TitleBarArt() {
       {mac && <WindowCaptionPreview native />}
       <span className={`flex min-w-0 flex-1 items-center gap-2 px-2 text-[12px] text-ink ${mac ? "justify-center pe-16" : ""}`}>
         {!mac && <HarborMark className="h-4 w-4 shrink-0" />}
-        Harbor
+        {PRODUCT_NAME}
       </span>
       {!mac && <WindowCaptionPreview native />}
     </div>
