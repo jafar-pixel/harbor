@@ -62,8 +62,11 @@ function checkJlAccountSettings() {
     throw new Error(
       "VITE_JL_SUPABASE_URL must be the accounts project address (https://<project>.supabase.co).",
     );
-  if (!key || /^https?:/i.test(key))
-    throw new Error("VITE_JL_SUPABASE_ANON_KEY must be the accounts project's public (anon) key.");
+  // Only the two public key formats: a legacy anon token (eyJ…) or a publishable key.
+  if (!/^eyJ[\w-]+\.[\w-]+\.[\w-]+$/.test(key) && !/^sb_publishable_[\w-]+$/.test(key))
+    throw new Error(
+      "VITE_JL_SUPABASE_ANON_KEY must be the accounts project's public key: the anon key (starts with eyJ) or the publishable key (starts with sb_publishable_).",
+    );
   // A legacy anon key is a token naming its project; it must be the same project as the address.
   const project = /^https:\/\/([a-z0-9-]+)\./.exec(url)?.[1];
   const keyProject = jwtRef(key);
