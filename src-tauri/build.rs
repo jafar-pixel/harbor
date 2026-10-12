@@ -27,6 +27,9 @@ fn main() {
             // while a second window is created. On the default 1 MB reserve that nesting
             // overflowed the stack and took the process down with no panic to catch.
             println!("cargo:rustc-link-arg=/STACK:16777216,1048576");
+            // Exported from the app executable only, so hybrid-graphics drivers see them (main.rs).
+            println!("cargo:rustc-link-arg-bins=/EXPORT:NvOptimusEnablement");
+            println!("cargo:rustc-link-arg-bins=/EXPORT:AmdPowerXpressRequestHighPerformance");
         }
         if !libmpv.join("libmpv-2.dll").exists() {
             println!("cargo:warning=libmpv-2.dll not found in src-tauri/libmpv. Run `pnpm run setup:libmpv` to fetch it (needed to run and bundle Harbor on Windows).");
