@@ -28,6 +28,9 @@ import { previewScreensaver } from "@/lib/screensaver/media";
 import { PosterCardSection } from "./display/poster-card-section";
 import { ScreensaverMediaManager } from "./screensaver-media";
 import { SFX } from "@/lib/sfx";
+import { isAndroidTv } from "@/lib/platform";
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
+import { parseTvCanvas, readTvCanvas, setTvCanvas } from "@/lib/tv-canvas";
 
 export function AmbienceSection() {
   const t = useT();
@@ -182,6 +185,8 @@ const GAMES_SETTINGS_VISIBLE = true;
 export function DisplaySection() {
   const t = useT();
   const { settings, update } = useSettings();
+  // The scale slider zooms the page, which a TV's WebView ignores; TVs size the layout instead.
+  const onTv = isAndroidTv() || nativeTvAvailable();
   const glassBlur = Number.isFinite(settings.defaultLiquidGlassBlur)
     ? settings.defaultLiquidGlassBlur
     : 8;
@@ -254,20 +259,41 @@ export function DisplaySection() {
         )}
       >
         <SettingGroup>
-          <SliderRow
-            label={t("Interface scale")}
-            tip={t(
-              "Make everything bigger and easier to read: sidebar, menus, popups, every page. The whole interface scales live as you drag, so you can see the change right here. Great on 4K and ultrawide monitors, or whenever the text feels small.",
-            )}
-            icon={<ZoomIn size={18} strokeWidth={2} />}
-            value={settings.uiScale}
-            min={0.8}
-            max={1.6}
-            step={0.05}
-            readout={`${Math.round(settings.uiScale * 100)}%`}
-            resetTo={1}
-            onChange={(uiScale) => update({ uiScale })}
-          />
+          {onTv ? (
+            <SettingRow
+              label={t("Screen size")}
+              desc={t(
+                "How much fits on the TV. Smaller shows more at once. The app reloads to apply it.",
+              )}
+              icon={<ZoomIn size={18} strokeWidth={2} />}
+            >
+              <Dropdown
+                value={String(readTvCanvas())}
+                onChange={(v) => setTvCanvas(parseTvCanvas(v))}
+                options={[
+                  { value: "1140", label: t("Large") },
+                  { value: "1366", label: t("Medium") },
+                  { value: "1600", label: t("Small") },
+                  { value: "1920", label: t("Smallest") },
+                ]}
+              />
+            </SettingRow>
+          ) : (
+            <SliderRow
+              label={t("Interface scale")}
+              tip={t(
+                "Make everything bigger and easier to read: sidebar, menus, popups, every page. The whole interface scales live as you drag, so you can see the change right here. Great on 4K and ultrawide monitors, or whenever the text feels small.",
+              )}
+              icon={<ZoomIn size={18} strokeWidth={2} />}
+              value={settings.uiScale}
+              min={0.8}
+              max={1.6}
+              step={0.05}
+              readout={`${Math.round(settings.uiScale * 100)}%`}
+              resetTo={1}
+              onChange={(uiScale) => update({ uiScale })}
+            />
+          )}
         </SettingGroup>
       </Section>
 

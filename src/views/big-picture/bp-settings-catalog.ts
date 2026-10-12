@@ -5,6 +5,7 @@ import type { StreamingService } from "@/lib/settings";
 import type { Settings } from "@/lib/settings/types";
 import { ALL_LANGUAGE_NAMES } from "@/lib/subtitles/language";
 import { mediaServerConnections } from "@/lib/media-server/connections";
+import { readTvCanvas } from "@/lib/tv-canvas";
 
 export type BpCatId =
   | "picture"
@@ -170,6 +171,18 @@ function mpvControls(s: Settings, t: BpT): BpControl[] {
 
 function tvPlayerControls(s: Settings, t: BpT): BpControl[] {
   return [
+    {
+      kind: "options",
+      id: "tvScreenSize",
+      label: t("Screen size"),
+      value: String(readTvCanvas()),
+      options: [
+        { value: "1140", label: t("Large") },
+        { value: "1366", label: t("Medium") },
+        { value: "1600", label: t("Small") },
+        { value: "1920", label: t("Smallest") },
+      ],
+    },
     {
       kind: "options",
       id: "tvMatchFrameRate",

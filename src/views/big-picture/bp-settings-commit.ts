@@ -5,6 +5,7 @@ import { declineSportsConsent, resetSportsConsent } from "@/lib/sports/consent";
 import type { Settings } from "@/lib/settings/types";
 import { SFX } from "@/lib/sfx";
 import { bpOverscan, setBpOverscan } from "./bp-safe-area";
+import { parseTvCanvas, setTvCanvas } from "@/lib/tv-canvas";
 
 type Commit = (controlId: string, value: string) => void;
 
@@ -79,6 +80,10 @@ export function useBpSettingsWriter(): BpSettingsWriter {
       }
       if (id === "hwdec") {
         update({ mpvHwdec: value as Settings["mpvHwdec"] });
+        return;
+      }
+      if (id === "tvScreenSize") {
+        setTvCanvas(parseTvCanvas(value));
         return;
       }
       if (id === "tvMatchFrameRate") {

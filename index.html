@@ -3,6 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      // A television's WebView reports about 960 CSS px across, which lays the app out at double
+      // size. TVs get a fixed canvas from the "Screen size" setting instead (src/lib/tv-canvas.ts),
+      // set here before the bundle boots: changing the viewport on a live page stalls focus.
+      (function () {
+        try {
+          var ua = navigator.userAgent || "";
+          var tv =
+            /JLMediaVisionTV\//.test(ua) ||
+            /\bAFT[A-Z0-9]+\b/.test(ua) ||
+            /Android ?TV|Google ?TV|SMART-?TV|BRAVIA|SHIELD/i.test(ua);
+          if (!tv) return;
+          var sizes = [1140, 1366, 1600, 1920];
+          var saved = Number(localStorage.getItem("jl.tv.canvas"));
+          var canvas = sizes.indexOf(saved) >= 0 ? saved : 1366;
+          if (Math.abs(canvas - window.innerWidth) < 48) return;
+          var m = document.querySelector('meta[name="viewport"]');
+          if (m) m.setAttribute("content", "width=" + canvas + ", viewport-fit=cover");
+        } catch (e) {
+          /* leave the authored viewport alone */
+        }
+      })();
+    </script>
     <meta name="theme-color" content="#111214" />
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
     <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
