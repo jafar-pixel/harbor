@@ -1,1 +1,1 @@
-JL Media Vision 0.9.31: NVIDIA Shield plays 4K, HDR and Dolby Vision streams through the native player with frame-rate matching and surround passthrough, ranks streams like the desktop app, opens in Big Picture, and lays out at TV size with a Screen size setting. Discover and Shows get a wallpaper in each title's own colours. Real-Debrid and TorBox work on the web and TV apps.
+JL Media Vision 0.9.32: the Windows app now carries the Visual C++ runtime, so it starts on PCs without it (fixes "MSVCP140.dll was not found"). Includes everything in 0.9.31.
