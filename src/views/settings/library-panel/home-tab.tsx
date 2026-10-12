@@ -12,6 +12,7 @@ import {
   Maximize,
   Play,
   Volume2,
+  Wallpaper,
 } from "../icons";
 import { useSettings } from "@/lib/settings";
 import { clearAllSnapshots, snapshotCount } from "@/lib/snapshots";
@@ -71,6 +72,15 @@ export function HomeTab() {
             value={settings.heroFullQuality}
             onChange={(v) => update({ heroFullQuality: v })}
             leading={<ImageIcon size={18} strokeWidth={2} />}
+          />
+          <ToggleRow
+            label={t("Discover wallpaper")}
+            sub={t(
+              "Fill the page behind Discover and Shows with the featured title's art, blurred and tinted in its colors.",
+            )}
+            value={settings.discoverWallpaper}
+            onChange={(v) => update({ discoverWallpaper: v })}
+            leading={<Wallpaper size={18} strokeWidth={2} />}
           />
         </SettingGroup>
 

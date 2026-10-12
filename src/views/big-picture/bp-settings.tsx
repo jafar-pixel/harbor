@@ -7,6 +7,7 @@ import {
   subscribeSportsConsent,
 } from "@/lib/sports/consent";
 import { SFX } from "@/lib/sfx";
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 import { useBpT } from "./bp-i18n";
 import { pushBpBack } from "./bp-back";
 import { setBpFocus } from "./use-bp-focus";
@@ -62,7 +63,14 @@ export function BpSettings() {
   const connected = bpConnectedNames(facts);
   const categories = bpSettingsCategories(settings, t, overscan, connected);
   const cat: BpCatId = categories[active]?.id ?? "picture";
-  const controls = bpSettingsControls(cat, settings, t, overscan, consent.status !== "declined");
+  const controls = bpSettingsControls(
+    cat,
+    settings,
+    t,
+    overscan,
+    consent.status !== "declined",
+    nativeTvAvailable(),
+  );
 
   useEffect(
     () =>

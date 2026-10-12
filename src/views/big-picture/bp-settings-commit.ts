@@ -81,6 +81,22 @@ export function useBpSettingsWriter(): BpSettingsWriter {
         update({ mpvHwdec: value as Settings["mpvHwdec"] });
         return;
       }
+      if (id === "tvMatchFrameRate") {
+        update({ tvMatchFrameRate: on });
+        return;
+      }
+      if (id === "tvMaxResolution") {
+        update({ tvMaxResolution: value as Settings["tvMaxResolution"] });
+        return;
+      }
+      if (id === "tvAudioPassthrough") {
+        update({ tvAudioPassthrough: on });
+        return;
+      }
+      if (id === "tvTunneling") {
+        update({ tvTunneling: on });
+        return;
+      }
       if (id === "skipIntro") {
         update({ autoSkipIntro: on });
         return;

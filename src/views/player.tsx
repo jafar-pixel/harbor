@@ -743,9 +743,11 @@ function NativePlayerView({
   const showEpisodePanel =
     isSeriesPlayback || (settings.queueDrivesNav && queue.length > 0 && !isLiveLike);
 
+  // The TV app reports "html5" but plays in its native player, which takes these files.
   const showHeaderWarning =
     src.notWebReady === true &&
     engine === "html5" &&
+    !nativeTvAvailable() &&
     (snap.status === "error" || snap.status === "loading");
   const [noAudioDismissed, setNoAudioDismissed] = useState(false);
   useEffect(() => {

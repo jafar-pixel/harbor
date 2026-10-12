@@ -13,6 +13,7 @@ import { BrandTiles } from "@/components/brand-tiles";
 import { DiscoveryQueueCta } from "@/components/discovery-queue-cta";
 import { TopPeopleCta } from "@/components/top-people-cta";
 import { FeaturedBanner } from "@/components/featured-banner";
+import { useHeroWallpaper } from "@/components/hero-wallpaper";
 import { AwardTiles } from "@/components/award-tiles";
 import { GenreTiles } from "@/components/genre-tiles";
 import { LanguageTiles } from "@/components/language-tiles";
@@ -111,6 +112,7 @@ export function Discover({ active = true }: { active?: boolean }) {
   const pageRows = usePageRows("discover");
   const [feat, setFeat] = useState<FeaturedResult>({ featured: [], reserve: [], pool: [] });
   const [featReady, setFeatReady] = useState(false);
+  const [heroArt, setHeroArt] = useState<string | null>(null);
   const featured = feat.featured;
   const poolRef = useRef<FeaturedItem[]>([]);
   poolRef.current = feat.pool;
@@ -473,6 +475,7 @@ export function Discover({ active = true }: { active?: boolean }) {
   }, [shownSurprisePool, featured, criticsPick]);
 
   const hiddenFeatured = pageRows.custom.hidden.includes("section-featured");
+  const wallpaper = useHeroWallpaper(hiddenFeatured ? null : heroArt);
   const hiddenCatalog = pageRows.custom.hidden.includes("section-catalog");
   const hiddenSurprise = pageRows.custom.hidden.includes("section-surprise");
   const customizeBar = (
@@ -533,8 +536,12 @@ export function Discover({ active = true }: { active?: boolean }) {
     }
   };
 
-  return (
-    <main ref={scrollCb} className="flex-1 overflow-y-auto overflow-x-hidden px-12 pb-20 pt-28">
+  const page = (
+    <main
+      ref={scrollCb}
+      className="relative flex-1 overflow-y-auto overflow-x-hidden px-12 pb-20 pt-28"
+      {...wallpaper.pageProps}
+    >
       <ScrollRootContext.Provider value={scrollEl}>
         <div {...contentDrag} className="flex flex-col gap-14">
           {pageRows.editMode || !hiddenFeatured ? (
@@ -549,7 +556,10 @@ export function Discover({ active = true }: { active?: boolean }) {
                 />
               )}
               <div className={hiddenFeatured ? "pointer-events-none opacity-40" : ""}>
-                <FeaturedBanner items={featReady ? shownFeatured : []} />
+                <FeaturedBanner
+                  items={featReady ? shownFeatured : []}
+                  onActive={(m) => setHeroArt(m.background ?? m.poster ?? null)}
+                />
               </div>
               <div className="absolute end-0 bottom-4 z-10">{customizeBar}</div>
             </div>
@@ -678,6 +688,12 @@ export function Discover({ active = true }: { active?: boolean }) {
       </ScrollRootContext.Provider>
       <BackToTop scrollRef={scrollRef} />
     </main>
+  );
+  return (
+    <>
+      {wallpaper.backdrop}
+      {page}
+    </>
   );
 }
 

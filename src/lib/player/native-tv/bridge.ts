@@ -1,21 +1,13 @@
 import { emptySnapshot, type PlayerBridge, type PlayerSnapshot, type PlayerSource } from "../bridge";
+import { nativeTvPlayer as native, type NativeTvOptions } from "./shell";
+
+export { nativeTvAvailable } from "./shell";
 
 /**
  * Plays through the Android TV app's native ExoPlayer (`window.JLNativePlayer`, see
  * android-tv/README.md) instead of the WebView's <video>. The native video is drawn over the
  * WebView: full screen in the full player, or inside the hero box when the player is docked.
  */
-
-type NativePlayer = {
-  isAvailable(): boolean;
-  play(url: string, headersJson: string, title: string, startMs: number): boolean;
-  setMode(mode: "full" | "hero" | "hidden"): void;
-  setRect(x: number, y: number, w: number, h: number): void;
-  pause(): void;
-  resume(): void;
-  seek(ms: number): void;
-  stop(): void;
-};
 
 type NativeEvent = {
   type: "ready" | "playing" | "paused" | "buffering" | "ended" | "error" | "stopped" | "position" | "exit-full";
@@ -28,22 +20,8 @@ type NativeEvent = {
 /** Height of the web control bar kept under the native video in the hero. */
 export const NATIVE_HERO_BAR_PX = 56;
 
-function native(): NativePlayer | null {
-  if (typeof window === "undefined") return null;
-  const p = (window as unknown as { JLNativePlayer?: NativePlayer }).JLNativePlayer;
-  try {
-    return p && p.isAvailable() ? p : null;
-  } catch {
-    return null;
-  }
-}
-
-/** True inside the JL Media Vision TV app on one of its own pages. */
-export function nativeTvAvailable(): boolean {
-  return native() !== null;
-}
-
-export function createNativeTvBridge(): PlayerBridge {
+/** `options` goes to the app before every play; app builds without `setOptions` ignore it. */
+export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBridge {
   const listeners = new Set<(s: PlayerSnapshot) => void>();
   let snap: PlayerSnapshot = { ...emptySnapshot };
   let host: HTMLElement | null = null;
@@ -155,6 +133,13 @@ export function createNativeTvBridge(): PlayerBridge {
       }
       set({ ...emptySnapshot, status: "loading", buffering: true });
       place();
+      if (options && typeof p.setOptions === "function") {
+        try {
+          p.setOptions(JSON.stringify(options()));
+        } catch {
+          /* An app build that cannot take the options plays with its defaults. */
+        }
+      }
       const startMs = Math.max(0, Math.round((src.startAtSec ?? 0) * 1000));
       const ok = p.play(src.url, JSON.stringify(src.headers ?? {}), "", startMs);
       if (!ok) set({ status: "error", buffering: false, errorCode: "source", errorMessage: "This stream can't be played." });

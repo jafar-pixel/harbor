@@ -64,7 +64,7 @@ export function SidePanel({
   };
 
   return (
-    <aside className="flex flex-col gap-3 self-start rounded-2xl border border-edge-soft bg-elevated/35 p-4">
+    <aside className="jl-tint-glass flex flex-col gap-3 self-start rounded-2xl border border-edge-soft bg-elevated/35 p-4">
       <div className="flex flex-col gap-1">
         <h4 className="line-clamp-1 font-display text-[19px] font-medium tracking-tight text-ink">
           {meta.name}

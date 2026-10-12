@@ -2,6 +2,12 @@ import { addonBasesForOrigin, type Addon } from "@/lib/addons";
 import { isAddonNativeMeta, type Meta } from "@/lib/cinemeta";
 import type { DebridStore } from "@/lib/debrid/types";
 import { readPlayback } from "@/lib/playback-history";
+import { browserDecodes } from "@/lib/player/native-playback";
+import {
+  nativeTvAvailable,
+  nativeTvCapabilities,
+  tvPassthroughAudio,
+} from "@/lib/player/native-tv/shell";
 import type { Settings } from "@/lib/settings";
 import type { PlayEpisode } from "@/lib/view";
 import { resolveAddonRanks } from "./addon-priority";
@@ -229,8 +235,10 @@ export function buildEpisodePipelineInput(params: {
       runtimeMinutes: runtimeMinutes(meta.runtime),
       inTheaters: meta.inTheaters === true,
       bandwidthMbps: settings.bandwidthMbps > 0 ? settings.bandwidthMbps : undefined,
-      preferSingleAudioTrack:
-        !("__TAURI_INTERNALS__" in window) || settings.playerEngine === "html5",
+      preferSingleAudioTrack: browserDecodes(settings.playerEngine),
+      tvPassthroughAudio: nativeTvAvailable()
+        ? tvPassthroughAudio(settings.tvAudioPassthrough, nativeTvCapabilities())
+        : undefined,
       preferAddonId: meta.addonOrigin?.id,
       preferredReleaseGroup: prevGroup,
       respectAddonOrder: settings.streamSort === "addon",

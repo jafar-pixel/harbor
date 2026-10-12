@@ -15,7 +15,7 @@ import type { HomeRow } from "@/views/home/home-types";
 import { SFX } from "@/lib/sfx";
 import { useView, type PlayEpisode } from "@/lib/view";
 import { useActiveKid } from "@/lib/profiles";
-import { isAndroidTv } from "@/lib/platform";
+import { isAndroidTv, isTvApp } from "@/lib/platform";
 import {
   exitBigPicture,
   goBigPictureTab,
@@ -276,7 +276,8 @@ export function BigPictureShell() {
     // Big Picture IS the app and Back at the root belongs to the launcher, so
     // decline and let MainActivity finish the activity. In the window there is
     // something behind Big Picture to go back to, which is what the confirm asks.
-    if (isAndroidTv()) return false;
+    // The JL Media Vision TV app asks before leaving the same way.
+    if (isAndroidTv() || isTvApp()) return false;
     setConfirmExit(true);
     return true;
   }, [quickOpen, confirmExit, phoneOpen, sources, who]);

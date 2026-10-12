@@ -1,5 +1,6 @@
 import { createHtml5Bridge } from "@/lib/player/html5";
 import { createNativeTvBridge, nativeTvAvailable } from "@/lib/player/native-tv/bridge";
+import type { NativeTvOptions } from "@/lib/player/native-tv/shell";
 import { createMpvBridge, probeMpv, type MpvRect } from "@/lib/player/mpv";
 import type { PlayerBridge } from "@/lib/player/bridge";
 import type { MonitorInfo } from "@/lib/monitors";
@@ -73,10 +74,13 @@ export async function pickBridge(
     separateCoverTaskbar?: boolean;
     cacheDir?: string;
     getEmbedRect?: () => Promise<MpvRect | null> | MpvRect | null;
+    /** Read before every play, so a change in settings applies to the next stream. */
+    nativeTv?: () => NativeTvOptions;
   },
 ): Promise<{ bridge: PlayerBridge; engine: "html5" | "mpv" }> {
   // Inside the JL Media Vision TV app every stream plays in the native player.
-  if (nativeTvAvailable()) return { bridge: createNativeTvBridge(), engine: "html5" };
+  if (nativeTvAvailable())
+    return { bridge: createNativeTvBridge(mpvOpts.nativeTv), engine: "html5" };
   if (want === "html5") return { bridge: createHtml5Bridge(), engine: "html5" };
   if (want === "mpv") {
     const probe = await probeMpv();

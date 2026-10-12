@@ -65,6 +65,7 @@ function harness({ anime = false, deferredParse = false } = {}) {
     "src/lib/streams/pipeline.ts",
     {
       "@/lib/debug": { dlog() {} },
+      "@/lib/player/native-playback": { nativePlayback: () => false },
       "./addons": {
         fetchAddonStreams: (_a, _r, _s, batch) => {
           onBatch = batch;

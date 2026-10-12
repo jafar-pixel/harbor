@@ -5,6 +5,7 @@ import { CatalogCustomizeBar } from "@/components/catalog/customize-bar";
 import { ContinueCard } from "@/components/continue-card";
 import { dismissCw, isCwDismissed, useCwDismissVersion } from "@/lib/cw-dismiss";
 import { PeekHero } from "@/components/peek-hero";
+import { useHeroWallpaper } from "@/components/hero-wallpaper";
 import { Row, ScrollRootContext } from "@/components/row";
 import { TmdbNudge } from "@/components/nudge";
 import { useAuth } from "@/lib/auth";
@@ -251,6 +252,8 @@ export function Shows({ active = true }: { active?: boolean }) {
   }, []);
 
   const shownHero = useHideAnimeMetas(hero);
+  const [heroArt, setHeroArt] = useState<string | null>(null);
+  const wallpaper = useHeroWallpaper(heroArt);
   const trendingMetas = useMemo(() => rows.find((r) => r.key === "trending")?.metas ?? [], [rows]);
   const shownTrending = useHideAnimeMetas(trendingMetas);
   const top10 = useMemo(() => shownTrending.slice(0, 10), [shownTrending]);
@@ -304,13 +307,20 @@ export function Shows({ active = true }: { active?: boolean }) {
     ];
   }, [top10, rows, allRestRows]);
 
-  return (
-    <main ref={scrollCb} className="relative h-full overflow-y-auto overflow-x-hidden bg-canvas">
+  const page = (
+    <main
+      ref={scrollCb}
+      className={`relative h-full overflow-y-auto overflow-x-hidden ${wallpaper.on ? "" : "bg-canvas"}`}
+      {...wallpaper.pageProps}
+    >
       <ScrollRootContext.Provider value={scrollEl}>
         <div className="relative flex w-full flex-col gap-12 px-12 pb-32 pt-32">
           <PageMast />
           <div className="relative">
-            <PeekHero slides={shownHero} />
+            <PeekHero
+              slides={shownHero}
+              onActive={(m) => setHeroArt(m.background ?? m.poster ?? null)}
+            />
             <div className="absolute bottom-3 end-3 z-20">
               <CatalogCustomizeBar
                 editMode={pageRows.editMode}
@@ -355,6 +365,12 @@ export function Shows({ active = true }: { active?: boolean }) {
         <BackToTop scrollRef={scrollRef} />
       </ScrollRootContext.Provider>
     </main>
+  );
+  return (
+    <>
+      {wallpaper.backdrop}
+      {page}
+    </>
   );
 }
 

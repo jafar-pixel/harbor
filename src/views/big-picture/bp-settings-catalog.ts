@@ -141,12 +141,78 @@ export function bpConnectedNames(facts: {
   ].filter((v): v is string => v !== null);
 }
 
+function mpvControls(s: Settings, t: BpT): BpControl[] {
+  return [
+    {
+      kind: "options",
+      id: "engine",
+      label: t("Player engine"),
+      value: s.playerEngine,
+      options: [
+        { value: "auto", label: t("Auto") },
+        { value: "mpv", label: "mpv" },
+        { value: "html5", label: "HTML5" },
+      ],
+    },
+    {
+      kind: "options",
+      id: "hwdec",
+      label: t("Hardware acceleration"),
+      value: s.mpvHwdec,
+      options: [
+        { value: "auto", label: t("Auto") },
+        { value: "on", label: t("On") },
+        { value: "off", label: t("Off") },
+      ],
+    },
+  ];
+}
+
+function tvPlayerControls(s: Settings, t: BpT): BpControl[] {
+  return [
+    {
+      kind: "options",
+      id: "tvMatchFrameRate",
+      label: t("Match frame rate and resolution"),
+      value: boolValue(s.tvMatchFrameRate),
+      options: onOff(t),
+    },
+    {
+      kind: "options",
+      id: "tvMaxResolution",
+      label: t("Maximum resolution"),
+      value: s.tvMaxResolution,
+      options: [
+        { value: "auto", label: t("Auto") },
+        { value: "1080p", label: "1080p" },
+        { value: "720p", label: "720p" },
+      ],
+    },
+    {
+      kind: "options",
+      id: "tvAudioPassthrough",
+      label: t("Audio passthrough"),
+      value: boolValue(s.tvAudioPassthrough),
+      options: onOff(t),
+    },
+    {
+      kind: "options",
+      id: "tvTunneling",
+      label: t("Tunneled playback"),
+      value: boolValue(s.tvTunneling),
+      options: onOff(t),
+    },
+  ];
+}
+
 export function bpSettingsControls(
   id: BpCatId,
   s: Settings,
   t: BpT,
   overscan: number,
   sportsShown: boolean,
+  /** Inside the Android TV app, which plays through ExoPlayer rather than mpv. */
+  tvPlayer = false,
 ): BpControl[] {
   if (id === "picture") {
     return [
@@ -252,28 +318,7 @@ export function bpSettingsControls(
             },
           ]
         : []),
-      {
-        kind: "options",
-        id: "engine",
-        label: t("Player engine"),
-        value: s.playerEngine,
-        options: [
-          { value: "auto", label: t("Auto") },
-          { value: "mpv", label: "mpv" },
-          { value: "html5", label: "HTML5" },
-        ],
-      },
-      {
-        kind: "options",
-        id: "hwdec",
-        label: t("Hardware acceleration"),
-        value: s.mpvHwdec,
-        options: [
-          { value: "auto", label: t("Auto") },
-          { value: "on", label: t("On") },
-          { value: "off", label: t("Off") },
-        ],
-      },
+      ...(tvPlayer ? tvPlayerControls(s, t) : mpvControls(s, t)),
       {
         kind: "options",
         id: "skipIntro",

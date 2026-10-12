@@ -41,6 +41,7 @@ import { DEFAULT, STORAGE_KEY } from "./defaults";
 import type { Settings } from "./types";
 import { adoptLegacyPlaylists, readPlaylists } from "@/lib/iptv/playlists-store";
 import { sanitizeDisplaySelection } from "@/lib/monitors";
+import { nativeTvCapabilities } from "@/lib/player/native-tv/shell";
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 
@@ -124,6 +125,12 @@ export function sanitizeTheme(t: Partial<ThemeSettings> | undefined): ThemeSetti
   };
 }
 
+// The TV app opens in Big Picture until the viewer turns that off. Only app builds that hand
+// Back to Big Picture qualify: on older ones the remote's Back never reaches it.
+function tvAppStartsInBigPicture(): boolean {
+  return nativeTvCapabilities()?.pageBack === true;
+}
+
 let cachedKey: string | null = null;
 let cachedRaw: string | null = null;
 let cachedSettings: Settings | null = null;
@@ -148,6 +155,9 @@ function parseStoredSettings(raw: string | null): Settings {
       seekForwardStepSec: sanitizeSeekStep(legacySeekStep("forward"), DEFAULT.seekForwardStepSec),
       _jlShowLiveSportsV1: true,
     };
+    if (tvAppStartsInBigPicture()) {
+      return { ...fresh, bigPictureAutoStart: true, _jlTvBigPictureV1: true } as Settings;
+    }
     return fresh;
   }
   try {
@@ -183,7 +193,12 @@ function parseStoredSettings(raw: string | null): Settings {
       _streamCacheCapV1?: boolean;
       _playbackSourcePreferenceV1?: boolean;
       _playbackSourcePreferenceV2?: boolean;
+      _jlTvBigPictureV1?: boolean;
     };
+    if (!parsed._jlTvBigPictureV1 && tvAppStartsInBigPicture()) {
+      parsed.bigPictureAutoStart = true;
+      parsed._jlTvBigPictureV1 = true;
+    }
     if (!parsed._playbackSourcePreferenceV1) {
       parsed.playbackSourcePreference = parsed.localPlaybackMode === "local" ? "local" : "online";
       parsed.preferredMediaServerId = null;
@@ -386,12 +401,27 @@ function parseStoredSettings(raw: string | null): Settings {
       // holds a copy of one of them, so both reset and the default icon returns.
       ...(parsed.customAppIconPreset ? { customAppIcon: "", customAppIconPreset: "" } : {}),
       showQuickGameLibrary: parsed.showQuickGameLibrary === true,
+      discoverWallpaper: parsed.discoverWallpaper !== false,
       topbarAppearance: sanitizeTopbarAppearance(
         parsed.topbarAppearance,
         parsed.transparentTopBar,
         parsed.topbarGlassControls,
       ),
       posterDockTransitionMs: sanitizePosterDockTransition(parsed.posterDockTransitionMs),
+      tvMatchFrameRate:
+        typeof parsed.tvMatchFrameRate === "boolean"
+          ? parsed.tvMatchFrameRate
+          : DEFAULT.tvMatchFrameRate,
+      tvMaxResolution:
+        parsed.tvMaxResolution === "1080p" || parsed.tvMaxResolution === "720p"
+          ? parsed.tvMaxResolution
+          : DEFAULT.tvMaxResolution,
+      tvAudioPassthrough:
+        typeof parsed.tvAudioPassthrough === "boolean"
+          ? parsed.tvAudioPassthrough
+          : DEFAULT.tvAudioPassthrough,
+      tvTunneling:
+        typeof parsed.tvTunneling === "boolean" ? parsed.tvTunneling : DEFAULT.tvTunneling,
       bigPictureDisplay: sanitizeDisplaySelection(parsed.bigPictureDisplay),
       playerSeparateDisplay: sanitizeDisplaySelection(parsed.playerSeparateDisplay),
       playerSeparateCoverTaskbar:

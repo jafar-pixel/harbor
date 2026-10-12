@@ -147,11 +147,29 @@ class MainActivity : AppCompatActivity() {
         return super.dispatchKeyEvent(event)
     }
 
-    /** Back: leave video full screen, then go back in the app, then ask before closing. */
+    /**
+     * Back: leave video full screen, then let Big Picture go back through its own screens, then go
+     * back in the app, then ask before closing.
+     */
     private fun onBack() {
         if (fullscreenView != null) { exitFullscreen(); return }
         if (nativePlayer.isActive && nativePlayer.mode == NativePlayer.Mode.FULL) { nativePlayer.exitFull(); return }
-        if (web.canGoBack()) { web.goBack(); return }
+        if (!isAppUrl(web.url)) { historyBack(); return }
+        // Big Picture keeps its screens in its own stack rather than in WebView history.
+        web.evaluateJavascript(PAGE_BACK_JS) { result ->
+            when (result?.trim('"')) {
+                "handled" -> Unit
+                "root" -> confirmLeave()
+                else -> historyBack()
+            }
+        }
+    }
+
+    private fun historyBack() {
+        if (web.canGoBack()) web.goBack() else confirmLeave()
+    }
+
+    private fun confirmLeave() {
         AlertDialog.Builder(this)
             .setTitle("Leave JL Media Vision?")
             .setPositiveButton("Leave") { _, _ -> finish() }
@@ -167,6 +185,12 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         nativePlayer.pause()
+        nativePlayer.restoreDisplayMode()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        nativePlayer.matchDisplayMode()
     }
 
     override fun onStop() {
@@ -215,6 +239,18 @@ class MainActivity : AppCompatActivity() {
             onMain { nativePlayer.setMode(next) }
         }
 
+        /** Playback options (README: `setOptions`); they apply from the next `play`. */
+        @JavascriptInterface
+        fun setOptions(json: String?) {
+            val options = NativePlayer.Options.parse(json) ?: return
+            onMain { nativePlayer.options = options }
+        }
+
+        /** What the TV can show and pass through, as JSON (README: `capabilities`). */
+        @JavascriptInterface
+        fun capabilities(): String =
+            if (onAppPage) NativePlayer.capabilities(this@MainActivity).toString() else "{}"
+
         @JavascriptInterface
         fun pause() = onMain { nativePlayer.pause() }
 
@@ -252,5 +288,11 @@ class MainActivity : AppCompatActivity() {
     companion object {
         // Where the web app lives now and after the domain swap.
         val APP_HOSTS = setOf("jl-media-vision.vercel.app", "watch.jl-stream.com")
+
+        // Big Picture's Back chain (src/views/big-picture/bp-back.ts): "handled" when it went back
+        // a screen, "root" at its home screen, "none" when Big Picture is not open.
+        private const val PAGE_BACK_JS = "(function(){var b=window.__harborBack;" +
+            "if(typeof b!=='function'||!document.documentElement.hasAttribute('data-big-picture'))return 'none';" +
+            "try{return b()?'handled':'root'}catch(e){return 'none'}})()"
     }
 }

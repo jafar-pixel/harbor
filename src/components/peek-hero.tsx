@@ -19,7 +19,14 @@ const DRAG_THRESHOLD = 8;
 const SNAP_FRACTION = 0.15;
 const FLICK_VELOCITY = 0.45;
 
-export function PeekHero({ slides }: { slides: Meta[] }) {
+export function PeekHero({
+  slides,
+  onActive,
+}: {
+  slides: Meta[];
+  /** The slide on show, for a page that dresses itself in its art. */
+  onActive?: (meta: Meta) => void;
+}) {
   const t = useT();
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -51,6 +58,13 @@ export function PeekHero({ slides }: { slides: Meta[] }) {
   useEffect(() => {
     if (active >= slides.length) setActive(0);
   }, [slides.length, active]);
+
+  const shown = slides[active] ?? slides[0];
+  const onActiveRef = useRef(onActive);
+  onActiveRef.current = onActive;
+  useEffect(() => {
+    if (shown) onActiveRef.current?.(shown);
+  }, [shown]);
 
   if (slides.length === 0) {
     return (

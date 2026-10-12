@@ -49,7 +49,7 @@ export function SurpriseMe({ pool }: { pool: Meta[] }) {
             <SurpriseTile key={`${m.id}-${i}`} meta={m} />
           ))}
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-canvas via-canvas/85 to-canvas/30" />
+        <div className="jl-tint-veil absolute inset-0 bg-gradient-to-r from-canvas via-canvas/85 to-canvas/30" />
         <div className="relative flex items-center gap-3 px-4">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-canvas shadow-[0_6px_18px_-6px_rgba(0,0,0,0.6)] transition-transform duration-300 group-hover:rotate-[18deg] group-active:scale-90">
             <Dices size={18} strokeWidth={2.2} />

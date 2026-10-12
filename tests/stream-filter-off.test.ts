@@ -22,6 +22,7 @@ function fixture(native = false, supplied = streams) {
   const coreCalls: any[] = [];
   const mocks: Record<string, any> = {
     "@/lib/debug": { dlog() {} },
+    "@/lib/player/native-playback": { nativePlayback: () => native },
     "./addons": { fetchAddonStreams: async (_: unknown, __: unknown, ___: unknown, progress: (s: Stream[]) => void) => {
       progress(supplied); return supplied;
     } },

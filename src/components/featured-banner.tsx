@@ -10,7 +10,14 @@ import type { LightboxState } from "./featured-banner/types";
 
 const ROTATE_MS = 14000;
 
-export function FeaturedBanner({ items }: { items: Meta[] }) {
+export function FeaturedBanner({
+  items,
+  onActive,
+}: {
+  items: Meta[];
+  /** The title on show, for a page that dresses itself in its art. */
+  onActive?: (meta: Meta) => void;
+}) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const [inView, setInView] = useState(true);
@@ -36,6 +43,13 @@ export function FeaturedBanner({ items }: { items: Meta[] }) {
   useEffect(() => {
     if (active >= items.length && items.length > 0) setActive(items.length - 1);
   }, [items.length, active]);
+
+  const shown = items.length > 0 ? items[Math.min(active, items.length - 1)] : undefined;
+  const onActiveRef = useRef(onActive);
+  onActiveRef.current = onActive;
+  useEffect(() => {
+    if (shown) onActiveRef.current?.(shown);
+  }, [shown]);
 
   if (items.length === 0) {
     if (hasLoadedRef.current) return null;

@@ -31,6 +31,54 @@ if (player?.isAvailable()) {
 | `pause()` / `resume()` | Pauses or resumes. `resume()` restarts an ended or failed stream. |
 | `seek(ms)` | Seeks to `ms`, clamped to the stream's duration when known. |
 | `stop()` | Stops, releases the player and returns to `hidden`. |
+| `setOptions(json)` | Playback options, applied from the next `play` (see below). Unknown or missing keys keep their defaults; invalid JSON is ignored. |
+| `capabilities(): string` | What the TV supports, as JSON (see below). `"{}"` off an app page. |
+
+`setOptions` and `capabilities` are newer than the first app builds, so the page checks
+`typeof player.setOptions === "function"` before calling them; an older app plays with the
+defaults below.
+
+### Playback options
+
+```js
+player.setOptions(JSON.stringify({
+  matchFrameRate: true,     // default true
+  maxResolution: "auto",    // "auto" (default, up to the TV's largest mode), "1080p" or "720p"
+  audioPassthrough: true,   // default true
+  tunneling: false,         // default false
+}));
+```
+
+- Video tracks are chosen for the TV's largest display mode (`Display.getSupportedModes`), not the
+  size the UI runs at, so adaptive HLS/DASH streams pick their 4K variants on a 4K TV.
+  `maxResolution` caps that. Video is drawn on the default surface, so HDR10 and Dolby Vision
+  pass through to the TV.
+- `matchFrameRate`: in `full`, the window asks for the display mode that suits the video once its
+  format is known: the video's frame rate or a whole multiple of it (23.976 Hz, else 24 Hz, for
+  23.976 fps), and a larger size only when the video needs it, so the Shield keeps upscaling lower
+  resolutions itself. The original mode returns when playback stops, the app pauses, or the mode
+  leaves `full`. ExoPlayer's own seamless frame-rate hint is on with it and off without it.
+- `audioPassthrough`: AC3, E-AC3, DTS and TrueHD go to the receiver undecoded when it reports
+  them. Off, everything is decoded to PCM; ExoPlayer has no DTS or TrueHD decoder, so those tracks
+  then have no sound.
+- `tunneling`: tunneled video playback. Some streams fail to start with it.
+
+### Capabilities
+
+```json
+{
+  "maxWidth": 3840, "maxHeight": 2160,
+  "refreshRates": [23.976, 24, 25, 29.97, 30, 50, 59.94, 60],
+  "hdr": ["hdr10", "hlg", "dolby-vision"],
+  "passthrough": ["ac3", "eac3", "eac3-joc", "dts", "truehd"],
+  "pageBack": true
+}
+```
+
+`hdr` holds any of `hdr10`, `hdr10-plus`, `hlg`, `dolby-vision`. `passthrough` holds any of `ac3`,
+`eac3`, `eac3-joc`, `ac4`, `dts`, `dts-hd`, `truehd`, for the current audio output. `pageBack`
+says the app hands Back to Big Picture (below); the page only opens in Big Picture by default
+when it is true.
 
 ### Modes
 
@@ -43,7 +91,10 @@ if (player?.isAvailable()) {
   area, so switch to `hidden` while a menu or dialog overlaps it.
 - `hidden`: the video is not drawn. Playback continues; call `pause()` or `stop()` as needed.
 
-In `hero` and `hidden`, keys go to the page and Back walks the page's history as before.
+In `hero` and `hidden`, keys go to the page. Back then goes to Big Picture when it is open
+(`window.__harborBack()`, `src/views/big-picture/bp-back.ts`): it goes back a screen there, and
+at Big Picture's home screen the app asks before leaving. Outside Big Picture, Back walks the
+WebView's history, then asks before leaving.
 
 ### Events
 

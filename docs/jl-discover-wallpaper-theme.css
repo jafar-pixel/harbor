@@ -1,0 +1,84 @@
+/*
+ * JL Media Vision: Discover wallpaper, extra styling (theme code)
+ *
+ * The wallpaper itself is built in. Turn it on in Settings > Library > Home >
+ * "Discover wallpaper" (on by default). This snippet only makes it louder: a stronger colour
+ * wash, glass cards and a tinted Voyages banner. It works on Discover and Shows.
+ *
+ * To use it: open Theme Studio on the theme you use (Settings > Theme), go to the Code tab,
+ * paste everything below into the CSS box, then save and apply the theme. Delete it from the
+ * same box to undo. No JavaScript is needed.
+ *
+ * What it can use:
+ *   [data-hero-wallpaper]   the page's scroll area while the wallpaper is showing
+ *   --discover-tint         the colour picked from the current hero's art (it changes with the
+ *                           slide; the theme accent stands in until a colour is found)
+ *   .jl-wall                the wallpaper behind the page
+ *   .jl-wall-img            the blurred art      .jl-wall-glow  the colour glow
+ *   .jl-wall-veil           the shade that keeps text readable
+ *   .jl-tint-glass          the hero's side info card
+ *   .jl-tint-veil           the "Surprise me" strip's shade
+ */
+
+/* More of the art, less of the shade. */
+.jl-wall-img {
+  opacity: 0.75;
+  filter: blur(32px) saturate(1.45);
+}
+.jl-wall-veil {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--color-canvas) 18%, transparent) 0%,
+    color-mix(in oklab, var(--color-canvas) 36%, transparent) 50%,
+    color-mix(in oklab, var(--color-canvas) 58%, transparent) 100%
+  );
+}
+
+/* A stronger colour wash. */
+.jl-wall-glow {
+  mix-blend-mode: screen;
+}
+
+/* Glass cards: the side info card, the Surprise me strip and the Voyages banner. */
+[data-hero-wallpaper] .jl-tint-glass {
+  background-color: color-mix(
+    in oklab,
+    var(--discover-tint, var(--color-accent)) 20%,
+    color-mix(in oklab, var(--color-canvas) 40%, transparent)
+  );
+  border-color: color-mix(in oklab, var(--discover-tint, var(--color-accent)) 45%, transparent);
+  box-shadow:
+    0 18px 50px -24px color-mix(in oklab, var(--discover-tint, var(--color-accent)) 70%, black),
+    inset 0 1px 0 color-mix(in oklab, white 12%, transparent);
+}
+[data-hero-wallpaper] .jl-tint-veil {
+  background-image: linear-gradient(
+    to right,
+    color-mix(in oklab, var(--discover-tint, var(--color-accent)) 28%, var(--color-canvas)),
+    color-mix(in oklab, var(--discover-tint, var(--color-accent)) 18%, transparent)
+  );
+}
+[data-hero-wallpaper] .voyage-card {
+  background-color: color-mix(
+    in oklab,
+    var(--discover-tint, var(--color-accent)) 16%,
+    color-mix(in oklab, var(--color-canvas) 55%, transparent)
+  );
+  box-shadow: 0 0 0 1px
+    color-mix(in oklab, var(--discover-tint, var(--color-accent)) 40%, transparent);
+}
+
+/* Row titles pick up a hint of the colour. */
+[data-hero-wallpaper] h2 {
+  text-shadow: 0 2px 18px
+    color-mix(in oklab, var(--discover-tint, var(--color-accent)) 45%, transparent);
+}
+
+/* Light themes: keep the wash pale. */
+:root[data-theme-mode="light"] .jl-wall-img {
+  opacity: 0.4;
+}
+:root[data-theme-mode="light"] .jl-wall-glow {
+  mix-blend-mode: normal;
+  opacity: 0.6;
+}

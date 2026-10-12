@@ -9,6 +9,8 @@ import { QualityProfile } from "./mpv-panel/profile";
 import { BufferSizeSection } from "./mpv-panel/buffer";
 import { PictureDialsSection, ColorHdrSection } from "./mpv-panel/dials";
 import { AdvancedMpvSection } from "./mpv-panel/advanced";
+import { TvPlayerSection } from "./mpv-panel/tv-player";
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 import { useSubTabs } from "./sub-tabs";
 
 type Tab = "quality" | "picture" | "network" | "advanced";
@@ -29,6 +31,9 @@ export function MpvPanel() {
     tab,
     (id) => setTab(id as Tab),
   );
+
+  // The TV app plays through ExoPlayer, so the mpv controls do not apply there.
+  if (nativeTvAvailable()) return <TvPlayerSection />;
 
   if (!isTauri) {
     return (

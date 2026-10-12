@@ -66,6 +66,16 @@ export function isAndroidTv(): boolean {
   return cachedTv;
 }
 
+/**
+ * Inside the JL Media Vision Android TV app (android-tv/), which loads the web build in a WebView
+ * and appends `JLMediaVisionTV/<version>` to its user agent. isAndroidTv() answers only for the
+ * Tauri build, so it is false here.
+ */
+export function isTvApp(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /JLMediaVisionTV/.test(navigator.userAgent || "");
+}
+
 export function isMobileDevice(): boolean {
   if (typeof navigator === "undefined" || typeof window === "undefined") return false;
   // A television reports Android and answers the touch heuristics below with a
@@ -74,7 +84,7 @@ export function isMobileDevice(): boolean {
   if (isAndroidTv()) return false;
   const ua = navigator.userAgent || "";
   // The JL Media Vision Android TV app runs this web app in a WebView on a TV screen.
-  if (/JLMediaVisionTV/.test(ua)) return false;
+  if (isTvApp()) return false;
   if (/Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|iPad/i.test(ua)) return true;
   if (/Macintosh/i.test(ua) && (navigator.maxTouchPoints ?? 0) > 1) return true;
   if ((navigator.maxTouchPoints ?? 0) > 0 && Math.min(window.innerWidth, window.innerHeight) < 640) {

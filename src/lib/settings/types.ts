@@ -217,6 +217,7 @@ export type Settings = {
   heroShadow: number;
   heroFull: boolean;
   heroFullQuality: boolean;
+  discoverWallpaper: boolean;
   heroFeed: "trending" | "trakt" | "simkl" | "classic";
   heroTrailers: boolean;
   heroTrailerAudio: boolean;
@@ -473,6 +474,14 @@ export type Settings = {
   mpvRenderer: "gpu-next" | "gpu";
   uiGraphicsBackend: "auto" | "d3d11" | "opengl" | "vulkan" | "software";
   mpvForceYuv420p: boolean;
+  /** Android TV app (ExoPlayer): switch the TV to the video's frame rate and resolution. */
+  tvMatchFrameRate: boolean;
+  /** Android TV app: the highest video size to pick; "auto" is the best the TV can show. */
+  tvMaxResolution: "auto" | "1080p" | "720p";
+  /** Android TV app: send Dolby and DTS audio to the receiver undecoded when it takes them. */
+  tvAudioPassthrough: boolean;
+  /** Android TV app: tunneled video playback. Off by default; some streams fail with it. */
+  tvTunneling: boolean;
   mpvBufferBoost: boolean;
   mpvBufferSize: BufferSizeId;
   mpvDownmixStereo: boolean;

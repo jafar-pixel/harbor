@@ -166,7 +166,7 @@ async function artworkBytes(src: string): Promise<Blob | null> {
     return null;
   }
 }
-async function artworkPixels(src: string): Promise<Uint8ClampedArray | null> {
+export async function artworkPixels(src: string): Promise<Uint8ClampedArray | null> {
   try {
     const blob = await artworkBytes(src);
     if (!blob) return null;

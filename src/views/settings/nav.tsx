@@ -798,6 +798,11 @@ const NAV_GROUPS: Array<{ heading: string | null; items: NavItem[] }> = [
         Icon: IconVideoTune,
         keywords: [
           "mpv",
+          "shield",
+          "frame rate",
+          "refresh rate",
+          "passthrough",
+          "tunneling",
           "advanced mpv",
           "mpv.conf",
           "mpv options",
@@ -7244,6 +7249,13 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     tab: "home",
     anchorTitle: "Home hero",
     keywords: ["high res hero", "sharper artwork", "hero bandwidth", "full resolution banner"],
+  },
+  {
+    label: "Discover wallpaper",
+    section: "library",
+    tab: "home",
+    anchorTitle: "Home hero",
+    keywords: ["page wallpaper", "blurred backdrop", "dynamic color", "tinted background"],
   },
   {
     label: "Shadow strength",

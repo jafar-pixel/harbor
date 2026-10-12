@@ -7633,3 +7633,92 @@ html[data-theme-layout="stremio"] .jl-sports-bleed {
 .sports-hub .sh-masthead-after-hero {
   padding-top: 28px;
 }
+/* Hero wallpaper (Discover, Shows): the hero's art blurred behind the whole page and washed in its
+   colour, so the page glows in the title's palette instead of sitting on flat canvas. Mixed into
+   the theme's canvas, so a light theme gets a pale wash rather than a dark one. */
+.jl-wall {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.jl-wall-layer {
+  position: absolute;
+  inset: 0;
+  background-color: color-mix(
+    in oklab,
+    var(--jl-wall-tint, var(--color-accent)) 20%,
+    var(--color-canvas)
+  );
+}
+.jl-wall-in {
+  animation: harbor-fade-in 520ms var(--ease-out) both;
+}
+.jl-wall-img {
+  position: absolute;
+  inset: -8%;
+  width: 116%;
+  height: 116%;
+  max-width: none;
+  object-fit: cover;
+  opacity: 0.6;
+  filter: blur(40px) saturate(1.2);
+}
+.jl-wall[data-tv] .jl-wall-img {
+  filter: blur(14px);
+}
+:root[data-theme-mode="light"] .jl-wall-img {
+  opacity: 0.32;
+}
+.jl-wall-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      120% 75% at 72% 0%,
+      color-mix(in oklab, var(--jl-wall-tint, var(--color-accent)) 42%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      85% 65% at 0% 100%,
+      color-mix(in oklab, var(--jl-wall-tint, var(--color-accent)) 26%, transparent) 0%,
+      transparent 72%
+    );
+}
+.jl-wall-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--color-canvas) 28%, transparent) 0%,
+    color-mix(in oklab, var(--color-canvas) 46%, transparent) 45%,
+    color-mix(in oklab, var(--color-canvas) 66%, transparent) 100%
+  );
+}
+/* Sections over the wallpaper read as tinted glass. No backdrop-filter: what is behind them is
+   already blurred, and a live backdrop blur per card is the cost this avoids. */
+[data-hero-wallpaper] .jl-tint-glass {
+  background-color: color-mix(
+    in oklab,
+    var(--discover-tint, var(--color-accent)) 12%,
+    color-mix(in oklab, var(--color-canvas) 55%, transparent)
+  );
+  border-color: color-mix(
+    in oklab,
+    var(--discover-tint, var(--color-accent)) 28%,
+    var(--color-edge-soft)
+  );
+}
+[data-hero-wallpaper] .jl-tint-veil {
+  background-image: linear-gradient(
+    to right,
+    color-mix(in oklab, var(--discover-tint, var(--color-accent)) 16%, var(--color-canvas)),
+    color-mix(
+      in oklab,
+      color-mix(in oklab, var(--discover-tint, var(--color-accent)) 16%, var(--color-canvas)) 78%,
+      transparent
+    ),
+    color-mix(in oklab, var(--color-canvas) 22%, transparent)
+  );
+}

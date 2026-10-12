@@ -204,10 +204,13 @@ export function scoreStream(
     reasons.push(addonPriorityBoost);
   }
 
-  const playabilityDelta = playabilityPenalty(s);
+  const playabilityDelta = playabilityPenalty(s, opts.tvPassthroughAudio);
   if (playabilityDelta < 0) {
     score += playabilityDelta;
-    reasons.push({ signal: "webview2-unfriendly", delta: playabilityDelta });
+    reasons.push({
+      signal: opts.tvPassthroughAudio ? "tv-playability" : "webview2-unfriendly",
+      delta: playabilityDelta,
+    });
   }
 
   const bitratePenalty = bitrateBudgetPenalty(s, opts, cached);

@@ -22,6 +22,7 @@ import { isLivePlaybackSrc } from "@/lib/player/live-src";
 import { readEmbedRect } from "@/lib/player/embed-rect";
 import { svpEnsureRunning, svpStatus } from "@/lib/svp";
 import { isSvpActiveForMedia } from "@/lib/player/svp-policy";
+import { nativeTvOptions } from "@/lib/player/native-tv/shell";
 import { pickBridge } from "../player-utils";
 
 function snapChangedIgnoringClock(a: PlayerSnapshot, b: PlayerSnapshot): boolean {
@@ -101,6 +102,8 @@ export function usePlayerBridge(params: {
     isLiveLike && !src.notWebReady ? "html5" : autoFallbackTried ? "mpv" : settings.playerEngine;
   const bridgeKey = `${chosenEngine}|${anime4kOn}|${embedActive}|${anime4kOn ? settings.playerAnime4kShaders.join(",") : ""}|${generalShaderKey(settings)}|${svpOn}|${svpOn ? settings.svpVpyPath : ""}`;
   const [bridgeReady, setBridgeReady] = useState(false);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   useEffect(() => {
     if (svpPending) return;
     const host = videoMountRef.current;
@@ -141,6 +144,7 @@ export function usePlayerBridge(params: {
           .filter(Boolean)
           .join("\n"),
         getEmbedRect,
+        nativeTv: () => nativeTvOptions(settingsRef.current),
       });
       if (cancelled) return;
       bridge = choose;

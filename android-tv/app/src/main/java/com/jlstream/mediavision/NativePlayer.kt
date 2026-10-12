@@ -1,29 +1,40 @@
 package com.jlstream.mediavision
 
 import android.app.Activity
+import android.content.Context
 import android.graphics.Color
+import android.graphics.Point
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.view.Display
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioCapabilities
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -32,6 +43,8 @@ import org.json.JSONObject
  *  - FULL: fills the screen; the remote controls playback.
  *  - HERO: placed in the page's sticky hero area (a rect the page sends); the WebView keeps the remote.
  *  - HIDDEN: not drawn; playback carries on until the page pauses or stops it.
+ * Video is picked up to the TV's largest display mode (4K on a 4K set) and drawn on the default
+ * surface, so HDR10 and Dolby Vision reach the TV as they are. [Options] come from the page.
  */
 @OptIn(UnstableApi::class)
 class NativePlayer(
@@ -43,6 +56,33 @@ class NativePlayer(
     private val emit: (JSONObject) -> Unit,
 ) {
     enum class Mode { FULL, HERO, HIDDEN }
+
+    /** Playback options the page sends through `setOptions`; they apply from the next [play]. */
+    data class Options(
+        /** Switch the display to the video's frame rate (and up to its size) while in FULL. */
+        val matchFrameRate: Boolean = true,
+        /** The tallest video to pick, 0 for no limit. */
+        val maxHeight: Int = 0,
+        /** Send AC3/E-AC3/DTS/TrueHD to the receiver undecoded when it reports support. */
+        val audioPassthrough: Boolean = true,
+        /** Tunneled playback; off by default because some streams fail to start with it. */
+        val tunneling: Boolean = false,
+    ) {
+        companion object {
+            fun parse(json: String?): Options? {
+                val o = try { JSONObject(json ?: return null) } catch (_: Exception) { return null }
+                val d = Options()
+                return Options(
+                    matchFrameRate = o.optBoolean("matchFrameRate", d.matchFrameRate),
+                    maxHeight = when (o.optString("maxResolution")) { "1080p" -> 1080; "720p" -> 720; else -> 0 },
+                    audioPassthrough = o.optBoolean("audioPassthrough", d.audioPassthrough),
+                    tunneling = o.optBoolean("tunneling", d.tunneling),
+                )
+            }
+        }
+    }
+
+    var options = Options()
 
     var mode = Mode.HIDDEN
         private set
@@ -65,6 +105,8 @@ class NativePlayer(
     /** The hero rect in CSS pixels (x, y, w, h), or null when the page hasn't sent one. */
     private var heroRect: DoubleArray? = null
     private var readySent = false
+    /** The window's preferredDisplayModeId before playback changed it; null while unchanged. */
+    private var savedDisplayModeId: Int? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private val positionTick = object : Runnable {
@@ -104,8 +146,14 @@ class NativePlayer(
         val p = ExoPlayer.Builder(activity)
             .setMediaSourceFactory(DefaultMediaSourceFactory(http))
             .setLoadControl(load)
+            .setRenderersFactory(renderersFactory())
+            .setTrackSelector(trackSelector())
             .setHandleAudioBecomingNoisy(true)
             .build()
+        p.setVideoChangeFrameRateStrategy(
+            if (options.matchFrameRate) C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_ONLY_IF_SEAMLESS
+            else C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF,
+        )
         p.addListener(listener)
         val item = MediaItem.Builder()
             .setUri(url)
@@ -120,6 +168,52 @@ class NativePlayer(
         handler.removeCallbacks(positionTick)
         handler.postDelayed(positionTick, 1000)
         applyMode()
+    }
+
+    // The viewport is the TV's largest mode rather than the UI's current size (often 1080p on a
+    // 4K Shield), so adaptive streams pick their 4K variants. No size cap unless the page sets one.
+    private fun trackSelector(): DefaultTrackSelector {
+        val selector = DefaultTrackSelector(activity)
+        val largest = DisplayModes.display(activity)?.let { DisplayModes.largest(it.supportedModes) }
+        val viewport = largest?.let { Point(it.physicalWidth, it.physicalHeight) }
+            ?: Util.getCurrentDisplayModeSize(activity)
+        val params = selector.buildUponParameters()
+            .setViewportSize(viewport.x, viewport.y, true)
+            .setTunnelingEnabled(options.tunneling)
+        if (options.maxHeight > 0) params.setMaxVideoSize(options.maxHeight * 16 / 9, options.maxHeight)
+        selector.setParameters(params.build())
+        return selector
+    }
+
+    // With passthrough on, ExoPlayer's default sink already sends Dolby and DTS to a receiver that
+    // reports them. With it off the sink is told the output is plain PCM, so everything is decoded.
+    private fun renderersFactory(): DefaultRenderersFactory {
+        val factory = if (options.audioPassthrough) DefaultRenderersFactory(activity) else PcmOnlyRenderersFactory(activity)
+        // A Dolby Vision or HEVC decoder that fails to start falls back to the next one.
+        return factory.setEnableDecoderFallback(true)
+    }
+
+    /** Switches the display to suit the video while in FULL; see [DisplayModes.bestFor]. */
+    fun matchDisplayMode() {
+        if (!options.matchFrameRate || mode != Mode.FULL) return
+        val format = player?.videoFormat ?: return
+        val display = DisplayModes.display(activity) ?: return
+        val current = display.mode
+        val target = DisplayModes.bestFor(display.supportedModes, current, format.width, format.height, format.frameRate) ?: return
+        if (target.modeId == current.modeId) return
+        val attrs = activity.window.attributes
+        if (savedDisplayModeId == null) savedDisplayModeId = attrs.preferredDisplayModeId
+        attrs.preferredDisplayModeId = target.modeId
+        activity.window.attributes = attrs
+    }
+
+    /** Puts the display back the way it was before [matchDisplayMode]. */
+    fun restoreDisplayMode() {
+        val saved = savedDisplayModeId ?: return
+        savedDisplayModeId = null
+        val attrs = activity.window.attributes
+        attrs.preferredDisplayModeId = saved
+        activity.window.attributes = attrs
     }
 
     /** The hero area in CSS pixels, relative to the WebView's viewport; w or h <= 0 clears it. */
@@ -163,6 +257,7 @@ class NativePlayer(
     fun stop(message: String? = null) {
         if (player != null) send("stopped", message)
         release()
+        restoreDisplayMode()
         mode = Mode.HIDDEN
         applyMode()
     }
@@ -208,6 +303,7 @@ class NativePlayer(
             Mode.HERO -> rect != null
             Mode.HIDDEN -> false
         }
+        if (mode == Mode.FULL) matchDisplayMode() else restoreDisplayMode()
         if (!visible) {
             view.hideController()
             view.useController = false
@@ -247,6 +343,11 @@ class NativePlayer(
             }
         }
 
+        // The video's size and frame rate are known by its first decoded frame.
+        override fun onVideoSizeChanged(videoSize: VideoSize) {
+            if (videoSize.width > 0 && videoSize.height > 0) matchDisplayMode()
+        }
+
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             val p = player ?: return
             if (isPlaying) send("playing")
@@ -277,8 +378,64 @@ class NativePlayer(
         emit(detail)
     }
 
+    /** Without passthrough: a sink built without a context assumes PCM-only output. */
+    @OptIn(UnstableApi::class)
+    private class PcmOnlyRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
+        @Suppress("DEPRECATION")
+        override fun buildAudioSink(
+            context: Context,
+            enableFloatOutput: Boolean,
+            enableAudioTrackPlaybackParams: Boolean,
+        ): AudioSink = DefaultAudioSink.Builder()
+            .setEnableFloatOutput(enableFloatOutput)
+            .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            .build()
+    }
+
     companion object {
         private const val SEEK_STEP_MS = 10_000L
+
+        private val PASSTHROUGH_ENCODINGS = listOf(
+            C.ENCODING_AC3 to "ac3",
+            C.ENCODING_E_AC3 to "eac3",
+            C.ENCODING_E_AC3_JOC to "eac3-joc",
+            C.ENCODING_AC4 to "ac4",
+            C.ENCODING_DTS to "dts",
+            C.ENCODING_DTS_HD to "dts-hd",
+            C.ENCODING_DOLBY_TRUEHD to "truehd",
+        )
+
+        /** What this TV can show and pass through, for the page's settings (README: `capabilities()`). */
+        fun capabilities(activity: Activity): JSONObject {
+            val display = DisplayModes.display(activity)
+            val modes = display?.supportedModes ?: emptyArray<Display.Mode>()
+            val largest = DisplayModes.largest(modes)
+            val rates = JSONArray()
+            modes.map { Math.round(it.refreshRate * 1000) / 1000.0 }.distinct().sorted().forEach { rates.put(it) }
+            val hdr = JSONArray()
+            // getHdrCapabilities is API 24 (minSdk); its type list moved to Display.Mode in API 34.
+            @Suppress("DEPRECATION")
+            val hdrTypes = display?.hdrCapabilities?.supportedHdrTypes ?: IntArray(0)
+            for (type in hdrTypes) {
+                when (type) {
+                    Display.HdrCapabilities.HDR_TYPE_HDR10 -> hdr.put("hdr10")
+                    Display.HdrCapabilities.HDR_TYPE_HDR10_PLUS -> hdr.put("hdr10-plus")
+                    Display.HdrCapabilities.HDR_TYPE_HLG -> hdr.put("hlg")
+                    Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION -> hdr.put("dolby-vision")
+                }
+            }
+            val audio = AudioCapabilities.getCapabilities(activity, AudioAttributes.DEFAULT, null)
+            val passthrough = JSONArray()
+            for ((encoding, name) in PASSTHROUGH_ENCODINGS) if (audio.supportsEncoding(encoding)) passthrough.put(name)
+            return JSONObject()
+                .put("maxWidth", largest?.physicalWidth ?: 0)
+                .put("maxHeight", largest?.physicalHeight ?: 0)
+                .put("refreshRates", rates)
+                .put("hdr", hdr)
+                .put("passthrough", passthrough)
+                // MainActivity hands Back to the page's Big Picture before walking history.
+                .put("pageBack", true)
+        }
 
         fun looksLikeHls(uri: Uri): Boolean {
             if (uri.path.orEmpty().lowercase().endsWith(".m3u8")) return true

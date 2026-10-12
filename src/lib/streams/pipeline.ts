@@ -1,5 +1,6 @@
 import type { Addon } from "@/lib/addons";
 import { dlog } from "@/lib/debug";
+import { nativePlayback } from "@/lib/player/native-playback";
 import type { DebridStore } from "@/lib/debrid/types";
 import {
   fetchAddonStreams,
@@ -18,7 +19,9 @@ import { applyTrust, type Rejection, type TrustOptions } from "./trust";
 import { computeCorpusStats, rankAndPick, scoreStream, type ScoreOptions } from "./scoring";
 import type { ParsedStream, RankedPicker, Stream } from "./types";
 
-const PREFER_AAC = typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window);
+// A browser <video> plays AAC everywhere and little else reliably. mpv and the TV app's ExoPlayer
+// play the rest, so there the best stream wins on its own merits.
+const preferAac = () => !nativePlayback();
 
 const GIB = 1024 ** 3;
 const RESCUABLE_REASON_RX = /^(fresh-cinema-fake|new-release-stub)/;
@@ -68,7 +71,7 @@ function finalizeWithRescue(
   const newPicker = rankAndPick(
     scored,
     score.activeDebrids,
-    PREFER_AAC,
+    preferAac(),
     score.respectAddonOrder === true,
   );
   dlog(`[pipeline] early-leak rescue: restored ${rescued.size} corroborated high-res stream(s)`);
@@ -258,7 +261,7 @@ export async function runPipeline(
     const picker = rankAndPick(
       scored,
       input.score.activeDebrids,
-      PREFER_AAC,
+      preferAac(),
       input.score.respectAddonOrder === true,
     );
     const fin = finalizeWithRescue(picker, rejected, input.trust ?? {}, input.score);
@@ -480,7 +483,7 @@ export async function runPipeline(
   const picker = rankAndPick(
     scored,
     input.score.activeDebrids,
-    PREFER_AAC,
+    preferAac(),
     input.score.respectAddonOrder === true,
   );
   const fin = finalizeWithRescue(picker, rejected, input.trust ?? {}, input.score);
