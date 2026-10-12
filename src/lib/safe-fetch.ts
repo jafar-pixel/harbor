@@ -151,7 +151,9 @@ let proxyOriginCache: boolean | null = null;
 function webProxyAvailable(): boolean {
   if (proxyOriginCache !== null) return proxyOriginCache;
   try {
-    proxyOriginCache = /(^|\.)harbor\.site$/i.test(window.location.hostname);
+    // Every hosted web build ships the /api-proxy function (api/proxy.ts); only a local dev
+    // server lacks it.
+    proxyOriginCache = !/^(?:localhost|127\.0\.0\.1|\[::1\])$/i.test(window.location.hostname);
   } catch {
     proxyOriginCache = false;
   }
