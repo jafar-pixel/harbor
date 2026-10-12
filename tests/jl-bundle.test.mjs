@@ -24,6 +24,7 @@ function fixture(t) {
     "THIRD-PARTY-NOTICES.txt", "installer-hooks.nsh", "installer-jl/eula.txt",
     "installer-jl/header.bmp", "installer-jl/sidebar.bmp", "libmpv/libmpv-2.dll",
     "resources/capstan/runtime.json", "resources/harbor-stream-blocker/manifest.json",
+    ...["msvcp140", "msvcp140_1", "msvcp140_2", "vcruntime140", "vcruntime140_1", "concrt140"].map((name) => `vcruntime/${name}.dll`),
     ...["32x32.png", "128x128.png", "128x128@2x.png", "icon.icns", "icon.ico"].map((name) => `icons-jl/${name}`),
     ...["mpv", "yt-dlp", "ffmpeg", "ffprobe"].map((name) => `binaries/${name}-x86_64-pc-windows-msvc.exe`),
     ...["LICENSE-OFL-Inter.txt", "NotoSansJP-Regular.otf", "NotoSansJP-Bold.otf", "Inter-Variable.ttf", "Fredoka-Variable.ttf", "Vazirmatn-Variable.ttf"].map((name) => `fonts/${name}`),
@@ -66,4 +67,10 @@ test("corresponding source archives are required for distribution", (t) => {
   const { root } = fixture(t);
   rmSync(resolve(root, "resources/pokemon-engine/sources/automod.zip"));
   assert.throws(() => checkJlBundle(root), /sources\/automod\.zip/);
+});
+
+test("the Visual C++ runtime must be bundled next to the app", (t) => {
+  const { root } = fixture(t);
+  rmSync(resolve(root, "vcruntime/msvcp140.dll"));
+  assert.throws(() => checkJlBundle(root), /vcruntime\/msvcp140\.dll/);
 });

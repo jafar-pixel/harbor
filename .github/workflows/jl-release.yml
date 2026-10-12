@@ -143,6 +143,21 @@ jobs:
           mv ffprobe.exe "ffprobe-${TARGET}.exe"
           rm ffmpeg.zip
 
+      # Not every PC has the Visual C++ runtime (MSVCP140.dll); the plain NSIS installer doesn't
+      # install it, so the app carries Microsoft's redistributable DLLs next to its executable.
+      - name: Bundle the Visual C++ runtime
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+          $crt = Get-ChildItem "$vs\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\msvcp140.dll" |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $crt) { throw "Visual C++ redistributable DLLs not found under $vs" }
+          New-Item -ItemType Directory -Force src-tauri/vcruntime | Out-Null
+          foreach ($dll in "msvcp140", "msvcp140_1", "msvcp140_2", "vcruntime140", "vcruntime140_1", "concrt140") {
+            Copy-Item (Join-Path $crt.DirectoryName "$dll.dll") src-tauri/vcruntime/
+          }
+          Get-ChildItem src-tauri/vcruntime
+
       - name: Verify Windows bundle resources
         run: node scripts/check-jl-bundle.mjs
 
