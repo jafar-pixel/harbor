@@ -1,1 +1,1 @@
-JL Media Vision 0.9.32: the Windows app now carries the Visual C++ runtime, so it starts on PCs without it (fixes "MSVCP140.dll was not found"). Includes everything in 0.9.31.
+JL Media Vision 0.9.33: on laptops with Intel plus NVIDIA or AMD graphics, the Windows app runs on the dedicated graphics card, so playback no longer skips. Includes everything in 0.9.32.
