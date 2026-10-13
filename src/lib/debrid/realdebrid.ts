@@ -1,5 +1,6 @@
 import { safeFetch as fetch } from "@/lib/safe-fetch";
 import { matchEpisodeFileIndex, type EpisodeHint } from "@/lib/streams/episode-file";
+import { currentWebPlaybackEnv, needsWebTranscode } from "@/lib/player/web-playable";
 import {
   hashFromMagnet,
   magnetFromHash,
@@ -159,14 +160,26 @@ export function createRealDebrid(apiKey: string): DebridStore {
 
     const u = await postForm<RdUnrestrict>("/unrestrict/link", { link }, signal);
     if (!u.ok) return u;
-    return {
-      ok: true,
-      data: {
-        url: u.data.download,
-        filename: u.data.filename,
-        filesize: u.data.filesize,
-      },
-    };
+    return { ok: true, data: await directLink(u.data, signal) };
+  }
+
+  // The browser build can't play most debrid files (MKV, HEVC, Dolby/DTS audio), so it also
+  // asks RD for its H.264/AAC HLS transcode. A failed lookup keeps the original link.
+  async function webStreamUrl(u: RdUnrestrict, signal: AbortSignal): Promise<string | undefined> {
+    if (!u.id || u.streamable === 0) return undefined;
+    if (!needsWebTranscode(u.filename || u.download, currentWebPlaybackEnv())) return undefined;
+    const r = await get<RdTranscode>(`/streaming/transcode/${encodeURIComponent(u.id)}`, signal);
+    if (!r.ok) return undefined;
+    const apple = r.data?.apple;
+    const url = apple?.full ?? Object.values(apple ?? {})[0];
+    return typeof url === "string" && /^https:\/\//i.test(url) ? url : undefined;
+  }
+
+  async function directLink(u: RdUnrestrict, signal: AbortSignal): Promise<DirectLink> {
+    const data: DirectLink = { url: u.download, filename: u.filename, filesize: u.filesize };
+    const web = await webStreamUrl(u, signal);
+    if (web) data.webStreamUrl = web;
+    return data;
   }
 
   async function listLibrary(signal: AbortSignal): Promise<DebridResult<LibraryEntry[]>> {
@@ -285,10 +298,7 @@ export function createRealDebrid(apiKey: string): DebridStore {
     const link = links[pickLinkIndex(files, idx, links.length)];
     const u = await postForm<RdUnrestrict>("/unrestrict/link", { link }, signal);
     if (!u.ok) return u;
-    return {
-      ok: true,
-      data: { url: u.data.download, filename: u.data.filename, filesize: u.data.filesize },
-    };
+    return { ok: true, data: await directLink(u.data, signal) };
   }
 
   return {
@@ -428,6 +438,14 @@ type RdUnrestrict = {
   host: string;
   download: string;
   streamable: number;
+};
+
+/** Quality name ("full") to URL, per format. */
+type RdTranscode = {
+  apple?: Record<string, string>;
+  dash?: Record<string, string>;
+  liveMP4?: Record<string, string>;
+  h264WebM?: Record<string, string>;
 };
 
 type RdErrorBody = {

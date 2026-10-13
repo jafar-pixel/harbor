@@ -27,6 +27,12 @@ export type DirectLink = {
   headers?: Record<string, string>;
   notWebReady?: boolean;
   subtitles?: Array<{ url: string; lang?: string; id?: string }>;
+  /**
+   * Browser build only: the provider's H.264/AAC HLS transcode, set only when the browser is
+   * unlikely to play the original (lib/player/web-playable), so players load
+   * `webStreamUrl ?? url`. Downloads and history keep `url`, the original file.
+   */
+  webStreamUrl?: string;
 };
 
 export type DebridFile = {

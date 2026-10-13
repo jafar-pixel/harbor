@@ -36,6 +36,11 @@ import {
   remoteStreamServerStrict,
   remoteStreamServerUrl,
 } from "@/lib/stremio-server";
+import {
+  canWebTranscode,
+  currentWebPlaybackEnv,
+  needsWebTranscode,
+} from "@/lib/player/web-playable";
 import type { ParsedStream, ScoredStream } from "./types";
 import { matchEpisodeFileIndex, type EpisodeHint } from "./episode-file";
 
@@ -288,10 +293,15 @@ function sortDebridsForStream(
   stream: ParsedStream | ScoredStream,
   debrids: DebridStore[],
 ): DebridStore[] {
+  // In the browser, a file it can't play should come from a provider that can transcode it.
+  const name =
+    stream.behaviorHints?.filename ?? stream.behaviorHints?.fileName ?? stream.title ?? null;
+  const preferTranscode = needsWebTranscode(name, currentWebPlaybackEnv());
   return debrids.slice().sort((a, b) => {
     const aCached = stream.cached[a.slug] ? 1 : 0;
     const bCached = stream.cached[b.slug] ? 1 : 0;
-    return bCached - aCached;
+    if (bCached !== aCached || !preferTranscode) return bCached - aCached;
+    return Number(canWebTranscode(b.slug)) - Number(canWebTranscode(a.slug));
   });
 }
 

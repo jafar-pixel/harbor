@@ -7,6 +7,7 @@ import { resolveChromeTheme } from "@/lib/theme";
 import { useBigPicture } from "@/lib/big-picture";
 import { useActiveKid } from "@/lib/profiles";
 import { type PlayerBridge } from "@/lib/player/bridge";
+import { nativePlayback } from "@/lib/player/native-playback";
 import { useDebridClients } from "@/lib/debrid/registry";
 import { useSettings } from "@/lib/settings";
 import { writePlayerVolume } from "@/lib/player-volume";
@@ -318,6 +319,7 @@ function NativePlayerView({
     engineFailure: genuineFailure,
     isP2pEngine,
     engineStats,
+    browserPlayback: !nativePlayback(),
   });
 
   useWakeReconnect({ bridgeRef, src, snap });

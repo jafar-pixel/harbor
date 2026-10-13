@@ -17,7 +17,7 @@ import { clearPendingSub, markPendingSub } from "@/lib/subtitles/pending-subs";
 import { registerTranslationJob } from "@/lib/subtitles/translation-jobs";
 import type { SubTrack } from "./types";
 import { bufferedAhead, readAudioTracks, videoAudio } from "./audio-tracks";
-import { mapErrorCode } from "./error-map";
+import { mapErrorCode, type Html5MediaErrorCode } from "./error-map";
 import { noteSubtitleOrigin } from "@/lib/subtitles/subtitle-memory";
 import { mountCustomPip } from "./pip";
 import { finishPlaybackTrace, markPlaybackTrace } from "@/lib/perf/playback-trace";
@@ -27,6 +27,7 @@ import { PreparedSubtitleSeedBatch } from "@/lib/subtitles/seed-batch";
 import { isSafeProviderSubtitleUrl } from "@/lib/subtitles/provider-url";
 import { browserBlocksProviderUrl } from "@/lib/native-fetch";
 import { html5Transport } from "./transport";
+import { currentWebPlaybackEnv } from "@/lib/player/web-playable";
 
 let DOCUMENT_PIP_KNOWN_BROKEN = false;
 
@@ -57,11 +58,19 @@ export function createHtml5Bridge(): PlayerBridge {
   let lastSecondText = "";
   let activeTraceId: string | null = null;
   let mediaRevision = 0;
+  // A fatal hls.js error never reaches video.error, so it is kept here for the snapshot.
+  let streamError: Html5MediaErrorCode | null = null;
   let autoplayUnmuteTimer: ReturnType<typeof setTimeout> | null = null;
   const mainSubtitleSelection = new SubtitleSelectionCoordinator();
   const secondarySubtitleSelection = new SubtitleSelectionCoordinator();
 
   const emit = () => {
+    // Applied at publish time so every snapshot refresh keeps reporting the hls.js failure.
+    if (streamError && !video?.error) {
+      snap.status = "error";
+      snap.errorCode = streamError;
+      snap.errorMessage = null;
+    }
     const next: PlayerSnapshot = { ...snap };
     listeners.forEach((l) => l(next));
   };
@@ -524,6 +533,7 @@ export function createHtml5Bridge(): PlayerBridge {
       markPlaybackTrace(activeTraceId, "bridge-load");
       isLiveSrc = src.isLive === true;
       pendingStart = src.startAtSec ?? null;
+      streamError = null;
       if (hls) {
         try {
           hls.destroy();
@@ -553,7 +563,14 @@ export function createHtml5Bridge(): PlayerBridge {
       const transport = html5Transport(url, src.isLive === true && src.notWebReady === true);
       const isHls = transport === "hls";
       const isTs = transport === "mpegts";
-      if (isHls && Hls.isSupported()) {
+      // Safari plays an on-demand playlist itself, without hls.js fetching every segment
+      // cross-origin (debrid transcodes). Live channels keep hls.js and its reconnects.
+      const nativeHls =
+        isHls &&
+        src.isLive !== true &&
+        currentWebPlaybackEnv().webkit &&
+        video.canPlayType("application/vnd.apple.mpegurl") !== "";
+      if (isHls && !nativeHls && Hls.isSupported()) {
         hls = new Hls(
           src.isLive === true
             ? {
@@ -568,6 +585,19 @@ export function createHtml5Bridge(): PlayerBridge {
         hls.attachMedia(video);
         hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, refreshSnapshot);
         hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, refreshSnapshot);
+        if (src.isLive !== true) {
+          const revision = mediaRevision;
+          hls.on(Hls.Events.ERROR, (_event, data) => {
+            if (!data.fatal || revision !== mediaRevision) return;
+            streamError =
+              data.type === Hls.ErrorTypes.MEDIA_ERROR
+                ? "decode"
+                : data.type === Hls.ErrorTypes.NETWORK_ERROR
+                  ? "network"
+                  : "unknown";
+            refreshSnapshot();
+          });
+        }
       } else if (isTs && mpegts.isSupported()) {
         tsPlayer = mpegts.createPlayer(
           { type: "mpegts", url, isLive: src.isLive === true, cors: true },

@@ -161,7 +161,7 @@ export function EpisodePanel({
         return;
       }
       markPlaybackTrace(playbackTraceId, "resolve-ready");
-      let playUrl = r.data.url;
+      let playUrl = r.data.webStreamUrl ?? r.data.url;
       const hasProxyHeaders = !!r.data.headers && Object.keys(r.data.headers).length > 0;
       if (hasProxyHeaders) {
         try {

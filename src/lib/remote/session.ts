@@ -14,6 +14,7 @@ import {
 } from "./text-entry";
 import { runLibraryAction } from "./library-commands";
 import { APP_VERSION } from "@/lib/build-info";
+import { localDeviceLabel } from "@/lib/device-label";
 import {
   idleSnapshot,
   REMOTE_PROTO,
@@ -81,7 +82,7 @@ function subtitleFlags(b: RemotePlaybackBinding): {
 
 type Listener = () => void;
 
-const LOCAL_TARGET: RemoteTarget = { kind: "local", label: "This PC" };
+const LOCAL_TARGET: RemoteTarget = { kind: "local", label: localDeviceLabel() };
 
 export function setRemoteHostName(name: string): void {
   const trimmed = name.trim();

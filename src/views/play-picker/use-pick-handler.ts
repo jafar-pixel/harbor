@@ -269,7 +269,8 @@ export function usePickHandler({
         return;
       }
       debridFailStreakRef.current = 0;
-      let playUrl = r.data.url;
+      // A download keeps the original file; the browser player may need the transcode.
+      let playUrl = intent === "download" ? r.data.url : (r.data.webStreamUrl ?? r.data.url);
       if (intent !== "download" && !autoPickRef.current && r.via === "direct") {
         playUrl = await resolvePlaybackRedirect({
           url: playUrl,

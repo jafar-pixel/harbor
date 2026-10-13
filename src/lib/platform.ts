@@ -131,8 +131,21 @@ export function isMobileWeb(): boolean {
   } catch {
     /* ignore */
   }
-  mobileWebCache = forcedOn || (isWeb() && isMobileDevice());
+  mobileWebCache = forcedOn || (isWeb() && isMobileDevice() && !isTabletScreen());
   return mobileWebCache;
+}
+
+/**
+ * A tablet (an iPad, a large Android tablet) gets the full app rather than the phone remote, which
+ * only drives a desktop computer and plays nothing itself. Judged by the screen, not the window, so
+ * an iPad in Split View stays the full app.
+ */
+function isTabletScreen(): boolean {
+  try {
+    return Math.min(window.screen.width, window.screen.height) >= 700;
+  } catch {
+    return false;
+  }
 }
 
 export function isSetupRoute(): boolean {

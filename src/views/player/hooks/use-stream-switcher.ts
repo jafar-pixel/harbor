@@ -100,7 +100,7 @@ export function useStreamSwitcher(params: {
         setSwapResolvingKey(null);
         return false;
       }
-      let playUrl = r.data.url;
+      let playUrl = r.data.webStreamUrl ?? r.data.url;
       if (r.via === "direct") {
         playUrl = await resolvePlaybackRedirect({
           url: playUrl,

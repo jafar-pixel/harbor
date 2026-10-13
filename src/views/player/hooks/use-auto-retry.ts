@@ -30,7 +30,13 @@ type OpenPicker = (
   opts?: { autoPlay?: boolean; attempt?: number },
 ) => void;
 
-export type SourceError = { status: number; host: string; exhausted?: boolean };
+export type SourceError = {
+  status: number;
+  host: string;
+  exhausted?: boolean;
+  /** The browser build's <video> element could not decode this file. */
+  unsupported?: boolean;
+};
 
 function hostOf(url: string): string {
   try {
@@ -53,6 +59,8 @@ export function useAutoRetry(params: {
   engineFailure: boolean;
   isP2pEngine: boolean;
   engineStats: EngineStats | null;
+  /** A browser <video> decodes the stream (the web build), not mpv or the TV app's ExoPlayer. */
+  browserPlayback?: boolean;
 }) {
   const {
     bridgeRef,
@@ -67,6 +75,7 @@ export function useAutoRetry(params: {
     engineFailure,
     isP2pEngine,
     engineStats,
+    browserPlayback = false,
   } = params;
   const isLocal = isLocalUrl(src.url);
   const isLive = src.meta.id.startsWith("iptv:");
@@ -106,6 +115,7 @@ export function useAutoRetry(params: {
   const proxyRetriedRef = useRef(false);
   const transcodeRescueRef = useRef(false);
   const debridFailoverTriedRef = useRef(false);
+  const unsupportedRef = useRef(false);
   const p2pCompleteReloadedRef = useRef(false);
   const p2pCompleteReloadedAtRef = useRef(0);
   const liveRetryCountRef = useRef(0);
@@ -122,6 +132,7 @@ export function useAutoRetry(params: {
     proxyRetriedRef.current = false;
     transcodeRescueRef.current = false;
     debridFailoverTriedRef.current = false;
+    unsupportedRef.current = false;
     p2pCompleteReloadedRef.current = false;
     p2pCompleteReloadedAtRef.current = 0;
     liveRetryCountRef.current = 0;
@@ -179,14 +190,29 @@ export function useAutoRetry(params: {
       // or a genuine mpv error own the visible failure state.
       if (!instantPlay && !inRoom) {
         console.warn(`[player] manual source failed (${reason})`);
-        setSourceError((prev) => prev ?? { status: 0, host: hostOf(src.url) });
+        setSourceError(
+          (prev) =>
+            prev ?? {
+              status: 0,
+              host: hostOf(src.url),
+              unsupported: unsupportedRef.current || undefined,
+            },
+        );
         return;
       }
       const currentAttempt = src.attempt ?? 0;
       if (currentAttempt >= MAX_AUTORETRY_ATTEMPTS) {
         console.warn(`[player] giving up after ${currentAttempt} attempts (${reason})`);
         if (!isP2pEngine && getPlaybackPosition() < 0.5) {
-          setSourceError((prev) => prev ?? { status: 0, host: hostOf(src.url), exhausted: true });
+          setSourceError(
+            (prev) =>
+              prev ?? {
+                status: 0,
+                host: hostOf(src.url),
+                exhausted: true,
+                unsupported: unsupportedRef.current || undefined,
+              },
+          );
         }
         return;
       }
@@ -265,7 +291,7 @@ export function useAutoRetry(params: {
       ).then(async (r) => {
         if (!current()) return;
         if (r.ok) {
-          let url = r.data.url;
+          let url = r.data.webStreamUrl ?? r.data.url;
           if (r.data.headers && Object.keys(r.data.headers).length > 0) {
             try {
               url = (await registerStreamProxy(r.data.url, r.data.headers)).url;
@@ -285,6 +311,13 @@ export function useAutoRetry(params: {
         }
       }).catch(retry);
       return cancel;
+    }
+    // The browser can't decode this file, and the reload, local proxy and ffmpeg rescues
+    // below need the desktop app: name the cause instead of cycling through them.
+    if (browserPlayback && (snap.errorCode === "decode" || snap.errorCode === "codec")) {
+      unsupportedRef.current = true;
+      triggerAutoRetry(`browser can't play this file ("${snap.errorCode}")`);
+      return;
     }
     if (!sameUrlRetriedRef.current) {
       sameUrlRetriedRef.current = true;
@@ -375,6 +408,7 @@ export function useAutoRetry(params: {
     bridgeRef,
     isP2pEngine,
     engineFailure,
+    browserPlayback,
   ]);
 
   // Distinguishes a genuine re-truncation after reload from the same EOF re-emitted:

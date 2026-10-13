@@ -18,6 +18,13 @@ const STATUS_TEXT: Record<number, string> = {
 
 function describe(error: SourceError): { title: string; detail: string; offline: boolean } {
   const status = error.status;
+  if (error.unsupported)
+    return {
+      title: "This browser can't play this file",
+      detail:
+        "The file's format (often MKV or HEVC) isn't supported here. Try another source, or use the Windows or TV app.",
+      offline: false,
+    };
   if (error.exhausted)
     return {
       title: "Harbor couldn't start any source",
@@ -73,7 +80,7 @@ export function SourceErrorCard({
           <h2 className="font-display text-[20px] font-medium text-ink">{t(info.title)}</h2>
           <p className="text-[13.5px] leading-relaxed text-ink-muted">{t(info.detail)}</p>
         </div>
-        {(!error.exhausted || !!error.host) && (
+        {!error.unsupported && (!error.exhausted || !!error.host) && (
           <div className="flex w-full flex-col gap-1 rounded-xl border border-edge-soft bg-canvas/50 px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-subtle">

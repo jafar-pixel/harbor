@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MonitorSmartphone } from "lucide-react";
 import { APP_VERSION } from "@/lib/build-info";
+import { localDeviceLabel } from "@/lib/device-label";
 import { useT } from "@/lib/i18n";
 import { useMobileRemote } from "./mobile-remote";
 import { useRegisterSheet } from "./mobile-sheet-lock";
@@ -8,11 +9,12 @@ import { RendererSheet } from "./renderer-sheet";
 
 export function MobileDeviceSwitcher() {
   const t = useT();
-  const { snapshot } = useMobileRemote();
+  const { connected, snapshot } = useMobileRemote();
   const [open, setOpen] = useState(false);
   useRegisterSheet(open);
 
-  const label = snapshot.target.label || t("This PC");
+  // Until a computer answers, the default target names this device rather than a PC.
+  const label = connected ? snapshot.target.label || t("This PC") : t(localDeviceLabel());
   const version = snapshot.hostVersion ?? APP_VERSION;
 
   return (
