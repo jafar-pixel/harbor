@@ -21,3 +21,13 @@ export function nativeFetchUrl(url: string, userAgent?: string): string | null {
   if (userAgent) query.set("ua", userAgent);
   return `${NATIVE_FETCH_ORIGIN}?${query}`;
 }
+
+/**
+ * True in the web app (a secure page with no native fetch) for a plain-http provider address:
+ * the browser refuses that request outright, so a failed test says nothing about the login.
+ */
+export function browserBlocksProviderUrl(url: string): boolean {
+  if (typeof window === "undefined" || "__TAURI_INTERNALS__" in window) return false;
+  if (nativeFetchUrl(url) !== null) return false;
+  return window.location.protocol === "https:" && /^http:\/\//i.test(url.trim());
+}

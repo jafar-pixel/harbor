@@ -4,13 +4,18 @@ import { useT } from "@/lib/i18n";
 import { useFavorites } from "@/lib/iptv/favorites";
 import { purgePlaylistState } from "@/lib/iptv/source-cleanup";
 import { fetchM3uText } from "@/lib/iptv/store";
+import { browserBlocksProviderUrl } from "@/lib/native-fetch";
 import { credsFromServer, fetchXtreamUserInfo } from "@/lib/iptv/xtream";
 import { parseProviderMessage, type ProviderLogin } from "@/lib/jl/provider-message";
 import { useSettings } from "@/lib/settings";
 import { materializePlaylistEntry } from "@/views/live/hooks/use-playlist-mutations";
 import { EMPTY_FORM, PlaylistForm, type PlaylistFormValue } from "@/views/live/source-picker/playlist-form";
 
-type TestState = { kind: "idle" } | { kind: "testing" } | { kind: "error"; message: string };
+type TestState =
+  | { kind: "idle" }
+  | { kind: "testing" }
+  | { kind: "error"; message: string }
+  | { kind: "note"; message: string };
 
 function hostOf(url: string): string {
   try {
@@ -97,6 +102,18 @@ export function LiveTvStep({ onNoIptv }: { onNoIptv: () => void }) {
         lastError = e;
       }
     }
+    // The web app can't test a plain-http provider at all (the browser blocks it), so keep the
+    // login: it syncs through the JL account to the desktop and TV apps, which can reach it.
+    const blocked = logins.find((l) => browserBlocksProviderUrl(l.kind === "xtream" ? l.server : l.url));
+    if (blocked) {
+      save(blocked);
+      setTest({
+        kind: "note",
+        message:
+          "Saved. Your provider only uses a plain http link, which web browsers block on a secure site, so it couldn't be tested here. Live TV from this provider works in the JL Media Vision app for Windows and the TV app, and this login follows your JL account there.",
+      });
+      return;
+    }
     setTest({ kind: "error", message: friendlyError(lastError) });
   };
 
@@ -131,6 +148,10 @@ export function LiveTvStep({ onNoIptv }: { onNoIptv: () => void }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {test.kind === "note" && (
+        <p className="text-[13px] leading-relaxed text-amber-300">{t(test.message)}</p>
       )}
 
       {!adding ? (
