@@ -60,6 +60,7 @@ import { LocalVersionsModal } from "@/components/player/local-versions-modal";
 import { CurfewGuard } from "@/components/curfew-guard";
 import { HoverPreview } from "@/components/hover-preview";
 import { JlAccountSync } from "@/components/jl-account-sync";
+import { WebSignInGate } from "@/components/web-sign-in-gate";
 import { CustomHoverCssMount } from "@/components/custom-hover-css-mount";
 import { EmbedViewportRoot } from "@/components/embed-viewport";
 import { InstallerViewportRoot } from "@/components/installer-viewport";
@@ -400,7 +401,9 @@ function useIdleEvict(active: boolean, pin = false): boolean {
 export function App({ onReady }: { onReady?: () => void }) {
   return (
     <JlAccountWorkspaceBoundary onReady={onReady}>
-      <AppProviders onReady={onReady} />
+      <WebSignInGate onReady={onReady}>
+        <AppProviders onReady={onReady} />
+      </WebSignInGate>
     </JlAccountWorkspaceBoundary>
   );
 }
