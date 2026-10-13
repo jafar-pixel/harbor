@@ -209,14 +209,14 @@ test("slow P2P discovery reports its real phase and a recoverable failure", () =
   assert.match(pickerUtils, /It may not have reachable peers/);
 });
 
-test("raw torrent downloads use the same P2P classification as the picker", () => {
+test("raw torrent downloads use the picker's P2P classification only without a debrid service", () => {
   assert.match(
     resolve,
     /export function shouldPreferP2pDownload[\s\S]*isP2pStream\(stream\) && engineP2pEligible\(stream\)/,
   );
   assert.match(
     pickHandler,
-    /const effectiveForceP2p =\s*forceP2p \|\| \(intent === "download" && shouldPreferP2pDownload\(stream\)\)/,
+    /const effectiveForceP2p =\s*forceP2p \|\|\s*\(intent === "download" && debrids\.length === 0 && shouldPreferP2pDownload\(stream\)\)/,
   );
   assert.match(seasonDownload, /downloadPackViaEngine/);
   assert.match(seasonDownload, /resolveStream\([\s\S]*?true,\s*false,\s*\{ season:/);

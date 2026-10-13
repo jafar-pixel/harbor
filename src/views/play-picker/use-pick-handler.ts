@@ -467,8 +467,11 @@ export function usePickHandler({
       window.clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
     }
+    // With Real-Debrid or TorBox set up, a download resolves through them like playback does;
+    // only without one does a torrent download peer to peer.
     const effectiveForceP2p =
-      forceP2p || (intent === "download" && shouldPreferP2pDownload(stream));
+      forceP2p ||
+      (intent === "download" && debrids.length === 0 && shouldPreferP2pDownload(stream));
     const p2p =
       effectiveForceP2p ||
       (intent !== "download" &&
