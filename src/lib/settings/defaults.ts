@@ -601,6 +601,8 @@ export const DEFAULT: Settings = {
   sportsApiKey: "",
   stremioDeeplinkInstall: true,
   dmmCastDownload: false,
+  dmmCastReceive: true,
+  dmmCastLinks: "",
   iptvPlaylists: [],
 
   iptvLiveContainer: "ts",

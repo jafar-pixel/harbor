@@ -6,6 +6,7 @@ import type { PlayEpisode } from "@/lib/view";
 import { toggleAutoDownload, useIsAutoDownloaded } from "@/lib/auto-download";
 import { pendingSeasonEpisodes } from "@/lib/download/season-download";
 import { useDownloads } from "@/lib/download/downloads-store";
+import { quickDownload } from "@/lib/download/quick-download";
 import { useView } from "@/lib/view";
 import { HoverTooltip } from "@/components/hover-tooltip";
 import { useT } from "@/lib/i18n";
@@ -46,6 +47,14 @@ export function EpisodeDownloadsMenu({ meta, episodes }: { meta: Meta; episodes:
   };
 
   const startSeason = () => {
+    setMenu(null);
+    if (pendingEpisodes.length === 0) return;
+    // Each episode gets its best cached source; the Offline hub shows them as they queue.
+    setView("downloads");
+    void quickDownload(meta, pendingEpisodes);
+  };
+
+  const pickSeasonPack = () => {
     setMenu(null);
     const firstEpisode = pendingEpisodes[0];
     if (!firstEpisode) return;
@@ -92,6 +101,14 @@ export function EpisodeDownloadsMenu({ meta, episodes }: { meta: Meta; episodes:
               disabled={pending === 0}
               onClick={startSeason}
             />
+            {pending > 0 && (
+              <MenuItem
+                icon={<SlidersHorizontal size={15} strokeWidth={2} />}
+                label={t("Choose a season pack")}
+                sub={t("Pick the source yourself")}
+                onClick={pickSeasonPack}
+              />
+            )}
             <div className="my-1 h-px bg-edge-soft" />
             <MenuItem
               icon={

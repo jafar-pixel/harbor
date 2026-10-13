@@ -1,7 +1,8 @@
-import { ArrowDownToLine, Check, RotateCw, X } from "lucide-react";
+import { ArrowDownToLine, Check, Loader2, RotateCw, X } from "lucide-react";
 import { HoverTooltip } from "@/components/hover-tooltip";
 import type { Meta } from "@/lib/cinemeta";
 import { activeDownloadFor, cancelDownload, useDownloads } from "@/lib/download/downloads-store";
+import { quickDownload, useQuickDownloadFinding } from "@/lib/download/quick-download";
 import { findLocalEpisodeByIds, findLocalMovie } from "@/lib/local-library";
 import { useView, type PlayEpisode } from "@/lib/view";
 import { useT } from "@/lib/i18n";
@@ -28,6 +29,7 @@ export function EpisodeDownloadButton({
       ? findLocalEpisodeByIds(episode.season, episode.episode, tmdbId, imdbId) != null
       : findLocalMovie(tmdbId, imdbId) != null;
   const dl = activeDownloadFor(meta.id, episode?.season ?? null, episode?.episode ?? null);
+  const findingSource = useQuickDownloadFinding(meta.id, episode);
   if (isLocal) return null;
   const status = dl?.status;
   const downloading = status === "downloading" || status === "queued";
@@ -45,7 +47,11 @@ export function EpisodeDownloadButton({
       cancelDownload(dl.id);
       return;
     }
-    openPicker(meta, episode, { intent: "download" });
+    if (findingSource) return;
+    // One press: queue the best cached source; the source list opens only when none is found.
+    void quickDownload(meta, episode ? [episode] : undefined).then((r) => {
+      if (r.queued === 0) openPicker(meta, episode, { intent: "download" });
+    });
   };
 
   const r = (dim - 7) / 2;
@@ -64,16 +70,20 @@ export function EpisodeDownloadButton({
   const wrapperClass = isBar
     ? `group/dl relative flex shrink-0 items-center justify-center rounded-full bg-canvas/80 transition-[transform,background-color] duration-200 hover:bg-canvas/95 active:scale-[0.96] ${stateTone}`
     : `group/dl relative flex shrink-0 items-center justify-center self-start rounded-full transition-[opacity,background-color,transform] duration-200 ease-out ${
-        persistent ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+        persistent || findingSource
+          ? "opacity-100"
+          : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
       } ${stateTone}`;
 
-  const tipLabel = downloading
-    ? t("Downloading {pct}%  ·  click to cancel", { pct })
-    : done
-      ? t("Saved offline")
-      : failed
-        ? t("Download failed  ·  click to retry")
-        : t("Download for offline");
+  const tipLabel = findingSource
+    ? t("Finding the best source…")
+    : downloading
+      ? t("Downloading {pct}%  ·  click to cancel", { pct })
+      : done
+        ? t("Saved offline")
+        : failed
+          ? t("Download failed  ·  click to retry")
+          : t("Download for offline");
 
   const btn = (
     <button
@@ -92,7 +102,9 @@ export function EpisodeDownloadButton({
       className={wrapperClass}
       style={{ width: dim, height: dim }}
     >
-      {downloading ? (
+      {findingSource ? (
+        <Loader2 size={dim * 0.42} strokeWidth={2.2} className="animate-spin" />
+      ) : downloading ? (
         <>
           <svg
             width={dim}

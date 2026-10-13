@@ -265,7 +265,12 @@ export function HeroActionOverflow({
                 active={done}
                 onClick={() => {
                   if (downloading && dl) cancelDownload(dl.id);
-                  else openPicker(meta, undefined, { intent: "download" });
+                  else
+                    void import("@/lib/download/quick-download").then(({ quickDownload }) =>
+                      quickDownload(meta).then((r) => {
+                        if (r.queued === 0) openPicker(meta, undefined, { intent: "download" });
+                      }),
+                    );
                   setMenu(null);
                 }}
               />

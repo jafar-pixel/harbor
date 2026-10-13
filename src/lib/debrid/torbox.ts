@@ -10,6 +10,7 @@ import {
   type DebridStore,
   type DirectLink,
   type LibraryEntry,
+  type LibraryListOptions,
 } from "./types";
 
 const BASE = "https://api.torbox.app/v1/api";
@@ -18,6 +19,10 @@ const POLL_DELAY_MS = 1000;
 const POLL_MAX_ATTEMPTS = 30;
 const LIBRARY_TTL_MS = 5 * 60_000;
 const LIBRARY_CACHE = new Map<string, { at: number; data: LibraryEntry[] }>();
+const FULL_LIBRARY_TTL_MS = 10 * 60_000;
+const FULL_LIBRARY_CACHE = new Map<string, { at: number; data: LibraryEntry[] }>();
+const FULL_LIBRARY_PAGE = 1000;
+const FULL_LIBRARY_MAX_PAGES = 50;
 
 export function createTorbox(apiKey: string): DebridStore {
   const headers = (extra?: HeadersInit): HeadersInit => ({
@@ -316,6 +321,56 @@ export function createTorbox(apiKey: string): DebridStore {
     return { ok: true, data };
   }
 
+  async function listAllLibrary(
+    signal: AbortSignal,
+    onProgress?: (loaded: number) => void,
+    options?: LibraryListOptions,
+  ): Promise<DebridResult<LibraryEntry[]>> {
+    const cached = FULL_LIBRARY_CACHE.get(apiKey);
+    if (!options?.refresh && cached && Date.now() - cached.at < FULL_LIBRARY_TTL_MS) {
+      return { ok: true, data: cached.data };
+    }
+    const byId = new Map<number, TbTorrent>();
+    for (let page = 0; page < FULL_LIBRARY_MAX_PAGES; page++) {
+      const offset = page * FULL_LIBRARY_PAGE;
+      const r = await get<TbEnvelope<TbTorrent[]>>(
+        `/torrents/mylist?bypass_cache=true&offset=${offset}&limit=${FULL_LIBRARY_PAGE}`,
+        signal,
+      );
+      if (!r.ok) {
+        dwarn("[torbox] listAllLibrary failed", { code: r.code, status: r.status });
+        return r;
+      }
+      const rows = r.data.data ?? [];
+      const before = byId.size;
+      for (const t of rows) byId.set(t.id, t);
+      onProgress?.(byId.size);
+      // A short page ends the list; a page with nothing new means offset was ignored.
+      if (rows.length < FULL_LIBRARY_PAGE || byId.size === before) break;
+    }
+    const data: LibraryEntry[] = [...byId.values()]
+      .filter((t) => t.download_finished || t.download_present)
+      .map((t) => {
+        const added = t.created_at ? Date.parse(t.created_at) : NaN;
+        return {
+          slug: "tb" as const,
+          id: String(t.id),
+          hash: (t.hash ?? "").toLowerCase(),
+          name: t.name ?? "",
+          size: typeof t.size === "number" ? t.size : undefined,
+          files: (t.files ?? []).map((f) => ({
+            id: String(f.id),
+            name: f.short_name ?? f.name ?? "",
+            size: f.size ?? 0,
+          })),
+          added: Number.isFinite(added) ? added : undefined,
+        };
+      });
+    dlog(`[torbox] listAllLibrary → ${data.length} ready torrents`);
+    FULL_LIBRARY_CACHE.set(apiKey, { at: Date.now(), data });
+    return { ok: true, data };
+  }
+
   async function queueCache(
     magnet: string,
     signal: AbortSignal,
@@ -357,6 +412,7 @@ export function createTorbox(apiKey: string): DebridStore {
     playableUrl,
     queueCache,
     listLibrary,
+    listAllLibrary,
   };
 }
 
@@ -453,6 +509,7 @@ type TbTorrent = {
   download_finished?: boolean;
   download_present?: boolean;
   files?: TbFile[];
+  created_at?: string;
 };
 
 type TbError = {

@@ -23,6 +23,7 @@ export const SYNCED_SETTING_KEYS = [
   "oddsApiKey",
   "cfbdKey",
   "iptvPlaylists",
+  "dmmCastLinks",
 ] as const;
 
 export type SyncedSettingKey = (typeof SYNCED_SETTING_KEYS)[number];

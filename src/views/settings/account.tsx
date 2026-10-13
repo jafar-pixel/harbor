@@ -1,7 +1,7 @@
 import { SettingGroup } from "./kit";
 import { useSettings } from "@/lib/settings";
 import { useState } from "react";
-import { Download, Link2 } from "./icons";
+import { Cast, Download, Link2 } from "./icons";
 import { useT } from "@/lib/i18n";
 import { Section, ToggleRow } from "./shared";
 import { useSubTabs } from "./sub-tabs";
@@ -86,11 +86,20 @@ function JlAccountTab() {
         <ToggleRow
           label={t("Download Debrid Media Manager casts")}
           sub={t(
-            "When you press Cast in Debrid Media Manager, save the file to Offline downloads instead of playing it.",
+            "When a Debrid Media Manager cast reaches JL Media Vision, save the file instead of playing it: to Offline downloads in the desktop app, or through your browser in the web app.",
           )}
           leading={<Download size={18} />}
           value={settings.dmmCastDownload}
           onChange={(dmmCastDownload) => update({ dmmCastDownload })}
+        />
+        <ToggleRow
+          label={t("Receive Debrid Media Manager casts on this device")}
+          sub={t(
+            "Press Cast in Debrid Media Manager on any phone or computer and it plays here while JL Media Vision is open. Needs the DMM Cast addon installed with its catalogs (not the No Catalog version). Turn this off on devices that shouldn't play your casts.",
+          )}
+          leading={<Cast size={18} />}
+          value={settings.dmmCastReceive}
+          onChange={(dmmCastReceive) => update({ dmmCastReceive })}
         />
       </Section>
     </>

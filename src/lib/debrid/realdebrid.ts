@@ -9,6 +9,8 @@ import {
   type DebridStore,
   type DirectLink,
   type LibraryEntry,
+  type LibraryFile,
+  type LibraryListOptions,
 } from "./types";
 
 const BASE = "https://api.real-debrid.com/rest/1.0";
@@ -17,6 +19,12 @@ const POLL_DELAY_MS = 600;
 const POLL_MAX_ATTEMPTS = 18;
 const LIBRARY_TTL_MS = 5 * 60_000;
 const LIBRARY_CACHE = new Map<string, { at: number; data: LibraryEntry[] }>();
+const FULL_LIBRARY_TTL_MS = 10 * 60_000;
+const FULL_LIBRARY_CACHE = new Map<string, { at: number; data: LibraryEntry[] }>();
+// RD accepts up to 5000 torrents per page, so a 12k library is three requests.
+const FULL_LIBRARY_PAGE = 5000;
+const FULL_LIBRARY_MAX_PAGES = 40;
+const RATE_LIMIT_RETRY_MS = 2000;
 
 export function createRealDebrid(apiKey: string): DebridStore {
   const headers = (extra?: HeadersInit): HeadersInit => ({
@@ -190,6 +198,99 @@ export function createRealDebrid(apiKey: string): DebridStore {
     return { ok: true, data };
   }
 
+  async function listAllLibrary(
+    signal: AbortSignal,
+    onProgress?: (loaded: number) => void,
+    options?: LibraryListOptions,
+  ): Promise<DebridResult<LibraryEntry[]>> {
+    const cached = FULL_LIBRARY_CACHE.get(apiKey);
+    if (!options?.refresh && cached && Date.now() - cached.at < FULL_LIBRARY_TTL_MS) {
+      return { ok: true, data: cached.data };
+    }
+    const all: RdTorrentSummary[] = [];
+    for (let page = 1; page <= FULL_LIBRARY_MAX_PAGES; page++) {
+      const path = `/torrents?limit=${FULL_LIBRARY_PAGE}&page=${page}`;
+      let r = await get<RdTorrentSummary[] | undefined>(path, signal);
+      for (let retry = 0; !r.ok && r.code === "rate-limited" && retry < 3; retry++) {
+        await sleep(RATE_LIMIT_RETRY_MS * (retry + 1), signal);
+        if (signal.aborted) return { ok: false, code: "aborted", status: 0 };
+        r = await get<RdTorrentSummary[] | undefined>(path, signal);
+      }
+      if (!r.ok) return r;
+      const rows = Array.isArray(r.data) ? r.data : [];
+      all.push(...rows);
+      onProgress?.(all.length);
+      if (rows.length < FULL_LIBRARY_PAGE) break;
+    }
+    const seen = new Set<string>();
+    const data: LibraryEntry[] = [];
+    for (const t of all) {
+      if (t.status !== "downloaded" || seen.has(t.id)) continue;
+      seen.add(t.id);
+      const added = t.added ? Date.parse(t.added) : NaN;
+      data.push({
+        slug: "rd",
+        id: t.id,
+        hash: t.hash.toLowerCase(),
+        name: t.filename,
+        size: t.bytes,
+        added: Number.isFinite(added) ? added : undefined,
+        fileCount: Array.isArray(t.links) ? t.links.length : undefined,
+      });
+    }
+    FULL_LIBRARY_CACHE.set(apiKey, { at: Date.now(), data });
+    return { ok: true, data };
+  }
+
+  async function libraryFiles(
+    id: string,
+    signal: AbortSignal,
+  ): Promise<DebridResult<LibraryFile[]>> {
+    const r = await get<RdTorrentInfo>(`/torrents/info/${encodeURIComponent(id)}`, signal);
+    if (!r.ok) return r;
+    // playableUrl indexes the full file list of a freshly added magnet, which RD
+    // returns in the same order, so each file keeps its position in that list.
+    const files: LibraryFile[] = [];
+    (r.data.files ?? []).forEach((f, index) => {
+      if (f.selected !== 1) return;
+      files.push({
+        id: String(f.id),
+        name: f.path.replace(/^\/+/, ""),
+        size: f.bytes,
+        fileIdx: index,
+      });
+    });
+    return { ok: true, data: files };
+  }
+
+  async function libraryLink(
+    id: string,
+    fileIdx: number | undefined,
+    signal: AbortSignal,
+  ): Promise<DebridResult<DirectLink>> {
+    const r = await get<RdTorrentInfo>(`/torrents/info/${encodeURIComponent(id)}`, signal);
+    if (!r.ok) return r;
+    const links = r.data.links ?? [];
+    if (links.length === 0) return { ok: false, code: "no-link", status: 0 };
+    const files = r.data.files ?? [];
+    // With no file chosen, play the biggest downloaded file rather than a sample or extra.
+    let idx = fileIdx;
+    if (idx == null) {
+      let best = -1;
+      files.forEach((f, i) => {
+        if (f.selected === 1 && (best < 0 || f.bytes > files[best].bytes)) best = i;
+      });
+      idx = best >= 0 ? best : undefined;
+    }
+    const link = links[pickLinkIndex(files, idx, links.length)];
+    const u = await postForm<RdUnrestrict>("/unrestrict/link", { link }, signal);
+    if (!u.ok) return u;
+    return {
+      ok: true,
+      data: { url: u.data.download, filename: u.data.filename, filesize: u.data.filesize },
+    };
+  }
+
   return {
     slug: "rd",
     name: "Real-Debrid",
@@ -197,6 +298,9 @@ export function createRealDebrid(apiKey: string): DebridStore {
     cacheCheck,
     playableUrl,
     listLibrary,
+    listAllLibrary,
+    libraryFiles,
+    libraryLink,
   };
 }
 
@@ -284,6 +388,8 @@ type RdTorrentSummary = {
   hash: string;
   bytes: number;
   status: string;
+  added?: string;
+  links?: string[];
 };
 
 type RdFile = {

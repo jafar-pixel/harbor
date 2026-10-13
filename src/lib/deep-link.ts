@@ -1,5 +1,6 @@
 import { makeSafeTauriUnlisten } from "@/lib/tauri-unlisten";
 import { focusWindow } from "@/lib/window";
+import { takeSharedLink } from "@/lib/shared-link";
 import {
   isMusicDeepLink,
   parseMusicDeepLink,
@@ -207,12 +208,22 @@ function saveLaunchSeen(map: Record<string, number>): void {
   }
 }
 
+// The installed web app can't own stremio:// links, so it takes them as `?link=` (see shared-link).
+function routeSharedLink(): void {
+  const link = takeSharedLink();
+  if (!link) return;
+  const open = parseStremioOpen(link);
+  // Listeners attach once the bridge resolves; an install link also waits as the pending URL.
+  window.setTimeout(() => (open ? emitDeepLinkOpen(open) : emitDeepLinkInstall(link)), 0);
+}
+
 export async function startDeepLinkBridge(): Promise<() => void> {
   const isTauri =
     typeof window !== "undefined" && ("__TAURI__" in window || "__TAURI_INTERNALS__" in window);
   if (!isTauri) {
     const bounce = takeMusicBounce();
     if (bounce) window.location.replace(bounce);
+    else routeSharedLink();
     return () => {};
   }
   try {

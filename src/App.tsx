@@ -843,6 +843,100 @@ function Shell({ onReady }: { onReady?: () => void }) {
   const uiScaleRef = useRef(settings.uiScale);
   const dmmCastDownloadRef = useRef(settings.dmmCastDownload);
   dmmCastDownloadRef.current = settings.dmmCastDownload;
+  // A title link or a cast seen in DMM's cast lists: play (or save) your newest DMM cast of it,
+  // else open the title. The same cast reaching both ways in a short time is handled once.
+  const recentCastsRef = useRef(new Map<string, number>());
+  const handleCastRef = useRef<(type: string, id: string, videoId?: string) => void>(() => {});
+  handleCastRef.current = (type, id, videoId) => {
+    const hint = parseDeepLinkEpisode(videoId);
+    const showTitle = () =>
+      openMeta({ id, type: type as MetaType, name: "" }, hint ? { episodeHint: hint } : undefined);
+    const recent = recentCastsRef.current;
+    const now = Date.now();
+    for (const [k, at] of recent) if (now - at > 180_000) recent.delete(k);
+    if (!videoId) {
+      if (recent.has(`title:${id}`)) return;
+      recent.set(`title:${id}`, now);
+      showTitle();
+      return;
+    }
+    void import("@/lib/dmm-cast")
+      .then(({ findDmmCast }) => findDmmCast(type, videoId))
+      .then(async (cast) => {
+        if (!cast) return showTitle();
+        const key = `${videoId}|${cast.url}`;
+        if (recent.has(key)) return;
+        recent.set(key, now);
+        recent.set(`title:${id}`, now);
+        const meta = { id, type: type as MetaType, name: cast.title };
+        if (dmmCastDownloadRef.current) {
+          const browser = await import("@/lib/browser-download");
+          if (!browser.offlineDownloadsAvailable()) {
+            browser.saveInBrowser(cast.url, cast.title);
+            showTitle();
+            return;
+          }
+          const [{ enqueueDownload }, cinemeta] = await Promise.all([
+            import("@/lib/download/downloads-store"),
+            import("@/lib/cinemeta"),
+          ]);
+          // The download list shows the title and poster, not DMM's file name.
+          const full =
+            type === "movie" || type === "series"
+              ? await cinemeta.meta(type, id).catch(() => null)
+              : null;
+          await enqueueDownload({
+            meta: full ?? meta,
+            episode: hint,
+            streamLabel: cast.title,
+            url: cast.url,
+          });
+          setView("downloads");
+          return;
+        }
+        openPlayer({
+          meta,
+          imdbId: id.startsWith("tt") ? id : undefined,
+          episode: hint,
+          url: cast.url,
+          title: cast.title,
+        });
+      })
+      .catch(showTitle);
+  };
+  useEffect(() => {
+    if (!settings.dmmCastReceive) return;
+    let stop: (() => void) | null = null;
+    let cancelled = false;
+    void import("@/lib/dmm-cast").then(({ watchDmmCasts }) => {
+      if (cancelled) return;
+      stop = watchDmmCasts(({ type, id }) =>
+        handleCastRef.current(type, id, type === "movie" ? id : undefined),
+      );
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [settings.dmmCastReceive]);
+  const dmmCastLinksRef = useRef(settings.dmmCastLinks);
+  dmmCastLinksRef.current = settings.dmmCastLinks;
+  useEffect(() => {
+    let cancelled = false;
+    const run = () =>
+      void import("@/lib/dmm-cast")
+        .then(({ reconcileDmmCastLinks }) => reconcileDmmCastLinks(dmmCastLinksRef.current))
+        .then((next) => {
+          if (!cancelled && next !== null) update({ dmmCastLinks: next });
+        })
+        .catch(() => undefined);
+    run();
+    const timer = window.setInterval(run, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [settings.dmmCastLinks, update]);
   const { activeProfile } = useProfiles();
   const activeProfileForMusic = activeProfile?.id ?? null;
   const kid = activeProfile?.kid ?? null;
@@ -1309,49 +1403,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
               openEBook(id);
               return;
             }
-            const hint = parseDeepLinkEpisode(videoId);
-            const showTitle = () =>
-              openMeta(
-                { id, type: type as MetaType, name: "" },
-                hint ? { episodeHint: hint } : undefined,
-              );
-            if (!videoId) {
-              showTitle();
-              return;
-            }
-            void import("@/lib/dmm-cast")
-              .then(({ findDmmCast }) => findDmmCast(type, videoId))
-              .then(async (cast) => {
-                if (!cast) return showTitle();
-                const meta = { id, type: type as MetaType, name: cast.title };
-                if (dmmCastDownloadRef.current) {
-                  const [{ enqueueDownload }, cinemeta] = await Promise.all([
-                    import("@/lib/download/downloads-store"),
-                    import("@/lib/cinemeta"),
-                  ]);
-                  // The download list shows the title and poster, not DMM's file name.
-                  const full =
-                    type === "movie" || type === "series"
-                      ? await cinemeta.meta(type, id).catch(() => null)
-                      : null;
-                  await enqueueDownload({
-                    meta: full ?? meta,
-                    episode: hint,
-                    streamLabel: cast.title,
-                    url: cast.url,
-                  });
-                  setView("downloads");
-                  return;
-                }
-                openPlayer({
-                  meta,
-                  imdbId: id.startsWith("tt") ? id : undefined,
-                  episode: hint,
-                  url: cast.url,
-                  title: cast.title,
-                });
-              })
-              .catch(showTitle);
+            handleCastRef.current(type, id, videoId);
           });
           const stopOpenList = onDeepLinkOpenList(({ handle, listId }) => {
             openList(handle, listId);

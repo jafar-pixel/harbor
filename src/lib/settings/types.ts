@@ -744,6 +744,10 @@ export type Settings = {
   stremioDeeplinkInstall: boolean;
   /** A Debrid Media Manager cast goes to Offline downloads instead of playing. */
   dmmCastDownload: boolean;
+  /** Watch DMM's cast lists while open, so a cast from any device plays here. */
+  dmmCastReceive: boolean;
+  /** Your DMM Cast addon install links, one per line; synced so every device installs them. */
+  dmmCastLinks: string;
   iptvPlaylists: Array<{
     id: string;
     name: string;

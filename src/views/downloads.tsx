@@ -23,6 +23,7 @@ import { DownloadRow } from "./downloads/download-row";
 import { SaveLocationChip } from "./downloads/save-location";
 import { AutoDownloadButton, AutoDownloadModal } from "./downloads/auto-download-modal";
 import { fmtBytes, fmtSpeed } from "./downloads/downloads-format";
+import { DebridLibrary } from "./downloads/debrid-library";
 
 type DownloadGroup =
   | { kind: "movie"; item: DownloadItem }
@@ -81,7 +82,7 @@ export function DownloadsView({ active = false }: { active?: boolean }) {
   const t = useT();
   const items = useDownloads();
   const music = useMusicDownloads();
-  const [room, setRoom] = useState<"video" | "music">(() =>
+  const [room, setRoom] = useState<"video" | "music" | "debrid">(() =>
     items.length === 0 && music.length > 0 ? "music" : "video",
   );
   const [checking, setChecking] = useState(false);
@@ -187,6 +188,11 @@ export function DownloadsView({ active = false }: { active?: boolean }) {
             active={room === "music"}
             onClick={() => setRoom("music")}
           />
+          <FilterTab
+            label={t("Debrid library")}
+            active={room === "debrid"}
+            onClick={() => setRoom("debrid")}
+          />
           {room === "video" && (
             <button
               disabled={checking}
@@ -201,7 +207,9 @@ export function DownloadsView({ active = false }: { active?: boolean }) {
           )}
         </div>
 
-        {room === "music" ? (
+        {room === "debrid" ? (
+          <DebridLibrary />
+        ) : room === "music" ? (
           <MusicDownloads allowPlaylist={false} />
         ) : (
           <>
@@ -269,7 +277,7 @@ function FilterTab({
   onClick,
 }: {
   label: string;
-  count: number;
+  count?: number;
   active: boolean;
   onClick: () => void;
 }) {
@@ -285,9 +293,11 @@ function FilterTab({
       }`}
     >
       {label}
-      <span className={`tabular-nums ${active ? "text-canvas/70" : "text-ink-subtle"}`}>
-        {count}
-      </span>
+      {count != null && (
+        <span className={`tabular-nums ${active ? "text-canvas/70" : "text-ink-subtle"}`}>
+          {count}
+        </span>
+      )}
     </button>
   );
 }
