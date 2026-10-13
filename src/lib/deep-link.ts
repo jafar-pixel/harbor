@@ -184,6 +184,7 @@ function shouldForward(url: string): boolean {
 // features, self-restarts), redelivering an old install URL on every start.
 const LAUNCH_SEEN_KEY = "harbor.deeplink.launchseen.v1";
 const LAUNCH_SEEN_MAX = 50;
+const OPEN_REPLAY_MS = 2 * 60_000;
 
 function loadLaunchSeen(): Record<string, number> {
   try {
@@ -321,7 +322,11 @@ export async function startDeepLinkBridge(): Promise<() => void> {
         const fresh: string[] = [];
         for (const u of initial) {
           if (typeof u !== "string" || !u) continue;
-          if (!seen[u]) fresh.push(u);
+          // A title link (a DMM cast) is skipped only when it just arrived, so casting the same
+          // title again later still opens it; install links are skipped for good.
+          const isOpen = !!(parseStremioOpen(u) || parseHarborOpen(u));
+          const last = seen[u];
+          if (!last || (isOpen && now - last > OPEN_REPLAY_MS)) fresh.push(u);
           seen[u] = now;
         }
         saveLaunchSeen(seen);

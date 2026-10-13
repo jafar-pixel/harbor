@@ -1,7 +1,7 @@
 import { SettingGroup } from "./kit";
 import { useSettings } from "@/lib/settings";
 import { useState } from "react";
-import { Link2 } from "./icons";
+import { Download, Link2 } from "./icons";
 import { useT } from "@/lib/i18n";
 import { Section, ToggleRow } from "./shared";
 import { useSubTabs } from "./sub-tabs";
@@ -82,6 +82,15 @@ function JlAccountTab() {
           leading={<Link2 size={18} />}
           value={settings.stremioDeeplinkInstall}
           onChange={(stremioDeeplinkInstall) => update({ stremioDeeplinkInstall })}
+        />
+        <ToggleRow
+          label={t("Download Debrid Media Manager casts")}
+          sub={t(
+            "When you press Cast in Debrid Media Manager, save the file to Offline downloads instead of playing it.",
+          )}
+          leading={<Download size={18} />}
+          value={settings.dmmCastDownload}
+          onChange={(dmmCastDownload) => update({ dmmCastDownload })}
         />
       </Section>
     </>

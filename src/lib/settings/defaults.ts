@@ -600,6 +600,7 @@ export const DEFAULT: Settings = {
   nytKey: "",
   sportsApiKey: "",
   stremioDeeplinkInstall: true,
+  dmmCastDownload: false,
   iptvPlaylists: [],
 
   iptvLiveContainer: "ts",

@@ -742,6 +742,8 @@ export type Settings = {
   nytKey: string;
   sportsApiKey: string;
   stremioDeeplinkInstall: boolean;
+  /** A Debrid Media Manager cast goes to Offline downloads instead of playing. */
+  dmmCastDownload: boolean;
   iptvPlaylists: Array<{
     id: string;
     name: string;

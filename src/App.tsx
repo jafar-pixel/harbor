@@ -841,6 +841,8 @@ function Shell({ onReady }: { onReady?: () => void }) {
   const bigPicture = useBigPicture().active;
   const bigPictureBootChecked = useRef(false);
   const uiScaleRef = useRef(settings.uiScale);
+  const dmmCastDownloadRef = useRef(settings.dmmCastDownload);
+  dmmCastDownloadRef.current = settings.dmmCastDownload;
   const { activeProfile } = useProfiles();
   const activeProfileForMusic = activeProfile?.id ?? null;
   const kid = activeProfile?.kid ?? null;
@@ -1308,10 +1310,48 @@ function Shell({ onReady }: { onReady?: () => void }) {
               return;
             }
             const hint = parseDeepLinkEpisode(videoId);
-            openMeta(
-              { id, type: type as MetaType, name: "" },
-              hint ? { episodeHint: hint } : undefined,
-            );
+            const showTitle = () =>
+              openMeta(
+                { id, type: type as MetaType, name: "" },
+                hint ? { episodeHint: hint } : undefined,
+              );
+            if (!videoId) {
+              showTitle();
+              return;
+            }
+            void import("@/lib/dmm-cast")
+              .then(({ findDmmCast }) => findDmmCast(type, videoId))
+              .then(async (cast) => {
+                if (!cast) return showTitle();
+                const meta = { id, type: type as MetaType, name: cast.title };
+                if (dmmCastDownloadRef.current) {
+                  const [{ enqueueDownload }, cinemeta] = await Promise.all([
+                    import("@/lib/download/downloads-store"),
+                    import("@/lib/cinemeta"),
+                  ]);
+                  // The download list shows the title and poster, not DMM's file name.
+                  const full =
+                    type === "movie" || type === "series"
+                      ? await cinemeta.meta(type, id).catch(() => null)
+                      : null;
+                  await enqueueDownload({
+                    meta: full ?? meta,
+                    episode: hint,
+                    streamLabel: cast.title,
+                    url: cast.url,
+                  });
+                  setView("downloads");
+                  return;
+                }
+                openPlayer({
+                  meta,
+                  imdbId: id.startsWith("tt") ? id : undefined,
+                  episode: hint,
+                  url: cast.url,
+                  title: cast.title,
+                });
+              })
+              .catch(showTitle);
           });
           const stopOpenList = onDeepLinkOpenList(({ handle, listId }) => {
             openList(handle, listId);

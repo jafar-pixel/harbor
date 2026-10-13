@@ -151,19 +151,9 @@ mod mobile;
 mod p2p_android;
 
 #[cfg(desktop)]
-pub(crate) fn release_stremio_scheme(app: &tauri::AppHandle) {
-    use std::io::Write;
-    use tauri_plugin_deep_link::DeepLinkExt;
-    let msg = match app.deep_link().unregister("stremio") {
-        Ok(()) => "[harbor::deeplink] released stremio:// on shutdown".to_string(),
-        Err(e) => format!("[harbor::deeplink] could not release stremio://: {}", e),
-    };
-    let _ = writeln!(std::io::stderr(), "{}", msg);
-}
-
-#[cfg(desktop)]
 pub(crate) fn shutdown_services(app: &tauri::AppHandle) {
-    release_stremio_scheme(app);
+    // stremio:// stays registered after exit while "Open compatible addon links" is on, so a
+    // Debrid Media Manager cast can start the app; turning that setting off releases it.
     thumbs::shutdown(app);
     multiview::shutdown(app);
     dvr::shutdown(app);
