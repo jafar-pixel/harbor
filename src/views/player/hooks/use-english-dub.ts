@@ -11,6 +11,7 @@ import {
   rankEnglishDubStreams,
   streamTextIsEnglish,
 } from "@/lib/player/english-dub";
+import { isNativeEnglishDubRequest, showNativeTvMessage } from "@/lib/player/native-tv/shell";
 import { peekPickerCache } from "@/lib/picker-cache";
 import { writePlayerPrefs } from "@/lib/player-prefs";
 import type { ScoredStream } from "@/lib/streams/types";
@@ -68,6 +69,9 @@ export function useEnglishDub(params: {
   const showNotice = useCallback((text: string, kind: ToastInfo["kind"] = "ok", ms = 4000) => {
     if (noticeTimerRef.current != null) window.clearTimeout(noticeTimerRef.current);
     setNotice({ kind, text });
+    // Over the TV app's full-screen video the page is hidden. The ongoing "Finding…" notice is
+    // left out: the app shows its own when its menu asks for a dub.
+    if (ms > 0) showNativeTvMessage(text);
     noticeTimerRef.current = ms > 0 ? window.setTimeout(() => setNotice(null), ms) : null;
   }, []);
   useEffect(
@@ -192,6 +196,22 @@ export function useEnglishDub(params: {
     }
     void searchDub(now !== "unknown");
   }, [busy, active, selectTrack, searchDub, showNotice, t]);
+
+  // The TV app's full-screen menu asks for a dub source when the file has no English track.
+  const pressRef = useRef(press);
+  pressRef.current = press;
+  useEffect(() => {
+    const onNative = (e: Event) => {
+      if (!isNativeEnglishDubRequest((e as CustomEvent<unknown>).detail)) return;
+      if (latest.current.hidden) {
+        showNotice(t("No English audio in this file"), "error");
+        return;
+      }
+      pressRef.current();
+    };
+    window.addEventListener("jl-native-player", onNative);
+    return () => window.removeEventListener("jl-native-player", onNative);
+  }, [showNotice, t]);
 
   return useMemo(
     () => ({ visible: !hidden, active, busy, notice, press }),

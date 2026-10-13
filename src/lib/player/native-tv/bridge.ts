@@ -26,7 +26,9 @@ type NativeEvent = {
     | "stopped"
     | "position"
     | "exit-full"
-    | "tracks";
+    | "tracks"
+    // Handled by useEnglishDub, which listens for it itself.
+    | "english-dub";
   mode?: string;
   positionMs?: number;
   durationMs?: number;

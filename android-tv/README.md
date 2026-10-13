@@ -35,8 +35,9 @@ if (player?.isAvailable()) {
 | `capabilities(): string` | What the TV supports, as JSON (see below). `"{}"` off an app page. |
 | `audioTracks(): string` | The playing stream's audio tracks, as a JSON array (see [Audio tracks](#audio-tracks)). `"[]"` before the tracks are known, after `stop()`, or off an app page. |
 | `setPreferredAudioLanguage(lang)` | Plays audio in `lang` (an ISO 639 code such as `"en"` or `"eng"`) when the stream has it, replacing any earlier audio choice; `""` goes back to the default pick. It stays in force for later `play` calls until `stop()`. |
+| `showMessage(text)` | Shows `text` (up to 200 characters) as a toast over the video in `full`, where the page can't be seen. Ignored in `hero` and `hidden`. |
 
-`setOptions`, `capabilities`, `audioTracks` and `setPreferredAudioLanguage` are newer than the
+`setOptions`, `capabilities`, `audioTracks`, `setPreferredAudioLanguage` and `showMessage` are newer than the
 first app builds, so the page checks `typeof player.setOptions === "function"` (and so on) before
 calling them; an older app plays with the defaults below and reports no audio tracks.
 
@@ -102,9 +103,9 @@ two English tracks can't be told apart this way.
 ### Modes
 
 - `full`: fills the screen. The remote controls the player: Center/Enter and Play/Pause toggle
-  pause, Left/Right (and Rewind/Fast-forward) seek 10 seconds, Up/Down show the progress bar.
-  Back sends `exit-full`, then returns to `hero` when the page has set a hero rect, otherwise
-  stops (`stopped` follows).
+  pause, Left/Right (and Rewind/Fast-forward) seek 10 seconds, Up shows the progress bar, and
+  Down (or Menu) opens the [full-screen menu](#full-screen-menu). Back sends `exit-full`, then
+  returns to `hero` when the page has set a hero rect, otherwise stops (`stopped` follows).
 - `hero`: the video sits in the hero rect while the page keeps the remote and scrolls beneath it.
   Nothing is drawn until a rect has been set. The video covers anything the page draws in that
   area, so switch to `hidden` while a menu or dialog overlaps it.
@@ -114,6 +115,27 @@ In `hero` and `hidden`, keys go to the page. Back then goes to Big Picture when 
 (`window.__harborBack()`, `src/views/big-picture/bp-back.ts`): it goes back a screen there, and
 at Big Picture's home screen the app asks before leaving. Outside Big Picture, Back walks the
 WebView's history, then asks before leaving.
+
+### Full-screen menu
+
+Down or Menu in `full` opens an "Audio & options" list. While it is open the remote moves through
+the list and Center picks an item, instead of seeking or pausing; Back closes it. A checked item
+is the current choice.
+
+- **English dub**: checked while the playing audio track is English (tagged `en`/`eng`, or
+  labelled English). When the file has an English track, the app switches to it (the main mix
+  before commentary, then the default, then the most channels). When it has none, the app shows
+  "No English audio in this file. Finding an English dub…" and sends `english-dub`; the page
+  then looks for an English dub source and plays it in place with `play`, which keeps `full`.
+- **Audio: …**: each audio track the TV can play, by label/language and channels. Picking one
+  plays exactly that track, and its language is kept for later `play` calls like
+  `setPreferredAudioLanguage`.
+- **Subtitles: Off / …**: shown when the stream has embedded text tracks. Off disables text
+  tracks; a track plays exactly that track.
+- **More player options**: leaves `full` as Back does (`exit-full`), so the page's own controls
+  can be reached.
+
+The menu closes when the player leaves `full`, stops, or plays another stream.
 
 ### Events
 
@@ -135,8 +157,9 @@ window.addEventListener("jl-native-player", (event) => {
 | `error` | Playback failed; `message` holds the Media3 error code name and text. A live stream that falls behind its window rejoins the live edge without an error. |
 | `stopped` | The player was released. `message` is `"navigation"` when the WebView loaded a new document, `"background"` when the app left the screen, and absent for `stop()` or Back. |
 | `position` | About once a second while playing. |
-| `exit-full` | Back left full screen. |
+| `exit-full` | Back, or the menu's "More player options", left full screen. |
 | `tracks` | The stream's tracks are known or the selection changed; `audioTracks` holds the same array `audioTracks()` returns. |
+| `english-dub` | The full-screen menu's English dub item was picked and the file has no English audio track: the page should find an English dub source and `play` it (`src/views/player/hooks/use-english-dub.ts`). The page's notices about it reach the screen through `showMessage`. |
 
 `mode` is `"full"`, `"hero"` or `"hidden"` at the time of the event. `positionMs` and
 `durationMs` are milliseconds; `durationMs` is `0` when unknown, and for a live stream it is the

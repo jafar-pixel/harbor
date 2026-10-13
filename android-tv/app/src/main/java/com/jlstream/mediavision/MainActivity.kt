@@ -259,6 +259,13 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun setPreferredAudioLanguage(lang: String?) = onMain { nativePlayer.setPreferredAudioLanguage(lang) }
 
+        /** A short message over the full-screen video (README: `showMessage`); ignored outside `full`. */
+        @JavascriptInterface
+        fun showMessage(text: String?) {
+            val message = text?.trim()?.take(200)?.takeIf { it.isNotEmpty() } ?: return
+            onMain { nativePlayer.showMessage(message) }
+        }
+
         @JavascriptInterface
         fun pause() = onMain { nativePlayer.pause() }
 

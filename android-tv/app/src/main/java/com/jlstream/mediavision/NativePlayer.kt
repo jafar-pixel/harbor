@@ -13,7 +13,9 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.annotation.OptIn
+import androidx.appcompat.app.AlertDialog
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Format
@@ -22,6 +24,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
@@ -38,11 +41,12 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Locale
 
 /**
  * ExoPlayer drawn over the WebView, driven by the web app through [MainActivity]'s
  * `window.JLNativePlayer` bridge. Every method runs on the main thread.
- *  - FULL: fills the screen; the remote controls playback.
+ *  - FULL: fills the screen; the remote controls playback, and Down opens the "Audio & options" menu.
  *  - HERO: placed in the page's sticky hero area (a rect the page sends); the WebView keeps the remote.
  *  - HIDDEN: not drawn; playback carries on until the page pauses or stops it.
  * Video is picked up to the TV's largest display mode (4K on a 4K set) and drawn on the default
@@ -86,7 +90,7 @@ class NativePlayer(
 
     var options = Options()
 
-    /** The audio language the page asked for (`setPreferredAudioLanguage`); kept until [stop]. */
+    /** The audio language the page asked for (`setPreferredAudioLanguage`) or last picked in the menu; kept until [stop]. */
     private var preferredAudioLanguage: String? = null
 
     /** The playing stream's audio tracks as JSON for `audioTracks()`, which the WebView reads off the main thread. */
@@ -116,6 +120,10 @@ class NativePlayer(
     private var readySent = false
     /** The window's preferredDisplayModeId before playback changed it; null while unchanged. */
     private var savedDisplayModeId: Int? = null
+
+    /** The full-screen "Audio & options" menu while it is open; see [openMenu]. */
+    private var menu: AlertDialog? = null
+    private var toast: Toast? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private val positionTick = object : Runnable {
@@ -288,6 +296,7 @@ class NativePlayer(
 
     /** Releases the decoder without telling the page (the activity is going away). */
     fun release() {
+        closeMenu()
         handler.removeCallbacks(positionTick)
         view.player = null
         player?.removeListener(listener)
@@ -304,7 +313,8 @@ class NativePlayer(
 
     /** Remote keys while full screen. Returns true when the key was used here. */
     fun handleFullKey(event: KeyEvent): Boolean {
-        if (mode != Mode.FULL || player == null) return false
+        // The menu is a dialog with its own window and takes the remote while it is open.
+        if (mode != Mode.FULL || player == null || menu != null) return false
         val down = event.action == KeyEvent.ACTION_DOWN
         when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER,
@@ -313,12 +323,122 @@ class NativePlayer(
             KeyEvent.KEYCODE_MEDIA_PAUSE -> if (down) pause()
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> if (down) seekBy(-SEEK_STEP_MS)
             KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> if (down) seekBy(SEEK_STEP_MS)
-            // Up/Down only bring up the progress bar; focus never moves into the controller, so
+            // Up only brings up the progress bar; focus never moves into the controller, so
             // Center/Left/Right always mean play/pause and seek.
-            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> if (down) view.showController()
+            KeyEvent.KEYCODE_DPAD_UP -> if (down) view.showController()
+            KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MENU -> if (down && event.repeatCount == 0) openMenu()
             else -> return false
         }
         return true
+    }
+
+    /** A short message over the video; shown only in FULL, where the page's own notices are hidden. */
+    fun showMessage(text: String) {
+        if (mode != Mode.FULL || player == null || text.isBlank()) return
+        toast?.cancel()
+        toast = Toast.makeText(activity, text, Toast.LENGTH_LONG).also { it.show() }
+    }
+
+    /** One supported track of a group, as the menu lists it. */
+    private class TrackRow(val group: Tracks.Group, val index: Int) {
+        val format: Format get() = group.getTrackFormat(index)
+        val selected: Boolean get() = group.isTrackSelected(index)
+    }
+
+    private class MenuEntry(val label: String, val action: () -> Unit)
+
+    /**
+     * The full-screen "Audio & options" list: English dub, each audio track, the embedded subtitle
+     * tracks, and a way out to the page's own controls. Back closes it.
+     */
+    private fun openMenu() {
+        val p = player ?: return
+        if (menu != null) return
+        view.hideController()
+        val audio = trackRows(p.currentTracks, C.TRACK_TYPE_AUDIO)
+        val text = trackRows(p.currentTracks, C.TRACK_TYPE_TEXT)
+        val entries = ArrayList<MenuEntry>()
+        entries += MenuEntry(checked(audio.any { it.selected && isEnglish(it.format) }, "English dub")) { englishDub() }
+        audio.forEachIndexed { i, row ->
+            val name = listOfNotNull(trackName(row.format, "Track ${i + 1}"), channelsName(row.format.channelCount))
+                .joinToString(" · ")
+            entries += MenuEntry(checked(row.selected, "Audio: $name")) { selectTrack(row) }
+        }
+        if (text.isNotEmpty()) {
+            entries += MenuEntry(checked(text.none { it.selected }, "Subtitles: Off")) { subtitlesOff() }
+            text.forEachIndexed { i, row ->
+                val forced = (row.format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0
+                val name = trackName(row.format, "Track ${i + 1}") + if (forced) " (forced)" else ""
+                entries += MenuEntry(checked(row.selected, "Subtitles: $name")) { selectTrack(row) }
+            }
+        }
+        entries += MenuEntry(checked(false, "More player options")) { exitFull() }
+        val labels = Array<CharSequence>(entries.size) { entries[it].label }
+        val dialog = AlertDialog.Builder(activity)
+            .setTitle("Audio & options")
+            .setItems(labels) { _, which -> entries[which].action() }
+            .create()
+        dialog.setOnDismissListener {
+            if (menu === dialog) menu = null
+            if (mode == Mode.FULL && player != null) view.requestFocus()
+        }
+        menu = dialog
+        dialog.show()
+    }
+
+    private fun closeMenu() {
+        val open = menu ?: return
+        menu = null
+        open.dismiss()
+    }
+
+    /**
+     * Switches to the file's English track when it has one. Otherwise the page looks for an
+     * English dub source (`english-dub` event) and plays it in place, so FULL is kept.
+     */
+    private fun englishDub() {
+        val p = player ?: return
+        if (p.currentTracks.isEmpty) return
+        val audio = trackRows(p.currentTracks, C.TRACK_TYPE_AUDIO)
+        if (audio.any { it.selected && isEnglish(it.format) }) return
+        val english = audio.filter { isEnglish(it.format) }.maxByOrNull { englishRank(it.format) }
+        if (english != null) {
+            selectTrack(english)
+            preferredAudioLanguage = "en"
+            return
+        }
+        showMessage("No English audio in this file. Finding an English dub…")
+        send("english-dub")
+    }
+
+    /** Plays exactly this track; an audio pick also becomes the language for the next [play]. */
+    private fun selectTrack(row: TrackRow) {
+        val p = player ?: return
+        val type = row.group.type
+        if (type == C.TRACK_TYPE_AUDIO) {
+            row.format.language?.takeIf { it.isNotBlank() && it != C.LANGUAGE_UNDETERMINED }?.let { preferredAudioLanguage = it }
+        }
+        p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(type, false)
+            .setOverrideForType(TrackSelectionOverride(row.group.mediaTrackGroup, row.index))
+            .build()
+    }
+
+    private fun subtitlesOff() {
+        val p = player ?: return
+        p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
+            .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            .build()
+    }
+
+    private fun trackRows(tracks: Tracks, type: Int): List<TrackRow> {
+        val rows = ArrayList<TrackRow>()
+        for (group in tracks.groups) {
+            if (group.type != type) continue
+            for (i in 0 until group.length) if (group.isTrackSupported(i)) rows += TrackRow(group, i)
+        }
+        return rows
     }
 
     private fun applyMode() {
@@ -328,6 +448,7 @@ class NativePlayer(
             Mode.HERO -> rect != null
             Mode.HIDDEN -> false
         }
+        if (mode != Mode.FULL || !visible) closeMenu()
         if (mode == Mode.FULL) matchDisplayMode() else restoreDisplayMode()
         if (!visible) {
             view.hideController()
@@ -447,6 +568,51 @@ class NativePlayer(
 
     companion object {
         private const val SEEK_STEP_MS = 10_000L
+
+        // As src/lib/player/english-dub.ts: commentary and audio description tracks are English
+        // too, but never the dub the viewer wants.
+        private val ENGLISH_CODES = setOf("en", "eng", "english")
+        private val ENGLISH_WORD = Regex("\\benglish\\b", RegexOption.IGNORE_CASE)
+        private val SECONDARY_AUDIO = Regex("comment|descri|narrat", RegexOption.IGNORE_CASE)
+        private val AUDIO_DESCRIPTION = Regex("\\bAD\\b")
+
+        fun isEnglish(format: Format): Boolean {
+            val base = format.language?.trim()?.lowercase(Locale.ROOT)?.split('-', '_')?.firstOrNull()
+            if (base != null && base in ENGLISH_CODES) return true
+            return ENGLISH_WORD.containsMatchIn(format.label.orEmpty())
+        }
+
+        /** The main mix before commentary, then the default track, then the most channels. */
+        private fun englishRank(format: Format): Int {
+            val label = format.label.orEmpty()
+            val secondary = SECONDARY_AUDIO.containsMatchIn(label) || AUDIO_DESCRIPTION.containsMatchIn(label)
+            return (if (secondary) 0 else 1000) +
+                (if ((format.selectionFlags and C.SELECTION_FLAG_DEFAULT) != 0) 100 else 0) +
+                format.channelCount.coerceAtLeast(0)
+        }
+
+        private fun checked(on: Boolean, label: String) = (if (on) "✓  " else "     ") + label
+
+        /** The track's label and language, e.g. "Director's commentary (English)". */
+        private fun trackName(format: Format, fallback: String): String {
+            val language = format.language?.takeIf { it.isNotBlank() && it != C.LANGUAGE_UNDETERMINED }
+                ?.let { tag -> Locale.forLanguageTag(tag).displayLanguage.ifBlank { tag } }
+            val label = format.label?.takeIf { it.isNotBlank() }
+            return when {
+                label == null -> language ?: fallback
+                language == null || label.contains(language, ignoreCase = true) -> label
+                else -> "$label ($language)"
+            }
+        }
+
+        private fun channelsName(count: Int): String? = when {
+            count <= 0 -> null
+            count == 1 -> "Mono"
+            count == 2 -> "Stereo"
+            count == 6 -> "5.1"
+            count == 8 -> "7.1"
+            else -> "$count ch"
+        }
 
         private val PASSTHROUGH_ENCODINGS = listOf(
             C.ENCODING_AC3 to "ac3",

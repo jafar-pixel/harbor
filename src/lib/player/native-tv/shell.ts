@@ -23,6 +23,8 @@ export type NativeTvPlayer = {
   audioTracks?(): string;
   /** Prefers audio in this language (ISO 639 code); absent from older app builds. */
   setPreferredAudioLanguage?(lang: string): void;
+  /** A short message over the full-screen video, ignored outside full screen; absent from older app builds. */
+  showMessage?(text: string): void;
 };
 
 /** One entry of `audioTracks()` and of the `tracks` event (android-tv/README.md). */
@@ -63,6 +65,29 @@ export function nativeTvPlayer(): NativeTvPlayer | null {
     return p && p.isAvailable() ? p : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * The `english-dub` event: the "English dub" item of the app's full-screen menu, sent when the
+ * file has no English track, asks the page to find an English dub source.
+ */
+export function isNativeEnglishDubRequest(detail: unknown): boolean {
+  return (
+    typeof detail === "object" &&
+    detail !== null &&
+    (detail as { type?: unknown }).type === "english-dub"
+  );
+}
+
+/** Shows a message over the app's full-screen video, where the page's own notices are hidden. */
+export function showNativeTvMessage(text: string): void {
+  const p = nativeTvPlayer();
+  if (!p || typeof p.showMessage !== "function") return;
+  try {
+    p.showMessage(text);
+  } catch {
+    /* An app build without the message overlay shows nothing. */
   }
 }
 
