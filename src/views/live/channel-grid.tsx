@@ -156,6 +156,13 @@ export function ErrorBlock({ message, onRetry }: { message: string; onRetry: () 
 
 function classifyError(raw: string): { title: string; hint: string; raw: string } {
   const lower = raw.toLowerCase();
+  if (lower.includes("blocked by the browser")) {
+    return {
+      title: "Your provider can't be reached from a web browser",
+      hint: "This provider only uses a plain http link, which browsers block on a secure site. Live TV from it works in the JL Media Vision app for Windows and the TV app. To watch it here, put your home relay online.",
+      raw,
+    };
+  }
   if (lower.includes("!doctype html") || lower.includes("<html")) {
     return {
       title: "Provider returned a webpage, not a playlist",

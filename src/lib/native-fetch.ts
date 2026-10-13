@@ -31,3 +31,7 @@ export function browserBlocksProviderUrl(url: string): boolean {
   if (nativeFetchUrl(url) !== null) return false;
   return window.location.protocol === "https:" && /^http:\/\//i.test(url.trim());
 }
+
+/** Thrown when the web app can't reach a plain-http provider and no home relay is set up. */
+export const BROWSER_BLOCKED_ERROR =
+  "Blocked by the browser: this provider only uses a plain http link, which a secure web page can't load.";

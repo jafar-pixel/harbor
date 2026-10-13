@@ -1,6 +1,6 @@
 import type { IptvChannel } from "./types";
 import { fetchBoundedText } from "./bounded-response";
-import { browserBlocksProviderUrl, nativeFetchUrl } from "../native-fetch";
+import { BROWSER_BLOCKED_ERROR, browserBlocksProviderUrl, nativeFetchUrl } from "../native-fetch";
 
 export type XtreamCreds = {
   base: string;
@@ -119,6 +119,7 @@ async function xtreamFetchText(url: string, parentSignal?: AbortSignal): Promise
       const relayed = browserBlocksProviderUrl(url)
         ? await import("./home-relay").then((m) => m.viaHomeRelay(url))
         : null;
+      if (!relayed && browserBlocksProviderUrl(url)) throw new Error(BROWSER_BLOCKED_ERROR);
       return fetch(relayed ?? nativeFetchUrl(url, XTREAM_UA) ?? url, { cache: "no-store", signal });
     },
     { signal: parentSignal },

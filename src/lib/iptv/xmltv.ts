@@ -1,5 +1,5 @@
 import type { EpgChannelMeta, EpgProgram, XmltvParseResult } from "./types";
-import { browserBlocksProviderUrl, nativeFetchUrl } from "../native-fetch";
+import { BROWSER_BLOCKED_ERROR, browserBlocksProviderUrl, nativeFetchUrl } from "../native-fetch";
 
 const MAX_BYTES = 200 * 1024 * 1024;
 const CONNECT_TIMEOUT_MS = 30_000;
@@ -34,6 +34,7 @@ async function iptvFetch(url: string, signal: AbortSignal): Promise<Response> {
   const relayed = browserBlocksProviderUrl(url)
     ? await import("./home-relay").then((m) => m.viaHomeRelay(url))
     : null;
+  if (!relayed && browserBlocksProviderUrl(url)) throw new Error(BROWSER_BLOCKED_ERROR);
   return fetch(relayed ?? nativeFetchUrl(url, "VLC/3.0.20 LibVLC/3.0.20") ?? url, {
     cache: "no-store",
     signal,
