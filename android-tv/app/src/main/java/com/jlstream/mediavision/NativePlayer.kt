@@ -16,11 +16,13 @@ import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
@@ -83,6 +85,13 @@ class NativePlayer(
     }
 
     var options = Options()
+
+    /** The audio language the page asked for (`setPreferredAudioLanguage`); kept until [stop]. */
+    private var preferredAudioLanguage: String? = null
+
+    /** The playing stream's audio tracks as JSON for `audioTracks()`, which the WebView reads off the main thread. */
+    @Volatile var audioTracksJson: String = "[]"
+        private set
 
     var mode = Mode.HIDDEN
         private set
@@ -180,6 +189,7 @@ class NativePlayer(
         val params = selector.buildUponParameters()
             .setViewportSize(viewport.x, viewport.y, true)
             .setTunnelingEnabled(options.tunneling)
+            .setPreferredAudioLanguage(preferredAudioLanguage)
         if (options.maxHeight > 0) params.setMaxVideoSize(options.maxHeight * 16 / 9, options.maxHeight)
         selector.setParameters(params.build())
         return selector
@@ -227,6 +237,19 @@ class NativePlayer(
         applyMode()
     }
 
+    /**
+     * Plays audio in [lang] (an ISO 639 code) when the stream has it, replacing any earlier choice;
+     * null or blank goes back to ExoPlayer's default pick. It also applies to the next [play].
+     */
+    fun setPreferredAudioLanguage(lang: String?) {
+        preferredAudioLanguage = lang?.trim()?.takeIf { it.isNotEmpty() }
+        val p = player ?: return
+        p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
+            .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+            .setPreferredAudioLanguage(preferredAudioLanguage)
+            .build()
+    }
+
     fun pause() { player?.playWhenReady = false }
 
     fun resume() {
@@ -257,6 +280,7 @@ class NativePlayer(
     fun stop(message: String? = null) {
         if (player != null) send("stopped", message)
         release()
+        preferredAudioLanguage = null
         restoreDisplayMode()
         mode = Mode.HIDDEN
         applyMode()
@@ -269,6 +293,7 @@ class NativePlayer(
         player?.removeListener(listener)
         player?.release()
         player = null
+        audioTracksJson = "[]"
     }
 
     /** Back in full screen: return to the hero area when the page has one, otherwise stop. */
@@ -354,6 +379,12 @@ class NativePlayer(
             else if (!p.playWhenReady && p.playbackState != Player.STATE_ENDED) send("paused")
         }
 
+        override fun onTracksChanged(tracks: Tracks) {
+            val audio = audioTracks(tracks)
+            audioTracksJson = audio.toString()
+            send("tracks", audioTracks = audio)
+        }
+
         override fun onPlayerError(error: PlaybackException) {
             val p = player ?: return
             // A live stream that fell out of the playlist window: rejoin at the live edge.
@@ -366,7 +397,28 @@ class NativePlayer(
         }
     }
 
-    private fun send(type: String, message: String? = null) {
+    /** The playable audio tracks; `id` is "<group>:<track>" and stays put for this stream. */
+    private fun audioTracks(tracks: Tracks): JSONArray {
+        val out = JSONArray()
+        tracks.groups.forEachIndexed { groupIndex, group ->
+            if (group.type != C.TRACK_TYPE_AUDIO) return@forEachIndexed
+            for (i in 0 until group.length) {
+                if (!group.isTrackSupported(i)) continue
+                val format = group.getTrackFormat(i)
+                val track = JSONObject()
+                    .put("id", "$groupIndex:$i")
+                    .put("selected", group.isTrackSelected(i))
+                format.language?.let { track.put("language", it) }
+                format.label?.let { track.put("label", it) }
+                if (format.channelCount != Format.NO_VALUE) track.put("channels", format.channelCount)
+                (format.sampleMimeType ?: format.codecs)?.let { track.put("codec", it) }
+                out.put(track)
+            }
+        }
+        return out
+    }
+
+    private fun send(type: String, message: String? = null, audioTracks: JSONArray? = null) {
         val p = player
         val duration = p?.duration?.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0L
         val detail = JSONObject()
@@ -375,6 +427,7 @@ class NativePlayer(
             .put("positionMs", p?.currentPosition ?: 0L)
             .put("durationMs", duration)
         if (message != null) detail.put("message", message)
+        if (audioTracks != null) detail.put("audioTracks", audioTracks)
         emit(detail)
     }
 

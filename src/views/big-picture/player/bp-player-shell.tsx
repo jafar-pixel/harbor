@@ -106,6 +106,7 @@ export function BpPlayerShell({
   const top = useMemo(() => bpSlotsIn(slots, "top"), [slots]);
   const transport = useMemo(() => bpSlotsIn(slots, "transport"), [slots]);
   const rail = useMemo(() => bpSlotsIn(slots, "rail"), [slots]);
+  const actions = useMemo(() => bpSlotsIn(slots, "action"), [slots]);
   const activePanel = useMemo(() => bpPanelSlot(slots, panel), [slots, panel]);
 
   const playback = useBpPlayback(src, tick);
@@ -360,6 +361,7 @@ export function BpPlayerShell({
                     ) : (
                       <BpPlayerRail
                         panels={panels}
+                        actions={actions}
                         panel={panel}
                         playback={playback}
                         onOpenPanel={openPanel}

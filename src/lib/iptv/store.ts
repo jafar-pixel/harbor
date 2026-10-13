@@ -11,7 +11,7 @@ import {
 import type { IptvChannel, IptvPlaylist, IptvPlaylistSource } from "./types";
 import { clearSeriesInfoCache } from "./xtream-vod";
 import { fetchBoundedText } from "./bounded-response";
-import { nativeFetchUrl } from "../native-fetch";
+import { browserBlocksProviderUrl, nativeFetchUrl } from "../native-fetch";
 
 const cache = new Map<string, IptvPlaylist>();
 const inflight = new Map<string, Promise<IptvPlaylist>>();
@@ -245,7 +245,10 @@ async function iptvFetch(url: string, signal?: AbortSignal): Promise<Response> {
       });
     }
   }
-  return fetch(nativeFetchUrl(url, "VLC/3.0.20 LibVLC/3.0.20") ?? url, {
+  const relayed = browserBlocksProviderUrl(url)
+    ? await import("./home-relay").then((m) => m.viaHomeRelay(url))
+    : null;
+  return fetch(relayed ?? nativeFetchUrl(url, "VLC/3.0.20 LibVLC/3.0.20") ?? url, {
     cache: "no-store",
     signal,
   });

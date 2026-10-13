@@ -2,6 +2,7 @@ import { memo, type ComponentProps, type RefObject } from "react";
 import { DrawCanvas, StrokesLayer, type Stroke } from "@/components/player/draw-canvas";
 import { cropTransform } from "./hooks/use-video-fill";
 import { StreamSwitcher } from "@/components/player/stream-switcher";
+import { EnglishDubProvider } from "@/components/player/english-dub-button";
 import { StreamCheckPill } from "@/components/player/stream-check-pill";
 import { AdReportButton } from "@/components/player/ad-report-button";
 import { XrayOverlay } from "@/components/player/xray/xray-overlay";
@@ -29,6 +30,7 @@ import { Toaster } from "@/views/addons/toaster";
 import type { ToastInfo } from "@/views/addons/addons-types";
 import type { usePlayerCast } from "./hooks/use-player-cast";
 import type { useTextSync } from "./hooks/use-text-sync";
+import type { EnglishDubControl } from "./hooks/use-english-dub";
 
 type Room = ComponentProps<typeof RoomLayer>;
 type Shell = ComponentProps<typeof ShellLayer>;
@@ -176,6 +178,7 @@ export type PlayerOverlayLayersProps = {
   dvrOpen: boolean;
   setSwitcherOpen: (fn: (v: boolean) => boolean) => void;
   onSwitchStream: Switcher["onPick"];
+  englishDub: EnglishDubControl;
   debridSlugs: string[];
   isSeriesPlayback: boolean;
   episodePanelOpen: boolean;
@@ -216,7 +219,7 @@ export const PlayerOverlayLayers = memo(function PlayerOverlayLayers(p: PlayerOv
     : "top-start";
 
   return (
-    <>
+    <EnglishDubProvider value={p.englishDub}>
       <StageOverlays
         snap={p.snap}
         engine={p.engine}
@@ -429,6 +432,7 @@ export const PlayerOverlayLayers = memo(function PlayerOverlayLayers(p: PlayerOv
       )}
 
       <Toaster toast={p.syncToast} />
+      {!p.tenFoot && <Toaster toast={p.englishDub.notice} />}
 
       <RoomLayer
         inRoom={p.inRoom}
@@ -538,6 +542,6 @@ export const PlayerOverlayLayers = memo(function PlayerOverlayLayers(p: PlayerOv
         onDismissNoAudio={p.onDismissNoAudio}
         onPickAnother={p.pickAnotherOrGuide}
       />
-    </>
+    </EnglishDubProvider>
   );
 });

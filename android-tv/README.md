@@ -33,10 +33,12 @@ if (player?.isAvailable()) {
 | `stop()` | Stops, releases the player and returns to `hidden`. |
 | `setOptions(json)` | Playback options, applied from the next `play` (see below). Unknown or missing keys keep their defaults; invalid JSON is ignored. |
 | `capabilities(): string` | What the TV supports, as JSON (see below). `"{}"` off an app page. |
+| `audioTracks(): string` | The playing stream's audio tracks, as a JSON array (see [Audio tracks](#audio-tracks)). `"[]"` before the tracks are known, after `stop()`, or off an app page. |
+| `setPreferredAudioLanguage(lang)` | Plays audio in `lang` (an ISO 639 code such as `"en"` or `"eng"`) when the stream has it, replacing any earlier audio choice; `""` goes back to the default pick. It stays in force for later `play` calls until `stop()`. |
 
-`setOptions` and `capabilities` are newer than the first app builds, so the page checks
-`typeof player.setOptions === "function"` before calling them; an older app plays with the
-defaults below.
+`setOptions`, `capabilities`, `audioTracks` and `setPreferredAudioLanguage` are newer than the
+first app builds, so the page checks `typeof player.setOptions === "function"` (and so on) before
+calling them; an older app plays with the defaults below and reports no audio tracks.
 
 ### Playback options
 
@@ -80,6 +82,23 @@ player.setOptions(JSON.stringify({
 says the app hands Back to Big Picture (below); the page only opens in Big Picture by default
 when it is true.
 
+### Audio tracks
+
+`audioTracks()` and the `tracks` event list the audio tracks the TV can play:
+
+```json
+[
+  { "id": "1:0", "language": "ja", "label": "Japanese", "selected": true, "channels": 6, "codec": "audio/eac3" },
+  { "id": "2:0", "language": "en", "label": "English", "selected": false, "channels": 2, "codec": "audio/mp4a-latm" }
+]
+```
+
+`id` is `"<group>:<track>"` and stays the same for the stream. `language` (as the stream tags it,
+often `"und"` when untagged), `label`, `channels` and `codec` are left out when the stream doesn't
+say. Tracks the TV can't decode or pass through are not listed. The page switches audio with
+`setPreferredAudioLanguage(track.language)`; Media3 picks among tracks that share a language, so
+two English tracks can't be told apart this way.
+
 ### Modes
 
 - `full`: fills the screen. The remote controls the player: Center/Enter and Play/Pause toggle
@@ -117,6 +136,7 @@ window.addEventListener("jl-native-player", (event) => {
 | `stopped` | The player was released. `message` is `"navigation"` when the WebView loaded a new document, `"background"` when the app left the screen, and absent for `stop()` or Back. |
 | `position` | About once a second while playing. |
 | `exit-full` | Back left full screen. |
+| `tracks` | The stream's tracks are known or the selection changed; `audioTracks` holds the same array `audioTracks()` returns. |
 
 `mode` is `"full"`, `"hero"` or `"hidden"` at the time of the event. `positionMs` and
 `durationMs` are milliseconds; `durationMs` is `0` when unknown, and for a live stream it is the

@@ -62,6 +62,7 @@ import { useLobbyGate } from "./player/hooks/use-lobby-gate";
 import { hostSourceMatchesMedia } from "@/lib/together/room-derive";
 import { useLiveChannelOverlay } from "./player/hooks/use-live-channel-overlay";
 import { useStreamSwitcher } from "./player/hooks/use-stream-switcher";
+import { useEnglishDub } from "./player/hooks/use-english-dub";
 import { useMpvEmbed } from "./player/hooks/use-mpv-embed";
 import { usePlayerBridge } from "./player/hooks/use-player-bridge";
 import { useTextSync } from "./player/hooks/use-text-sync";
@@ -1229,6 +1230,23 @@ function NativePlayerView({
 
   const playStreamRef = liveStreamRef ?? src.streamRef;
   const playUrl = liveUrl ?? src.url;
+  const englishDub = useEnglishDub({
+    bridgeRef,
+    src,
+    snap,
+    liveUrl,
+    streamRef: playStreamRef,
+    imdbId: resolvedImdbId,
+    debridSlugs: debrids.map((d) => d.slug),
+    onSwitchStream,
+    hidden:
+      isLiveLike ||
+      isLocalSrc ||
+      src.meta.id?.startsWith("local:") === true ||
+      src.sportsDocked != null ||
+      cast.castDevice != null,
+    canSearch: !roomGuest,
+  });
   useTrickplay({
     url: playUrl,
     enabled: settings.seekPreviewEnabled,
@@ -1505,6 +1523,7 @@ function NativePlayerView({
     dvrOpen,
     setSwitcherOpen,
     onSwitchStream,
+    englishDub,
     debridSlugs: debrids.map((d) => d.slug),
     isSeriesPlayback: showEpisodePanel,
     episodePanelOpen,
@@ -1678,6 +1697,7 @@ function NativePlayerView({
           onPlayPause={playPauseToggle}
           onExpand={expandDock}
           onStop={() => void closePlayer()}
+          englishDub={englishDub}
         />
       )}
       {!docked && !hdrStageActive && !wallpaper && !(heroDocked && nativeTv) && (

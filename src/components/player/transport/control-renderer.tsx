@@ -77,6 +77,7 @@ import { TimeStart, TimeEnd } from "./time-display";
 import { WindowControlButtons } from "./window-control-buttons";
 import { HeroDockButton } from "./hero-dock-button";
 import { IdentifySongButton } from "@/components/identify-song-button";
+import { EnglishDubButton } from "../english-dub-button";
 
 export type ControlContext = {
   t?: (key: string, vars?: Record<string, string | number>) => string;
@@ -480,6 +481,10 @@ export function renderControl(id: PlayerControlId, ctx: ControlContext): ReactNo
           iconUrl={iconUrl}
         />
       );
+    }
+    case "english-dub": {
+      if (ctx.tight || ctx.isLiveChannel) return null;
+      return <EnglishDubButton variant="big" editing={ctx.editing} />;
     }
     case "subtitle-menu": {
       if (ctx.isLiveChannel && ctx.snap.subtitleTracks.length === 0) return null;

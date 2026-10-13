@@ -25,6 +25,7 @@ import { isPlayerInteractionLocked } from "@/lib/player/interaction-lock";
 import { SubtitleSelectionCoordinator } from "@/lib/player/subtitle-selection";
 import { PreparedSubtitleSeedBatch } from "@/lib/subtitles/seed-batch";
 import { isSafeProviderSubtitleUrl } from "@/lib/subtitles/provider-url";
+import { browserBlocksProviderUrl } from "@/lib/native-fetch";
 import { html5Transport } from "./transport";
 
 let DOCUMENT_PIP_KNOWN_BROKEN = false;
@@ -541,7 +542,15 @@ export function createHtml5Bridge(): PlayerBridge {
       video.muted = false;
       if (video.volume === 0) video.volume = 1;
 
-      const transport = html5Transport(src.url, src.isLive === true && src.notWebReady === true);
+      // A plain-http provider stream can't load on the secure web page; the home relay can.
+      let url = src.url;
+      if (browserBlocksProviderUrl(url)) {
+        const revision = mediaRevision;
+        const { viaHomeRelay } = await import("@/lib/iptv/home-relay");
+        url = (await viaHomeRelay(url).catch(() => null)) ?? url;
+        if (revision !== mediaRevision || !video) return;
+      }
+      const transport = html5Transport(url, src.isLive === true && src.notWebReady === true);
       const isHls = transport === "hls";
       const isTs = transport === "mpegts";
       if (isHls && Hls.isSupported()) {
@@ -555,13 +564,13 @@ export function createHtml5Bridge(): PlayerBridge {
               }
             : { enableWorker: true },
         );
-        hls.loadSource(src.url);
+        hls.loadSource(url);
         hls.attachMedia(video);
         hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, refreshSnapshot);
         hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, refreshSnapshot);
       } else if (isTs && mpegts.isSupported()) {
         tsPlayer = mpegts.createPlayer(
-          { type: "mpegts", url: src.url, isLive: src.isLive === true, cors: true },
+          { type: "mpegts", url, isLive: src.isLive === true, cors: true },
           {
             enableWorker: true,
             liveBufferLatencyChasing: src.isLive === true,
@@ -572,7 +581,7 @@ export function createHtml5Bridge(): PlayerBridge {
         tsPlayer.on(mpegts.Events.ERROR, refreshSnapshot);
         tsPlayer.load();
       } else {
-        video.src = src.url;
+        video.src = url;
       }
       markPlaybackTrace(activeTraceId, "loadfile-accepted");
       disposeSubtitleTracks();

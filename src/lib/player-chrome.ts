@@ -32,6 +32,7 @@ export type PlayerControlId =
   | "pick-another"
   | "home-server-quality"
   | "audio-menu"
+  | "english-dub"
   | "subtitle-menu"
   | "speed-menu"
   | "aspect-menu"
@@ -196,6 +197,7 @@ export const DEFAULT_DEFAULT_CONFIG: PlayerChromeConfig = {
     { id: "pick-another", slot: "bottom-right", order: 0 },
     { id: "home-server-quality", slot: "bottom-right", order: 5 },
     { id: "audio-menu", slot: "bottom-right", order: 10 },
+    { id: "english-dub", slot: "bottom-right", order: 15 },
     { id: "subtitle-menu", slot: "bottom-right", order: 20 },
     { id: "aspect-menu", slot: "bottom-right", order: 25, hidden: true },
     { id: "anime4k-menu", slot: "bottom-right", order: 27 },
@@ -238,6 +240,7 @@ export const DEFAULT_STREMIO_CONFIG: PlayerChromeConfig = {
     { id: "speed-menu", slot: "bottom-right", order: 0 },
     { id: "home-server-quality", slot: "bottom-right", order: 5 },
     { id: "audio-menu", slot: "bottom-right", order: 10 },
+    { id: "english-dub", slot: "bottom-right", order: 15 },
     { id: "subtitle-menu", slot: "bottom-right", order: 20 },
     { id: "aspect-menu", slot: "bottom-right", order: 25, hidden: true },
     { id: "anime4k-menu", slot: "bottom-right", order: 27 },
@@ -288,6 +291,7 @@ export const CONTROL_META: Record<
     defaultSlot: "bottom-right",
   },
   "audio-menu": { label: "Audio tracks", group: "menus", defaultSlot: "bottom-right" },
+  "english-dub": { label: "English dub", group: "actions", defaultSlot: "bottom-right" },
   "subtitle-menu": { label: "Subtitles", group: "menus", defaultSlot: "bottom-right" },
   "speed-menu": { label: "Playback speed", group: "menus", defaultSlot: "bottom-right" },
   "aspect-menu": {

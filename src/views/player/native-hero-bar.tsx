@@ -1,6 +1,8 @@
 import { Maximize, Pause, Play, Square } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { NATIVE_HERO_BAR_PX } from "@/lib/player/native-tv/bridge";
+import { EnglishDubGlyph } from "@/components/player/english-dub-button";
+import type { EnglishDubControl } from "./hooks/use-english-dub";
 
 /**
  * The TV app draws its native video over the page, so in the hero the web controls can't sit on
@@ -13,6 +15,7 @@ export function NativeHeroBar({
   onPlayPause,
   onExpand,
   onStop,
+  englishDub,
 }: {
   title: string;
   playing: boolean;
@@ -20,6 +23,7 @@ export function NativeHeroBar({
   onPlayPause: () => void;
   onExpand: () => void;
   onStop: () => void;
+  englishDub?: EnglishDubControl;
 }) {
   const t = useT();
   const button =
@@ -34,7 +38,22 @@ export function NativeHeroBar({
           {t("LIVE")}
         </span>
       )}
-      <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">{title}</span>
+      <span
+        role={englishDub?.notice ? "status" : undefined}
+        className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink"
+      >
+        {englishDub?.notice?.text ?? title}
+      </span>
+      {englishDub?.visible && (
+        <button
+          onClick={englishDub.press}
+          aria-pressed={englishDub.active}
+          className={`${button} ${englishDub.active ? "bg-raised" : ""}`}
+        >
+          <EnglishDubGlyph size={16} busy={englishDub.busy} />
+          {t("English dub")}
+        </button>
+      )}
       <button onClick={onPlayPause} className={button} aria-label={playing ? t("Pause") : t("Play")}>
         {playing ? <Pause size={16} /> : <Play size={16} />}
       </button>

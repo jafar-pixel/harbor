@@ -1,5 +1,11 @@
-import { emptySnapshot, type PlayerBridge, type PlayerSnapshot, type PlayerSource } from "../bridge";
-import { nativeTvPlayer as native, type NativeTvOptions } from "./shell";
+import {
+  emptySnapshot,
+  type PlayerBridge,
+  type PlayerSnapshot,
+  type PlayerSource,
+  type TrackInfo,
+} from "../bridge";
+import { nativeTvPlayer as native, type NativeAudioTrack, type NativeTvOptions } from "./shell";
 
 export { nativeTvAvailable } from "./shell";
 
@@ -10,12 +16,43 @@ export { nativeTvAvailable } from "./shell";
  */
 
 type NativeEvent = {
-  type: "ready" | "playing" | "paused" | "buffering" | "ended" | "error" | "stopped" | "position" | "exit-full";
+  type:
+    | "ready"
+    | "playing"
+    | "paused"
+    | "buffering"
+    | "ended"
+    | "error"
+    | "stopped"
+    | "position"
+    | "exit-full"
+    | "tracks";
   mode?: string;
   positionMs?: number;
   durationMs?: number;
   message?: string;
+  audioTracks?: NativeAudioTrack[];
 };
+
+export function nativeAudioTrackInfo(tracks: unknown): TrackInfo[] {
+  if (!Array.isArray(tracks)) return [];
+  const out: TrackInfo[] = [];
+  for (const raw of tracks as NativeAudioTrack[]) {
+    if (!raw || typeof raw.id !== "string") continue;
+    const lang = raw.language && raw.language !== "und" ? raw.language : undefined;
+    out.push({
+      id: raw.id,
+      label: raw.label || (lang ? lang.toUpperCase() : `Audio ${out.length + 1}`),
+      lang,
+      title: raw.label || undefined,
+      kind: "audio",
+      selected: raw.selected === true,
+      codec: raw.codec || undefined,
+      channelCount: typeof raw.channels === "number" && raw.channels > 0 ? raw.channels : undefined,
+    });
+  }
+  return out;
+}
 
 /** Height of the web control bar kept under the native video in the hero. */
 export const NATIVE_HERO_BAR_PX = 56;
@@ -94,6 +131,9 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       case "stopped":
         if (d.message === "background") set({ status: "paused" });
         break;
+      case "tracks":
+        set({ audioTracks: nativeAudioTrackInfo(d.audioTracks) });
+        break;
     }
   };
 
@@ -161,7 +201,20 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       set({ muted: m });
     },
     setRate() {},
-    setAudioTrack() {},
+    // The app chooses audio by language, so of two tracks in one language it plays its own pick.
+    setAudioTrack(id) {
+      const p = native();
+      const track = snap.audioTracks.find((t) => t.id === id);
+      if (
+        !p ||
+        !track?.lang ||
+        track.selected ||
+        typeof p.setPreferredAudioLanguage !== "function"
+      ) {
+        return;
+      }
+      p.setPreferredAudioLanguage(track.lang);
+    },
     setSubtitleTrack() {},
     setSecondarySubtitleTrack() {},
     setSubVisible() {},

@@ -81,7 +81,7 @@ export function useStreamSwitcher(params: {
   }, []);
 
   const onSwitchStream = useCallback(
-    async (stream: ScoredStream) => {
+    async (stream: ScoredStream): Promise<boolean> => {
       const key = stream.infoHash ?? stream.url ?? `${stream.addonId}:${stream.title ?? ""}`;
       setSwapResolvingKey(key);
       swapAcRef.current?.abort();
@@ -93,12 +93,12 @@ export function useStreamSwitcher(params: {
       const r = await resolveStream(stream, debrids, ac.signal, true, false, hint);
       if (ac.signal.aborted) {
         if (swapAcRef.current === ac) setSwapResolvingKey(null);
-        return;
+        return false;
       }
       if (!r.ok) {
         console.warn(`[player] stream swap failed: ${r.code}`);
         setSwapResolvingKey(null);
-        return;
+        return false;
       }
       let playUrl = r.data.url;
       if (r.via === "direct") {
@@ -109,7 +109,7 @@ export function useStreamSwitcher(params: {
         });
         if (ac.signal.aborted) {
           if (swapAcRef.current === ac) setSwapResolvingKey(null);
-          return;
+          return false;
         }
       }
       let nextProxySessionId: string | null = null;
@@ -121,14 +121,14 @@ export function useStreamSwitcher(params: {
           nextProxySessionId = proxied.sessionId;
         } catch {
           setSwapResolvingKey(null);
-          return;
+          return false;
         }
       }
       const b = bridgeRef.current;
       if (!b) {
         if (nextProxySessionId) void unregisterStreamProxy(nextProxySessionId).catch(() => {});
         setSwapResolvingKey(null);
-        return;
+        return false;
       }
       try {
         const current = getPlaybackPosition();
@@ -149,7 +149,7 @@ export function useStreamSwitcher(params: {
         if (nextProxySessionId) void unregisterStreamProxy(nextProxySessionId).catch(() => {});
         console.warn("[player] stream swap failed", e);
         setSwapResolvingKey(null);
-        return;
+        return false;
       }
       const previousProxySessionId = switchProxySessionRef.current;
       switchProxySessionRef.current = nextProxySessionId;
@@ -205,6 +205,7 @@ export function useStreamSwitcher(params: {
       setSwitcherOpen(false);
       checkShownRef.current = false;
       setStreamCheckOpen(false);
+      return true;
     },
     [debrids],
   );

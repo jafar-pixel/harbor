@@ -9,9 +9,12 @@ import { Children, Fragment, isValidElement, type ReactNode } from "react";
  * top        identity zone, top of the chrome. Replaces the built-in title block.
  * transport  the bottom control bar. Replaces the built-in controls.
  * rail       the action strip above the transport. Chips that open panels.
+ *            Replaces the built-in strip.
+ * action     one chip added to the built-in strip, after the panel chips. The
+ *            children are the chip itself (BpRailChip), placed with no wrapper.
  * panel      a full surface, one at a time, shown while panel === id.
  */
-export type BpPlayerArea = "stage" | "top" | "transport" | "rail" | "panel";
+export type BpPlayerArea = "stage" | "top" | "transport" | "rail" | "action" | "panel";
 
 export type BpPlayerSlotProps = {
   area: BpPlayerArea;

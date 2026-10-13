@@ -19,6 +19,20 @@ export type NativeTvPlayer = {
   setOptions?(json: string): void;
   /** Absent from app builds before the TV playback options. */
   capabilities?(): string;
+  /** The audio tracks of the playing stream as JSON ([NativeAudioTrack]); absent from older app builds. */
+  audioTracks?(): string;
+  /** Prefers audio in this language (ISO 639 code); absent from older app builds. */
+  setPreferredAudioLanguage?(lang: string): void;
+};
+
+/** One entry of `audioTracks()` and of the `tracks` event (android-tv/README.md). */
+export type NativeAudioTrack = {
+  id: string;
+  language?: string;
+  label?: string;
+  selected?: boolean;
+  channels?: number;
+  codec?: string;
 };
 
 export type NativeTvMaxResolution = "auto" | "1080p" | "720p";

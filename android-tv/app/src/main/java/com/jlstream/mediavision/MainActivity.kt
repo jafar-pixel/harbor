@@ -251,6 +251,14 @@ class MainActivity : AppCompatActivity() {
         fun capabilities(): String =
             if (onAppPage) NativePlayer.capabilities(this@MainActivity).toString() else "{}"
 
+        /** The playing stream's audio tracks, as JSON (README: `audioTracks`). `"[]"` off an app page. */
+        @JavascriptInterface
+        fun audioTracks(): String = if (onAppPage) nativePlayer.audioTracksJson else "[]"
+
+        /** Prefers audio in this language, now and for the next `play` (README: `setPreferredAudioLanguage`). */
+        @JavascriptInterface
+        fun setPreferredAudioLanguage(lang: String?) = onMain { nativePlayer.setPreferredAudioLanguage(lang) }
+
         @JavascriptInterface
         fun pause() = onMain { nativePlayer.pause() }
 

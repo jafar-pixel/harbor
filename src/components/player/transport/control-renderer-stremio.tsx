@@ -51,6 +51,7 @@ import { renderCustomIconControlStremio } from "./custom-icon-renderer";
 import { WindowControlButtons } from "./window-control-buttons";
 import { HeroDockButton } from "./hero-dock-button";
 import { IdentifySongButton } from "@/components/identify-song-button";
+import { EnglishDubButton } from "../english-dub-button";
 import { FullscreenClock } from "@/components/player/fullscreen-clock";
 
 function qualityInfoOn(): boolean {
@@ -479,6 +480,9 @@ export function RenderedStremioControl({
       );
     case "song-id":
       return <IdentifySongButton editing={ctx.editing} />;
+    case "english-dub":
+      if (ctx.isLiveChannel) return null;
+      return <EnglishDubButton variant="stremio" editing={ctx.editing} />;
     case "hero":
       return <HeroDockButton variant="stremio" editing={ctx.editing} />;
     case "pip":

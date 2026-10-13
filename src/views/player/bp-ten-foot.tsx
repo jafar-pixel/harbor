@@ -24,6 +24,8 @@ import { BpPlayerShell } from "@/views/big-picture/player/bp-player-shell";
 import { BpPlayerSlot } from "@/views/big-picture/player/bp-player-slots";
 import { BpPlayerSubtitles } from "@/views/big-picture/player/bp-player-subtitles";
 import { BpResumePrompt } from "@/views/big-picture/player/bp-resume-prompt";
+import { BpEnglishDubChip, BpEnglishDubNotice } from "@/views/big-picture/player/bp-english-dub";
+import type { EnglishDubControl } from "./hooks/use-english-dub";
 import type { PlayerOverlayLayersProps } from "./player-overlay-layers";
 import { requestPlayerClose } from "./request-player-close";
 import { SkipPillContainer } from "./skip-pill-container";
@@ -50,6 +52,7 @@ export type BpTenFootProps = {
   currentInfoHash: string | null;
   currentFileIdx: number | null;
   onSwitchStream: (stream: ScoredStream) => void | Promise<void>;
+  englishDub: EnglishDubControl;
   skipSegments: SkipSegment[];
   hasNextEpisode: boolean;
   hasNextEpDisplay: boolean;
@@ -179,6 +182,10 @@ function BpTenFoot(props: BpTenFootProps) {
           />
         </BpPlayerSlot>
 
+        <BpPlayerSlot area="stage" order={1}>
+          <BpEnglishDubNotice dub={props.englishDub} />
+        </BpPlayerSlot>
+
         {resuming && (
           <BpPlayerSlot area="panel" id={RESUME_PANEL} shellNav>
             <BpResumePrompt
@@ -221,6 +228,12 @@ function BpTenFoot(props: BpTenFootProps) {
               onSelect={onAudio}
               onDelay={onAudioDelay}
             />
+          </BpPlayerSlot>
+        )}
+
+        {!resuming && props.englishDub.visible && (
+          <BpPlayerSlot area="action" id="english-dub">
+            <BpEnglishDubChip dub={props.englishDub} />
           </BpPlayerSlot>
         )}
 
@@ -328,6 +341,7 @@ export function BpTenFootLayer({ p }: { p: PlayerOverlayLayersProps }) {
       currentInfoHash={p.currentInfoHash ?? null}
       currentFileIdx={p.currentFileIdx ?? null}
       onSwitchStream={p.onSwitchStream}
+      englishDub={p.englishDub}
       skipSegments={p.skipSegments}
       hasNextEpisode={p.hasNextEpisode}
       hasNextEpDisplay={p.hasNextEpDisplay}

@@ -1,6 +1,6 @@
 import type { IptvChannel } from "./types";
 import { fetchBoundedText } from "./bounded-response";
-import { nativeFetchUrl } from "../native-fetch";
+import { browserBlocksProviderUrl, nativeFetchUrl } from "../native-fetch";
 
 export type XtreamCreds = {
   base: string;
@@ -116,7 +116,10 @@ async function xtreamFetchText(url: string, parentSignal?: AbortSignal): Promise
         }
         return res;
       }
-      return fetch(nativeFetchUrl(url, XTREAM_UA) ?? url, { cache: "no-store", signal });
+      const relayed = browserBlocksProviderUrl(url)
+        ? await import("./home-relay").then((m) => m.viaHomeRelay(url))
+        : null;
+      return fetch(relayed ?? nativeFetchUrl(url, XTREAM_UA) ?? url, { cache: "no-store", signal });
     },
     { signal: parentSignal },
   );

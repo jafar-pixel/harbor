@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { ArrowLeft, Captions, CaptionsOff, Volume2, VolumeX } from "lucide-react";
 import { SFX } from "@/lib/sfx";
 import { runBpBack } from "../bp-back";
@@ -11,7 +12,7 @@ import type { BpPlayback } from "./use-bp-playback";
 const CHIP =
   "flex h-[clamp(48px,5.6vh,68px)] shrink-0 items-center gap-[clamp(7px,0.7vw,13px)] rounded-full border border-[var(--bp-edge-2)] bg-[var(--bp-void)]/70 px-[clamp(16px,1.4vw,28px)] text-[clamp(14px,1.95vh,23px)] font-bold text-ink outline-none transition-colors duration-[var(--bp-dur-fast)]";
 
-function BpRailChip({
+export function BpRailChip({
   label,
   restoreKey,
   icon,
@@ -50,11 +51,14 @@ function BpRailChip({
  */
 export function BpPlayerRail({
   panels,
+  actions = [],
   panel,
   playback,
   onOpenPanel,
 }: {
   panels: BpPlayerSlotEntry[];
+  /** area="action" slots; each node is its own chip. */
+  actions?: BpPlayerSlotEntry[];
   panel: string | null;
   playback: BpPlayback;
   onOpenPanel: (id: string) => void;
@@ -83,6 +87,9 @@ export function BpPlayerRail({
           active={panel !== null && panel === p.id}
           onPress={() => onOpenPanel(p.id ?? "")}
         />
+      ))}
+      {actions.map((a) => (
+        <Fragment key={a.key}>{a.node}</Fragment>
       ))}
       {quickSubtitles && (
         <BpRailChip

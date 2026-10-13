@@ -1138,6 +1138,19 @@ const uiFallback: Record<string, string> = {
     "Ten-foot uses large controls built for a remote across the room. Desktop keeps the same player you use in the normal window, which is quicker with a mouse and keyboard.",
   "Ten-foot": "Ten-foot",
   Desktop: "Desktop",
+  "English dub": "English dub",
+  "English audio": "English audio",
+  "Switch to English audio": "Switch to English audio",
+  "Already playing English audio": "Already playing English audio",
+  "Switched to English audio": "Switched to English audio",
+  "No English audio in this file": "No English audio in this file",
+  "No English audio in this file. Finding an English dub…":
+    "No English audio in this file. Finding an English dub…",
+  "Switched to an English dub source": "Switched to an English dub source",
+  "No English dub found for this title": "No English dub found for this title",
+  "Finding an English dub…": "Finding an English dub…",
+  "This source has no English audio either. Press again to try another":
+    "This source has no English audio either. Press again to try another",
 };
 
 export default uiFallback;
