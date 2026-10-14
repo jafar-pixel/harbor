@@ -13,6 +13,7 @@ import {
   undersizedNewReleasePenalty,
 } from "./scoring-size";
 import type { CorpusStats, ScoreOptions } from "./scoring-types";
+import { appleWebRankDelta } from "@/lib/player/web-playable";
 
 export function scoreStream(
   s: ParsedStream,
@@ -31,6 +32,16 @@ export function scoreStream(
   } else if (directPlayable) {
     score += 25;
     reasons.push({ signal: "direct url", delta: 25 });
+  }
+
+  if (opts.webPlayback) {
+    const cachedOn = opts.activeDebrids.filter((slug) => s.cached[slug] === true);
+    const name = s.behaviorHints?.filename ?? s.behaviorHints?.fileName ?? s.parsedTitle;
+    const appleDelta = appleWebRankDelta(name, cachedOn, opts.webPlayback);
+    if (appleDelta) {
+      score += appleDelta;
+      reasons.push({ signal: "apple web playable", delta: appleDelta });
+    }
   }
 
   const resBoost = resolutionPoints(s);

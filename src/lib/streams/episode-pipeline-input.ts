@@ -1,4 +1,5 @@
 import { addonBasesForOrigin, type Addon } from "@/lib/addons";
+import { currentWebPlaybackEnv } from "@/lib/player/web-playable";
 import { isAddonNativeMeta, type Meta } from "@/lib/cinemeta";
 import type { DebridStore } from "@/lib/debrid/types";
 import { readPlayback } from "@/lib/playback-history";
@@ -229,6 +230,7 @@ export function buildEpisodePipelineInput(params: {
     },
     score: {
       activeDebrids: debrids.map((d) => d.slug),
+      webPlayback: currentWebPlaybackEnv(),
       preferredLanguages: settings.preferredLanguages,
       releaseDate: meta.releaseDate ?? null,
       mediaKind: meta.type === "series" || episode ? "series" : "movie",

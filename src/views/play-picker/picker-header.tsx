@@ -20,7 +20,7 @@ export function PickerNav({
   const { settings } = useSettings();
   const groupLeft = settings.pickerRefreshNextToBack;
   return (
-    <div className="-mb-9">
+    <div className="-mb-9 max-sm:-mb-4">
       <div className={`flex items-center gap-3 ${groupLeft ? "justify-start" : "justify-between"}`}>
         <button
           type="button"
@@ -76,7 +76,7 @@ export function PickerHeader({
                 ? `${meta.name} · Season ${partSeason} · Episode ${String(episode.episode).padStart(2, "0")}`
                 : `${meta.name} · Season ${episode.imdbSeason ?? episode.season} · Episode ${String(episode.imdbEpisode ?? episode.episode).padStart(2, "0")}`}
           </p>
-          <h1 className="font-display text-[64px] font-medium leading-[0.96] tracking-tight text-ink">
+          <h1 className="font-display text-[64px] font-medium max-sm:text-[36px] leading-[0.96] tracking-tight text-ink">
             {episode.name ||
               metaEpisodeName(meta, episode) ||
               `Episode ${absoluteEpisode ?? episode.episode}`}
@@ -91,7 +91,7 @@ export function PickerHeader({
               {meta.genres?.length ? ` · ${meta.genres.slice(0, 2).join(" · ")}` : ""}
             </p>
           )}
-          <h1 className="font-display text-[68px] font-medium leading-[0.96] tracking-tight text-ink">
+          <h1 className="font-display text-[68px] font-medium max-sm:text-[38px] leading-[0.96] tracking-tight text-ink">
             {meta.name}
           </h1>
         </>

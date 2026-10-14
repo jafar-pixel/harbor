@@ -46,7 +46,9 @@ export function BottomTabBar({
   onSelect: (tab: MobileTab) => void;
 }) {
   const translate = useT();
-  const { snapshot } = useMobileRemote();
+  const { snapshot, remoteMode } = useMobileRemote();
+  // The remote tab exists only on the remote route; a phone on its own plays titles itself.
+  const tabs = remoteMode ? TABS : TABS.filter((tab) => tab.id !== "remote");
   const { activeProfile } = useProfiles();
   const { sheetOpen } = useSheetLock();
   const avatar = snapshot.profile?.avatar ?? activeProfile?.avatar ?? null;
@@ -61,7 +63,7 @@ export function BottomTabBar({
     >
       <style>{TAB_BAR_SLIDE_CSS}</style>
       <div className="pointer-events-auto flex w-[min(400px,100%)] items-center justify-between rounded-xl border border-edge-soft/60 bg-elevated/80 px-2 py-2 shadow-[0_12px_34px_-10px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const on = t.id === active;
           const Icon = t.icon;
           return (

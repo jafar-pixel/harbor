@@ -148,7 +148,14 @@ import {
   findHotkeyMatch,
   shouldHandleGlobalKeyboardEvent,
 } from "@/lib/hotkeys";
-import { ViewProvider, useView, type Frame, type MetaFilter, type View } from "@/lib/view";
+import {
+  ViewProvider,
+  pickerLayerKey,
+  useView,
+  type Frame,
+  type MetaFilter,
+  type View,
+} from "@/lib/view";
 import { isHubKind, setHeroDock, useHeroDock } from "@/lib/hero-dock";
 import { useActiveHeroDockMode, useHeroDockBox } from "@/lib/hero-dock-layout";
 import { sportsPageKey } from "@/lib/jl/sports/pages";
@@ -2239,7 +2246,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
               <div {...layerProps(pickerTop)}>
                 <Suspense fallback={null}>
                   <PlayPicker
-                    key={`picker-${picker.meta.id}-${picker.episode?.season ?? ""}-${picker.episode?.episode ?? ""}-${picker.attempt ?? 0}-${picker.intent ?? "play"}-${picker.seasonEpisodes?.length ?? 0}`}
+                    key={pickerLayerKey(picker)}
                     meta={picker.meta}
                     episode={picker.episode}
                     autoPlay={picker.intent === "download" ? false : picker.autoPlay}

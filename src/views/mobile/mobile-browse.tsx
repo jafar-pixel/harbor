@@ -6,6 +6,7 @@ import { MobileAnime } from "./mobile-anime";
 import { MobileDiscover } from "./mobile-discover";
 import { MobileViewSwitcher } from "./mobile-view-switcher";
 import { MobileDeviceSwitcher } from "./mobile-device-switcher";
+import { useMobileRemote } from "./mobile-remote";
 import { ScrollToTop } from "./scroll-to-top";
 
 export type View = "home" | "movies" | "shows" | "anime" | "discover";
@@ -33,6 +34,7 @@ const VIEW_TRANSITION_CSS = `
 `;
 
 export function MobileBrowse() {
+  const { remoteMode } = useMobileRemote();
   const [view, setView] = useState<View>("home");
   const [seen, setSeen] = useState<Set<View>>(() => new Set<View>(["home"]));
 
@@ -84,9 +86,7 @@ export function MobileBrowse() {
         className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-start justify-between gap-3 px-3"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)" }}
       >
-        <div className="pointer-events-auto min-w-0">
-          <MobileDeviceSwitcher />
-        </div>
+        <div className="pointer-events-auto min-w-0">{remoteMode && <MobileDeviceSwitcher />}</div>
         <div className="pointer-events-auto">
           <MobileViewSwitcher view={view} onSelect={selectView} />
         </div>

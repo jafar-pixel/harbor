@@ -157,7 +157,8 @@ function Section({
   connected: boolean;
   onOpenDetail: (m: Meta) => void;
 }) {
-  if (!connected && state.entries.length === 0) return <NotConnected />;
+  const { remoteMode } = useMobileRemote();
+  if (!connected && remoteMode && state.entries.length === 0) return <NotConnected />;
   if (state.loading && state.entries.length === 0) return <SkeletonGrid />;
   if (state.entries.length === 0) return <Empty kind={kind} />;
   return (

@@ -442,7 +442,12 @@ export function MangaRemote({
         </div>
       )}
 
-      <RendererSheet open={deviceOpen} onClose={() => setDeviceOpen(false)} title={t("Read on")} />
+      <RendererSheet
+        open={deviceOpen}
+        onClose={() => setDeviceOpen(false)}
+        title={t("Read on")}
+        phone={false}
+      />
       <Suspense fallback={null}>
         {chaptersOpen && (
           <ChapterNavigator

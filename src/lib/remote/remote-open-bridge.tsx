@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { isBigPictureActive, pushBigPicture } from "@/lib/big-picture";
 import type { Meta } from "@/lib/cinemeta";
 import { useProfiles } from "@/lib/profiles";
@@ -44,57 +44,24 @@ function toMeta(d: MetaOpen): Meta {
   };
 }
 
+export type PlayMetaOptions = { season?: number; episode?: number; resume?: boolean };
+
 /**
- * Host-side bridge: when a connected phone remote sends openMeta/playMeta, the
- * session dispatches a `harbor:remote-open` event; this drives the host's own
- * ViewProvider so the desktop opens the detail page or starts playback.
+ * Plays a title on this device: a local or home-server copy when the playback
+ * settings prefer one, otherwise the stream picker. The host runs this for a
+ * phone's playMeta command, and the phone runs it when it plays on itself.
  */
-export function RemoteOpenBridge() {
-  const { openMeta, openPerson, openPicker, openPlayer, openService, setView } = useView();
+export function usePlayMeta(): (meta: Meta, opts?: PlayMetaOptions) => void {
+  const { openPicker, openPlayer } = useView();
   const { settings } = useSettings();
-  const { selectProfile } = useProfiles();
-  useEffect(() => {
-    const onSetProfile = (e: Event) => {
-      const id = (e as CustomEvent<string>).detail;
-      if (id) selectProfile(id);
-    };
-    window.addEventListener("harbor:remote-set-profile", onSetProfile);
-    return () => window.removeEventListener("harbor:remote-set-profile", onSetProfile);
-  }, [selectProfile]);
-  useEffect(() => {
-    const onOpen = (e: Event) => {
-      const d = (e as CustomEvent<RemoteOpen>).detail;
-      if (!d) return;
-      if (d.action === "goView") {
-        setView(d.view as Parameters<typeof setView>[0]);
-        return;
-      }
-      if (d.action === "openService") {
-        openService(d.service as Parameters<typeof openService>[0]);
-        return;
-      }
-      if (d.action === "openMeta" && d.metaId.startsWith("person:")) {
-        const pid = Number(d.metaId.slice(7));
-        if (Number.isFinite(pid)) openPerson(pid);
-        return;
-      }
-      const meta = toMeta(d);
-      if (isBigPictureActive()) {
-        const metaId = `${meta.type}:${meta.id}`;
-        if (d.action === "playMeta") requestBpPlay(metaId);
-        pushBigPicture({ kind: "detail", metaId });
-        return;
-      }
-      if (d.action === "openMeta") {
-        openMeta(meta);
-        return;
-      }
+  return useCallback(
+    (meta: Meta, opts?: PlayMetaOptions) => {
       const episode: PlayEpisode | undefined =
-        d.season != null && d.episode != null
-          ? { season: d.season, episode: d.episode }
+        opts?.season != null && opts.episode != null
+          ? { season: opts.season, episode: opts.episode }
           : undefined;
       const stream = () =>
-        openPicker(meta, episode, { autoPlay: settings.instantPlay, resume: d.resume ?? true });
+        openPicker(meta, episode, { autoPlay: settings.instantPlay, resume: opts?.resume ?? true });
       void (async () => {
         const tmdb = meta.id.match(/^tmdb:(?:movie|tv|series):(\d+)$/);
         const identity = {
@@ -153,9 +120,60 @@ export function RemoteOpenBridge() {
           onStream: stream,
         });
       })().catch(stream);
+    },
+    [openPicker, openPlayer, settings],
+  );
+}
+
+/**
+ * Host-side bridge: when a connected phone remote sends openMeta/playMeta, the
+ * session dispatches a `harbor:remote-open` event; this drives the host's own
+ * ViewProvider so the desktop opens the detail page or starts playback.
+ */
+export function RemoteOpenBridge() {
+  const { openMeta, openPerson, openService, setView } = useView();
+  const playMeta = usePlayMeta();
+  const { selectProfile } = useProfiles();
+  useEffect(() => {
+    const onSetProfile = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      if (id) selectProfile(id);
+    };
+    window.addEventListener("harbor:remote-set-profile", onSetProfile);
+    return () => window.removeEventListener("harbor:remote-set-profile", onSetProfile);
+  }, [selectProfile]);
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const d = (e as CustomEvent<RemoteOpen>).detail;
+      if (!d) return;
+      if (d.action === "goView") {
+        setView(d.view as Parameters<typeof setView>[0]);
+        return;
+      }
+      if (d.action === "openService") {
+        openService(d.service as Parameters<typeof openService>[0]);
+        return;
+      }
+      if (d.action === "openMeta" && d.metaId.startsWith("person:")) {
+        const pid = Number(d.metaId.slice(7));
+        if (Number.isFinite(pid)) openPerson(pid);
+        return;
+      }
+      const meta = toMeta(d);
+      if (isBigPictureActive()) {
+        const metaId = `${meta.type}:${meta.id}`;
+        if (d.action === "playMeta") requestBpPlay(metaId);
+        pushBigPicture({ kind: "detail", metaId });
+        return;
+      }
+      if (d.action === "openMeta") {
+        openMeta(meta);
+        return;
+      }
+      playMeta(meta, { season: d.season, episode: d.episode, resume: d.resume });
     };
     window.addEventListener("harbor:remote-open", onOpen);
     return () => window.removeEventListener("harbor:remote-open", onOpen);
-  }, [openMeta, openPerson, openPicker, openPlayer, openService, setView, settings]);
+  }, [openMeta, openPerson, openService, playMeta, setView]);
   return null;
 }

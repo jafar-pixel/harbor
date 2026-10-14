@@ -250,6 +250,11 @@ export type Frame =
   | { kind: "match-detail"; game: SportsGame; eventGames?: SportsGame[] }
   | { kind: "sports-page"; page: SportsPage };
 
+/** Remounts the picker whenever what it is resolving changes; shared by the desktop and phone shells. */
+export function pickerLayerKey(p: Omit<Extract<Frame, { kind: "picker" }>, "kind">): string {
+  return `picker-${p.meta.id}-${p.episode?.season ?? ""}-${p.episode?.episode ?? ""}-${p.attempt ?? 0}-${p.intent ?? "play"}-${p.seasonEpisodes?.length ?? 0}`;
+}
+
 export type ScrollSnapshot = {
   anchor?: string;
   delta: number;

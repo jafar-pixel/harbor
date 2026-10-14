@@ -12,7 +12,9 @@ export function MobileProfile({ onOpenRemote }: { onOpenRemote: () => void }) {
   const t = useT();
   const { user, signOut } = useAuth();
   const { activeProfile } = useProfiles();
-  const { snapshot } = useMobileRemote();
+  const { snapshot, remoteMode, connected } = useMobileRemote();
+  // Profiles and the remote belong to a paired computer; a phone on its own shows neither.
+  const hostProfiles = remoteMode || connected;
   const remote = snapshot.profile;
   const name = remote?.name || activeProfile?.name || user?.email?.split("@")[0] || t("Guest");
   const avatar = remote?.avatar ?? activeProfile?.avatar ?? null;
@@ -28,7 +30,8 @@ export function MobileProfile({ onOpenRemote }: { onOpenRemote: () => void }) {
       <button
         type="button"
         onClick={() => setSwitching(true)}
-        className="flex flex-col items-center gap-3 transition-transform active:scale-[0.98]"
+        disabled={!hostProfiles}
+        className="flex flex-col items-center gap-3 transition-transform active:scale-[0.98] disabled:active:scale-100"
       >
         <span
           className="flex h-[84px] w-[84px] items-center justify-center overflow-hidden rounded-full text-[30px] font-bold text-white shadow-[0_10px_28px_-10px_rgba(0,0,0,0.6)]"
@@ -41,29 +44,37 @@ export function MobileProfile({ onOpenRemote }: { onOpenRemote: () => void }) {
           )}
         </span>
         <span className="text-[18px] font-semibold text-ink">{name}</span>
-        <span className="flex items-center gap-1.5 text-[13px] font-semibold text-accent">
-          <Users size={14} strokeWidth={2.4} />
-          {t("Switch profile")}
-        </span>
+        {hostProfiles && (
+          <span className="flex items-center gap-1.5 text-[13px] font-semibold text-accent">
+            <Users size={14} strokeWidth={2.4} />
+            {t("Switch profile")}
+          </span>
+        )}
       </button>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="px-1 text-[12px] font-bold uppercase tracking-[0.16em] text-ink-subtle">
-          {t("Remote style")}
-        </h2>
-        <div className="grid grid-cols-2 gap-3">
-          <StylePreview kind="dpad" label={t("D-pad")} />
-          <StylePreview kind="minimal" label={t("Touchpad")} />
-        </div>
-      </section>
+      {remoteMode && (
+        <section className="flex flex-col gap-3">
+          <h2 className="px-1 text-[12px] font-bold uppercase tracking-[0.16em] text-ink-subtle">
+            {t("Remote style")}
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            <StylePreview kind="dpad" label={t("D-pad")} />
+            <StylePreview kind="minimal" label={t("Touchpad")} />
+          </div>
+        </section>
+      )}
 
       <section className="overflow-hidden rounded-2xl border border-edge-soft/70 bg-elevated/40">
-        <Row
-          icon={<MonitorSmartphone size={20} strokeWidth={2} />}
-          label={t("Remote")}
-          onClick={onOpenRemote}
-        />
-        <Divider />
+        {remoteMode && (
+          <>
+            <Row
+              icon={<MonitorSmartphone size={20} strokeWidth={2} />}
+              label={t("Remote")}
+              onClick={onOpenRemote}
+            />
+            <Divider />
+          </>
+        )}
         <Row icon={<FileText size={20} strokeWidth={2} />} label={t("Legal")} onClick={() => {}} />
         {user && (
           <>

@@ -9,12 +9,13 @@ import { RendererSheet } from "./renderer-sheet";
 
 export function MobileDeviceSwitcher() {
   const t = useT();
-  const { connected, snapshot } = useMobileRemote();
+  const { playTarget, snapshot } = useMobileRemote();
   const [open, setOpen] = useState(false);
   useRegisterSheet(open);
 
-  // Until a computer answers, the default target names this device rather than a PC.
-  const label = connected ? snapshot.target.label || t("This PC") : t(localDeviceLabel());
+  // Without a computer, or with this phone picked, Play stays on this device.
+  const label =
+    playTarget === "host" ? snapshot.target.label || t("This PC") : t(localDeviceLabel());
   const version = snapshot.hostVersion ?? APP_VERSION;
 
   return (

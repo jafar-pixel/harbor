@@ -32,6 +32,7 @@ export function DetailActions({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [trailer, setTrailer] = useState<string | null>(trailerId);
+  const { connected, remoteMode } = useMobileRemote();
 
   useEffect(() => {
     setTrailer(trailerId);
@@ -58,14 +59,17 @@ export function DetailActions({
           <Play size={18} strokeWidth={0} fill="currentColor" />
           {t("Play")}
         </button>
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          aria-label={t("More actions")}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-edge-soft bg-surface text-ink transition-transform duration-150 active:scale-[0.94] motion-reduce:transition-none"
-        >
-          <MoreHorizontal size={20} strokeWidth={2} />
-        </button>
+        {/* Without a trailer or a paired computer the sheet would be empty. */}
+        {(trailer || connected || remoteMode) && (
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            aria-label={t("More actions")}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-edge-soft bg-surface text-ink transition-transform duration-150 active:scale-[0.94] motion-reduce:transition-none"
+          >
+            <MoreHorizontal size={20} strokeWidth={2} />
+          </button>
+        )}
       </div>
       {sheetOpen && (
         <ActionsSheet
@@ -113,7 +117,7 @@ function ActionsSheet({
 }) {
   const t = useT();
   const [reduced] = useState(prefersReducedMotion);
-  const { openOnHost, sendCommand, connected, snapshot } = useMobileRemote();
+  const { openOnHost, sendCommand, connected, remoteMode, snapshot } = useMobileRemote();
   const poster = meta.poster ?? detail?.poster;
   const imdbId = detail?.imdbId;
   const library = snapshot.library;
@@ -186,76 +190,83 @@ function ActionsSheet({
               onClick={onPlayTrailer}
             />
           )}
-          <SheetRow
-            icon={<Monitor size={20} strokeWidth={2} />}
-            label={t("Open on computer")}
-            sublabel={t("Send this title to your Harbor app")}
-            onClick={() => {
-              onClose();
-              openOnHost(meta);
-            }}
-          />
+          {connected && (
+            <SheetRow
+              icon={<Monitor size={20} strokeWidth={2} />}
+              label={t("Send to a computer")}
+              sublabel={t("Send this title to your Harbor app")}
+              onClick={() => {
+                onClose();
+                openOnHost(meta);
+              }}
+            />
+          )}
         </div>
 
-        <Group label={t("Your library")}>
-          <SheetRow
-            icon={<HeartIcon filled={isFav} />}
-            label={t("Favorites")}
-            sublabel={isFav ? t("Saved to your favorites") : t("Save to your favorites")}
-            active={isFav}
-            disabled={!online}
-            trailing={
-              isFav ? <Check size={18} strokeWidth={2.6} className="text-accent" /> : undefined
-            }
-            onClick={() => {
-              const next = !isFav;
-              setFavOpt(next);
-              send({ kind: "favorite", on: next });
-            }}
-          />
-          <SheetRow
-            icon={
-              <Bookmark size={20} strokeWidth={2} fill={inWatchlist ? "currentColor" : "none"} />
-            }
-            label={t("Watchlist")}
-            sublabel={inWatchlist ? t("In your watchlist") : t("Add to your watchlist")}
-            hint={sync}
-            active={inWatchlist}
-            disabled={!online}
-            trailing={
-              inWatchlist ? (
-                <Check size={18} strokeWidth={2.6} className="text-accent" />
-              ) : undefined
-            }
-            onClick={() => {
-              const next = !inWatchlist;
-              setWatchlistOpt(next);
-              send({ kind: "watchlist", on: next });
-            }}
-          />
-          <SheetRow
-            icon={<Eye size={20} strokeWidth={2} />}
-            label={t("Watched")}
-            sublabel={isWatched ? t("Marked as watched") : t("Mark as watched")}
-            hint={sync}
-            active={isWatched}
-            disabled={!online}
-            trailing={
-              isWatched ? <Check size={18} strokeWidth={2.6} className="text-accent" /> : undefined
-            }
-            onClick={() => {
-              const next = !isWatched;
-              setHistoryOpt(next);
-              send({ kind: "watched", on: next });
-            }}
-          />
-          {!online && (
-            <div className="flex items-center justify-center gap-2 px-6 pb-1 pt-1.5 text-center text-[12px] leading-relaxed text-ink-subtle">
-              <Monitor size={14} strokeWidth={2} className="shrink-0" />
-              <span>{t("Connect to your computer to manage your library.")}</span>
-            </div>
-          )}
-        </Group>
+        {/* The library lives on the computer; a phone on its own does not offer it. */}
+        {(online || remoteMode) && (
+          <Group label={t("Your library")}>
+            <SheetRow
+              icon={<HeartIcon filled={isFav} />}
+              label={t("Favorites")}
+              sublabel={isFav ? t("Saved to your favorites") : t("Save to your favorites")}
+              active={isFav}
+              disabled={!online}
+              trailing={
+                isFav ? <Check size={18} strokeWidth={2.6} className="text-accent" /> : undefined
+              }
+              onClick={() => {
+                const next = !isFav;
+                setFavOpt(next);
+                send({ kind: "favorite", on: next });
+              }}
+            />
+            <SheetRow
+              icon={
+                <Bookmark size={20} strokeWidth={2} fill={inWatchlist ? "currentColor" : "none"} />
+              }
+              label={t("Watchlist")}
+              sublabel={inWatchlist ? t("In your watchlist") : t("Add to your watchlist")}
+              hint={sync}
+              active={inWatchlist}
+              disabled={!online}
+              trailing={
+                inWatchlist ? (
+                  <Check size={18} strokeWidth={2.6} className="text-accent" />
+                ) : undefined
+              }
+              onClick={() => {
+                const next = !inWatchlist;
+                setWatchlistOpt(next);
+                send({ kind: "watchlist", on: next });
+              }}
+            />
+            <SheetRow
+              icon={<Eye size={20} strokeWidth={2} />}
+              label={t("Watched")}
+              sublabel={isWatched ? t("Marked as watched") : t("Mark as watched")}
+              hint={sync}
+              active={isWatched}
+              disabled={!online}
+              trailing={
+                isWatched ? (
+                  <Check size={18} strokeWidth={2.6} className="text-accent" />
+                ) : undefined
+              }
+              onClick={() => {
+                const next = !isWatched;
+                setHistoryOpt(next);
+                send({ kind: "watched", on: next });
+              }}
+            />
+            {!online && (
+              <div className="flex items-center justify-center gap-2 px-6 pb-1 pt-1.5 text-center text-[12px] leading-relaxed text-ink-subtle">
+                <Monitor size={14} strokeWidth={2} className="shrink-0" />
+                <span>{t("Connect to your computer to manage your library.")}</span>
+              </div>
+            )}
+          </Group>
+        )}
 
         {online && trackers && (
           <TrackGroup

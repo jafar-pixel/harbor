@@ -72,3 +72,18 @@ export function currentWebPlaybackEnv(): WebPlaybackEnv {
     webkit: isWebKitUserAgent(nav?.userAgent ?? "", nav?.maxTouchPoints ?? 0),
   };
 }
+
+/**
+ * Ranking nudge for Safari/iOS/iPadOS, where only MP4/M4V plays straight from a debrid link:
+ * such a file moves up; anything else drops unless Real-Debrid has it cached, since only
+ * Real-Debrid can hand over a transcoded stream. Zero everywhere else.
+ */
+export function appleWebRankDelta(
+  fileName: string | null | undefined,
+  cachedOn: readonly string[],
+  env: WebPlaybackEnv,
+): number {
+  if (!env.web || !env.webkit) return 0;
+  if (/\.(mp4|m4v)$/.test(nameOf(fileName ?? ""))) return 12;
+  return cachedOn.some(canWebTranscode) ? 0 : -25;
+}

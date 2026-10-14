@@ -106,3 +106,13 @@ test("device label: names the iPad and iPhone, otherwise the browser", () => {
   assert.equal(deviceLabelForUserAgent(IPAD_SAFARI, 0), "This browser");
   assert.equal(deviceLabelForUserAgent(DESKTOP_CHROME, 0), "This browser");
 });
+
+test("Apple web ranking: MP4 up, non-MP4 down unless Real-Debrid can transcode it", async () => {
+  const { appleWebRankDelta } = await import("../src/lib/player/web-playable.ts");
+  const ios = { web: true, webkit: true };
+  assert.equal(appleWebRankDelta("Movie.2024.1080p.WEB-DL.mp4", ["tb"], ios), 12);
+  assert.equal(appleWebRankDelta("Movie.2024.1080p.mkv", ["tb"], ios), -25);
+  assert.equal(appleWebRankDelta("Movie.2024.1080p.mkv", ["tb", "rd"], ios), 0);
+  assert.equal(appleWebRankDelta("Movie.2024.1080p.mkv", [], { web: true, webkit: false }), 0);
+  assert.equal(appleWebRankDelta("Movie.2024.1080p.mkv", [], { web: false, webkit: false }), 0);
+});

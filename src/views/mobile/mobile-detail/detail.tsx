@@ -104,7 +104,7 @@ function DetailBody({
 }) {
   const t = useT();
   const { settings } = useSettings();
-  const { playOnHost, openOnHost, snapshot } = useMobileRemote();
+  const { play, openOnHost, snapshot, connected } = useMobileRemote();
   const key = settings.tmdbKey;
   const isAnime = isAnimeId(meta.id);
   const full = useCinemetaFull(meta);
@@ -121,10 +121,12 @@ function DetailBody({
       : undefined,
   );
 
+  // People pages open on the computer, so names link only while one is connected.
   const handlePerson = useCallback(
     (id: number, name: string) => openOnHost({ id: `person:${id}`, type: "movie", name } as Meta),
     [openOnHost],
   );
+  const personLink = connected ? handlePerson : undefined;
 
   const isSeries = !isAnime && (detail?.kind === "tv" || meta.type === "series");
   const title = detail?.title || meta.name;
@@ -193,8 +195,8 @@ function DetailBody({
   const shownSimItems = useHideAnimeMetas(simItems);
 
   const onPlay = () => {
-    if (isSeries && first) playOnHost(meta, { season: first.season, episode: first.episode });
-    else playOnHost(meta);
+    if (isSeries && first) play(meta, { season: first.season, episode: first.episode });
+    else play(meta);
   };
 
   return (
@@ -244,14 +246,14 @@ function DetailBody({
             detail={detail}
             tmdbKey={key}
             seasons={seasons}
-            onPlay={(ep) => playOnHost(meta, { season: ep.season, episode: ep.episode })}
+            onPlay={(ep) => play(meta, { season: ep.season, episode: ep.episode })}
           />
         )}
 
-        {detail && <CrewSection detail={detail} onPerson={handlePerson} />}
+        {detail && <CrewSection detail={detail} onPerson={personLink} />}
 
         {detail && detail.cast.length > 0 ? (
-          <CastRow cast={detail.cast} onPerson={isAnime ? undefined : handlePerson} />
+          <CastRow cast={detail.cast} onPerson={isAnime ? undefined : personLink} />
         ) : (isAnime ? loading : key && loading) ? (
           <CastSkeleton />
         ) : null}

@@ -20,6 +20,8 @@ export type ScoreOptions = {
   preferAddonId?: string;
   preferredReleaseGroup?: string;
   respectAddonOrder?: boolean;
+  /** The browser this plays in, when it is the web build (see player/web-playable). */
+  webPlayback?: import("@/lib/player/web-playable").WebPlaybackEnv;
 };
 
 export type CorpusStats = {

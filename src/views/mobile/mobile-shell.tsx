@@ -15,6 +15,7 @@ import { SheetLockProvider, useSheetLock } from "./mobile-sheet-lock";
 import { useMobileRemoteStyle } from "./remote-style";
 import { ScrollToTop } from "./scroll-to-top";
 import { MangaNowBar } from "./manga-remote/manga-now-bar";
+import { MobilePlaybackLayer } from "./mobile-playback-layer";
 
 const RemoteApp = lazy(() => import("@/views/remote-app").then((m) => ({ default: m.RemoteApp })));
 const MangaRemote = lazy(() => import("./manga-remote/manga-remote").then((m) => ({ default: m.MangaRemote })));
@@ -39,7 +40,10 @@ export function MobileShell() {
         ) : isMangaReaderRoute() ? (
           <MangaReaderShell />
         ) : (
-          <ShellBody />
+          <>
+            <ShellBody />
+            <MobilePlaybackLayer />
+          </>
         )}
       </SheetLockProvider>
     </MobileRemoteProvider>
@@ -64,7 +68,9 @@ function MangaReaderShell() {
 function ShellBody() {
   const [tab, setTab] = useState<MobileTab>("home");
   const [seen, setSeen] = useState<Set<MobileTab>>(() => new Set<MobileTab>(["home"]));
-  const showNowPlaying = tab !== "remote";
+  const { remoteMode } = useMobileRemote();
+  // "On your computer" playback only exists for the remote; on its own the phone plays here.
+  const showNowPlaying = remoteMode && tab !== "remote";
   const rootRef = useRef<HTMLDivElement>(null);
 
   const selectTab = (next: MobileTab) => {

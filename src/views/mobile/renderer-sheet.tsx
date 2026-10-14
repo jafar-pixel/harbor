@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { Cast, Check, MonitorSmartphone } from "lucide-react";
+import { Cast, Check, Monitor, Smartphone } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { PRODUCT_NAME } from "@/lib/i18n/brand";
 import { useMobileRemote } from "./mobile-remote";
 import { SHEET_EXIT_CSS, useSheetPresence } from "./remote-extras";
 import { APP_VERSION } from "@/lib/build-info";
+import { localDeviceLabel } from "@/lib/device-label";
 
 const GENERIC_LOCAL_LABELS = new Set(["", "this pc", "your computer", "local"]);
 
@@ -18,13 +19,16 @@ export function RendererSheet({
   open,
   onClose,
   title = "Play on",
+  phone = true,
 }: {
   open: boolean;
   onClose: () => void;
   title?: string;
+  /** Lists this phone as a target. The manga reader has its own "read here" path, so it opts out. */
+  phone?: boolean;
 }) {
   const t = useT();
-  const { snapshot, sendCommand } = useMobileRemote();
+  const { connected, playTarget, setPreferPhone, snapshot, sendCommand } = useMobileRemote();
   const { render, leaving } = useSheetPresence(open);
   const hostVersion = snapshot.hostVersion ?? APP_VERSION;
 
@@ -35,9 +39,10 @@ export function RendererSheet({
   if (!render) return null;
 
   const target = snapshot.target;
-  const localActive = target.kind === "local";
-  const localName =
-    hostLabel(target.kind === "local" ? target.label : undefined) ?? t("This Harbor");
+  // Without the phone row, the sheet only chooses among the computer's own targets.
+  const onHost = !phone || playTarget === "host";
+  const hostName =
+    hostLabel(target.kind === "local" ? target.label : undefined) ?? t("Your computer");
 
   return (
     <div
@@ -59,33 +64,55 @@ export function RendererSheet({
         </div>
         <div className="flex flex-col px-2 pb-2">
           <SectionLabel>{PRODUCT_NAME}</SectionLabel>
-          <DeviceRow
-            name={localName}
-            badge={`${PRODUCT_NAME} ${hostVersion}`}
-            icon={<MonitorSmartphone size={20} strokeWidth={2} />}
-            active={localActive}
-            onSelect={() => {
-              sendCommand({ action: "setTarget", target: "local" });
-              onClose();
-            }}
-          />
-          <SectionLabel>{t("Cast to")}</SectionLabel>
-          {snapshot.castDevices.map((d) => (
+          {phone && (
             <DeviceRow
-              key={d.id}
-              name={d.name}
-              sub={d.model ?? d.kind}
-              icon={<Cast size={20} strokeWidth={2} />}
-              active={target.kind === "cast" && target.deviceId === d.id}
+              name={t(localDeviceLabel())}
+              sub={t("Plays on this screen")}
+              icon={<Smartphone size={20} strokeWidth={2} />}
+              active={!onHost}
               onSelect={() => {
-                sendCommand({ action: "setTarget", target: { castDeviceId: d.id } });
+                setPreferPhone(true);
                 onClose();
               }}
             />
-          ))}
-          {snapshot.castDevices.length === 0 && !snapshot.castDiscovering && (
-            <p className="px-4 py-6 text-center text-[13px] text-ink-muted">
-              {t("No cast devices found on your network.")}
+          )}
+          {connected || !phone ? (
+            <>
+              <DeviceRow
+                name={hostName}
+                badge={`${PRODUCT_NAME} ${hostVersion}`}
+                icon={<Monitor size={20} strokeWidth={2} />}
+                active={onHost && target.kind === "local"}
+                onSelect={() => {
+                  setPreferPhone(false);
+                  sendCommand({ action: "setTarget", target: "local" });
+                  onClose();
+                }}
+              />
+              <SectionLabel>{t("Cast to")}</SectionLabel>
+              {snapshot.castDevices.map((d) => (
+                <DeviceRow
+                  key={d.id}
+                  name={d.name}
+                  sub={d.model ?? d.kind}
+                  icon={<Cast size={20} strokeWidth={2} />}
+                  active={onHost && target.kind === "cast" && target.deviceId === d.id}
+                  onSelect={() => {
+                    setPreferPhone(false);
+                    sendCommand({ action: "setTarget", target: { castDeviceId: d.id } });
+                    onClose();
+                  }}
+                />
+              ))}
+              {snapshot.castDevices.length === 0 && !snapshot.castDiscovering && (
+                <p className="px-4 py-6 text-center text-[13px] text-ink-muted">
+                  {t("No cast devices found on your network.")}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="px-4 py-5 text-center text-[13px] leading-relaxed text-ink-muted">
+              {t("Connect a computer to play there or cast to a TV.")}
             </p>
           )}
         </div>

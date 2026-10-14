@@ -12,14 +12,24 @@ import { Check, WifiOff } from "lucide-react";
 import type { Meta } from "@/lib/cinemeta";
 import type { RemoteCommand, RemoteSnapshot } from "@/lib/remote/protocol";
 import { useRemoteClient } from "@/lib/remote/use-remote-client";
+import { resolvePlayTarget, type PlayTarget } from "@/lib/remote/play-target";
+import { usePlayMeta } from "@/lib/remote/remote-open-bridge";
+import { isRemoteRoute } from "@/lib/platform";
 import { useSettings } from "@/lib/settings";
 
 type PlayOpts = { season?: number; episode?: number; resume?: boolean };
 
 type MobileRemoteValue = {
   connected: boolean;
+  /** Opened through /remote or ?remote=1: the phone is a remote for the computer. */
+  remoteMode: boolean;
   snapshot: RemoteSnapshot;
   playOnHost: (meta: Meta, opts?: PlayOpts) => void;
+  /** Play on the current target: this phone, or the connected computer. */
+  play: (meta: Meta, opts?: PlayOpts) => void;
+  playTarget: PlayTarget;
+  /** true picks this phone as the target; false hands playback back to the computer. */
+  setPreferPhone: (prefer: boolean) => void;
   openOnHost: (meta: Meta) => void;
   sendCommand: (command: RemoteCommand) => boolean;
 };
@@ -83,6 +93,10 @@ export function MobileRemoteProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const connected = status === "connected";
+  const [remoteMode] = useState(isRemoteRoute);
+  const [preferPhone, setPreferPhone] = useState(false);
+  const playTarget = resolvePlayTarget({ remoteMode, connected, preferPhone });
+  const playHere = usePlayMeta();
 
   const playOnHost = useCallback(
     (meta: Meta, opts?: PlayOpts) => {
@@ -115,9 +129,27 @@ export function MobileRemoteProvider({ children }: { children: ReactNode }) {
     [sendCommand, showFlash],
   );
 
+  const play = useCallback(
+    (meta: Meta, opts?: PlayOpts) => {
+      if (playTarget === "host") playOnHost(meta, opts);
+      else playHere(meta, opts);
+    },
+    [playTarget, playOnHost, playHere],
+  );
+
   const value = useMemo<MobileRemoteValue>(
-    () => ({ connected, snapshot, playOnHost, openOnHost, sendCommand }),
-    [connected, snapshot, playOnHost, openOnHost, sendCommand],
+    () => ({
+      connected,
+      remoteMode,
+      snapshot,
+      playOnHost,
+      play,
+      playTarget,
+      setPreferPhone,
+      openOnHost,
+      sendCommand,
+    }),
+    [connected, remoteMode, snapshot, playOnHost, play, playTarget, openOnHost, sendCommand],
   );
 
   return (
