@@ -7,7 +7,7 @@ import { useSyncExternalStore } from "react";
 import type { Meta } from "@/lib/cinemeta";
 import { gatherContext } from "@/lib/auto-download/context";
 import { resolveBestDownload } from "@/lib/auto-download/resolve";
-import { enqueueDownload } from "@/lib/download/downloads-store";
+import { saveDownload } from "@/lib/download/save-download";
 import type { PlayEpisode } from "@/lib/view";
 
 const finding = new Set<string>();
@@ -70,7 +70,7 @@ export async function quickDownload(
             signal,
           });
           if (hit) {
-            await enqueueDownload({
+            await saveDownload({
               meta,
               episode: ep,
               streamLabel: hit.label,

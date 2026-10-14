@@ -71,7 +71,7 @@ function pickerHarness(intent = "play") {
     "@/lib/providers/kitsu": { parseKitsuId: () => null },
     "@/lib/streams/anime-identity-core": { splitFranchiseDisplaySeason: () => null },
     "@/lib/window": { openInAppBrowser() {}, openUrl() {} },
-    "@/lib/download/downloads-store": { enqueueDownload: async (item: any) => downloads.push(item) },
+    "@/lib/download/save-download": { saveDownload: async (item: any) => downloads.push(item) },
     "@/lib/download/season-download": { downloadSeasonFromPack() {} },
     "@/lib/download/season-pack": { isDownloadableSeasonPack: () => false },
     "./picker-utils": { formatStreamQuality: () => "1080p", isDebridFailure: () => false, playError: (code: string) => ({ code }), streamIdentity: () => "fixture" },

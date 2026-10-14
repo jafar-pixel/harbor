@@ -33,7 +33,7 @@ import { type PlayEpisode, type PlayerSrc } from "@/lib/view";
 import { parseKitsuId } from "@/lib/providers/kitsu";
 import { splitFranchiseDisplaySeason } from "@/lib/streams/anime-identity-core";
 import { openInAppBrowser, openUrl } from "@/lib/window";
-import { enqueueDownload } from "@/lib/download/downloads-store";
+import { saveDownload } from "@/lib/download/save-download";
 import { downloadSeasonFromPack } from "@/lib/download/season-download";
 import { isDownloadableSeasonPack } from "@/lib/download/season-pack";
 import {
@@ -343,7 +343,7 @@ export function usePickHandler({
           stream.name ||
           stream.addonName ||
           null;
-        await enqueueDownload({
+        await saveDownload({
           meta,
           episode,
           streamLabel: label,

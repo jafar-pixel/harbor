@@ -85,9 +85,12 @@ test("web playable: the decision Real-Debrid's link is checked against", () => {
   assert.equal(needsWebTranscode(hls, CHROME), false);
 });
 
-test("web playable: only Real-Debrid supplies a transcode", () => {
-  assert.equal(canWebTranscode("rd"), true);
-  assert.equal(canWebTranscode("tb"), false);
+test("web playable: Real-Debrid transcodes everywhere, TorBox for Safari", () => {
+  assert.equal(canWebTranscode("rd", CHROME), true);
+  assert.equal(canWebTranscode("rd", SAFARI), true);
+  assert.equal(canWebTranscode("tb", SAFARI), true);
+  assert.equal(canWebTranscode("tb", CHROME), false);
+  assert.equal(canWebTranscode("ad", SAFARI), false);
 });
 
 test("web playable: WebKit detection covers iPadOS in desktop mode", () => {
@@ -111,7 +114,8 @@ test("Apple web ranking: MP4 up, non-MP4 down unless Real-Debrid can transcode i
   const { appleWebRankDelta } = await import("../src/lib/player/web-playable.ts");
   const ios = { web: true, webkit: true };
   assert.equal(appleWebRankDelta("Movie.2024.1080p.WEB-DL.mp4", ["tb"], ios), 12);
-  assert.equal(appleWebRankDelta("Movie.2024.1080p.mkv", ["tb"], ios), -25);
+  assert.equal(appleWebRankDelta("Movie.2024.1080p.mkv", ["tb"], ios), 0);
+  assert.equal(appleWebRankDelta("Movie.2024.1080p.mkv", ["ad"], ios), -25);
   assert.equal(appleWebRankDelta("Movie.2024.1080p.mkv", ["tb", "rd"], ios), 0);
   assert.equal(appleWebRankDelta("Movie.2024.1080p.mkv", [], { web: true, webkit: false }), 0);
   assert.equal(appleWebRankDelta("Movie.2024.1080p.mkv", [], { web: false, webkit: false }), 0);

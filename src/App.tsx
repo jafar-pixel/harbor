@@ -1614,7 +1614,9 @@ function Shell({ onReady }: { onReady?: () => void }) {
   const parkLayer = (top: boolean) =>
     top
       ? `harbor-layer-active flex min-h-0 min-w-0 flex-1 flex-col${dockLayer ? ` ${dockLayer}` : ""}`
-      : "flex min-h-0 min-w-0 flex-1 flex-col absolute inset-0 invisible pointer-events-none [content-visibility:hidden]";
+      : // Safari can keep painting a parked page through visibility and content-visibility,
+        // stacking it over the active one; zero opacity under the page hides it everywhere.
+        "flex min-h-0 min-w-0 flex-1 flex-col absolute inset-0 -z-10 invisible opacity-0 pointer-events-none [content-visibility:hidden]";
 
   const layerProps = (top: boolean) => ({
     className: layer(top),

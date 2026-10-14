@@ -1,5 +1,6 @@
 import { safeFetch as fetch } from "@/lib/safe-fetch";
 import { dlog, dwarn } from "@/lib/debug";
+import { currentWebPlaybackEnv, needsWebTranscode } from "@/lib/player/web-playable";
 import { matchEpisodeFileIndex, type EpisodeHint } from "@/lib/streams/episode-file";
 import {
   hashFromMagnet,
@@ -237,14 +238,34 @@ export function createTorbox(apiKey: string): DebridStore {
     if (!dl.ok) return dl;
     const url = dl.data.data;
     if (!url || typeof url !== "string") return { ok: false, code: "no-link", status: 0 };
-    return {
-      ok: true,
-      data: {
-        url,
-        filename: file.name,
-        filesize: file.size,
-      },
-    };
+    const data: DirectLink = { url, filename: file.name, filesize: file.size };
+    const web = await webStreamUrl(id, file, signal);
+    if (web) data.webStreamUrl = web;
+    return { ok: true, data };
+  }
+
+  // Safari and iOS play only MP4 and HLS, so there the web build also asks TorBox for its
+  // web-player HLS stream (Safari plays it natively, without cross-origin fetches). A failed
+  // lookup keeps the original link.
+  async function webStreamUrl(
+    id: number,
+    file: TbFile,
+    signal: AbortSignal,
+  ): Promise<string | undefined> {
+    const env = currentWebPlaybackEnv();
+    if (!env.webkit || !needsWebTranscode(file.name, env)) return undefined;
+    const created = await get<TbEnvelope<{ presigned_token?: string }>>(
+      `/stream/createstream?id=${id}&file_id=${file.id}&type=torrent`,
+      signal,
+    );
+    const token = created.ok ? created.data.data?.presigned_token : undefined;
+    if (!token) return undefined;
+    const stream = await get<TbEnvelope<{ hls_url?: string }>>(
+      `/stream/getstreamdata?presigned_token=${encodeURIComponent(token)}&token=${encodeURIComponent(apiKey)}`,
+      signal,
+    );
+    const hls = stream.ok ? stream.data.data?.hls_url : undefined;
+    return typeof hls === "string" && /^https:\/\//i.test(hls) ? hls : undefined;
   }
 
   async function playableUrl(

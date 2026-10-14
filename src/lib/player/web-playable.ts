@@ -48,9 +48,10 @@ export function needsWebTranscode(
   return UNPLAYABLE_CODEC.test(name);
 }
 
-/** Debrid providers whose client fills DirectLink.webStreamUrl. */
-export function canWebTranscode(slug: string): boolean {
-  return slug === "rd";
+/** Debrid providers whose client fills DirectLink.webStreamUrl: Real-Debrid in every browser,
+ * TorBox in Safari/iOS/iPadOS, which plays its HLS natively. */
+export function canWebTranscode(slug: string, env: WebPlaybackEnv): boolean {
+  return slug === "rd" || (slug === "tb" && env.webkit);
 }
 
 export function isWebKitUserAgent(ua: string, maxTouchPoints = 0): boolean {
@@ -75,8 +76,8 @@ export function currentWebPlaybackEnv(): WebPlaybackEnv {
 
 /**
  * Ranking nudge for Safari/iOS/iPadOS, where only MP4/M4V plays straight from a debrid link:
- * such a file moves up; anything else drops unless Real-Debrid has it cached, since only
- * Real-Debrid can hand over a transcoded stream. Zero everywhere else.
+ * such a file moves up; anything else drops unless Real-Debrid or TorBox has it cached, since
+ * only they hand over a transcoded stream. Zero everywhere else.
  */
 export function appleWebRankDelta(
   fileName: string | null | undefined,
@@ -85,5 +86,5 @@ export function appleWebRankDelta(
 ): number {
   if (!env.web || !env.webkit) return 0;
   if (/\.(mp4|m4v)$/.test(nameOf(fileName ?? ""))) return 12;
-  return cachedOn.some(canWebTranscode) ? 0 : -25;
+  return cachedOn.some((slug) => canWebTranscode(slug, env)) ? 0 : -25;
 }

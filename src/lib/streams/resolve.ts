@@ -296,12 +296,13 @@ function sortDebridsForStream(
   // In the browser, a file it can't play should come from a provider that can transcode it.
   const name =
     stream.behaviorHints?.filename ?? stream.behaviorHints?.fileName ?? stream.title ?? null;
-  const preferTranscode = needsWebTranscode(name, currentWebPlaybackEnv());
+  const env = currentWebPlaybackEnv();
+  const preferTranscode = needsWebTranscode(name, env);
   return debrids.slice().sort((a, b) => {
     const aCached = stream.cached[a.slug] ? 1 : 0;
     const bCached = stream.cached[b.slug] ? 1 : 0;
     if (bCached !== aCached || !preferTranscode) return bCached - aCached;
-    return Number(canWebTranscode(b.slug)) - Number(canWebTranscode(a.slug));
+    return Number(canWebTranscode(b.slug, env)) - Number(canWebTranscode(a.slug, env));
   });
 }
 
