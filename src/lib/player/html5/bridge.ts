@@ -560,6 +560,9 @@ export function createHtml5Bridge(): PlayerBridge {
         url = (await viaHomeRelay(url).catch(() => null)) ?? url;
         if (revision !== mediaRevision || !video) return;
       }
+      // The home relay adds a hop and a little jitter: chasing the live edge through it skips
+      // and stalls, so a relayed channel keeps a few seconds of buffer instead.
+      const relayed = url !== src.url;
       const transport = html5Transport(url, src.isLive === true && src.notWebReady === true);
       const isHls = transport === "hls";
       const isTs = transport === "mpegts";
@@ -578,6 +581,7 @@ export function createHtml5Bridge(): PlayerBridge {
                 lowLatencyMode: false,
                 liveDurationInfinity: true,
                 backBufferLength: 30,
+                ...(relayed ? { liveSyncDurationCount: 4, maxBufferLength: 30 } : {}),
               }
             : { enableWorker: true },
         );
@@ -603,8 +607,9 @@ export function createHtml5Bridge(): PlayerBridge {
           { type: "mpegts", url, isLive: src.isLive === true, cors: true },
           {
             enableWorker: true,
-            liveBufferLatencyChasing: src.isLive === true,
+            liveBufferLatencyChasing: src.isLive === true && !relayed,
             lazyLoadMaxDuration: 4,
+            ...(relayed ? { enableStashBuffer: true, stashInitialSize: 1024 * 1024 } : {}),
           },
         );
         tsPlayer.attachMediaElement(video);
