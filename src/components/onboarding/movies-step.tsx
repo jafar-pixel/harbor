@@ -26,7 +26,7 @@ const TONE_CLASS: Record<DebridStatusTone, string> = {
 
 type AddonState = "idle" | "installing" | "installed" | "failed";
 
-export function MoviesStep({ onNoDebrid, onTorrentio }: { onNoDebrid: () => void; onTorrentio: () => void }) {
+export function MoviesStep({ onNoDebrid }: { onNoDebrid: () => void }) {
   const t = useT();
   const { settings } = useSettings();
   const [addon, setAddon] = useState<AddonState>(() => (isInstalled(JL_TORRENTIO_ADDON_ID) ? "installed" : "idle"));
@@ -36,14 +36,12 @@ export function MoviesStep({ onNoDebrid, onTorrentio }: { onNoDebrid: () => void
   const installTorrentio = async () => {
     if (isInstalled(JL_TORRENTIO_ADDON_ID)) {
       setAddon("installed");
-      onTorrentio();
       return;
     }
     setAddon("installing");
     try {
       await installAddon(JL_TORRENTIO_ADDON_ID, JL_TORRENTIO_MANIFEST_URL);
       setAddon("installed");
-      onTorrentio();
     } catch {
       setAddon("failed");
     }
@@ -56,6 +54,18 @@ export function MoviesStep({ onNoDebrid, onTorrentio }: { onNoDebrid: () => void
     // Runs once, for the key this screen opened with.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Continuing before Torrentio could be added (a network that blocks it) keeps trying after.
+  const hasKeyRef = useRef(hasKey);
+  hasKeyRef.current = hasKey;
+  useEffect(
+    () => () => {
+      if (hasKeyRef.current && !isInstalled(JL_TORRENTIO_ADDON_ID)) {
+        void installAddon(JL_TORRENTIO_ADDON_ID, JL_TORRENTIO_MANIFEST_URL).catch(() => {});
+      }
+    },
+    [],
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -100,14 +110,12 @@ export function MoviesStep({ onNoDebrid, onTorrentio }: { onNoDebrid: () => void
           )}
         </div>
       )}
-      {!hasKey && (
-        <button
-          onClick={onNoDebrid}
-          className="w-fit text-[13px] text-ink-subtle underline-offset-4 hover:text-ink hover:underline"
-        >
-          {t("I don't have Real-Debrid or TorBox")}
-        </button>
-      )}
+      <button
+        onClick={onNoDebrid}
+        className="w-fit text-[13px] text-ink-subtle underline-offset-4 hover:text-ink hover:underline"
+      >
+        {hasKey ? t("Skip for now") : t("I don't have Real-Debrid or TorBox")}
+      </button>
       <p className="text-[12px] text-ink-subtle">{t("Only stream content you have the right to watch.")}</p>
     </div>
   );

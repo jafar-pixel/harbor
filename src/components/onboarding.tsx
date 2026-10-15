@@ -1,6 +1,5 @@
 import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { isInstalled } from "@/lib/addon-store";
 import { AccountStep } from "@/components/onboarding/account-step";
 import { DoneStep } from "@/components/onboarding/done-step";
 import { Dots } from "@/components/onboarding/dots";
@@ -12,7 +11,6 @@ import { SplashStep } from "@/components/onboarding/splash-step";
 import { useBigPicture } from "@/lib/big-picture";
 import { useT } from "@/lib/i18n";
 import { jlAccountsConfigured, useJlSession } from "@/lib/jl/account/client";
-import { JL_TORRENTIO_ADDON_ID } from "@/lib/jl/onboarding";
 import { useOnboarding } from "@/lib/onboarding";
 import { isPlaceholderName, useProfiles } from "@/lib/profiles";
 import { useSettings } from "@/lib/settings";
@@ -35,7 +33,6 @@ export function OnboardingModal() {
   const [skipAccount, setSkipAccount] = useState(false);
   const [noIptv, setNoIptv] = useState(false);
   const [noDebrid, setNoDebrid] = useState(false);
-  const [torrentioAdded, setTorrentioAdded] = useState(false);
 
   useEffect(() => {
     if (onboarded || bigPicture) return;
@@ -67,7 +64,9 @@ export function OnboardingModal() {
     account: !!session || skipAccount,
     profile: !isPlaceholderName(activeProfile?.name),
     live: hasPlaylist || noIptv,
-    movies: noDebrid || (hasDebrid && (torrentioAdded || isInstalled(JL_TORRENTIO_ADDON_ID))),
+    // A saved key is enough: a network that blocks the debrid service or Torrentio (a hotel, a
+    // school) must not trap setup. The key is checked and Torrentio added once they're reachable.
+    movies: noDebrid || hasDebrid,
     done: true,
   };
 
@@ -110,7 +109,6 @@ export function OnboardingModal() {
                       setNoDebrid(true);
                       next();
                     }}
-                    onTorrentio={() => setTorrentioAdded(true)}
                   />
                 )}
                 {step === "done" && <DoneStep />}
