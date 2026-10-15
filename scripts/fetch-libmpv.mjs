@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { brotliDecompressSync } from "node:zlib";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,6 +22,22 @@ if (process.platform !== "win32" && !process.env.HARBOR_LIBMPV_FORCE) {
 
 if (existsSync(dest) && digest(readFileSync(dest)) === SHA256) {
   console.log("[libmpv] libmpv-2.dll already present and verified");
+  process.exit(0);
+}
+
+// The upstream release that hosted this DLL is gone, so the same file (same checksum) ships
+// in the repo, brotli-compressed to stay under GitHub's file size limit.
+const vendored = join(root, "vendor", "libmpv", "libmpv-2.dll.br");
+if (!process.env.HARBOR_LIBMPV_URL && existsSync(vendored)) {
+  const buf = brotliDecompressSync(readFileSync(vendored));
+  const got = digest(buf);
+  if (got !== SHA256) {
+    console.error(`[libmpv] vendored copy checksum mismatch (expected ${SHA256}, got ${got})`);
+    process.exit(1);
+  }
+  mkdirSync(dirname(dest), { recursive: true });
+  writeFileSync(dest, buf);
+  console.log(`[libmpv] wrote ${dest} from the vendored copy`);
   process.exit(0);
 }
 
