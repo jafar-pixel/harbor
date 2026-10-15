@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { JlAccountForm } from "@/components/jl-account-form";
+import { JlAccountLink } from "@/components/jl-account-link";
 import { jlAccountsConfigured, useJlSession } from "@/lib/jl/account/client";
 import { isRemoteRoute, isTvApp, isWeb } from "@/lib/platform";
 
@@ -21,7 +22,13 @@ export function WebSignInGate({
   useEffect(() => {
     if (gated) onReady?.();
   }, [gated, onReady]);
-  if (!gated) return children;
+  if (!gated)
+    return (
+      <>
+        {isWeb() && <JlAccountLink />}
+        {children}
+      </>
+    );
   return (
     <main className="flex min-h-dvh items-center justify-center bg-canvas px-4 py-10">
       <div className="flex w-full max-w-[420px] flex-col gap-6">
@@ -32,6 +39,7 @@ export function WebSignInGate({
           </h1>
         </div>
         <JlAccountForm intro="Sign in with your JL Media Vision account to continue." />
+        <JlAccountLink />
       </div>
     </main>
   );

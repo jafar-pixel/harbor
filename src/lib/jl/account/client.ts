@@ -77,7 +77,17 @@ export const assertJlAccountCurrent = client.assertCurrent;
 export const signInJl = client.signIn;
 export const signUpJl = client.signUp;
 export const signOutJl = client.signOut;
-export const resetJlPassword = client.resetPassword;
+export const adoptJlLink = client.adoptLink;
+export const updateJlPassword = client.updatePassword;
+/** Where account emails (password reset) send people: the web app, which can finish the reset. */
+export function jlAccountLinkUrl(): string | undefined {
+  const configuredUrl = import.meta.env.VITE_JL_WEB_URL as string | undefined;
+  if (configuredUrl) return configuredUrl;
+  if (typeof window !== "undefined" && /^https:$/.test(window.location.protocol))
+    return window.location.origin;
+  return undefined;
+}
+export const resetJlPassword = (email: string) => client.resetPassword(email, jlAccountLinkUrl());
 export const freshJlSession = client.fresh;
 export const jlRest = client.rest;
 export const jlRpc = client.rpc;

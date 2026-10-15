@@ -229,6 +229,55 @@ export function createJlSessionClient(options: {
     if (session) write(session);
     return session;
   }
+  /**
+   * Signs in from the tokens an account email link carries in its URL fragment (a password
+   * reset or an email confirmation). Returns the link's type, or null when the fragment holds
+   * no session.
+   */
+  async function adoptLink(fragment: string): Promise<string | null> {
+    const params = new URLSearchParams(fragment.replace(/^#/, ""));
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+    if (!accessToken || !refreshToken) return null;
+    requireConfigured();
+    const res = await request("/auth/v1/user", {
+      method: "GET",
+      headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` },
+    });
+    const user = (await res.json().catch(() => null)) as TokenResponse["user"] | null;
+    if (!res.ok || !user?.id) throw new Error("This link has expired. Ask for a new one.");
+    const expiresIn = Number(params.get("expires_in")) || 3600;
+    read();
+    generation++;
+    write({
+      accessToken,
+      refreshToken,
+      userId: user.id,
+      expiresAt: Number(params.get("expires_at")) || Math.floor(now() / 1000) + expiresIn,
+      email: user.email ?? null,
+    });
+    return params.get("type") ?? "magiclink";
+  }
+  async function updatePassword(password: string): Promise<void> {
+    const session = await fresh();
+    if (!session) throw new Error("Not signed in");
+    const res = await request("/auth/v1/user", {
+      method: "PUT",
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${session.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as TokenResponse;
+      throw new AuthError(
+        body.error_description || body.msg || body.message || "Could not save the new password.",
+        body.code ?? body.error_code,
+      );
+    }
+  }
   async function signOut(): Promise<void> {
     const session = read();
     generation++;
@@ -352,8 +401,12 @@ export function createJlSessionClient(options: {
     rpc,
     storage,
     storageUrl,
-    resetPassword: async (email: string) => {
-      await authRequest("recover", { email: email.trim() });
+    adoptLink,
+    updatePassword,
+    // `redirectTo` is where the email link lands; without it the project's Site URL is used.
+    resetPassword: async (email: string, redirectTo?: string) => {
+      const query = redirectTo ? `?redirect_to=${encodeURIComponent(redirectTo)}` : "";
+      await authRequest(`recover${query}`, { email: email.trim() });
     },
     subscribe(listener: () => void) {
       listeners.add(listener);
