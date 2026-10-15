@@ -1,1 +1,1 @@
-JL Media Vision 0.9.38: TorBox movies play in the iPad and iPhone browser, Download saves the file in the web app, and pages no longer stack on iPad. Includes everything in 0.9.37.
+JL Media Vision 0.9.39: setup no longer gets stuck on a network that blocks TorBox or Torrentio (hotels, offices); the web app keeps an IPTV login it couldn't test; smoother web Live TV through the home relay. Includes everything in 0.9.38.
