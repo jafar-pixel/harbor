@@ -1,5 +1,6 @@
 import { AvatarImage } from "@/components/avatar-image";
 import { useT } from "@/lib/i18n";
+import { jlAccountsConfigured, useJlSession } from "@/lib/jl/account/client";
 import { type Profile } from "@/lib/profiles";
 import type { User } from "@/lib/stremio";
 
@@ -34,9 +35,13 @@ export function SubtitleText({
   user: User | null;
 }) {
   const t = useT();
+  const jlSession = useJlSession();
   if (active?.shareStremioWith) {
     const src = profiles.find((p) => p.id === active.shareStremioWith);
     if (src) return <>{t("Sharing {name}'s addon setup", { name: src.name })}</>;
+  }
+  if (jlAccountsConfigured()) {
+    return jlSession?.email ? <>{jlSession.email}</> : <>{t("Not signed in · this device only")}</>;
   }
   if (user) {
     return <>{t("profile.signedIn")}</>;

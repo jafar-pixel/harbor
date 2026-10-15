@@ -1,5 +1,6 @@
 import { Bell, ChevronDown, Lock, LogIn, LogOut, Pencil, Plus, Settings as SettingsIcon, UserRound, Users } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { jlAccountsConfigured, signOutJl, useJlSession } from "@/lib/jl/account/client";
 import { ProfileAvatar } from "./account-menu-parts";
 import type { AccountMenuController } from "./use-account-menu";
 
@@ -23,6 +24,11 @@ export function AccountMenuPanel({
 }) {
   const t = useT();
   const { user, signOut, profiles, activeProfile, author, openPicker, requestSwitch, viewMyProfile, openNotifications, manageOpen, setManageOpen, setMenuOpen, setAuthOpen } = ctrl;
+  const jlSession = useJlSession();
+  // With JL accounts set up, the menu signs in to JL (what syncs across devices); Stremio stays
+  // in Settings. Builds without JL accounts keep the original Stremio sign-in.
+  const jl = jlAccountsConfigured();
+  const signedIn = jl ? !!jlSession : !!user;
   const otherProfiles = profiles.filter((p) => p.id !== activeProfile?.id);
   const kid = !!activeProfile?.kid;
   const name = activeProfile?.name ?? user?.fullname ?? user?.email?.split("@")[0] ?? t("profile.fallback");
@@ -146,16 +152,17 @@ export function AccountMenuPanel({
               {t("nav.settings")}
             </button>
           )}
-          {user ? (
+          {signedIn ? (
             <button
               onClick={() => {
-                signOut();
+                if (jl) void signOutJl();
+                else signOut();
                 setMenuOpen(false);
               }}
               className={`${ITEM} border-t border-edge-soft`}
             >
               <LogOut size={14} strokeWidth={2.2} />
-              {t("profile.signOut")}
+              {jl ? t("Sign out of JL Media Vision") : t("profile.signOut")}
             </button>
           ) : (
             <button
@@ -166,7 +173,7 @@ export function AccountMenuPanel({
               className={`${ITEM} border-t border-edge-soft`}
             >
               <LogIn size={14} strokeWidth={2.2} />
-              {t("profile.signIn")}
+              {jl ? t("Sign in to JL Media Vision") : t("profile.signIn")}
             </button>
           )}
         </div>
