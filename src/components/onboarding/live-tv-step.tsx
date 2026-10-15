@@ -114,6 +114,20 @@ export function LiveTvStep({ onNoIptv }: { onNoIptv: () => void }) {
       });
       return;
     }
+    // A browser can also fail to test a working provider: a hotel or office network, a server
+    // that refuses browsers, or a playlist too slow to fetch. Only a clear answer from the
+    // provider (wrong login, expired, missing) stops the save; anything else is kept for Live TV.
+    const definite = /expired|banned|disabled|auth|credential|401|403|rejected|404|not found/i;
+    const lastMessage = lastError instanceof Error ? lastError.message : String(lastError);
+    if (!("__TAURI_INTERNALS__" in window) && !definite.test(lastMessage)) {
+      save(logins[0]);
+      setTest({
+        kind: "note",
+        message:
+          "Saved. This browser couldn't check your provider from this network, so Live TV will try it when you open a channel.",
+      });
+      return;
+    }
     setTest({ kind: "error", message: friendlyError(lastError) });
   };
 
