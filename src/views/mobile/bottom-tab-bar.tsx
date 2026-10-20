@@ -1,4 +1,4 @@
-import { Bookmark, Home, MonitorSmartphone, User } from "lucide-react";
+import { Bookmark, LayoutGrid, Home, MonitorSmartphone, User } from "lucide-react";
 import { Search } from "@/components/icons/search-icon";
 import type { ComponentType } from "react";
 import { useProfiles } from "@/lib/profiles";
@@ -6,7 +6,7 @@ import { useT } from "@/lib/i18n";
 import { useMobileRemote } from "./mobile-remote";
 import { useSheetLock } from "./mobile-sheet-lock";
 
-export type MobileTab = "remote" | "search" | "home" | "mystuff" | "profile";
+export type MobileTab = "explore" | "remote" | "search" | "home" | "mystuff" | "profile";
 
 const TABS: Array<{
   id: MobileTab;
@@ -16,6 +16,7 @@ const TABS: Array<{
   { id: "remote", label: "Remote", icon: MonitorSmartphone },
   { id: "search", label: "Search", icon: Search },
   { id: "home", label: "Home", icon: Home },
+  { id: "explore", label: "Explore", icon: LayoutGrid },
   { id: "mystuff", label: "My Stuff", icon: Bookmark },
   { id: "profile", label: "Profile", icon: User },
 ];
@@ -48,7 +49,7 @@ export function BottomTabBar({
   const translate = useT();
   const { snapshot, remoteMode } = useMobileRemote();
   // The remote tab exists only on the remote route; a phone on its own plays titles itself.
-  const tabs = remoteMode ? TABS : TABS.filter((tab) => tab.id !== "remote");
+  const tabs = TABS.filter((tab) => tab.id !== (remoteMode ? "explore" : "remote"));
   const { activeProfile } = useProfiles();
   const { sheetOpen } = useSheetLock();
   const avatar = snapshot.profile?.avatar ?? activeProfile?.avatar ?? null;
@@ -59,6 +60,7 @@ export function BottomTabBar({
     <nav
       className="harbor-tabbar-slide pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4"
       data-hidden={sheetOpen ? "true" : undefined}
+      inert={sheetOpen}
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)" }}
     >
       <style>{TAB_BAR_SLIDE_CSS}</style>
@@ -73,7 +75,7 @@ export function BottomTabBar({
               aria-label={translate(t.label)}
               aria-current={on ? "page" : undefined}
               onClick={() => onSelect(t.id)}
-              className="flex flex-1 items-center justify-center"
+              className="flex min-h-12 flex-1 flex-col items-center justify-center gap-1"
             >
               <span
                 className={`flex h-10 w-[52px] items-center justify-center rounded-[13px] transition-[background-color,transform] duration-200 active:scale-95 ${
@@ -104,6 +106,9 @@ export function BottomTabBar({
                     className={on ? "text-canvas" : "text-ink-subtle"}
                   />
                 )}
+              </span>
+              <span className={`text-[10px] font-medium ${on ? "text-ink" : "text-ink-muted"}`}>
+                {translate(t.label)}
               </span>
             </button>
           );

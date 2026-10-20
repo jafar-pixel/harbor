@@ -16,7 +16,7 @@ const PlayerView = lazy(() => import("@/views/player").then((m) => ({ default: m
  * When the phone plays a title itself, the shared picker and player draw full
  * screen over the phone shell, the same views and view stack the desktop uses.
  */
-export function MobilePlaybackLayer() {
+export function MobilePlaybackLayer({ onOpenWorkspace }: { onOpenWorkspace?: () => void }) {
   const t = useT();
   const { picker, player, topKind, canGoBack, goBack } = useView();
   const playerActive = !!player && !player.sportsDocked && !player.pipDocked;
@@ -28,13 +28,17 @@ export function MobilePlaybackLayer() {
     const from = prevKind.current;
     prevKind.current = topKind;
     if (!phoneCannotShow(from, topKind)) return;
+    if (onOpenWorkspace) {
+      onOpenWorkspace();
+      return;
+    }
     if (canGoBack) goBack();
     setNotice(
       t("That opens in {product} on a computer. Set it up there, then play again.", {
         product: PRODUCT_NAME,
       }),
     );
-  }, [topKind, canGoBack, goBack, t]);
+  }, [topKind, canGoBack, goBack, t, onOpenWorkspace]);
   useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(null), 5000);

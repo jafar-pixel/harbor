@@ -1,5 +1,18 @@
-import { Check, ChevronRight, FileText, LogOut, MonitorSmartphone, Users } from "lucide-react";
+import {
+  Settings2,
+  Play,
+  Captions,
+  Check,
+  ChevronRight,
+  FileText,
+  LogOut,
+  MonitorSmartphone,
+  Users,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { useMobileAccess } from "./mobile-access";
+import { useView } from "@/lib/view";
+import type { SectionId } from "@/views/settings/shared";
 import { useAuth } from "@/lib/auth";
 import { useProfiles } from "@/lib/profiles";
 import { useT } from "@/lib/i18n";
@@ -8,12 +21,26 @@ import { useMobileRemote } from "./mobile-remote";
 import { setMobileRemoteStyle, useMobileRemoteStyle, type MobileRemoteStyle } from "./remote-style";
 import { openUrl } from "@/lib/window";
 
-export function MobileProfile({ onOpenRemote }: { onOpenRemote: () => void }) {
+export function MobileProfile({
+  onOpenRemote,
+  onOpenWorkspace,
+}: {
+  onOpenRemote: () => void;
+  onOpenWorkspace: () => void;
+}) {
+  const { openSettings } = useView();
+  const access = useMobileAccess();
+  const settings = (section: SectionId) => {
+    access.run(() => {
+      openSettings(section);
+      onOpenWorkspace();
+    });
+  };
   const t = useT();
   const { user, signOut } = useAuth();
-  const { activeProfile } = useProfiles();
+  const { activeProfile, openPicker } = useProfiles();
   const { snapshot, remoteMode, connected } = useMobileRemote();
-  // Profiles and the remote belong to a paired computer; a phone on its own shows neither.
+  // Paired remotes select a host profile; standalone phones manage their own roster.
   const hostProfiles = remoteMode || connected;
   const remote = snapshot.profile;
   const name = remote?.name || activeProfile?.name || user?.email?.split("@")[0] || t("Guest");
@@ -29,8 +56,8 @@ export function MobileProfile({ onOpenRemote }: { onOpenRemote: () => void }) {
 
       <button
         type="button"
-        onClick={() => setSwitching(true)}
-        disabled={!hostProfiles}
+        onClick={() => (hostProfiles ? setSwitching(true) : access.run(() => openPicker()))}
+        disabled={!hostProfiles && !!activeProfile?.kid}
         className="flex flex-col items-center gap-3 transition-transform active:scale-[0.98] disabled:active:scale-100"
       >
         <span
@@ -75,7 +102,45 @@ export function MobileProfile({ onOpenRemote }: { onOpenRemote: () => void }) {
             <Divider />
           </>
         )}
-        <Row icon={<FileText size={20} strokeWidth={2} />} label={t("Legal")} onClick={() => {}} />
+        {!activeProfile?.kid && (
+          <>
+            <Row
+              icon={<Users size={20} />}
+              label={t("Account")}
+              onClick={() => settings("account")}
+            />
+            <Divider />
+            <Row
+              icon={<Users size={20} />}
+              label={t("Manage profiles")}
+              onClick={() => access.run(() => openPicker())}
+            />
+            <Divider />
+            <Row
+              icon={<Settings2 size={20} />}
+              label={t("Settings")}
+              onClick={() => settings("basics")}
+            />
+            <Divider />
+            <Row
+              icon={<Play size={20} />}
+              label={t("Streaming & providers")}
+              onClick={() => settings("streaming")}
+            />
+            <Divider />
+            <Row
+              icon={<Captions size={20} />}
+              label={t("Subtitles & language")}
+              onClick={() => settings("subtitles")}
+            />
+            <Divider />
+            <Row
+              icon={<FileText size={20} />}
+              label={t("Legal")}
+              onClick={() => settings("licenses")}
+            />
+          </>
+        )}
         {user && (
           <>
             <Divider />
@@ -89,6 +154,7 @@ export function MobileProfile({ onOpenRemote }: { onOpenRemote: () => void }) {
         )}
       </section>
 
+      {access.prompt}
       {switching && <MobileWhosWatching onClose={() => setSwitching(false)} />}
     </div>
   );
