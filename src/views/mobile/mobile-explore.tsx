@@ -26,7 +26,7 @@ const hubs = [
   {
     view: "music",
     label: "Music",
-    description: "Listen, discover and build playlists",
+    description: "Your audio files and direct links",
     icon: Headphones,
   },
   { view: "games", label: "Games", description: "Browse your gaming library", icon: Gamepad2 },
