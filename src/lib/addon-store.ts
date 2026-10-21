@@ -40,6 +40,10 @@ function activeProfileId(): string {
   }
 }
 
+export function addonStorageProfileId(): string {
+  return activeProfileId();
+}
+
 function primaryProfileId(): string {
   try {
     const raw = localStorage.getItem(PROFILES_KEY);

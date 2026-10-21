@@ -24,6 +24,11 @@ export function SyncedAddonsCard() {
 
   const [refresh, setRefresh] = useState(0);
   useEffect(() => {
+    const onChanged = () => setRefresh((value) => value + 1);
+    window.addEventListener("harbor:addons-changed", onChanged);
+    return () => window.removeEventListener("harbor:addons-changed", onChanged);
+  }, []);
+  useEffect(() => {
     let cancelled = false;
     setAddons(null);
     setLastSynced(null);

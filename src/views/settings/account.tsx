@@ -1,3 +1,4 @@
+import { AddonBackupCard } from "./account/addon-backup-card";
 import { SettingGroup } from "./kit";
 import { useSettings } from "@/lib/settings";
 import { useState } from "react";
@@ -67,6 +68,7 @@ function JlAccountTab() {
         )}
       >
         <SyncedAddonsCard />
+        <AddonBackupCard />
       </Section>
       <Section
         title={t("Addon install links")}
