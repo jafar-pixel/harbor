@@ -1,1 +1,1 @@
-Build-only verification of JL Media Vision after PR #6 (2d66ca9): encrypted account addon backup/restore, restored-addon refresh, and quality fixes. Retain Windows and Android TV installers for testing. Do not publish this run.
+Build JL Media Vision installers with automatic encrypted addon sync from PR #8 (0c3359d). Retain Windows and Android TV installers for device verification. Build only; do not replace published release artifacts.
