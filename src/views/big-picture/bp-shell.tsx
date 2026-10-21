@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
@@ -25,7 +26,7 @@ import {
   useBigPicture,
 } from "@/lib/big-picture";
 import { ensureBigPictureTokens } from "./bp-tokens";
-import { bpOverscan } from "./bp-safe-area";
+import { bpOverscan, subscribeBpOverscan } from "./bp-safe-area";
 import { useBpFocusRoot } from "./use-bp-focus";
 import { BpAmbient } from "./bp-ambient";
 import { BpExitConfirm } from "./bp-exit-confirm";
@@ -383,12 +384,12 @@ export function BigPictureShell() {
     setSources(null);
   }, [routeId]);
 
+  const overscan = useSyncExternalStore(subscribeBpOverscan, bpOverscan, bpOverscan);
   const rootStyle = useMemo<CSSProperties | undefined>(() => {
-    const o = bpOverscan();
-    const vars = o > 0 ? ({ "--bp-overscan": String(o) } as CSSProperties) : undefined;
+    const vars = { "--bp-overscan": String(overscan) } as CSSProperties;
     if (!playing) return vars;
     return { ...vars, visibility: "hidden", pointerEvents: "none" };
-  }, [playing]);
+  }, [playing, overscan]);
 
   if (!chrome.mounted) return null;
 
@@ -401,12 +402,9 @@ export function BigPictureShell() {
           /* Static for the life of the tree, never toggled. Every rule that
              reads it is in BP_TOKENS and the trap is recorded there: a value
              that changes on this root invalidates style for the whole subtree
-             and measured 104.8ms median on a Stick 4K Max. isAndroidTv rather
-             than isAndroid, and rather than bpTvShell, because it is the gate
-             the other two performance decisions in this directory already use
-             (bp-decor-motion, bp-ambient-layers) and only that WebView was
-             measured. */
-          data-bp-tv={isAndroidTv() ? "" : undefined}
+             and measured 104.8ms median on a Stick 4K Max. Both Android TV containers need the TV layout: the Tauri
+             entry and the JL WebView APK. */
+          data-bp-tv={isAndroidTv() || isTvApp() ? "" : undefined}
           role="application"
           aria-label={t("Big Picture")}
           aria-hidden={playing || undefined}

@@ -144,6 +144,34 @@ class MainActivity : AppCompatActivity() {
             return true
         }
         if (nativePlayer.handleFullKey(event)) return true
+        // A WebView can consume DPAD_CENTER as a native click instead of Enter.
+        // Route TV navigation through the page's focus engine exactly once, while
+        // leaving Android dialogs, text editing and full-screen video native.
+        val key = when (event.keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> "ArrowUp"
+            KeyEvent.KEYCODE_DPAD_DOWN -> "ArrowDown"
+            KeyEvent.KEYCODE_DPAD_LEFT -> "ArrowLeft"
+            KeyEvent.KEYCODE_DPAD_RIGHT -> "ArrowRight"
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> "Enter"
+            KeyEvent.KEYCODE_MENU -> "ContextMenu"
+            else -> null
+        }
+        if (key != null && onAppPage && web.hasWindowFocus() && fullscreenView == null &&
+            (event.action == KeyEvent.ACTION_DOWN || event.action == KeyEvent.ACTION_UP)) {
+            val saved = KeyEvent(event)
+            val type = if (event.action == KeyEvent.ACTION_DOWN) "keydown" else "keyup"
+            val repeat = event.repeatCount > 0
+            val script = "(function(){var r=document.querySelector('[data-bp-root]');" +
+                "var a=document.activeElement;" +
+                "if(!r||getComputedStyle(r).visibility==='hidden'||" +
+                "(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.isContentEditable)))return false;" +
+                "(a||r).dispatchEvent(new KeyboardEvent('$type',{key:'$key',code:'$key'," +
+                "bubbles:true,cancelable:true,repeat:$repeat}));return true;})()"
+            web.evaluateJavascript(script) { result ->
+                if (result != "true" && !isFinishing && !isDestroyed) web.dispatchKeyEvent(saved)
+            }
+            return true
+        }
         return super.dispatchKeyEvent(event)
     }
 

@@ -1,10 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { setUiLanguage, type UiLanguage } from "@/lib/i18n";
 import { useSettings, type StreamingService } from "@/lib/settings";
 import { declineSportsConsent, resetSportsConsent } from "@/lib/sports/consent";
 import type { Settings } from "@/lib/settings/types";
 import { SFX } from "@/lib/sfx";
-import { bpOverscan, setBpOverscan } from "./bp-safe-area";
+import { bpOverscan, setBpOverscan, subscribeBpOverscan } from "./bp-safe-area";
 import { parseTvCanvas, setTvCanvas } from "@/lib/tv-canvas";
 
 type Commit = (controlId: string, value: string) => void;
@@ -20,20 +20,16 @@ export type BpSettingsWriter = {
 
 export function useBpSettingsWriter(): BpSettingsWriter {
   const { settings, update, toggleStreaming } = useSettings();
-  const [overscan, setOverscanState] = useState(() => bpOverscan());
+  const overscan = useSyncExternalStore(subscribeBpOverscan, bpOverscan, bpOverscan);
 
   const commit = useCallback<Commit>(
     (id, value) => {
       const on = value === "on";
       if (id === "overscan") {
         const next = Number(value);
-        // Both, on purpose: the module holds it for this session and the
-        // setting is what survives a restart. bp-shell reads the module once
-        // on first render, so nothing re-reads storage mid-session.
+        // Notify the live shell, then persist the choice for the next launch.
         setBpOverscan(next);
-        setOverscanState(next);
         update({ bigPictureOverscan: next });
-        document.documentElement.style.setProperty("--bp-overscan", String(next));
         return;
       }
       if (id === "quality") {

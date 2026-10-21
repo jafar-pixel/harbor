@@ -21,7 +21,7 @@ const SETTINGS_KEY = "harbor.settings";
 // sensitive so an ordinary word ending in "aft" cannot match it.
 const FIRE_TV_UA = /\bAFT[A-Z0-9]+\b/;
 const TEN_FOOT_UA =
-  /Android ?TV|Google ?TV|SMART-?TV|Tizen|Web ?0S|WebOS|NetCast|BRAVIA|HbbTV|CrKey|VIDAA/i;
+  /JLMediaVisionTV|SHIELD|Android ?TV|Google ?TV|SMART-?TV|Tizen|Web ?0S|WebOS|NetCast|BRAVIA|HbbTV|CrKey|VIDAA/i;
 
 function clampOverscan(fraction: number): number {
   return Number.isFinite(fraction) ? Math.min(MAX_OVERSCAN, Math.max(0, fraction)) : 0;
@@ -54,9 +54,7 @@ function tenFootDevice(): boolean {
   return FIRE_TV_UA.test(ua) || TEN_FOOT_UA.test(ua);
 }
 
-// bp-shell reads bpOverscan() once, inside a useMemo keyed on playback, so
-// whatever the first render sees is what the whole session keeps. A source that
-// cannot answer synchronously at import time cannot be a source here at all.
+// Resolve synchronously so the first frame uses the saved safe area.
 function resolveOverscan(): number | null {
   if (typeof window === "undefined") return null;
   const forced = urlOverscan();
@@ -70,13 +68,29 @@ const chosen = resolveOverscan();
 let overscan = chosen ?? (typeof window !== "undefined" && tenFootDevice() ? TEN_FOOT_OVERSCAN : 0);
 let explicit = chosen !== null;
 
+const listeners = new Set<() => void>();
+
+export function subscribeBpOverscan(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function publishOverscan(fraction: number): void {
+  const next = clampOverscan(fraction);
+  if (next === overscan) return;
+  overscan = next;
+  for (const listener of listeners) listener();
+}
+
 export function bpOverscan(): number {
   return overscan;
 }
 
 export function setBpOverscan(fraction: number): void {
-  overscan = clampOverscan(fraction);
   explicit = true;
+  publishOverscan(fraction);
 }
 
 /**
@@ -88,7 +102,7 @@ export function setBpOverscan(fraction: number): void {
  */
 export function setBpOverscanDefault(fraction: number): void {
   if (explicit) return;
-  overscan = clampOverscan(fraction);
+  publishOverscan(fraction);
 }
 
 export function bpSafeAreaPx(): { x: number; y: number } {
