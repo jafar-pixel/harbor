@@ -1,28 +1,28 @@
-import {
-  lazy,
-  startTransition,
-  Suspense,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { LibraryKey } from "./settings/library-panel";
 import type { RelayMode } from "./settings/relay-section";
 import type { DebridKey } from "./settings/streaming-sources-panel";
 import { SettingsTools } from "./settings/nav";
-import { groupForSection, TOP_GROUPS } from "./settings/groups";
+import { TOP_GROUPS } from "./settings/groups";
 import { requestTracker } from "./settings/tracker-request";
 import { SubTabsProvider, type SubTabReg } from "./settings/sub-tabs";
 import { SettingsSidebar } from "./settings/settings-sidebar";
 import { tabsFor } from "./settings/tab-registry";
-import { glideSettingsToTop, useSettingsAnchor, type SettingsAnchorRequest } from "./settings/anchor-navigation";
+import {
+  glideSettingsToTop,
+  useSettingsAnchor,
+  type SettingsAnchorRequest,
+} from "./settings/anchor-navigation";
 import { PageActionsProvider, type PageActionReg } from "./settings/page-actions";
 import { SettingsFooter } from "./settings/settings-footer";
 import { SettingsActiveContext, type SectionId } from "./settings/shared";
 import { SectionCards } from "./settings/section-cards";
-import { LicensesPanel } from "./settings/licenses-panel";
-import { IconsPanel } from "./settings/icons-panel";
+const LicensesPanel = lazy(() =>
+  import("./settings/licenses-panel").then((m) => ({ default: m.LicensesPanel })),
+);
+const IconsPanel = lazy(() =>
+  import("./settings/icons-panel").then((m) => ({ default: m.IconsPanel })),
+);
 import "./settings/tv-panel/store";
 import { useThemeLibraryOpen } from "./settings/theme-panel/library-open-store";
 import { BackToTop } from "@/components/back-to-top";
@@ -461,10 +461,9 @@ export function Settings({ visible = true }: { visible?: boolean }) {
       subRegRef.current?.onChange(wantTab);
       pendingTab.current = null;
     }
-    startTransition(() => {
-      setActive(target);
-      setPendingAnchor(anchor ? { anchor, tab: wantTab } : null);
-    });
+    preloadSettingsSection(target);
+    setActive(target);
+    setPendingAnchor(anchor ? { anchor, tab: wantTab } : null);
   };
 
   const selectFromRail = (id: SectionId, tab?: string) => {
@@ -578,20 +577,7 @@ export function Settings({ visible = true }: { visible?: boolean }) {
 
   const themeLibOpen = useThemeLibraryOpen();
   const wide = active === "theme" && themeLibOpen;
-  const activeGroup = groupForSection(active);
   const landingGroup = landing ? (TOP_GROUPS.find((g) => g.id === landing) ?? null) : null;
-  useEffect(() => {
-    if (!activeGroup) return;
-    const run = () => activeGroup.children.forEach((child) => preloadSettingsSection(child));
-    const ric = (window as { requestIdleCallback?: (cb: () => void) => number })
-      .requestIdleCallback;
-    if (ric) {
-      const h = ric(run);
-      return () => (window as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback?.(h);
-    }
-    const tid = window.setTimeout(run, 200);
-    return () => window.clearTimeout(tid);
-  }, [activeGroup]);
 
   useEffect(() => {
     if (themeLibOpen) scrollRef.current?.scrollTo({ top: 0 });
@@ -640,6 +626,7 @@ export function Settings({ visible = true }: { visible?: boolean }) {
                 activeTab={subReg?.value ?? null}
                 meta={SECTION_META}
                 query={query}
+                onPreload={preloadSettingsSection}
                 onSelect={selectFromRail}
                 onJump={handleNav}
               />
@@ -651,6 +638,7 @@ export function Settings({ visible = true }: { visible?: boolean }) {
               >
                 <div className="hset-content">
                   <Suspense
+                    key={active}
                     fallback={
                       <div
                         className="h-64 rounded-md bg-elevated"
