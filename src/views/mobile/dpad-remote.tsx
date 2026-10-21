@@ -210,6 +210,7 @@ export function DpadRemote() {
               onPointerUp={endPress}
               onPointerLeave={endPress}
               onPointerCancel={endPress}
+              onLostPointerCapture={endPress}
               className="absolute inset-0 bg-elevated outline-none"
               style={{ clipPath: clip, touchAction: "none" }}
             >

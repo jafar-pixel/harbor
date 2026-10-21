@@ -1,7 +1,7 @@
 import { AccountRemotePicker } from "./account-remote-picker";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
-import { isMangaReaderRoute } from "@/lib/platform";
+import { isMangaReaderRoute, isRemoteRoute } from "@/lib/platform";
 import { isSetupRoute } from "@/lib/platform";
 import { hasSetupToken } from "./onboard/setup-wire";
 import { HarborLoader } from "@/components/harbor-loader";
@@ -71,8 +71,10 @@ function MangaReaderShell() {
 }
 
 function ShellBody() {
-  const [tab, setTab] = useState<MobileTab>("home");
-  const [seen, setSeen] = useState<Set<MobileTab>>(() => new Set<MobileTab>(["home"]));
+  const [tab, setTab] = useState<MobileTab>(() => (isRemoteRoute() ? "remote" : "home"));
+  const [seen, setSeen] = useState<Set<MobileTab>>(
+    () => new Set<MobileTab>([isRemoteRoute() ? "remote" : "home"]),
+  );
   const { remoteMode } = useMobileRemote();
   // "On your computer" playback only exists for the remote; on its own the phone plays here.
   const showNowPlaying = remoteMode && tab !== "remote";

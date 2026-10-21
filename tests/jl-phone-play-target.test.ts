@@ -41,3 +41,24 @@ test("moving between playback frames or back to the detail page is allowed", () 
   assert.equal(phoneCannotShow("picker", "home"), false);
   assert.equal(phoneCannotShow("home", "settings"), false);
 });
+
+test("a selected display stays the playback target during disconnects", () => {
+  assert.equal(
+    resolvePlayTarget({
+      remoteMode: true,
+      connected: false,
+      preferPhone: false,
+      selectedHost: true,
+    }),
+    "host",
+  );
+  assert.equal(
+    resolvePlayTarget({
+      remoteMode: true,
+      connected: false,
+      preferPhone: true,
+      selectedHost: true,
+    }),
+    "phone",
+  );
+});

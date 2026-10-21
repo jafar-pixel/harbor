@@ -111,7 +111,12 @@ export function MobileRemoteProvider({ children }: { children: ReactNode }) {
     ? accountRemote.ready && !!display
     : lan.status === "connected";
   const [preferPhone, setPreferPhone] = useState(false);
-  const playTarget = resolvePlayTarget({ remoteMode, connected, preferPhone });
+  const playTarget = resolvePlayTarget({
+    remoteMode,
+    connected,
+    preferPhone,
+    selectedHost: !!accountRemote.selected,
+  });
   const playHere = usePlayMeta();
 
   const playOnHost = useCallback(
