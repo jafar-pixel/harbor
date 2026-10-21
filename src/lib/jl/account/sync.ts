@@ -223,6 +223,7 @@ export async function autoLinkJlProfile(
     localStorage.getItem(`jl.account.profile-created.v1.${context.localId}`) !== "1"
   )
     return;
+  if (!name.trim()) return;
   await createAndLinkJlProfile(name, avatar, context);
 }
 

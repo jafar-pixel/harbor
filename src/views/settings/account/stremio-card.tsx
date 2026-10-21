@@ -1,6 +1,8 @@
+import { useJlLink } from "@/lib/jl/account/sync";
+import { useJlSyncStatus } from "@/lib/jl/account/sync-status";
 import { ROW_ACTION_PRIMARY, ROW_DESC, SettingRow } from "../kit";
 import { SButton } from "../ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Fingerprint, LogIn, LogOut, UserRound } from "../icons";
 import { AuthModal } from "@/components/auth-modal";
 import { useAuth } from "@/lib/auth";
@@ -8,9 +10,18 @@ import { tvFocus } from "@/lib/keyboard-navigation";
 import { navOwnsFocus } from "@/lib/keyboard-navigation/geometry";
 import { useT } from "@/lib/i18n";
 
+const AccountDialog = lazy(() =>
+  import("@/views/live/live-home/jl-sports/account-dialog").then((m) => ({
+    default: m.AccountDialog,
+  })),
+);
+
 export function StremioCard() {
   const t = useT();
   const { user, signOut } = useAuth();
+  const link = useJlLink();
+  const syncStatus = useJlSyncStatus();
+  const [showSync, setShowSync] = useState(false);
   const [reveal, setReveal] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const signInRef = useRef<HTMLButtonElement>(null);
@@ -82,6 +93,31 @@ export function StremioCard() {
           {user._id}
         </span>
       </SettingRow>
+
+      <SettingRow
+        icon={<UserRound size={18} strokeWidth={2} />}
+        label={
+          link
+            ? t("Syncing with {profile}", { profile: link.name })
+            : t("Choose a profile to start sync")
+        }
+        desc={
+          <span role="status">
+            {link
+              ? t(syncStatus.message)
+              : t(
+                  "Sign-in is complete. Link this device to your existing JL profile to sync addons and library.",
+                )}
+          </span>
+        }
+      >
+        <SButton onClick={() => setShowSync(true)}>{t("Manage sync")}</SButton>
+      </SettingRow>
+      {showSync && (
+        <Suspense fallback={<p role="status">{t("Loading settings")}</p>}>
+          <AccountDialog onClose={() => setShowSync(false)} />
+        </Suspense>
+      )}
 
       <SettingRow
         icon={<LogOut size={18} strokeWidth={2} />}
