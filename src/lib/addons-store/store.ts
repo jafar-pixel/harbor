@@ -68,7 +68,11 @@ export function useAddonsCatalog(adultsAllowed: boolean): {
         const id = a.manifest?.id;
         // Only the host is case-insensitive; configured paths and tokens are not.
         let url = a.transportUrl.trim();
-        try { url = new URL(url).href; } catch { /* Keep nonstandard transports distinct. */ }
+        try {
+          url = new URL(url).href;
+        } catch {
+          /* Keep nonstandard transports distinct. */
+        }
         if (!id || seenUrls.has(url)) return;
         seenUrls.add(url);
         const curated = CURATED_BY_ID.get(id);
@@ -267,7 +271,10 @@ export function useAddonsCatalog(adultsAllowed: boolean): {
       const detail = (e as CustomEvent<{ id?: string; installed?: boolean }>).detail;
       const id = detail?.id;
       const next = detail?.installed;
-      if (!id || typeof next !== "boolean") return;
+      if (!id || typeof next !== "boolean") {
+        setTick((t) => t + 1);
+        return;
+      }
       setById((prev) => {
         const r = prev.get(id);
         if (!r || r.installed === next) return prev;

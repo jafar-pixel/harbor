@@ -15,9 +15,11 @@ function backupPorts(): AddonBackupPorts {
     assertJlAccountCurrent(context.account);
     const current = refreshJlProfileContext(context);
     const currentLink = links.link(current.localId, current.account.userId);
-    if (current.revision !== context.revision ||
-        currentLink?.profileId !== link.profileId ||
-        addonStorageProfileId() !== context.localId)
+    if (
+      current.revision !== context.revision ||
+      currentLink?.profileId !== link.profileId ||
+      addonStorageProfileId() !== context.localId
+    )
       throw new Error("JL profile changed. Try again.");
   };
   const name = `addon-backup:v1:${link.profileId}`;
@@ -33,7 +35,8 @@ function backupPorts(): AddonBackupPorts {
     pull: async () => {
       const rows = await jlRpc<unknown>("get_secrets", {}, context.account);
       assertCurrent();
-      if (!Array.isArray(rows)) throw new Error("The JL account service returned an invalid backup.");
+      if (!Array.isArray(rows))
+        throw new Error("The JL account service returned an invalid backup.");
       const matches = rows.filter((row) => row && typeof row === "object" && row.name === name);
       if (!matches.length) return null;
       if (matches.length !== 1 || typeof matches[0].value !== "string")

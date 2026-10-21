@@ -16,7 +16,9 @@ export function AddonBackupCard() {
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+    };
   }, []);
   const transfer = async (restore: boolean) => {
     if (operation.current) return;
@@ -27,14 +29,24 @@ export function AddonBackupCard() {
     try {
       const count = await (restore ? restoreJlAddonBackup() : saveJlAddonBackup());
       if (!mounted.current) return;
-      setNotice(restore
-        ? count ? t("Added {count} addons. Your existing installations were kept.", { count })
-          : t("All saved addons are already installed.")
-        : t("Saved {count} addons to your JL account. Restore them on another device using the same JL profile.", { count }));
+      setNotice(
+        restore
+          ? count
+            ? t("Added {count} addons. Your existing installations were kept.", { count })
+            : t("All saved addons are already installed.")
+          : t(
+              "Saved {count} addons to your JL account. Restore them on another device using the same JL profile.",
+              { count },
+            ),
+      );
     } catch {
       if (!mounted.current) return;
       setFailed(true);
-      setNotice(t("Addons could not be transferred. Check your connection and JL profile, then try again. Your installed addons were kept."));
+      setNotice(
+        t(
+          "Addons could not be transferred. Check your connection and JL profile, then try again. Your installed addons were kept.",
+        ),
+      );
     } finally {
       operation.current = false;
       if (mounted.current) setBusy(false);
@@ -43,11 +55,15 @@ export function AddonBackupCard() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[13px] leading-relaxed text-ink-muted">
-        {t("Save configured addons, including private manifest links, encrypted in your JL account. On another device, select the same JL profile and restore. This is a manual backup; local-only addons may need setup on the other device.")}
+        {t(
+          "Save configured addons, including private manifest links, encrypted in your JL account. On another device, select the same JL profile and restore. Saving replaces this profile's previous backup. Restore keeps existing installations. Local-only addons may need setup on the other device.",
+        )}
       </p>
-      {(!session || !link) && <p className="text-[13px] text-ink-muted">
-        {t("Sign in and link this device to a JL profile to transfer addons.")}
-      </p>}
+      {(!session || !link) && (
+        <p className="text-[13px] text-ink-muted">
+          {t("Sign in and link this device to a JL profile to transfer addons.")}
+        </p>
+      )}
       <div className="flex flex-wrap gap-3">
         <SButton disabled={busy || !session || !link} onClick={() => void transfer(false)}>
           {t("Save addons")}
@@ -56,8 +72,19 @@ export function AddonBackupCard() {
           {t("Restore addons")}
         </SButton>
       </div>
-      {busy && <p role="status" className="text-[13px] text-ink-muted">{t("Transferring addons…")}</p>}
-      {notice && <p role={failed ? "alert" : "status"} className={`text-[13px] ${failed ? "text-danger" : "text-ink-muted"}`}>{notice}</p>}
+      {busy && (
+        <p role="status" className="text-[13px] text-ink-muted">
+          {t("Transferring addons…")}
+        </p>
+      )}
+      {notice && (
+        <p
+          role={failed ? "alert" : "status"}
+          className={`text-[13px] ${failed ? "text-danger" : "text-ink-muted"}`}
+        >
+          {notice}
+        </p>
+      )}
     </div>
   );
 }

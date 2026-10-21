@@ -3,7 +3,8 @@ export type PortableAddon = { id: string; transportUrl: string; installedAt: num
 type Snapshot = { version: 1; profileId: string; addons: PortableAddon[] };
 const MAX_BYTES = 256_000;
 const MAX_ADDONS = 200;
-const invalid = () => new Error("The saved addon backup is invalid. Your installed addons were kept.");
+const invalid = () =>
+  new Error("The saved addon backup is invalid. Your installed addons were kept.");
 
 function addonsFrom(value: unknown): PortableAddon[] {
   if (!Array.isArray(value) || value.length > MAX_ADDONS) throw invalid();
@@ -11,15 +12,30 @@ function addonsFrom(value: unknown): PortableAddon[] {
   return value.map((item: unknown) => {
     if (!item || typeof item !== "object") throw invalid();
     const v = item as Record<string, unknown>;
-    if (typeof v.id !== "string" || !v.id || v.id.length > 512 ||
-        typeof v.transportUrl !== "string" || v.transportUrl.length > 16_384 ||
-        typeof v.installedAt !== "number" || !Number.isFinite(v.installedAt) ||
-        v.installedAt < 0) throw invalid();
+    if (
+      typeof v.id !== "string" ||
+      !v.id ||
+      v.id.length > 512 ||
+      typeof v.transportUrl !== "string" ||
+      v.transportUrl.length > 16_384 ||
+      typeof v.installedAt !== "number" ||
+      !Number.isFinite(v.installedAt) ||
+      v.installedAt < 0
+    )
+      throw invalid();
     let url: URL;
-    try { url = new URL(v.transportUrl); } catch { throw invalid(); }
-    if (!["https:", "http:"].includes(url.protocol) ||
-        !/\/manifest\.json$/i.test(url.pathname) || url.hash ||
-        urls.has(v.transportUrl)) throw invalid();
+    try {
+      url = new URL(v.transportUrl);
+    } catch {
+      throw invalid();
+    }
+    if (
+      !["https:", "http:"].includes(url.protocol) ||
+      !/\/manifest\.json$/i.test(url.pathname) ||
+      url.hash ||
+      urls.has(v.transportUrl)
+    )
+      throw invalid();
     urls.add(v.transportUrl);
     // Do not copy arbitrary manifest metadata, artwork, headers or local file paths.
     return { id: v.id, transportUrl: v.transportUrl, installedAt: v.installedAt };
@@ -37,7 +53,11 @@ export function encodeAddonBackup(profileId: string, addons: unknown): string {
 export function decodeAddonBackup(text: string, profileId: string): PortableAddon[] {
   if (new TextEncoder().encode(text).byteLength > MAX_BYTES) throw invalid();
   let value: Snapshot;
-  try { value = JSON.parse(text) as Snapshot; } catch { throw invalid(); }
+  try {
+    value = JSON.parse(text) as Snapshot;
+  } catch {
+    throw invalid();
+  }
   if (!value || value.version !== 1 || value.profileId !== profileId) throw invalid();
   return addonsFrom(value.addons);
 }

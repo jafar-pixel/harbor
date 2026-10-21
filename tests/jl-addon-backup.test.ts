@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { decodeAddonBackup, encodeAddonBackup, restoreAddonBackup, saveAddonBackup, type AddonBackupPorts, type PortableAddon } from "../src/lib/jl/account/addon-backup.ts";
+import {
+  decodeAddonBackup,
+  encodeAddonBackup,
+  restoreAddonBackup,
+  saveAddonBackup,
+  type AddonBackupPorts,
+  type PortableAddon,
+} from "../src/lib/jl/account/addon-backup.ts";
 
 const addon = (config = "one"): PortableAddon => ({
   id: "example.mediafusion",
@@ -14,28 +21,48 @@ function fixture() {
   let writes = 0;
   const ports: AddonBackupPorts = {
     profileId: "example-profile",
-    assertCurrent: () => { if (!current) throw new Error("Account or profile changed"); },
+    assertCurrent: () => {
+      if (!current) throw new Error("Account or profile changed");
+    },
     readLocal: () => local,
-    writeLocal: (items) => { local = items; writes++; },
+    writeLocal: (items) => {
+      local = items;
+      writes++;
+    },
     pull: async () => remote,
-    push: async (value) => { remote = value; },
+    push: async (value) => {
+      remote = value;
+    },
   };
   return {
     ports,
-    setLocal: (items: PortableAddon[]) => { local = items; },
-    setRemote: (value: string | null) => { remote = value; },
-    changeOwner: () => { current = false; },
-    local: () => local, remote: () => remote, writes: () => writes,
+    setLocal: (items: PortableAddon[]) => {
+      local = items;
+    },
+    setRemote: (value: string | null) => {
+      remote = value;
+    },
+    changeOwner: () => {
+      current = false;
+    },
+    local: () => local,
+    remote: () => remote,
+    writes: () => writes,
   };
 }
 
 test("configured links retain case/query and distinct configurations of one addon", () => {
   const data = [addon("CaseSensitive"), addon("Other")];
-  assert.deepEqual(decodeAddonBackup(encodeAddonBackup("example-profile", data), "example-profile"), data);
+  assert.deepEqual(
+    decodeAddonBackup(encodeAddonBackup("example-profile", data), "example-profile"),
+    data,
+  );
 });
 test("backup serializes only installation fields, not cached manifests or extra values", () => {
-  const text = encodeAddonBackup("example-profile", [{ ...addon(), manifest: { logo: "file:///example" }, headers: { example: "value" } }]);
-  assert.equal(text.includes("manifest\""), false);
+  const text = encodeAddonBackup("example-profile", [
+    { ...addon(), manifest: { logo: "file:///example" }, headers: { example: "value" } },
+  ]);
+  assert.equal(text.includes('manifest"'), false);
   assert.equal(text.includes("file:"), false);
   assert.equal(text.includes("headers"), false);
 });
@@ -77,7 +104,12 @@ test("account or profile changes discard an in-flight restore", async () => {
   assert.equal(f.writes(), 0);
 });
 test("a rejected or missing backup never clears local installations", async () => {
-  for (const remote of [null, "invalid", '{"version":2}', encodeAddonBackup("other-profile", [addon()])]) {
+  for (const remote of [
+    null,
+    "invalid",
+    '{"version":2}',
+    encodeAddonBackup("other-profile", [addon()]),
+  ]) {
     const f = fixture();
     f.setLocal([addon("existing")]);
     f.setRemote(remote);
@@ -93,10 +125,18 @@ test("invalid and oversized backups are rejected before mutation", () => {
     { ...addon(), transportUrl: "https://addon.example/configure" },
     { ...addon(), installedAt: -1 },
     { ...addon(), id: "" },
-  ]) assert.throws(() => encodeAddonBackup("example-profile", [bad]), /invalid/);
+  ])
+    assert.throws(() => encodeAddonBackup("example-profile", [bad]), /invalid/);
   assert.throws(() => encodeAddonBackup("example-profile", [addon(), addon()]), /invalid/);
   assert.throws(() => decodeAddonBackup(" ".repeat(256_001), "example-profile"), /invalid/);
-  assert.throws(() => encodeAddonBackup("example-profile", Array.from({length: 201}, (_, i) => addon(String(i)))), /invalid/);
+  assert.throws(
+    () =>
+      encodeAddonBackup(
+        "example-profile",
+        Array.from({ length: 201 }, (_, i) => addon(String(i))),
+      ),
+    /invalid/,
+  );
 });
 test("empty saves cannot overwrite a usable account backup", async () => {
   const f = fixture();
@@ -107,16 +147,22 @@ test("empty saves cannot overwrite a usable account backup", async () => {
 });
 test("network errors propagate and never produce a false successful restore", async () => {
   const f = fixture();
-  f.ports.pull = async () => { throw new Error("offline"); };
+  f.ports.pull = async () => {
+    throw new Error("offline");
+  };
   await assert.rejects(restoreAddonBackup(f.ports), /offline/);
   assert.equal(f.writes(), 0);
   f.setLocal([addon()]);
-  f.ports.push = async () => { throw new Error("offline"); };
+  f.ports.push = async () => {
+    throw new Error("offline");
+  };
   await assert.rejects(saveAddonBackup(f.ports), /offline/);
 });
 test("a storage failure cannot report restore success", async () => {
   const f = fixture();
   f.setRemote(encodeAddonBackup("example-profile", [addon()]));
-  f.ports.writeLocal = () => { throw new Error("storage full"); };
+  f.ports.writeLocal = () => {
+    throw new Error("storage full");
+  };
   await assert.rejects(restoreAddonBackup(f.ports), /storage full/);
 });
