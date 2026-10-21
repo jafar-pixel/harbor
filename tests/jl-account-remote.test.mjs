@@ -4,7 +4,12 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 function load(path, mocks = {}) {
   const code = ts.transpileModule(readFileSync(new URL("../" + path, import.meta.url), "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    fileName: path,
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2022,
+      jsx: ts.JsxEmit.ReactJSX,
+    },
   }).outputText;
   const m = { exports: {} };
   new Function("require", "module", "exports", code)((id) => mocks[id], m, m.exports);
@@ -216,5 +221,87 @@ test("tablet keys use the TV key handlers once and preserve desktop navigation",
     assert.deepEqual(desktop, ["right"]);
   } finally {
     Object.assign(globalThis, saved);
+  }
+});
+
+test("direction buttons send immediately, avoid duplicate clicks and stop when capture is lost", () => {
+  const old = globalThis.window,
+    commands = [],
+    timers = new Map(),
+    cleanups = [];
+  let seq = 0;
+  globalThis.window = {
+    setTimeout: (fn, delay) => {
+      const id = ++seq;
+      timers.set(id, { fn, delay });
+      return id;
+    },
+    clearTimeout: (id) => timers.delete(id),
+    matchMedia: () => ({ matches: false }),
+  };
+  const jsx = (type, props) => ({ type, props });
+  const noop = () => {};
+  const mocks = {
+    react: {
+      useEffect: (fn) => {
+        const c = fn();
+        if (c) cleanups.push(c);
+      },
+      useRef: (v) => ({ current: v }),
+      useState: (v) => [typeof v === "function" ? v() : v, noop],
+    },
+    "react/jsx-runtime": { jsx, jsxs: jsx },
+    "lucide-react": {},
+    "@/lib/providers/streaming": { SERVICES: {} },
+    "@/lib/i18n": { useT: () => (x) => x },
+    "./mobile-remote": {
+      useMobileRemote: () => ({
+        sendCommand: (c) => commands.push(c),
+        snapshot: { idle: true, target: { label: "TV" } },
+        connected: true,
+      }),
+    },
+    "./mobile-sheet-lock": { useRegisterSheet: noop },
+    "./mobile-services": {},
+    "./renderer-sheet": {},
+    "./remote-extras": {},
+    "./voice-search": {},
+  };
+  try {
+    const { DpadRemote } = load("src/views/mobile/dpad-remote.tsx", mocks);
+    const tree = DpadRemote();
+    const find = (node) => {
+      if (!node || typeof node !== "object") return null;
+      if (node.props?.["aria-label"] === "Up") return node;
+      for (const child of [node.props?.children].flat(Infinity)) {
+        const found = find(child);
+        if (found) return found;
+      }
+      return null;
+    };
+    const up = find(tree);
+    assert.ok(up);
+    up.props.onPointerDown({
+      isPrimary: true,
+      button: 0,
+      pointerId: 1,
+      currentTarget: { setPointerCapture: noop },
+    });
+    assert.deepEqual(commands, [{ action: "nav", key: "up" }]);
+    up.props.onClick({ detail: 1 });
+    assert.equal(commands.length, 1);
+    const repeat = [...timers.values()].find((x) => x.delay === 380);
+    repeat.fn();
+    assert.equal(commands.length, 2);
+    up.props.onLostPointerCapture();
+    assert.equal(
+      [...timers.values()].some((x) => x.delay < 120),
+      false,
+    );
+    up.props.onClick({ detail: 0 });
+    assert.equal(commands.length, 3);
+  } finally {
+    for (const c of cleanups) c();
+    globalThis.window = old;
   }
 });
