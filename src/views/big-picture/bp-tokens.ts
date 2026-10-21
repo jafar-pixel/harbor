@@ -174,6 +174,20 @@ export const BP_TOKENS = `
   --bp-hero-give: 56px;
 }
 
+/* Reserve a full focused poster and its row heading above the hint bar.
+   The APK uses this same layout at every selectable canvas size. */
+[data-bp-root][data-bp-tv] [data-bp-home-hero] [data-bp-hero-box],
+[data-bp-root][data-bp-tv] [data-bp-page-hero] [data-bp-hero-box] {
+  height: max(0px, calc(100vh - var(--bp-page-top) - var(--bp-hint-h) - clamp(177px, 13vw, 220px) * 1.545 - 70px));
+}
+@media (max-height: 700px) {
+  [data-bp-root][data-bp-tv] [data-bp-hero-box] [data-bp-hero-desc],
+  [data-bp-root][data-bp-tv] [data-bp-hero-box] [data-bp-hero-mark] { display: none; }
+  [data-bp-root][data-bp-tv] [data-bp-hero-box] [data-bp-hero-logo] { max-height: 10vh; }
+  [data-bp-root][data-bp-tv] [data-bp-hero-box] [data-bp-hero-meta] { margin-top: 8px; }
+  [data-bp-root][data-bp-tv] [data-bp-hero-box] > [data-bp-xfade] { padding-bottom: 16px; }
+}
+
 /* ==========================================================================
    NON-TV UPSCALE. Desktop and Steam Deck read Big Picture ~1.25x larger than
    the authored ten-foot floor, while the 1080x607 Android television is left

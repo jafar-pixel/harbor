@@ -559,7 +559,7 @@ export function useBpFocusRoot(params: {
         if (editing()) return;
         e.preventDefault();
         e.stopPropagation();
-        select();
+        if (!e.repeat) select();
         return;
       }
       if (e.key === "Escape" || e.key === "Backspace") {
@@ -581,6 +581,7 @@ export function useBpFocusRoot(params: {
       if ((e.key === "Tab" || e.key === "ContextMenu") && onOptions) {
         e.preventDefault();
         e.stopPropagation();
+        if (e.repeat) return;
         SFX.open();
         onOptions();
       }
