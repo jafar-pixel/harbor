@@ -1,1 +1,1 @@
-JL Media Vision 0.9.39: setup no longer gets stuck on a network that blocks TorBox or Torrentio (hotels, offices); the web app keeps an IPTV login it couldn't test; smoother web Live TV through the home relay. Includes everything in 0.9.38.
+Build-only verification of JL Media Vision after PR #6 (2d66ca9): encrypted account addon backup/restore, restored-addon refresh, and quality fixes. Retain Windows and Android TV installers for testing. Do not publish this run.
