@@ -184,6 +184,7 @@ function SectionRow({
   label,
   on,
   onPick,
+  onPreload,
   tab,
 }: {
   id: SectionId;
@@ -191,10 +192,13 @@ function SectionRow({
   tab?: TabEntry;
   on: boolean;
   onPick: (id: SectionId, tab?: string) => void;
+  onPreload?: (id: SectionId) => void;
 }) {
   return (
     <button
       type="button"
+      onPointerEnter={() => onPreload?.(id)}
+      onFocus={() => onPreload?.(id)}
       onClick={() => onPick(id, tab?.id)}
       aria-current={on ? "page" : undefined}
       className={`hset-rail-row ${on ? "is-on" : ""}`}
@@ -224,6 +228,7 @@ export function SettingsSidebar({
   meta,
   query = "",
   onSelect,
+  onPreload,
   onJump,
 }: {
   active: SectionId;
@@ -231,6 +236,7 @@ export function SettingsSidebar({
   meta: Record<SectionId, { label: string; sub: string }>;
   query?: string;
   onSelect: (section: SectionId, tab?: string) => void;
+  onPreload?: (section: SectionId) => void;
   onJump?: (section: SectionId, anchor?: string, tab?: string) => void;
 }) {
   const t = useT();
@@ -280,6 +286,7 @@ export function SettingsSidebar({
                       label={t(item.label)}
                       on={item.id === active}
                       onPick={onSelect}
+                      onPreload={onPreload}
                     />
                   </div>
                 ))}
@@ -400,6 +407,7 @@ export function SettingsSidebar({
                             label={t(PAGE_LABELS[id + "." + tab.id] ?? tab.label)}
                             on={id === active && (activeTab ?? tabs[0].id) === tab.id}
                             onPick={onSelect}
+                            onPreload={onPreload}
                           />
                         ))
                       ) : (
@@ -408,6 +416,7 @@ export function SettingsSidebar({
                           label={t(meta[id].label)}
                           on={id === active}
                           onPick={onSelect}
+                          onPreload={onPreload}
                         />
                       )}
                     </div>
