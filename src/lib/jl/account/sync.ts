@@ -215,7 +215,10 @@ export async function autoLinkJlProfile(
       linkJlProfile(profile, context);
       return;
     }
-  } else if (profiles.length === 1) {
+  } else if (
+    profiles.length === 1 &&
+    localStorage.getItem(`jl.account.profile-created.v1.${context.localId}`) !== "1"
+  ) {
     linkJlProfile(profiles[0], context);
     return;
   } else if (
@@ -223,6 +226,7 @@ export async function autoLinkJlProfile(
     localStorage.getItem(`jl.account.profile-created.v1.${context.localId}`) !== "1"
   )
     return;
+  if (!name.trim()) return;
   await createAndLinkJlProfile(name, avatar, context);
 }
 

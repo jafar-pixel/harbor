@@ -39,7 +39,7 @@ function useJlAutoLink(): void {
   const localId = activeProfile?.id ?? "";
 
   useEffect(() => {
-    if (!userId || linked || !name) return;
+    if (!userId || linked || !localId) return;
     const controller = new AbortController();
     const retry = () => {
       try {

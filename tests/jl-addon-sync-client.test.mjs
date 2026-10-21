@@ -37,6 +37,7 @@ function device(cloud) {
           return rows;
         }
         if (failPush) throw Error("offline");
+        if (args.p_name.length > 128) throw Error("secret name exceeds database limit");
         cloud.set(args.p_name, args.p_value);
       },
     },
@@ -51,7 +52,7 @@ function device(cloud) {
   const scope = {
     account: { userId: "user" },
     localId: "local",
-    profileId: "profile",
+    profileId: "9000ee7d-d18d-45b9-8489-23947c631bf1",
     assertCurrent: () => {
       if (!current) throw Error("changed");
     },
@@ -86,6 +87,7 @@ test("encrypted RPC integration converges desktop and web, then propagates remov
   d.set([addon("1"), addon("2"), addon("3"), addon("4")]);
   w.set([addon("1")]);
   await d.run();
+  assert.equal([...cloud.keys()][0].length, 87);
   await w.run();
   assert.equal(w.get().length, 4);
   w.set(w.get().filter((a) => a.id !== "2"));
