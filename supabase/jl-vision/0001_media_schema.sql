@@ -102,7 +102,7 @@ create trigger subscriptions_touch before update on media.subscriptions for each
 -- with a key that lives only in Vault; readable only through the functions below, by the owner.
 create table if not exists media.secrets (
   owner uuid not null references auth.users (id) on delete cascade,
-  name text not null check (char_length(name) between 1 and 64),
+  name text not null check (char_length(name) between 1 and 128),
   ciphertext bytea not null,
   updated_at timestamptz not null default now(),
   primary key (owner, name)
