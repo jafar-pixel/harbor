@@ -64,7 +64,7 @@ function JlAccountTab() {
       <Section
         title={t("Installed addons")}
         subtitle={t(
-          "Your addon configurations are kept on this device. Manage each installation in Addons.",
+          "Addons sync automatically across devices using the same linked JL profile. Manage installations in Addons.",
         )}
       >
         <SyncedAddonsCard />
