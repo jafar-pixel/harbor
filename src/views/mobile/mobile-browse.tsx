@@ -100,6 +100,7 @@ function ViewLayer({ active, children }: { active: boolean; children: ReactNode 
     <div
       className={`harbor-view-layer flex flex-col${active ? " is-active" : ""}`}
       aria-hidden={active ? undefined : true}
+      inert={!active}
     >
       {children}
     </div>

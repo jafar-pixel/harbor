@@ -46,7 +46,7 @@ import {
 import { synchronizeMediaServer } from "@/lib/media-server/sync";
 import { setNativeMemoryActive } from "@/lib/native-memory";
 import { useOverlayPinned } from "@/lib/overlay-pin";
-import { isMobileWeb, isRemoteRoute } from "@/lib/platform";
+import { isWeb, isMobileWeb, isRemoteRoute } from "@/lib/platform";
 import { makeSafeTauriUnlisten } from "@/lib/tauri-unlisten";
 import { activeLayout } from "@/lib/theme";
 import { useThemePreview } from "@/lib/theme-preview";
@@ -289,7 +289,9 @@ const ServiceView = lazy(() => importService().then((m) => ({ default: m.Service
 const Settings = lazy(() => importSettings().then((m) => ({ default: m.Settings })));
 const Shows = lazy(() => importShows().then((m) => ({ default: m.Shows })));
 const LibraryView = lazy(() => importLibrary().then((m) => ({ default: m.LibraryView })));
-const MusicView = lazy(() => importMusic().then((m) => ({ default: m.MusicView })));
+const MusicView = lazy(() =>
+  (isWeb() ? import("@/views/web-music") : importMusic()).then((m) => ({ default: m.MusicView })),
+);
 const GamesView = lazy(() => importGames().then((m) => ({ default: m.GamesView })));
 const LiveView = lazy(() => importLive().then((m) => ({ default: m.LiveView })));
 const SportsPageView = lazy(() => importSportsPages().then((m) => ({ default: m.SportsPageView })));
@@ -455,7 +457,9 @@ function AppProviders({ onReady }: { onReady?: () => void }) {
                                                     {isMobileWeb() || isRemoteRoute() ? (
                                                       <>
                                                         <Suspense fallback={null}>
-                                                          <MobileShell />
+                                                          <MobileShell
+                                                            workspace={<Shell compact />}
+                                                          />
                                                         </Suspense>
                                                         <RevealOnMount onReady={onReady} />
                                                       </>
@@ -803,7 +807,7 @@ function RevealOnMount({ onReady }: { onReady?: () => void }) {
 const HIDDEN_DOCK = { left: 0, top: 0, width: 1, height: 1, visibility: "hidden" } as const;
 const WALLPAPER_DOCK = { inset: 0 } as const;
 
-function Shell({ onReady }: { onReady?: () => void }) {
+function Shell({ onReady, compact = false }: { onReady?: () => void; compact?: boolean }) {
   const {
     topKind,
     service,
@@ -971,7 +975,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
     () => (preview ? preview.layout : activeLayout(settings.theme)),
     [preview, settings.theme],
   );
-  const layout = kid ? "sidebar" : baseLayout;
+  const layout = compact ? "mobile" : kid ? "sidebar" : baseLayout;
   const themeHasTopbar =
     layout === "sidebar" ||
     layout === "dracula" ||
@@ -1479,7 +1483,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
     if (!activeProfile) return;
     if (activeProfile.kid) {
       setView("kids");
-    } else if (topKind === "kids") {
+    } else if (!compact && topKind === "kids") {
       setView("home");
     }
   }, [activeProfile?.id]);
@@ -1698,7 +1702,14 @@ function Shell({ onReady }: { onReady?: () => void }) {
   const peopleAlive = useIdleEvict(peopleTop);
 
   const gameDockVisible =
-    !kid && !kidsTop && !playerActive && !pickerTop && !bigPicture && !immersive && !chromeHidden;
+    !compact &&
+    !kid &&
+    !kidsTop &&
+    !playerActive &&
+    !pickerTop &&
+    !bigPicture &&
+    !immersive &&
+    !chromeHidden;
   return (
     <GameAccessProvider
       profile={activeProfile?.id ?? "default"}
@@ -1805,8 +1816,8 @@ function Shell({ onReady }: { onReady?: () => void }) {
           )}
           <MusicDock />
           <MusicSurprisePrompt />
-          {!playerActive && <WindowResizeEdges />}
-          <HybridTitleBar suppressed={playerActive || immersive || chromeHidden} />
+          {!compact && !playerActive && <WindowResizeEdges />}
+          <HybridTitleBar suppressed={compact || playerActive || immersive || chromeHidden} />
           <div
             ref={contentRef}
             className={`relative flex min-h-0 min-w-0 flex-1 flex-col ${playerActive ? "invisible" : ""}`}
@@ -2261,18 +2272,19 @@ function Shell({ onReady }: { onReady?: () => void }) {
                 </Suspense>
               </div>
             )}
-            {pickerTop && !themeHasTopbar && (
+            {!compact && pickerTop && !themeHasTopbar && (
               <div className="fixed end-3 top-3 z-[120]">
                 <WindowControls />
               </div>
             )}
-            {!immersive && !settingsTop && (
+            {!compact && !immersive && !settingsTop && (
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 top-0 z-30 h-24 bg-gradient-to-b from-canvas/85 via-canvas/40 to-transparent"
               />
             )}
-            {!immersive &&
+            {!compact &&
+              !immersive &&
               (themeHasTopbar || (settingsTop && layout !== "minui" && layout !== "custom")) && (
                 <Topbar />
               )}
@@ -2322,7 +2334,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
         <MemoryHud />
         <TabHotkeys />
         {!player && <OfflineBanner />}
-        {settings.sportsTickerBar && (
+        {!compact && settings.sportsTickerBar && (
           <ScoreTickerHost
             bar={!playerActive && !settingsTop && !pickerTop && !bigPicture && !immersive}
             overlay={playerActive}
