@@ -15,7 +15,7 @@ type CheckState = "idle" | "checking" | "rejected" | "unreachable";
 function BpConnectBody({ onBack }: { onBack?: () => void }) {
   const t = useBpT();
   const facts = useBpOnboardFacts();
-  const { update } = useSettings();
+  const { settings, update } = useSettings();
   const handoff = useBpHandoff();
   const [draft, setDraft] = useState("");
   const [typing, setTyping] = useState(false);
@@ -80,7 +80,12 @@ function BpConnectBody({ onBack }: { onBack?: () => void }) {
       <div className="grid flex-1 grid-cols-[minmax(0,1fr)_auto] items-start gap-[clamp(20px,2.4vw,52px)]">
         <div className="flex min-w-0 flex-col gap-[clamp(14px,2vh,26px)]">
           <div className="flex flex-col gap-[clamp(4px,0.7vh,9px)]">
-            <h2 className={TITLE}>{t("Finish setting up Harbor")}</h2>
+            <h2 className={TITLE}>{t("Connect JL MediaVision")}</h2>
+            <p className={`${BODY} max-w-[54ch] text-ink-subtle`}>
+              {t(
+                "For iPad control, sign into the same JL account, enable the remote controller below, then open watch.jl-stream.com/remote on your iPad.",
+              )}
+            </p>
             {!hasKey && (
               <p className={`${BODY} max-w-[54ch] text-ink-subtle`}>
                 {t("Harbor needs a TMDB key for artwork, rows and collections. It is free.")}
@@ -174,6 +179,14 @@ function BpConnectBody({ onBack }: { onBack?: () => void }) {
           className="flex items-center gap-[clamp(10px,1vw,18px)]"
         >
           {onBack && <BpConnectAction label={t("Settings")} back onPress={onBack} />}
+          <BpConnectAction
+            label={
+              settings.remoteControlEnabled
+                ? t("Remote controller: On")
+                : t("Enable remote controller")
+            }
+            onPress={() => update({ remoteControlEnabled: !settings.remoteControlEnabled })}
+          />
           {/* Exactly one of these two is the primary and carries the autofocus.
               With phone setup off, turning it on IS the way forward and the card
               beside it has already said so. */}

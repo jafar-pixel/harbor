@@ -1,3 +1,4 @@
+import { isBigPictureActive, goBigPictureTab } from "@/lib/big-picture";
 import type { PlayerBridge, PlayerSnapshot } from "@/lib/player/bridge";
 import type { CastDeviceInfo } from "@/lib/cast";
 import type { PlayerSrc } from "@/lib/view";
@@ -437,7 +438,8 @@ export async function dispatchRemoteCommand(command: RemoteCommand): Promise<voi
     }
     case "openSearch": {
       if (typeof window === "undefined") return;
-      window.dispatchEvent(new Event("harbor:open-search"));
+      if (isBigPictureActive()) goBigPictureTab("search");
+      else window.dispatchEvent(new Event("harbor:open-search"));
       let tries = 0;
       const focusSearchField = () => {
         const el = document.querySelector<HTMLInputElement>(

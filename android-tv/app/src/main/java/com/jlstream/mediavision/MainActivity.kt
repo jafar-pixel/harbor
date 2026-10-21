@@ -65,6 +65,7 @@ class MainActivity : AppCompatActivity() {
         }
         web.isFocusable = true
         web.isFocusableInTouchMode = true
+        web.requestFocus()
         web.addJavascriptInterface(PlayerBridge(), "JLNativePlayer")
         web.addJavascriptInterface(FetchBridge(), "JLNativeFetch")
         web.webViewClient = object : WebViewClient() {
@@ -144,35 +145,40 @@ class MainActivity : AppCompatActivity() {
             return true
         }
         if (nativePlayer.handleFullKey(event)) return true
-        // A WebView can consume DPAD_CENTER as a native click instead of Enter.
-        // Route TV navigation through the page's focus engine exactly once, while
-        // leaving Android dialogs, text editing and full-screen video native.
+        if (fullscreenView == null && onAppPage && forwardNavigationKey(event)) return true
+        return super.dispatchKeyEvent(event)
+    }
+
+    /** Keep D-pad events in the app's focus system instead of WebView spatial navigation. */
+    private fun forwardNavigationKey(event: KeyEvent): Boolean {
         val key = when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> "ArrowUp"
             KeyEvent.KEYCODE_DPAD_DOWN -> "ArrowDown"
             KeyEvent.KEYCODE_DPAD_LEFT -> "ArrowLeft"
             KeyEvent.KEYCODE_DPAD_RIGHT -> "ArrowRight"
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> "Enter"
-            KeyEvent.KEYCODE_MENU -> "ContextMenu"
-            else -> null
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
+            KeyEvent.KEYCODE_NUMPAD_ENTER, KeyEvent.KEYCODE_BUTTON_A -> "Enter"
+            else -> return false
         }
-        if (key != null && onAppPage && web.hasWindowFocus() && fullscreenView == null &&
-            (event.action == KeyEvent.ACTION_DOWN || event.action == KeyEvent.ACTION_UP)) {
-            val saved = KeyEvent(event)
-            val type = if (event.action == KeyEvent.ACTION_DOWN) "keydown" else "keyup"
-            val repeat = event.repeatCount > 0
-            val script = "(function(){var r=document.querySelector('[data-bp-root]');" +
-                "var a=document.activeElement;" +
-                "if(!r||getComputedStyle(r).visibility==='hidden'||" +
-                "(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.isContentEditable)))return false;" +
-                "(a||r).dispatchEvent(new KeyboardEvent('$type',{key:'$key',code:'$key'," +
-                "bubbles:true,cancelable:true,repeat:$repeat}));return true;})()"
-            web.evaluateJavascript(script) { result ->
-                if (result != "true" && !isFinishing && !isDestroyed) web.dispatchKeyEvent(saved)
-            }
-            return true
+        if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) return false
+        // Holding Select must not repeatedly open screens or start streams.
+        if (key == "Enter" && event.repeatCount > 0) return true
+        val copy = KeyEvent(event)
+        val type = if (event.action == KeyEvent.ACTION_DOWN) "keydown" else "keyup"
+        val script = "(function(){var a=document.activeElement;" +
+            "if(a&&(a.matches('input,textarea,select')||a.isContentEditable)&&" +
+            "!a.closest('[data-search-nav-mode]'))return 'native';" +
+            "var e=new KeyboardEvent('" + type + "',{key:" + JSONObject.quote(key) +
+            ",code:" + JSONObject.quote(key) + ",bubbles:true,cancelable:true,repeat:" +
+            (event.repeatCount > 0) + "});var target=a||document;" +
+            "target.dispatchEvent(e);" +
+            "if(e.type==='keydown'&&e.key==='Enter'&&!e.defaultPrevented&&a&&" +
+            "a.matches('button,a[href],[role=button],input[type=button],input[type=submit]'))a.click();" +
+            "return 'handled';})()"
+        web.evaluateJavascript(script) { result ->
+            if (result?.trim('"') == "native" && !isFinishing) web.dispatchKeyEvent(copy)
         }
-        return super.dispatchKeyEvent(event)
+        return true
     }
 
     /**

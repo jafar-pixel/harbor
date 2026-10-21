@@ -17,7 +17,13 @@ test("sign-in links an existing account profile even when the local profile has 
   }).outputText;
   const module = { exports: {} };
   const mocks = {
-    react: { useRef: (v) => ({ current: v }), useEffect: (fn) => fn() },
+    "react/jsx-runtime": { jsx: () => null, jsxs: () => null },
+    react: {
+      lazy: () => () => null,
+      Suspense: () => null,
+      useRef: (v) => ({ current: v }),
+      useEffect: (fn) => fn(),
+    },
     "@/lib/jl/account/client": { useJlSession: () => ({ userId: "user" }) },
     "@/lib/jl/account/keys-sync": { useJlKeySync: () => {} },
     "@/lib/profiles": {

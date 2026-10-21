@@ -1,3 +1,4 @@
+import { sendAccountRemote, useAccountRemote } from "@/lib/remote/account-remote";
 import {
   createContext,
   useCallback,
@@ -37,7 +38,21 @@ type MobileRemoteValue = {
 const Ctx = createContext<MobileRemoteValue | null>(null);
 
 export function MobileRemoteProvider({ children }: { children: ReactNode }) {
-  const { status, snapshot, sendCommand } = useRemoteClient();
+  const [remoteMode] = useState(isRemoteRoute);
+  const accountRemote = useAccountRemote();
+  const lan = useRemoteClient(
+    undefined,
+    remoteMode && location.port === "11471" && !accountRemote.selected,
+  );
+  const display = accountRemote.devices.find(
+    (device) => device.id === accountRemote.selected && Date.now() - device.seenAt < 12000,
+  );
+  const snapshot = display?.snapshot ?? lan.snapshot;
+  const sendCommand = useCallback(
+    (command: RemoteCommand) =>
+      accountRemote.selected ? sendAccountRemote(command) : lan.sendCommand(command),
+    [accountRemote.selected, lan.sendCommand],
+  );
   const { settings, update } = useSettings();
   const [flash, setFlash] = useState<{ ok: boolean; text: string } | null>(null);
   const timer = useRef<number>(0);
@@ -92,8 +107,9 @@ export function MobileRemoteProvider({ children }: { children: ReactNode }) {
     timer.current = window.setTimeout(() => setFlash(null), 2200);
   }, []);
 
-  const connected = status === "connected";
-  const [remoteMode] = useState(isRemoteRoute);
+  const connected = accountRemote.selected
+    ? accountRemote.ready && !!display
+    : lan.status === "connected";
   const [preferPhone, setPreferPhone] = useState(false);
   const playTarget = resolvePlayTarget({ remoteMode, connected, preferPhone });
   const playHere = usePlayMeta();
@@ -110,7 +126,7 @@ export function MobileRemoteProvider({ children }: { children: ReactNode }) {
         episode: opts?.episode,
         resume: opts?.resume ?? true,
       });
-      showFlash(sent, sent ? `Playing on your computer` : "Not connected to a computer");
+      showFlash(sent, sent ? `Playing on your display` : "Not connected to a display");
     },
     [sendCommand, showFlash],
   );
@@ -124,7 +140,7 @@ export function MobileRemoteProvider({ children }: { children: ReactNode }) {
         name: meta.name,
         poster: meta.poster,
       });
-      showFlash(sent, sent ? `Opened on your computer` : "Not connected to a computer");
+      showFlash(sent, sent ? `Opened on your display` : "Not connected to a display");
     },
     [sendCommand, showFlash],
   );

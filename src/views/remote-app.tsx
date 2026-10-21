@@ -29,7 +29,7 @@ import { HarborLoader } from "@/components/harbor-loader";
 import { HarborMark } from "@/components/icons/harbor-mark";
 import type { CastDeviceInfo } from "@/lib/cast";
 import { useKeyboardNavigation } from "@/lib/keyboard-navigation";
-import { useRemoteClient } from "@/lib/remote/use-remote-client";
+import { useMobileRemote } from "@/views/mobile/mobile-remote";
 import type {
   RemoteCastDevice,
   RemoteNavKey,
@@ -770,7 +770,8 @@ const DISCONNECT_OVERLAY_MS = 1200;
 
 export function RemoteApp() {
   const t = useT();
-  const { status, snapshot, sendCommand } = useRemoteClient();
+  const { connected, snapshot, sendCommand } = useMobileRemote();
+  const status = connected ? "connected" : "connecting";
   const [sheetOpen, setSheetOpen] = useState(false);
   const [wasConnected, setWasConnected] = useState(false);
   const [showDisconnected, setShowDisconnected] = useState(false);

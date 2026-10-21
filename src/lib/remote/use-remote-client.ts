@@ -25,7 +25,7 @@ function defaultHost(): string {
  * backgrounded. Strategy: drop the socket on hide, open a fresh one on show —
  * never wait on backoff or ping probes after resume.
  */
-export function useRemoteClient(initialHost?: string) {
+export function useRemoteClient(initialHost?: string, enabled = true) {
   const [host, setHost] = useState(initialHost || defaultHost());
   const [status, setStatus] = useState<RemoteClientStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -56,10 +56,7 @@ export function useRemoteClient(initialHost?: string) {
     return true;
   }, []);
 
-  const sendCommand = useCallback(
-    (command: RemoteCommand) => send({ t: "cmd", command }),
-    [send],
-  );
+  const sendCommand = useCallback((command: RemoteCommand) => send({ t: "cmd", command }), [send]);
 
   const disconnect = useCallback(() => {
     manualClose.current = true;
@@ -96,6 +93,7 @@ export function useRemoteClient(initialHost?: string) {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        if (wsRef.current !== ws) return;
         retryRef.current = 0;
         setStatus("connected");
         send({ t: "hello", client: "harbor-remote", proto: REMOTE_PROTO });
@@ -104,6 +102,7 @@ export function useRemoteClient(initialHost?: string) {
       };
 
       ws.onmessage = (ev) => {
+        if (wsRef.current !== ws) return;
         try {
           const msg = JSON.parse(String(ev.data)) as RemoteServerMessage;
           if (msg.t === "snapshot") setSnapshot(msg.snapshot);
@@ -177,6 +176,10 @@ export function useRemoteClient(initialHost?: string) {
   }, [clearRetryTimer]);
 
   useEffect(() => {
+    if (!enabled) {
+      setStatus("idle");
+      return;
+    }
     connect();
     return () => {
       manualClose.current = true;
@@ -189,9 +192,10 @@ export function useRemoteClient(initialHost?: string) {
       wsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) return;
     const onVisibility = () => {
       if (document.visibilityState === "hidden") park();
       else unpark();
@@ -214,7 +218,7 @@ export function useRemoteClient(initialHost?: string) {
       document.removeEventListener("freeze", onFreeze);
       document.removeEventListener("resume", onResume);
     };
-  }, [park, unpark]);
+  }, [enabled, park, unpark]);
 
   return {
     host,

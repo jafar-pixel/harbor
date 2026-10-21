@@ -87,8 +87,7 @@ export function ProfilePickerModal() {
       return;
     }
     setSelectingId(id);
-    timers.current.push(window.setTimeout(() => setExiting(true), 340));
-    timers.current.push(window.setTimeout(() => selectProfile(id), 680));
+    selectProfile(id);
   };
 
   return createPortal(

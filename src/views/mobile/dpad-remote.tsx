@@ -110,7 +110,6 @@ export function DpadRemote() {
   useRegisterSheet(confirm !== null && !confirmLeaving);
 
   const holdDir = useRef<Dir | null>(null);
-  const didHold = useRef(false);
   const holdTimer = useRef<number | undefined>(undefined);
   const holdDelay = useRef(340);
   const releaseTimer = useRef<number | undefined>(undefined);
@@ -118,7 +117,6 @@ export function DpadRemote() {
   const tick = () => {
     const dir = holdDir.current;
     if (!dir) return;
-    didHold.current = true;
     nav(dir);
     setHolding(true);
     holdDelay.current = Math.max(85, holdDelay.current - 42);
@@ -127,7 +125,7 @@ export function DpadRemote() {
 
   const startPress = (dir: Dir) => {
     window.clearTimeout(releaseTimer.current);
-    didHold.current = false;
+    nav(dir);
     setPressed(dir);
     holdDir.current = dir;
     holdDelay.current = 340;
@@ -201,18 +199,19 @@ export function DpadRemote() {
               aria-label={t(
                 dir === "up" ? "Up" : dir === "right" ? "Right" : dir === "down" ? "Down" : "Left",
               )}
-              onPointerDown={() => {
+              onPointerDown={(event) => {
+                if (!event.isPrimary || event.button !== 0) return;
+                event.currentTarget.setPointerCapture(event.pointerId);
                 startPress(dir);
               }}
-              onClick={() => {
-                if (!didHold.current) nav(dir);
-                didHold.current = false;
+              onClick={(event) => {
+                if (event.detail === 0) nav(dir);
               }}
               onPointerUp={endPress}
               onPointerLeave={endPress}
               onPointerCancel={endPress}
               className="absolute inset-0 bg-elevated outline-none"
-              style={{ clipPath: clip, touchAction: "manipulation" }}
+              style={{ clipPath: clip, touchAction: "none" }}
             >
               <span
                 aria-hidden

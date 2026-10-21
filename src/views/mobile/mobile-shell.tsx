@@ -1,13 +1,10 @@
+import { AccountRemotePicker } from "./account-remote-picker";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { ArrowLeft, LayoutGrid, Pause, Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { isMangaReaderRoute } from "@/lib/platform";
 import { isSetupRoute } from "@/lib/platform";
 import { hasSetupToken } from "./onboard/setup-wire";
 import { HarborLoader } from "@/components/harbor-loader";
-import { useParental } from "@/lib/parental";
-import { useView } from "@/lib/view";
-import { useT } from "@/lib/i18n";
-import { MobileExplore } from "./mobile-explore";
 import { MobileBrowse } from "./mobile-browse";
 import { MobileProfile } from "./mobile-profile";
 import { MobileSearch } from "./mobile-search";
@@ -30,7 +27,7 @@ const MangaLocalReader = lazy(() =>
 );
 const MobileOnboard = lazy(() => import("./onboard").then((m) => ({ default: m.MobileOnboard })));
 
-export function MobileShell({ workspace }: { workspace: React.ReactNode }) {
+export function MobileShell() {
   // Held in state rather than re-read per render. Leaving setup strips the
   // query parameter, and a page that decided what to render straight from the
   // URL would have no way to tell "user finished" from "URL still says setup".
@@ -49,7 +46,8 @@ export function MobileShell({ workspace }: { workspace: React.ReactNode }) {
           <MangaReaderShell />
         ) : (
           <>
-            <ShellBody workspace={workspace} />
+            <ShellBody />
+            <MobilePlaybackLayer />
           </>
         )}
       </SheetLockProvider>
@@ -72,17 +70,7 @@ function MangaReaderShell() {
   );
 }
 
-function ShellBody({ workspace }: { workspace: React.ReactNode }) {
-  const [workspaceActive, setWorkspaceActive] = useState(false);
-  const { canGoBack, goBack, setView, player } = useView();
-  const t = useT();
-  const { locked } = useParental();
-  const openWorkspace = () => setWorkspaceActive(true);
-  const closeWorkspace = () => {
-    setWorkspaceActive(false);
-    setView("home");
-    selectTab(remoteMode ? "profile" : "explore");
-  };
+function ShellBody() {
   const [tab, setTab] = useState<MobileTab>("home");
   const [seen, setSeen] = useState<Set<MobileTab>>(() => new Set<MobileTab>(["home"]));
   const { remoteMode } = useMobileRemote();
@@ -112,72 +100,33 @@ function ShellBody({ workspace }: { workspace: React.ReactNode }) {
   return (
     <div ref={rootRef} className="absolute inset-0 z-30 flex flex-col bg-canvas">
       <style>{TAB_TRANSITION_CSS}</style>
-      {workspaceActive ? (
-        <div className="flex min-h-0 flex-1 flex-col" data-mobile-workspace>
-          {!player && (
-            <header className="flex shrink-0 items-center justify-between border-b border-edge-soft bg-canvas px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))]">
-              <button
-                type="button"
-                className="flex min-h-11 items-center gap-2 px-2 text-sm text-ink"
-                onClick={() => (canGoBack ? goBack() : closeWorkspace())}
-              >
-                <ArrowLeft size={20} />
-                {t("Back")}
-              </button>
-              <button
-                type="button"
-                className="flex min-h-11 items-center gap-2 px-2 text-sm text-accent"
-                onClick={closeWorkspace}
-              >
-                <LayoutGrid size={20} />
-                {t("Explore")}
-              </button>
-            </header>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <TabLayer active={tab === "home"}>{seen.has("home") && <MobileBrowse />}</TabLayer>
+        <TabLayer active={tab === "search"}>
+          {seen.has("search") && (
+            <BrowseScroll>
+              <MobileSearch />
+            </BrowseScroll>
           )}
-          <div className="relative min-h-0 flex-1 overflow-hidden">{workspace}</div>
-        </div>
-      ) : (
-        <>
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            <TabLayer active={tab === "home"}>{seen.has("home") && <MobileBrowse />}</TabLayer>
-            <TabLayer active={tab === "search"}>
-              {seen.has("search") && (
-                <BrowseScroll>
-                  <MobileSearch />
-                </BrowseScroll>
-              )}
-            </TabLayer>
-            <TabLayer active={tab === "profile"}>
-              {seen.has("profile") && (
-                <BrowseScroll>
-                  <MobileProfile
-                    onOpenRemote={() => selectTab("remote")}
-                    onOpenWorkspace={openWorkspace}
-                  />
-                </BrowseScroll>
-              )}
-            </TabLayer>
-            <TabLayer active={tab === "mystuff"}>
-              {seen.has("mystuff") && (
-                <BrowseScroll>
-                  <MobileLibrary />
-                </BrowseScroll>
-              )}
-            </TabLayer>
-            <TabLayer active={tab === "explore"}>
-              {seen.has("explore") && (
-                <BrowseScroll>
-                  <MobileExplore onOpen={openWorkspace} />
-                </BrowseScroll>
-              )}
-            </TabLayer>
-            <TabLayer active={tab === "remote"}>{seen.has("remote") && <RemoteSurface />}</TabLayer>
-          </div>
-          {showNowPlaying && <NowPlayingBar onExpand={() => selectTab("remote")} />}
-          <BottomTabBar active={tab} onSelect={selectTab} />
-          <MobilePlaybackLayer onOpenWorkspace={locked ? undefined : openWorkspace} />
-        </>
-      )}
+        </TabLayer>
+        <TabLayer active={tab === "profile"}>
+          {seen.has("profile") && (
+            <BrowseScroll>
+              <MobileProfile onOpenRemote={() => selectTab("remote")} />
+            </BrowseScroll>
+          )}
+        </TabLayer>
+        <TabLayer active={tab === "mystuff"}>
+          {seen.has("mystuff") && (
+            <BrowseScroll>
+              <MobileLibrary />
+            </BrowseScroll>
+          )}
+        </TabLayer>
+        <TabLayer active={tab === "remote"}>{seen.has("remote") && <RemoteSurface />}</TabLayer>
+      </div>
+      {showNowPlaying && <NowPlayingBar onExpand={() => selectTab("remote")} />}
+      <BottomTabBar active={tab} onSelect={selectTab} />
     </div>
   );
 }
@@ -189,7 +138,7 @@ const TAB_TRANSITION_CSS = `
   opacity: 0;
   transform: translate3d(0, 8px, 0);
   pointer-events: none;
-  transition: opacity 260ms var(--ease-out), transform 260ms var(--ease-out);
+  transition: opacity 100ms ease-out, transform 100ms ease-out;
 }
 .harbor-tab-layer.is-active {
   opacity: 1;
@@ -208,8 +157,8 @@ function TabLayer({ active, children }: { active: boolean; children: React.React
   return (
     <div
       className={`harbor-tab-layer flex flex-col${active ? " is-active" : ""}`}
-      aria-hidden={active ? undefined : true}
       inert={!active}
+      aria-hidden={active ? undefined : true}
     >
       {children}
     </div>
@@ -364,7 +313,12 @@ function RemoteSurface() {
       <RemoteApp />
     </Suspense>
   );
-  return <div className="min-h-0 flex-1 overflow-hidden overscroll-none">{content}</div>;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden overscroll-none">
+      <AccountRemotePicker />
+      <div className="min-h-0 flex-1">{content}</div>
+    </div>
+  );
 }
 
 function FullLoader() {
