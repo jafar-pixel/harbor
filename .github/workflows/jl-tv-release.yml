@@ -1,0 +1,120 @@
+name: JL TV signed release
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish APK after the matching web update is live
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jl-release
+  cancel-in-progress: false
+
+env:
+  SOURCE_SHA: d5dacc3d66e02644a045a246f80d88d74cec9e90
+  PREVIOUS_TAG: jl-v0.9.39
+  RELEASE_TAG: jl-tv-v1.0.48
+  VERSION_CODE: "48"
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install Android packages
+        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+      - name: Build with existing release key
+        env:
+          KEYSTORE_B64: ${{ secrets.JL_KEYSTORE_B64 }}
+          JL_KEYSTORE_PASSWORD: ${{ secrets.JL_KEYSTORE_PASSWORD }}
+          JL_KEY_ALIAS: ${{ secrets.JL_KEY_ALIAS }}
+          JL_KEY_PASSWORD: ${{ secrets.JL_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in KEYSTORE_B64 JL_KEYSTORE_PASSWORD JL_KEY_ALIAS JL_KEY_PASSWORD; do
+            test -n "${!name}" || { echo "::error::Missing signing secret: $name"; exit 1; }
+          done
+          export JL_KEYSTORE_FILE="$RUNNER_TEMP/jl-tv.keystore"
+          trap 'rm -f "$JL_KEYSTORE_FILE"' EXIT
+          umask 077
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$JL_KEYSTORE_FILE"
+          GITHUB_RUN_NUMBER="$VERSION_CODE" gradle -p android-tv testReleaseUnitTest assembleRelease --no-daemon
+      - name: Verify installed-app upgrade compatibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p previous release
+          gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" --pattern JL-Media-Vision-TV.apk --dir previous
+          cp android-tv/app/build/outputs/apk/release/app-release.apk release/JL-Media-Vision-TV.apk
+          sdk="$ANDROID_HOME/build-tools/35.0.0"
+          for kind in previous release; do
+            "$sdk/apksigner" verify --verbose --print-certs "$kind/JL-Media-Vision-TV.apk" > "$kind/certificate.txt"
+            "$sdk/aapt" dump badging "$kind/JL-Media-Vision-TV.apk" > "$kind/badging.txt"
+          done
+          old_cert=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' previous/certificate.txt)
+          new_cert=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' release/certificate.txt)
+          test -n "$old_cert" && test "$old_cert" = "$new_cert"
+          old_version=$(sed -n "s/^package:.*versionCode='\([0-9]*\)'.*/\1/p" previous/badging.txt)
+          grep -q "^package: name='com.jlstream.mediavision' versionCode='$VERSION_CODE'" release/badging.txt
+          test "$VERSION_CODE" -gt "$old_version"
+          printf '%s\n' "$SOURCE_SHA" > release/source-commit.txt
+          (cd release && sha256sum JL-Media-Vision-TV.apk > SHA256SUMS.txt)
+          echo "Verified release certificate and version upgrade: $old_version -> $VERSION_CODE" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: jl-tv-signed-1.0.48
+          path: release/
+          retention-days: 30
+
+  publish:
+    if: inputs.publish
+    needs: android
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: jl-tv-signed-1.0.48
+          path: release
+      - name: Publish verified APK and preserve the Windows download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat release/source-commit.txt)" = "$SOURCE_SHA"
+          (cd release && sha256sum --check SHA256SUMS.txt)
+          tag_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq .object.sha)
+          test "$tag_sha" = "$SOURCE_SHA"
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo '::error::Release already exists; refusing to replace published assets.'
+            exit 1
+          fi
+          gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" --pattern JL-Media-Vision-Setup-x64.exe --dir release
+          cat > release-notes.txt <<'EOF'
+          Android TV 1.0.48 improves Shield remote navigation and prevents repeated OK presses from opening multiple screens. The matching web update fixes TV poster layout and applies display safe-area settings immediately.
+
+          The APK uses the existing release signing certificate and updates the previous installation. The Windows installer is unchanged from jl-v0.9.39.
+          EOF
+          gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --title 'JL Media Vision TV 1.0.48' --notes-file release-notes.txt release/JL-Media-Vision-TV.apk release/JL-Media-Vision-Setup-x64.exe release/SHA256SUMS.txt release/source-commit.txt
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
