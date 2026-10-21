@@ -203,6 +203,7 @@ export function saveInstalled(list: InstalledAddon[]) {
       throw e;
     }
   }
+  window.dispatchEvent(new CustomEvent("jl:addons-local-changed"));
 }
 
 export function reorderInstalled(urlSequence: string[]): void {

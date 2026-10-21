@@ -1,3 +1,4 @@
+import { syncJlAddons } from "./addon-sync-client";
 import { useEffect, useSyncExternalStore } from "react";
 import { activeProfileId } from "@/lib/active-profile-id";
 import {
@@ -198,7 +199,7 @@ export async function createAndLinkJlProfile(
   linkJlProfile(profile, pending);
 }
 
-/** Only bootstrap an empty account; existing profiles require an explicit UUID selection. */
+/** Reuse an unambiguous sole profile; multiple profiles require an explicit selection. */
 export async function autoLinkJlProfile(
   name: string,
   avatar: string | null,
@@ -214,6 +215,9 @@ export async function autoLinkJlProfile(
       linkJlProfile(profile, context);
       return;
     }
+  } else if (profiles.length === 1) {
+    linkJlProfile(profiles[0], context);
+    return;
   } else if (
     profiles.length &&
     localStorage.getItem(`jl.account.profile-created.v1.${context.localId}`) !== "1"
@@ -357,6 +361,12 @@ async function enrichPlayers(scope: Scope): Promise<void> {
 }
 
 async function runSync(scope: Scope): Promise<number> {
+  await syncJlAddons({
+    account: scope.account,
+    localId: scope.localId,
+    profileId: scope.link.profileId,
+    assertCurrent: () => assertScope(scope),
+  });
   const conflicts = await syncJlProfileData({
     account: scope.account,
     localId: scope.localId,
@@ -439,7 +449,7 @@ export function syncNow(): Promise<void> {
       phase: "idle",
       message: conflicts
         ? `Synced with ${conflicts} saved conflicts. The account version won; your earlier edits are available in the conflict backup.`
-        : "JL profile changes are synced. Configured addon URLs and device-only settings stay local.",
+        : "JL profile and addons are synced. Device-only settings stay local.",
     });
   })()
     .catch(() => {
@@ -479,7 +489,9 @@ export function useJlSync(): void {
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", run);
+    window.addEventListener("focus", run);
     window.addEventListener("jl:library-changed", run);
+    window.addEventListener("jl:addons-local-changed", run);
     const unsubscribe = subscribeJlFavoriteChanges(() => {
       if (!applyingRemote) run();
     });
@@ -487,7 +499,9 @@ export function useJlSync(): void {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", run);
+      window.removeEventListener("focus", run);
       window.removeEventListener("jl:library-changed", run);
+      window.removeEventListener("jl:addons-local-changed", run);
       unsubscribe();
     };
   }, [accountId, localId, linkedProfile]);
