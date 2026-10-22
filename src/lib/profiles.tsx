@@ -1,3 +1,4 @@
+import { accountStartupProfile } from "./jl/account/startup-profile";
 import { purgeGameNotes } from "./games/game-notes";
 import {
   createContext,
@@ -547,11 +548,18 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
     }
     migrateLegacyStremioAuth(loaded.profiles);
     const def = launchDefault(loaded.profiles);
-    return def ? { ...loaded, activeId: def.id } : loaded;
+    const accountId = accountStartupProfile(loaded.profiles, loaded.activeId, localStorage);
+    return def
+      ? { ...loaded, activeId: def.id }
+      : accountId
+        ? { ...loaded, activeId: accountId }
+        : loaded;
   });
   const [pickerOpen, setPickerOpen] = useState<boolean>(() => {
     if (state.activeId == null) return true;
     if (state.profiles.length <= 1) return false;
+    if (accountStartupProfile(state.profiles, state.activeId, localStorage) === state.activeId)
+      return false;
     if (launchDefault(state.profiles)) return false;
     const interval = readProfilePromptInterval();
     if (interval === "never") return false;
@@ -613,6 +621,8 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onFocus = () => {
       if (pickerOpen) return;
+      if (accountStartupProfile(state.profiles, state.activeId, localStorage) === state.activeId)
+        return;
       const mins = intervalMinutes(readProfilePromptInterval());
       if (mins <= 0 || state.activeId == null || state.profiles.length <= 1) return;
       if (Date.now() - readLastProfileSelectAt() >= mins * 60000) {

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { useJlSession } from "@/lib/jl/account/client";
 import { useJlKeySync } from "@/lib/jl/account/keys-sync";
 import { autoLinkJlProfile, jlProfileContext, useJlLink, useJlSync } from "@/lib/jl/account/sync";
@@ -10,6 +10,10 @@ import { configureJlProfileMetadata } from "@/lib/jl/account/profile-metadata";
  * keys and IPTV logins for the account, favorites for the linked profile. An app profile that
  * isn't linked yet can bootstrap an empty account; existing profiles are selected by ID.
  */
+const AccountRemoteMount = lazy(() =>
+  import("@/lib/remote/account-mount").then((m) => ({ default: m.AccountRemoteMount })),
+);
+
 export function JlAccountSync() {
   const profiles = useProfiles();
   const latest = useRef(profiles);
@@ -24,7 +28,11 @@ export function JlAccountSync() {
   useJlSync();
   useJlKeySync();
   useJlAutoLink();
-  return null;
+  return (
+    <Suspense fallback={null}>
+      <AccountRemoteMount />
+    </Suspense>
+  );
 }
 
 function useJlAutoLink(): void {

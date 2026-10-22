@@ -71,7 +71,7 @@ const BACK_KEYS = new Set(["Escape", "Esc", "BrowserBack", "GoBack", "Back"]);
 const MODAL_SELECTOR = '[role="dialog"], [aria-modal="true"]';
 const LOCAL_KEYBOARD_SELECTOR = [
   // Embedded surfaces handle their own keys; shadow DOM retargets events to their host.
-  '[data-local-keyboard]',
+  "[data-local-keyboard]",
   '[role="listbox"]',
   '[role="menu"]',
   '[role="grid"]',
@@ -715,10 +715,7 @@ function scrollNavItemIntoView(el: HTMLElement, mode: "center" | "nearest" = "ce
 function getSearchFocusVisual(el: HTMLElement): HTMLElement | null {
   if (!isSearchLikeField(el)) return null;
 
-  return (
-    el.closest<HTMLElement>("label, [data-tv-text-field], [data-tv-focus-container]") ??
-    el
-  );
+  return el.closest<HTMLElement>("label, [data-tv-text-field], [data-tv-focus-container]") ?? el;
 }
 
 function clearSearchVisualFocus() {
@@ -758,7 +755,12 @@ function focusElement(el: HTMLElement, scroll: "center" | "nearest" | "none" = "
     document.getElementById("root")?.setAttribute("data-card-focus-active", "");
   }
 
-  if (navEnabled && inputModality !== "pointer" && isSearchLikeField(el) && activeSearchEditEl !== el) {
+  if (
+    navEnabled &&
+    inputModality !== "pointer" &&
+    isSearchLikeField(el) &&
+    activeSearchEditEl !== el
+  ) {
     // Navigation focus is not editing mode.
     el.removeAttribute("data-search-editing");
     setSearchNavMode(el);
@@ -1499,17 +1501,7 @@ export function useKeyboardNavigation(options: TVNavigationOptions = {}) {
         return;
       }
 
-      // Clicking anywhere else exits TV navigation focus.
-      window.requestAnimationFrame(() => {
-        clearTvFocusRing();
-
-        const focused =
-          document.activeElement instanceof HTMLElement ? document.activeElement : null;
-
-        // Menus and embedded surfaces own focus; blurring their host can close
-        // a menu before the pointer's click reaches the selected item.
-        if (focused && !isEditable(focused) && !isLocallyManaged(focused)) focused.blur();
-      });
+      // Pointer modality hides navigation rings; preserving focus keeps touch clicks intact.
     };
 
     window.addEventListener("keydown", onKeyDown, true);

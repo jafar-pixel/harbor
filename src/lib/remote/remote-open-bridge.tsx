@@ -1,5 +1,10 @@
 import { useCallback, useEffect } from "react";
-import { isBigPictureActive, pushBigPicture } from "@/lib/big-picture";
+import {
+  isBigPictureActive,
+  pushBigPicture,
+  goBigPictureTab,
+  type BigPictureTabKind,
+} from "@/lib/big-picture";
 import type { Meta } from "@/lib/cinemeta";
 import { useProfiles } from "@/lib/profiles";
 import { useView, type PlayEpisode } from "@/lib/view";
@@ -147,11 +152,34 @@ export function RemoteOpenBridge() {
       const d = (e as CustomEvent<RemoteOpen>).detail;
       if (!d) return;
       if (d.action === "goView") {
-        setView(d.view as Parameters<typeof setView>[0]);
+        if (isBigPictureActive()) {
+          const kind = d.view === "series" ? "shows" : d.view;
+          if (
+            [
+              "home",
+              "discover",
+              "anime",
+              "shows",
+              "movies",
+              "live",
+              "sports",
+              "search",
+              "library",
+              "collections",
+              "settings",
+            ].includes(kind)
+          )
+            goBigPictureTab(kind as BigPictureTabKind);
+        } else setView(d.view as Parameters<typeof setView>[0]);
         return;
       }
       if (d.action === "openService") {
-        openService(d.service as Parameters<typeof openService>[0]);
+        if (isBigPictureActive())
+          pushBigPicture({
+            kind: "service",
+            service: d.service as NonNullable<Parameters<typeof openService>[0]>,
+          });
+        else openService(d.service as Parameters<typeof openService>[0]);
         return;
       }
       if (d.action === "openMeta" && d.metaId.startsWith("person:")) {

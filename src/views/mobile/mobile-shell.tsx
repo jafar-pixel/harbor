@@ -1,6 +1,7 @@
+import { AccountRemotePicker } from "./account-remote-picker";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { ArrowLeft, LayoutGrid, Pause, Play } from "lucide-react";
-import { isMangaReaderRoute } from "@/lib/platform";
+import { isMangaReaderRoute, isRemoteRoute } from "@/lib/platform";
 import { isSetupRoute } from "@/lib/platform";
 import { hasSetupToken } from "./onboard/setup-wire";
 import { HarborLoader } from "@/components/harbor-loader";
@@ -83,8 +84,10 @@ function ShellBody({ workspace }: { workspace: React.ReactNode }) {
     setView("home");
     selectTab(remoteMode ? "profile" : "explore");
   };
-  const [tab, setTab] = useState<MobileTab>("home");
-  const [seen, setSeen] = useState<Set<MobileTab>>(() => new Set<MobileTab>(["home"]));
+  const [tab, setTab] = useState<MobileTab>(() => (isRemoteRoute() ? "remote" : "home"));
+  const [seen, setSeen] = useState<Set<MobileTab>>(
+    () => new Set<MobileTab>([isRemoteRoute() ? "remote" : "home"]),
+  );
   const { remoteMode } = useMobileRemote();
   // "On your computer" playback only exists for the remote; on its own the phone plays here.
   const showNowPlaying = remoteMode && tab !== "remote";
@@ -189,7 +192,7 @@ const TAB_TRANSITION_CSS = `
   opacity: 0;
   transform: translate3d(0, 8px, 0);
   pointer-events: none;
-  transition: opacity 260ms var(--ease-out), transform 260ms var(--ease-out);
+  transition: opacity 100ms ease-out, transform 100ms ease-out;
 }
 .harbor-tab-layer.is-active {
   opacity: 1;
@@ -364,7 +367,12 @@ function RemoteSurface() {
       <RemoteApp />
     </Suspense>
   );
-  return <div className="min-h-0 flex-1 overflow-hidden overscroll-none">{content}</div>;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden overscroll-none">
+      <AccountRemotePicker />
+      <div className="min-h-0 flex-1">{content}</div>
+    </div>
+  );
 }
 
 function FullLoader() {

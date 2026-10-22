@@ -10,8 +10,11 @@ export function resolvePlayTarget(state: {
   remoteMode: boolean;
   connected: boolean;
   preferPhone: boolean;
+  selectedHost?: boolean;
 }): PlayTarget {
-  return state.remoteMode && state.connected && !state.preferPhone ? "host" : "phone";
+  return state.remoteMode && (state.connected || state.selectedHost) && !state.preferPhone
+    ? "host"
+    : "phone";
 }
 
 const PHONE_PLAYBACK_KINDS = new Set(["picker", "player"]);
