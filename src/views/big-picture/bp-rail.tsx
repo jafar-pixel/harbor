@@ -55,9 +55,11 @@ export function BpRail({
 
   return (
     <div
-      className={overWallpaper
-        ? "absolute inset-0 z-10 mb-[var(--bp-hint-h)] overflow-hidden"
-        : "relative mb-[var(--bp-hint-h)] min-h-0 flex-1 overflow-hidden"}
+      className={
+        overWallpaper
+          ? "absolute inset-0 z-10 mb-[var(--bp-hint-h)] overflow-hidden"
+          : "relative mb-[var(--bp-hint-h)] min-h-0 flex-1 overflow-hidden"
+      }
     >
       <div
         ref={railRef}
