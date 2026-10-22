@@ -69,12 +69,7 @@ export function BpRail({ railRef, entries, activeRow }: {
   );
 }
 
-function BpRailRow({
-  index,
-  band,
-  lead,
-  children,
-}: {
+function BpRailRow({ index, band, lead, children }: {
   index: number;
   band?: BpBandId;
   lead: boolean;
