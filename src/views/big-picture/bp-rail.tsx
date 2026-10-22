@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useBigPictureRoute } from "@/lib/big-picture";
 import type { BpBandId } from "./use-bp-sections";
 
 export type BpRailEntry = { key: string; band?: BpBandId; node: ReactNode };
@@ -21,14 +22,13 @@ export function BpRail({
   railRef,
   entries,
   activeRow,
-  overWallpaper,
 }: {
   railRef: RefObject<HTMLDivElement | null>;
   entries: readonly BpRailEntry[];
   activeRow: number;
   railShift: number;
-  overWallpaper?: boolean;
 }) {
+  const overWallpaper = useBigPictureRoute().kind === "home";
   const [reach, setReach] = useState(BP_RAIL_LEAD);
   const reachRef = useRef(BP_RAIL_LEAD);
   const totalRef = useRef(entries.length);
