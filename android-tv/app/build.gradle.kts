@@ -18,8 +18,8 @@ android {
         targetSdk = 35
         versionCode = runNumber.toInt()
         versionName = "1.0.$runNumber"
-        // The web app this shell opens. Change it here when the app moves to watch.jl-stream.com.
-        buildConfigField("String", "APP_URL", "\"https://jl-media-vision.vercel.app/\"")
+        // Use the same production app address as phones, tablets and desktop browsers.
+        buildConfigField("String", "APP_URL", "\"https://watch.jl-stream.com/\"")
     }
 
     signingConfigs {

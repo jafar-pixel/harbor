@@ -97,6 +97,7 @@ export function useBpRail(signature: string): {
     // same reason createBpWarmer's index is: a second visit to Home gets a fresh
     // rail and must not inherit the previous one's row number.
     let lastRow = -1;
+    let lastScrollTop = rail.scrollTop;
 
     const sync = (target?: EventTarget | null) => {
       const focused =
@@ -119,23 +120,20 @@ export function useBpRail(signature: string): {
       // sync() with NO target is the mount pass and the ResizeObserver, which
       // are exactly the cases where a row's offsetTop moved without the focus
       // changing rows, so the guard cannot go stale.
-      if (target && idx === lastRow) return;
+      if (target && idx === lastRow && Math.abs(rail.scrollTop - lastScrollTop) < 1) return;
       lastRow = idx;
       setActiveRow(idx);
       // Read off the same element on the same event that drives the transform,
       // so the band and the rail can never disagree by a frame.
       publishBpBand((section.dataset.bpBand as BpBandId | undefined) ?? null);
-      // Applied straight to the node: routing this through state made the
-      // transform trail a row behind the focus that caused it.
+      // Use the same native viewport for touch, wheel and D-pad navigation.
+      // Scrolling clamps at the last row, keeping its entire poster above the footer.
       const shift = section.offsetTop - SEE_ALL_OVERHANG_CLEARANCE;
       setRailShift(shift);
-      // Guarded. setActiveRow and setRailShift both bail on an equal value; this
-      // was the one write that did not, and it ran on every focusin including
-      // the roughly ninety percent that are horizontal and do not move the rail.
-      // Dirtying the transform of a permanently promoted layer is a paint
-      // property update, so it cost a Layerize per press for nothing.
-      const nextTransform = `translate3d(0, ${-shift}px, 0)`;
-      if (rail.style.transform !== nextTransform) rail.style.transform = nextTransform;
+      if (Math.abs(rail.scrollTop - shift) > 1) {
+        rail.scrollTo({ top: shift, behavior: "auto" });
+      }
+      lastScrollTop = rail.scrollTop;
       warmer.at(idx);
     };
 

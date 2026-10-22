@@ -17,12 +17,10 @@ const BP_RAIL_LEAD = 6;
 const BP_RAIL_FILL = 4;
 const BP_RAIL_FILL_MS = 220;
 
-
 export function BpRail({
   railRef,
   entries,
   activeRow,
-  railShift,
 }: {
   railRef: RefObject<HTMLDivElement | null>;
   entries: readonly BpRailEntry[];
@@ -54,18 +52,16 @@ export function BpRail({
   const mounted = Math.max(reach, activeRow + BP_RAIL_LEAD);
 
   return (
-    <div className="relative min-h-0 flex-1 overflow-hidden">
+    <div className="relative mb-[var(--bp-hint-h)] min-h-0 flex-1 overflow-hidden">
       <div
         ref={railRef}
         data-bp-scroll-y
-        className="absolute inset-x-0 top-0 flex flex-col gap-[var(--bp-row-gap)] transition-transform duration-[240ms] ease-[var(--bp-ease)] will-change-transform motion-reduce:transition-none"
-        style={{ transform: `translate3d(0, ${-railShift}px, 0)` }}
+        className="absolute inset-0 flex flex-col gap-[var(--bp-row-gap)] overflow-y-auto overflow-x-hidden overscroll-contain py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {entries.map((entry, i) => (
           <BpRailRow
             key={entry.key}
             index={i}
-            active={activeRow}
             band={entry.band}
             lead={i > 0 && entries[i - 1].band !== entry.band}
           >
@@ -79,32 +75,22 @@ export function BpRail({
 
 function BpRailRow({
   index,
-  active,
   band,
   lead,
   children,
 }: {
   index: number;
-  active: number;
   band?: BpBandId;
   lead: boolean;
   children: ReactNode;
 }) {
-  const above = index < active;
   return (
-    // Faded, never hidden: rows above the active one stay reachable by Up, and
-    // aria-hidden or visibility would make the engine focus something it cannot.
+    // Native scrolling keeps previous rows visible and touchable when swiping back.
     <div
       data-bp-rail-row={index}
       data-bp-band={band}
       data-bp-band-lead={lead ? "true" : undefined}
-      className={`ease-[var(--bp-ease)] empty:hidden motion-reduce:transition-none ${
-        lead ? "mt-[clamp(10px,1.4vh,24px)] " : ""
-      }${
-        above
-          ? "pointer-events-none opacity-0 transition-opacity duration-[var(--bp-dur-fast)]"
-          : "opacity-100 transition-opacity duration-[var(--bp-dur)]"
-      }`}
+      className={`shrink-0 empty:hidden ${lead ? "mt-[clamp(10px,1.4vh,24px)]" : ""}`}
     >
       {children}
     </div>
