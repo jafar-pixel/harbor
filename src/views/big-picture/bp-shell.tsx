@@ -427,7 +427,11 @@ export function BigPictureShell() {
             )}
           <style>{`
             [data-bp-home-hero] {
-              margin-bottom: calc(clamp(72px, 12vh, 140px) * -1);
+              pointer-events: none;
+            }
+            [data-bp-wallpaper-scroll] {
+              mask-image: linear-gradient(to bottom, transparent, black 22vh);
+              -webkit-mask-image: linear-gradient(to bottom, transparent, black 22vh);
             }
           `}</style>
           <BpTopBar active={activeTab} />
