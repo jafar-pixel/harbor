@@ -22,13 +22,14 @@ function jobEnabled(
     ref = "refs/heads/claude/determined-planck-b1p158",
     publish = false,
     windowsOnly = false,
+    message = "",
   } = {},
 ) {
   const section = workflow.split(`\n  ${job}:\n`)[1];
   const condition = section?.match(/^    if: (.+)$/m)?.[1];
   assert.ok(condition, `Missing condition for ${job}`);
   return vm.runInNewContext(condition, {
-    github: { event_name: event, ref },
+    github: { event_name: event, ref, event: { head_commit: { message } } },
     inputs: { publish, windows_only: windowsOnly },
   });
 }
@@ -50,6 +51,14 @@ test("normal dual-platform builds keep explicit publication opt-in", () => {
   assert.equal(jobEnabled("publish"), false);
   assert.equal(jobEnabled("publish", { publish: true }), true);
   assert.equal(jobEnabled("publish", { event: "push", publish: true }), false);
+});
+
+test("only the authorized 0.9.42 push can publish without dispatch", () => {
+  const release = { event: "push", message: "Publish JL Media Vision 0.9.42" };
+  assert.equal(jobEnabled("publish", release), true);
+  assert.equal(jobEnabled("publish", { ...release, message: "Ordinary build" }), false);
+  assert.equal(jobEnabled("publish", { ...release, ref: "refs/heads/other" }), false);
+  assert.equal(jobEnabled("publish", { ...release, windowsOnly: true }), false);
 });
 
 function runStep(name, overrides = {}, cwd = root) {
