@@ -1401,3 +1401,36 @@ code {
     transition: none !important;
   }
 }
+
+/* Immediate touch feedback and accessible controller entry points. */
+a, summary {
+  touch-action: manipulation;
+}
+.btn, .nav a, .foot-links a {
+  min-height: 44px;
+}
+.nav a, .foot-links a {
+  display: inline-flex;
+  align-items: center;
+}
+.btn:active {
+  filter: brightness(0.82);
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+a:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 4px;
+}
+.remote-intro {
+  max-width: 52em;
+  color: var(--muted);
+}
+#remote .dl p:not(.dl-tag) {
+  color: var(--muted);
+}
+#remote .dl ol {
+  margin-top: 0;
+}
+#remote .dl .btn {
+  margin-top: 24px;
+}
