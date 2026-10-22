@@ -6,46 +6,100 @@
   "redirects": [
     {
       "source": "/",
-      "has": [{ "type": "host", "value": "mediavision.jl-stream.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "mediavision.jl-stream.com"
+        }
+      ],
       "destination": "/site",
       "permanent": false
     },
     {
       "source": "/tv",
-      "has": [{ "type": "host", "value": "mediavision.jl-stream.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "mediavision.jl-stream.com"
+        }
+      ],
       "destination": "https://github.com/jafar-pixel/harbor/releases/latest/download/JL-Media-Vision-TV.apk",
       "permanent": false
     },
     {
       "source": "/app",
-      "has": [{ "type": "host", "value": "mediavision.jl-stream.com" }],
-      "destination": "https://jl-media-vision.vercel.app/",
+      "has": [
+        {
+          "type": "host",
+          "value": "mediavision.jl-stream.com"
+        }
+      ],
+      "destination": "https://watch.jl-stream.com/",
       "permanent": false
     },
     {
       "source": "/windows",
-      "has": [{ "type": "host", "value": "mediavision.jl-stream.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "mediavision.jl-stream.com"
+        }
+      ],
       "destination": "https://github.com/jafar-pixel/harbor/releases/latest/download/JL-Media-Vision-Setup-x64.exe",
+      "permanent": false
+    },
+    {
+      "source": "/remote",
+      "has": [
+        {
+          "type": "host",
+          "value": "mediavision.jl-stream.com"
+        }
+      ],
+      "destination": "https://watch.jl-stream.com/remote",
       "permanent": false
     }
   ],
   "rewrites": [
-    { "source": "/api-proxy/:target*", "destination": "/api/proxy?__target=:target*" },
+    {
+      "source": "/api-proxy/:target*",
+      "destination": "/api/proxy?__target=:target*"
+    },
     {
       "source": "/((?!site/|avatars/|favicon).*)",
-      "has": [{ "type": "host", "value": "mediavision.jl-stream.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "mediavision.jl-stream.com"
+        }
+      ],
       "destination": "/site/index.html"
     },
-    { "source": "/site", "destination": "/site/index.html" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/site",
+      "destination": "/site/index.html"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "no-referrer" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
       ]
     }
   ]
