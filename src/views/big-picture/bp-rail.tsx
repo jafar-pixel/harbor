@@ -21,11 +21,13 @@ export function BpRail({
   railRef,
   entries,
   activeRow,
+  overWallpaper,
 }: {
   railRef: RefObject<HTMLDivElement | null>;
   entries: readonly BpRailEntry[];
   activeRow: number;
   railShift: number;
+  overWallpaper?: boolean;
 }) {
   const [reach, setReach] = useState(BP_RAIL_LEAD);
   const reachRef = useRef(BP_RAIL_LEAD);
@@ -52,10 +54,15 @@ export function BpRail({
   const mounted = Math.max(reach, activeRow + BP_RAIL_LEAD);
 
   return (
-    <div className="relative mb-[var(--bp-hint-h)] min-h-0 flex-1 overflow-hidden">
+    <div
+      className={overWallpaper
+        ? "absolute inset-0 z-10 mb-[var(--bp-hint-h)] overflow-hidden"
+        : "relative mb-[var(--bp-hint-h)] min-h-0 flex-1 overflow-hidden"}
+    >
       <div
         ref={railRef}
         data-bp-scroll-y
+        data-bp-wallpaper-scroll={overWallpaper ? "" : undefined}
         className="absolute inset-0 flex flex-col gap-[var(--bp-row-gap)] overflow-y-auto overflow-x-hidden overscroll-contain py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {entries.map((entry, i) => (

@@ -93,6 +93,15 @@ export function useBpRail(signature: string): {
     const rail = railRef.current;
     if (!rail) return;
     const warmer = createBpWarmer(rail);
+    const hero = rail.hasAttribute("data-bp-wallpaper-scroll")
+      ? rail.parentElement?.parentElement?.querySelector<HTMLElement>("[data-bp-home-hero]")
+      : null;
+    const alignHero = () => {
+      if (!hero) return;
+      const rise = Math.min(140, Math.max(72, window.innerHeight * 0.12));
+      rail.style.paddingTop = `${Math.max(12, hero.offsetHeight - rise)}px`;
+    };
+    alignHero();
     // The row the last sync resolved, per rail rather than module scope for the
     // same reason createBpWarmer's index is: a second visit to Home gets a fresh
     // rail and must not inherit the previous one's row number.
@@ -128,7 +137,8 @@ export function useBpRail(signature: string): {
       publishBpBand((section.dataset.bpBand as BpBandId | undefined) ?? null);
       // Use the same native viewport for touch, wheel and D-pad navigation.
       // Scrolling clamps at the last row, keeping its entire poster above the footer.
-      const shift = section.offsetTop - SEE_ALL_OVERHANG_CLEARANCE;
+      const inset = hero ? parseFloat(rail.style.paddingTop) || 0 : 0;
+      const shift = section.offsetTop - inset - SEE_ALL_OVERHANG_CLEARANCE;
       setRailShift(shift);
       if (Math.abs(rail.scrollTop - shift) > 1) {
         rail.scrollTo({ top: shift, behavior: "auto" });
@@ -144,8 +154,12 @@ export function useBpRail(signature: string): {
     // Rows grow as their art resolves, which moves every offsetTop below them.
     // Without this the shift is stale and the active row sits part off screen
     // until the next keypress corrects it.
-    const ro = new ResizeObserver(() => sync());
+    const ro = new ResizeObserver(() => {
+      alignHero();
+      sync();
+    });
     ro.observe(rail);
+    if (hero) ro.observe(hero);
     for (const row of rail.querySelectorAll<HTMLElement>("[data-bp-rail-row]")) ro.observe(row);
 
     return () => {

@@ -285,7 +285,7 @@ export function BpHome({ onSelect }: { onSelect: (m: Meta) => void }) {
           <BpBandIdentity band={band} art={bandArt} up={identityUp} />
         </div>
       </div>
-      <BpRail railRef={railRef} entries={entries} activeRow={activeRow} railShift={railShift} />
+      <BpRail railRef={railRef} entries={entries} activeRow={activeRow} railShift={railShift} overWallpaper />
     </div>
   );
 }
