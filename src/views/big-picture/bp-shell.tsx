@@ -427,7 +427,7 @@ export function BigPictureShell() {
             )}
           <style>{`
             [data-bp-home-hero] {
-              margin-bottom: calc(clamp(16px, 3vh, 40px) * -1);
+              margin-bottom: calc(clamp(72px, 12vh, 140px) * -1);
             }
           `}</style>
           <BpTopBar active={activeTab} />
