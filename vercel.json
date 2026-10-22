@@ -19,7 +19,7 @@
     {
       "source": "/app",
       "has": [{ "type": "host", "value": "mediavision.jl-stream.com" }],
-      "destination": "https://jl-media-vision.vercel.app/",
+      "destination": "https://watch.jl-stream.com/",
       "permanent": false
     },
     {
