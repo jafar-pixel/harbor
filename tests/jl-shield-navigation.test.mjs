@@ -47,7 +47,13 @@ function dispatch({
   mounted = true,
 } = {}) {
   const events = [];
-  const active = { tagName: editing ? "INPUT" : "BUTTON", dispatchEvent: (e) => events.push(e) };
+  const active = {
+    tagName: editing ? "INPUT" : "BUTTON",
+    matches: (selector) => (selector.startsWith("input,textarea") ? editing : !editing),
+    closest: () => null,
+    click: () => {},
+    dispatchEvent: (e) => events.push(e),
+  };
   const handled = runInNewContext(
     script.replaceAll("$type", type).replaceAll("$key", key).replaceAll("$repeat", String(repeat)),
     {

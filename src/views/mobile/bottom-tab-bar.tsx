@@ -47,9 +47,9 @@ export function BottomTabBar({
   onSelect: (tab: MobileTab) => void;
 }) {
   const translate = useT();
-  const { snapshot, remoteMode } = useMobileRemote();
-  // The remote tab exists only on the remote route; a phone on its own plays titles itself.
-  const tabs = TABS.filter((tab) => tab.id !== (remoteMode ? "explore" : "remote"));
+  const { snapshot } = useMobileRemote();
+  // Browsing and device control remain available in either playback mode.
+  const tabs = TABS;
   const { activeProfile } = useProfiles();
   const { sheetOpen } = useSheetLock();
   const avatar = snapshot.profile?.avatar ?? activeProfile?.avatar ?? null;
@@ -78,7 +78,7 @@ export function BottomTabBar({
               className="flex min-h-12 flex-1 flex-col items-center justify-center gap-1"
             >
               <span
-                className={`flex h-10 w-[52px] items-center justify-center rounded-[13px] transition-[background-color,transform] duration-200 active:scale-95 ${
+                className={`flex h-10 w-11 sm:w-[52px] items-center justify-center rounded-[13px] transition-[background-color,transform] duration-200 active:scale-95 ${
                   on ? "bg-ink" : "bg-transparent"
                 }`}
               >

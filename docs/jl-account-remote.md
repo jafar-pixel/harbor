@@ -1,5 +1,7 @@
 # JL MediaVision remote controller
 
+The normal JL app stays a full browsing and playback app on the iPad. Open its Remote tab to choose **Watch here** or **Control display**; selecting a display makes browsing and Play control that display. **Watch here** restores iPad playback. The dedicated `/remote` address opens directly to the controller.
+
 1. Sign into the same JL account on the receiving display and the iPad or phone.
 2. On the display, enable **Allow remote controller** under Settings → Remotes. In the TV interface, use the **Enable remote controller** action on the Connect screen.
 3. Open https://watch.jl-stream.com/remote on the iPad. In the Remote tab, choose the display. Keep the receiving JL app open.

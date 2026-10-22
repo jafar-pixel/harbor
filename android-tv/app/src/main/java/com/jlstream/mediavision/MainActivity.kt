@@ -145,7 +145,7 @@ class MainActivity : AppCompatActivity() {
             return true
         }
         if (nativePlayer.handleFullKey(event)) return true
-        if (fullscreenView == null && onAppPage && forwardNavigationKey(event)) return true
+        if (fullscreenView == null && onAppPage && web.hasWindowFocus() && forwardNavigationKey(event)) return true
         return super.dispatchKeyEvent(event)
     }
 
@@ -158,6 +158,7 @@ class MainActivity : AppCompatActivity() {
             KeyEvent.KEYCODE_DPAD_RIGHT -> "ArrowRight"
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
             KeyEvent.KEYCODE_NUMPAD_ENTER, KeyEvent.KEYCODE_BUTTON_A -> "Enter"
+            KeyEvent.KEYCODE_MENU -> "ContextMenu"
             else -> return false
         }
         if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) return false
@@ -165,18 +166,20 @@ class MainActivity : AppCompatActivity() {
         if (key == "Enter" && event.repeatCount > 0) return true
         val copy = KeyEvent(event)
         val type = if (event.action == KeyEvent.ACTION_DOWN) "keydown" else "keyup"
-        val script = "(function(){var a=document.activeElement;" +
+        val repeat = event.repeatCount > 0
+        val script = "(function(){var r=document.querySelector('[data-bp-root]');" +
+            "if(!r||getComputedStyle(r).visibility==='hidden')return false;" +
+            "var a=document.activeElement;" +
             "if(a&&(a.matches('input,textarea,select')||a.isContentEditable)&&" +
-            "!a.closest('[data-search-nav-mode]'))return 'native';" +
-            "var e=new KeyboardEvent('" + type + "',{key:" + JSONObject.quote(key) +
-            ",code:" + JSONObject.quote(key) + ",bubbles:true,cancelable:true,repeat:" +
-            (event.repeatCount > 0) + "});var target=a||document;" +
+            "!a.closest('[data-search-nav-mode]'))return false;" +
+            "var e=new KeyboardEvent('$type',{key:'$key',code:'$key'," +
+            "bubbles:true,cancelable:true,repeat:$repeat});var target=a||r;" +
             "target.dispatchEvent(e);" +
             "if(e.type==='keydown'&&e.key==='Enter'&&!e.defaultPrevented&&a&&" +
             "a.matches('button,a[href],[role=button],input[type=button],input[type=submit]'))a.click();" +
-            "return 'handled';})()"
+            "return true;})()"
         web.evaluateJavascript(script) { result ->
-            if (result?.trim('"') == "native" && !isFinishing) web.dispatchKeyEvent(copy)
+            if (result != "true" && !isFinishing && !isDestroyed) web.dispatchKeyEvent(copy)
         }
         return true
     }

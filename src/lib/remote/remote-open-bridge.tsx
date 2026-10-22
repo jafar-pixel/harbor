@@ -177,7 +177,7 @@ export function RemoteOpenBridge() {
         if (isBigPictureActive())
           pushBigPicture({
             kind: "service",
-            service: d.service as Parameters<typeof openService>[0],
+            service: d.service as NonNullable<Parameters<typeof openService>[0]>,
           });
         else openService(d.service as Parameters<typeof openService>[0]);
         return;

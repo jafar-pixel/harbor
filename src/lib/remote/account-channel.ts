@@ -52,7 +52,9 @@ export function openPrivateRemoteChannel(options: {
     const attempt = ++generation;
     try {
       const session = await options.fresh();
-      if (stopped || attempt !== generation || session?.userId !== options.userId) return;
+      if (stopped || attempt !== generation) return;
+      if (!session) throw new Error("Session refresh temporarily unavailable");
+      if (session.userId !== options.userId) return;
       const url = new URL(options.url);
       url.protocol = "wss:";
       url.pathname = "/realtime/v1/websocket";

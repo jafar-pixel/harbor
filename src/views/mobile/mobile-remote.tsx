@@ -38,11 +38,11 @@ type MobileRemoteValue = {
 const Ctx = createContext<MobileRemoteValue | null>(null);
 
 export function MobileRemoteProvider({ children }: { children: ReactNode }) {
-  const [remoteMode] = useState(isRemoteRoute);
+  const [remoteRoute] = useState(isRemoteRoute);
   const accountRemote = useAccountRemote();
   const lan = useRemoteClient(
     undefined,
-    remoteMode && location.port === "11471" && !accountRemote.selected,
+    remoteRoute && location.port === "11471" && !accountRemote.selected,
   );
   const display = accountRemote.devices.find(
     (device) => device.id === accountRemote.selected && Date.now() - device.seenAt < 12000,
@@ -111,6 +111,7 @@ export function MobileRemoteProvider({ children }: { children: ReactNode }) {
     ? accountRemote.ready && !!display
     : lan.status === "connected";
   const [preferPhone, setPreferPhone] = useState(false);
+  const remoteMode = remoteRoute || (!!accountRemote.selected && !preferPhone);
   const playTarget = resolvePlayTarget({
     remoteMode,
     connected,

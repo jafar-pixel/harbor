@@ -305,3 +305,53 @@ test("direction buttons send immediately, avoid duplicate clicks and stop when c
     globalThis.window = old;
   }
 });
+
+test("a temporarily unavailable session refresh schedules a retry", async () => {
+  const original = globalThis.setTimeout;
+  let scheduled = false;
+  globalThis.setTimeout = (fn, ms) => {
+    scheduled = ms === 3000;
+    return original(() => {}, 0);
+  };
+  const c = openPrivateRemoteChannel({
+    url: "https://example.supabase.co",
+    publicKey: "public",
+    userId: "u",
+    fresh: async () => null,
+    createSocket: () => {
+      throw Error("must not connect");
+    },
+    receive: () => {},
+    status: () => {},
+  });
+  try {
+    await tick();
+    assert.equal(scheduled, true);
+  } finally {
+    c.close();
+    globalThis.setTimeout = original;
+  }
+});
+
+test("full app navigation keeps Explore and Remote available together", () => {
+  const jsx = (type, props) => ({ type, props });
+  const { BottomTabBar } = load("src/views/mobile/bottom-tab-bar.tsx", {
+    "react/jsx-runtime": { jsx, jsxs: jsx },
+    "lucide-react": {},
+    "@/components/icons/search-icon": {},
+    "@/lib/profiles": { useProfiles: () => ({ activeProfile: null }) },
+    "@/lib/i18n": { useT: () => (x) => x },
+    "./mobile-remote": { useMobileRemote: () => ({ snapshot: {}, remoteMode: false }) },
+    "./mobile-sheet-lock": { useSheetLock: () => ({ sheetOpen: false }) },
+  });
+  const labels = [];
+  function visit(node) {
+    if (!node || typeof node !== "object") return;
+    if (node.props?.["aria-label"]) labels.push(node.props["aria-label"]);
+    for (const child of [node.props?.children].flat(Infinity)) visit(child);
+  }
+  visit(BottomTabBar({ active: "home", onSelect: () => {} }));
+  assert.ok(labels.includes("Explore"));
+  assert.ok(labels.includes("Remote"));
+  assert.ok(labels.includes("Home"));
+});
