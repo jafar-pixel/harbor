@@ -346,6 +346,8 @@ export function BigPictureShell() {
               ? ":onboard"
               : "";
 
+  const browsing = layer === "" && !introUp;
+
   useBpFocusRoot({
     rootRef,
     onBack,
@@ -386,10 +388,13 @@ export function BigPictureShell() {
 
   const overscan = useSyncExternalStore(subscribeBpOverscan, bpOverscan, bpOverscan);
   const rootStyle = useMemo<CSSProperties | undefined>(() => {
-    const vars = { "--bp-overscan": String(overscan) } as CSSProperties;
+    const vars = {
+      "--bp-overscan": String(overscan),
+      "--bp-hint-h": browsing ? "var(--bp-safe-y, 0px)" : undefined,
+    } as CSSProperties;
     if (!playing) return vars;
     return { ...vars, visibility: "hidden", pointerEvents: "none" };
-  }, [playing, overscan]);
+  }, [playing, overscan, browsing]);
 
   if (!chrome.mounted) return null;
 
@@ -533,24 +538,26 @@ export function BigPictureShell() {
               onCancel={() => setConfirmExit(false)}
             />
           )}
-          <BpHintBar
-            actions={
-              onboarding.open
-                ? onboardHint
-                  ? [...ONBOARD_HINTS, onboardHint]
-                  : ONBOARD_HINTS
-                : sources
-                  ? SOURCES_HINTS
-                  : (HINTS[route.kind] ?? HINTS.home)
-            }
-            // Setup is a z-60 page like the source list, so the bar has to be
-            // lifted over it or the only Back affordance is painted out.
-            raised={Boolean(sources) || onboarding.open}
-            // Every layer here is a [data-bp-dialog], and focusBpTopBar refuses
-            // while one is open, so the jump is only real on a bare route. The
-            // search route types into an input, where the handler stands down.
-            jump={layer === "" && route.kind !== "search"}
-          />
+          {!browsing && (
+            <BpHintBar
+              actions={
+                onboarding.open
+                  ? onboardHint
+                    ? [...ONBOARD_HINTS, onboardHint]
+                    : ONBOARD_HINTS
+                  : sources
+                    ? SOURCES_HINTS
+                    : (HINTS[route.kind] ?? HINTS.home)
+              }
+              // Setup is a z-60 page like the source list, so the bar has to be
+              // lifted over it or the only Back affordance is painted out.
+              raised={Boolean(sources) || onboarding.open}
+              // Every layer here is a [data-bp-dialog], and focusBpTopBar refuses
+              // while one is open, so the jump is only real on a bare route. The
+              // search route types into an input, where the handler stands down.
+              jump={layer === "" && route.kind !== "search"}
+            />
+          )}
           <BpScreensaver blocked={introUp || layer !== ""} />
           <BpControllerToast />
         </div>,
