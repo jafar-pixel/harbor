@@ -426,10 +426,8 @@ export function BigPictureShell() {
               <BpAmbient pool={mosaicPool} still={route.kind === "anime"} />
             )}
           <style>{`
-            [data-bp-home-hero] [data-bp-hero-title],
-            [data-bp-home-hero] [data-bp-hero-logo] {
-              position: relative;
-              top: clamp(-36px, -2.8vh, -16px);
+            [data-bp-home-hero] {
+              margin-bottom: calc(clamp(16px, 3vh, 40px) * -1);
             }
           `}</style>
           <BpTopBar active={activeTab} />
