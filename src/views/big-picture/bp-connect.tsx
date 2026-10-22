@@ -1,3 +1,4 @@
+import { useControllerReceiver } from "@/lib/remote/controller-receiver";
 import { useState } from "react";
 import { ChevronLeft, Smartphone } from "lucide-react";
 import { QR_DARK, QR_LIGHT } from "@/lib/tv-handoff/handoff-qr";
@@ -15,7 +16,8 @@ type CheckState = "idle" | "checking" | "rejected" | "unreachable";
 function BpConnectBody({ onBack }: { onBack?: () => void }) {
   const t = useBpT();
   const facts = useBpOnboardFacts();
-  const { settings, update } = useSettings();
+  const { update } = useSettings();
+  const [receiverEnabled, setReceiverEnabled] = useControllerReceiver();
   const handoff = useBpHandoff();
   const [draft, setDraft] = useState("");
   const [typing, setTyping] = useState(false);
@@ -180,12 +182,8 @@ function BpConnectBody({ onBack }: { onBack?: () => void }) {
         >
           {onBack && <BpConnectAction label={t("Settings")} back onPress={onBack} />}
           <BpConnectAction
-            label={
-              settings.remoteControlEnabled
-                ? t("Remote controller: On")
-                : t("Enable remote controller")
-            }
-            onPress={() => update({ remoteControlEnabled: !settings.remoteControlEnabled })}
+            label={receiverEnabled ? t("Remote controller: On") : t("Enable remote controller")}
+            onPress={() => setReceiverEnabled(!receiverEnabled)}
           />
           {/* Exactly one of these two is the primary and carries the autofocus.
               With phone setup off, turning it on IS the way forward and the card

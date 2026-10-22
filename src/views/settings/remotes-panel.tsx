@@ -1,3 +1,4 @@
+import { useControllerReceiver } from "@/lib/remote/controller-receiver";
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, RotateCw } from "./icons";
 import { invoke } from "@tauri-apps/api/core";
@@ -16,6 +17,7 @@ export function RemotesPanel() {
   const t = useT();
   const { settings, update } = useSettings();
   const session = useJlSession();
+  const [receiverEnabled, setReceiverEnabled] = useControllerReceiver();
   const accountControls = (
     <Section
       title={t("Remote controller")}
@@ -30,8 +32,8 @@ export function RemotesPanel() {
             ? t("Allow your iPad or phone to control this display using your existing JL sign-in.")
             : t("Sign into JL MediaVision on this display first.")
         }
-        value={settings.remoteControlEnabled}
-        onChange={(value) => update({ remoteControlEnabled: value })}
+        value={receiverEnabled}
+        onChange={setReceiverEnabled}
       />
       <a
         className="inline-flex min-h-11 items-center rounded-lg border border-edge px-4 text-sm text-ink"

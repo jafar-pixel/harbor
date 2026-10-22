@@ -355,3 +355,34 @@ test("full app navigation keeps Explore and Remote available together", () => {
   assert.ok(labels.includes("Remote"));
   assert.ok(labels.includes("Home"));
 });
+
+test("controller permission belongs to this device and signed-in identity", () => {
+  const oldWindow = globalThis.window,
+    oldStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  const values = new Map();
+  let owner = "first";
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: { getItem: (k) => values.get(k) ?? null, setItem: (k, v) => values.set(k, v) },
+  });
+  globalThis.window = { dispatchEvent: () => {} };
+  try {
+    const { useControllerReceiver } = load("src/lib/remote/controller-receiver.ts", {
+      react: { useCallback: (fn) => fn, useSyncExternalStore: (_, read) => read() },
+      "@/lib/jl/account/client": { useJlSession: () => (owner ? { userId: owner } : null) },
+    });
+    assert.equal(useControllerReceiver()[0], false);
+    useControllerReceiver()[1](true);
+    assert.equal(useControllerReceiver()[0], true);
+    assert.deepEqual([...values.keys()], ["jl.remote.receiver.v1.first"]);
+    owner = "other";
+    assert.equal(useControllerReceiver()[0], false);
+    owner = "";
+    useControllerReceiver()[1](true);
+    assert.equal(useControllerReceiver()[0], false);
+  } finally {
+    globalThis.window = oldWindow;
+    if (oldStorage) Object.defineProperty(globalThis, "localStorage", oldStorage);
+    else delete globalThis.localStorage;
+  }
+});

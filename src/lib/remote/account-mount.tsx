@@ -1,6 +1,6 @@
 import { useJlSession } from "@/lib/jl/account/client";
 import { useEffect, useRef } from "react";
-import { useSettings } from "@/lib/settings";
+import { useControllerReceiver } from "./controller-receiver";
 import { isMobileDevice, isRemoteRoute, isTvApp } from "@/lib/platform";
 import { RemoteOpenBridge } from "./remote-open-bridge";
 import { buildRemoteSnapshot, dispatchRemoteCommand, subscribeRemoteSession } from "./session";
@@ -30,10 +30,10 @@ function displayLabel() {
 export function AccountRemoteMount() {
   useAccountRemoteConnection();
   const owner = useJlSession()?.userId;
-  const { settings } = useSettings();
+  const [receiverEnabled] = useControllerReceiver();
   const label = useRef<string | null>(null);
   if (label.current === null) label.current = displayLabel();
-  const enabled = settings.remoteControlEnabled && !isRemoteRoute() && !isMobileDevice();
+  const enabled = receiverEnabled && !isRemoteRoute() && !isMobileDevice();
   useEffect(() => {
     if (!enabled || !owner) return;
     const receiver = {
