@@ -90,18 +90,23 @@ export function SpooktoberHome({
         <Home
           active={active && screen === "home"}
           onReady={onReady}
-          experienceShelf={<HomeExperiences key={profileId} active={active && screen === "home"} />}
-          experiencePlacement={preferences.placement}
-          seasonalInvitation={
-            available && preferences.enabled.spooktober ? (
-              <SpooktoberInvitation
-                collapsed={isDismissed("spooktober")}
-                onDismiss={() => dismiss("spooktober")}
-                onOpen={openFestival}
-                onPrepare={prepareFestival}
-              />
-            ) : undefined
+          experienceShelf={
+            <HomeExperiences
+              key={profileId}
+              active={active && screen === "home"}
+              spooktober={
+                available && preferences.enabled.spooktober ? (
+                  <SpooktoberInvitation
+                    collapsed={isDismissed("spooktober")}
+                    onDismiss={() => dismiss("spooktober")}
+                    onOpen={openFestival}
+                    onPrepare={prepareFestival}
+                  />
+                ) : undefined
+              }
+            />
           }
+          experiencePlacement={preferences.placement}
         />
       </div>
       {festivalOpened && (
