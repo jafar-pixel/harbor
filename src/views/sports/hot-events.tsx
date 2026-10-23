@@ -62,7 +62,7 @@ function HotArtwork({
   const visible = useInViewport(root, lead);
 
   const venuePhoto = useEventVenuePhoto(game, visible);
-  const art = useSportsArtwork(visible && !venuePhoto ? game : undefined);
+  const art = useSportsArtwork(visible ? game : undefined);
 
   const league = hubLeague(game.league);
 
@@ -70,7 +70,7 @@ function HotArtwork({
 
   const [loaded, setLoaded] = useState("");
 
-  const image = [venuePhoto?.photo, game.artwork, game.poster].find(
+  const image = [art.backdrop, art.poster, venuePhoto?.photo, game.artwork, game.poster].find(
     (url): url is string => !!url && !failed.includes(url),
   );
 
