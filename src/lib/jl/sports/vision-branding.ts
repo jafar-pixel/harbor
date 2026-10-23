@@ -423,10 +423,8 @@ export function createVisionStore(ports: VisionPorts) {
       .catch(() => {
         if (!sameAccount(ctx)) return;
         retryAt = now() + RETRY_MS;
-        if (status !== "ready") {
-          status = "error";
-          emit();
-        }
+        status = "error";
+        emit();
       })
       .finally(() => {
         if (loading === job) loading = null;
