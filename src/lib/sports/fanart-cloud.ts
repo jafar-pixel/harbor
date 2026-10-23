@@ -78,3 +78,16 @@ export async function deleteCloudFanartSource(session: FanartCloudSession, sourc
 export function isPotentiallyPublishable(item: FanartSource): boolean {
   return item.rights === "licensed" || item.rights === "owned";
 }
+
+/** Sign in directly with the JL Vision Supabase Auth identity, never a Stremio token. */
+export async function signInFanartCloud(email: string, password: string, publishableKey: string): Promise<FanartCloudSession> {
+  if (!publishableKey.trim()) throw new Error("JL Vision publishable key is not configured.");
+  const response = await checked(await fetch(`${PROJECT_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: publishableKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  }));
+  const data = await response.json() as { access_token?: string; user?: { id?: string } };
+  if (!data.access_token || !data.user?.id) throw new Error("Sign-in did not return a valid session.");
+  return { accessToken: data.access_token, userId: data.user.id, publishableKey };
+}
