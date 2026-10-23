@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ArrowRight, Cake, CalendarHeart, Trophy, X } from "lucide-react";
 import { useView } from "@/lib/view";
 import { useSettings } from "@/lib/settings";
@@ -16,7 +16,13 @@ import {
 import { ExperienceCollection, type ExperienceCollectionInfo } from "./experience-collection";
 import "./experiences.css";
 
-export function HomeExperiences({ active = true }: { active?: boolean }) {
+export function HomeExperiences({
+  active = true,
+  spooktober,
+}: {
+  active?: boolean;
+  spooktober?: ReactNode;
+}) {
   const t = useT();
   const { preferences, save, profile, profileId } = useExperiences();
   const { settings } = useSettings();
@@ -34,6 +40,7 @@ export function HomeExperiences({ active = true }: { active?: boolean }) {
     title: string;
     description: string;
     action: () => void;
+    content?: ReactNode;
   }> = [];
   if (preferences.enabled.birthday && isBirthday(preferences.birthday, date)) {
     const title = t("Happy birthday, {name}!", { name: profile?.name ?? t("you") });
@@ -85,6 +92,15 @@ export function HomeExperiences({ active = true }: { active?: boolean }) {
           }),
       });
     }
+  if (spooktober)
+    cards.push({
+      id: "spooktober",
+      plugin: "spooktober",
+      title: "Spooktober",
+      description: "",
+      action: () => {},
+      content: spooktober,
+    });
   const visible = cards
     .filter((card) => !preferences.dismissed.includes(card.id))
     .sort(
@@ -99,37 +115,43 @@ export function HomeExperiences({ active = true }: { active?: boolean }) {
       aria-label={t("Your experiences")}
       data-experience-profile={profileId}
     >
-      {visible.map((card) => (
-        <div key={card.id} className={`experience-card experience-${card.plugin}`}>
-          <button className="experience-open" onClick={card.action}>
-            <span className="experience-symbol" aria-hidden>
-              {card.plugin === "birthday" ? (
-                <Cake size={36} />
-              ) : card.plugin === "holidays" ? (
-                <CalendarHeart size={36} />
-              ) : (
-                <Trophy size={36} />
-              )}
-            </span>
-            <span className="experience-copy">
-              <span className="experience-eyebrow">
-                {t("Made for {name}", { name: profile?.name ?? t("you") })}
+      {visible.map((card) =>
+        card.content ? (
+          <div key={card.id} className="min-w-0 self-center">
+            {card.content}
+          </div>
+        ) : (
+          <div key={card.id} className={`experience-card experience-${card.plugin}`}>
+            <button className="experience-open" onClick={card.action}>
+              <span className="experience-symbol" aria-hidden>
+                {card.plugin === "birthday" ? (
+                  <Cake size={36} />
+                ) : card.plugin === "holidays" ? (
+                  <CalendarHeart size={36} />
+                ) : (
+                  <Trophy size={36} />
+                )}
               </span>
-              <strong>{card.title}</strong>
-              <span>{card.description}</span>
-            </span>
-            <ArrowRight className="experience-arrow" size={22} aria-hidden />
-          </button>
-          <button
-            className="experience-dismiss"
-            aria-label={t("Dismiss {name}", { name: card.title })}
-            title={t(card.plugin === "holidays" ? "Hide for this season" : "Hide for today")}
-            onClick={() => save({ dismissed: [...preferences.dismissed, card.id] })}
-          >
-            <X size={18} />
-          </button>
-        </div>
-      ))}
+              <span className="experience-copy">
+                <span className="experience-eyebrow">
+                  {t("Made for {name}", { name: profile?.name ?? t("you") })}
+                </span>
+                <strong>{card.title}</strong>
+                <span>{card.description}</span>
+              </span>
+              <ArrowRight className="experience-arrow" size={22} aria-hidden />
+            </button>
+            <button
+              className="experience-dismiss"
+              aria-label={t("Dismiss {name}", { name: card.title })}
+              title={t(card.plugin === "holidays" ? "Hide for this season" : "Hide for today")}
+              onClick={() => save({ dismissed: [...preferences.dismissed, card.id] })}
+            >
+              <X size={18} />
+            </button>
+          </div>
+        ),
+      )}
       {collection && (
         <ExperienceCollection
           key={profileId}
