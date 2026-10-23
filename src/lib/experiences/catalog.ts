@@ -34,7 +34,7 @@ export const HOLIDAYS = [
     name: "Thanksgiving (US)",
     title: "Gather Together",
     description: "A holiday weekend of family, food and familiar favorites.",
-    movies: ["tt0093748", "tt0105323", "tt1198406", "tt0108171"],
+    movies: ["tt0093748", "tt0113321", "tt1621039", "tt0432283"],
   },
   {
     id: "christmas",
