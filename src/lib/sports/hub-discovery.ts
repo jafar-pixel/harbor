@@ -16,20 +16,31 @@ export function diverseEvents(games: SportsGame[], limit = 18): SportsGame[] {
     .slice(0, limit);
 }
 
+/** College football slides appear on the fixture's local game day, including bowls and CFP. */
+export function isCollegeGameDay(game: SportsGame, now = new Date()): boolean {
+  return (
+    game.league !== "NCAAF" ||
+    game.state === "in" ||
+    new Date(game.startMs).toDateString() === now.toDateString()
+  );
+}
+
 /** Favorites lead; discovery follows the viewer's sports order, without a forced fight slide. */
 export function featuredEvents(
   live: SportsGame[],
   upcoming: SportsGame[],
   follows: (game: SportsGame) => boolean = () => false,
   priority: readonly string[] = ["NCAAF", "NFL", "NBA", "NCAAB", "MLB", "NHL"],
+  now = new Date(),
 ): SportsGame[] {
   const order = (game: SportsGame) => {
-    const at = priority.indexOf(game.league);
+    const at = priority.indexOf(game.league === "NCAA" ? "NCAAB" : game.league);
     return at < 0 ? priority.length : at;
   };
   const seen = new Set<string>();
   return [...live, ...upcoming]
     .filter((game) => game.state !== "post")
+    .filter((game) => isCollegeGameDay(game, now))
     .sort(
       (a, b) =>
         Number(follows(b)) - Number(follows(a)) ||
