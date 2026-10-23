@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Spinner } from "@/components/spinner";
 import { createPortal } from "react-dom";
 import { useT } from "@/lib/i18n";
 import type { SportsGame, SportsMatchDetail } from "@/lib/sports/espn";
 import { fetchMatchSummary } from "@/lib/sports/espn";
+import { SportsTeamTitle } from "./sports-team-title";
 
 export function SportsHoverPreview({
   game,
@@ -100,22 +100,22 @@ function PreviewPortal({
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex min-w-0 w-[92px] flex-col items-center gap-2">
           {game.home.logo ? <img src={game.home.logo} className="h-10 w-10 object-contain" alt="" /> : <div className="h-10 w-10 rounded-full bg-canvas/50" />}
-          <span className="text-[12px] font-bold">{game.home.abbr || game.home.name}</span>
+          <SportsTeamTitle name={game.home.name} />
         </div>
         <div className="text-[22px] font-black tracking-tight">
           {game.home.score || "0"} - {game.away.score || "0"}
         </div>
         <div className="flex flex-col items-center gap-2">
           {game.away.logo ? <img src={game.away.logo} className="h-10 w-10 object-contain" alt="" /> : <div className="h-10 w-10 rounded-full bg-canvas/50" />}
-          <span className="text-[12px] font-bold">{game.away.abbr || game.away.name}</span>
+          <SportsTeamTitle name={game.away.name} />
         </div>
       </div>
 
       {loading && (
         <div className="flex h-12 items-center justify-center">
-          <Spinner size={16} className="text-ink-subtle" />
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-ink-subtle border-t-transparent" />
         </div>
       )}
 
