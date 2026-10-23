@@ -19,7 +19,7 @@ function startLabel(
 
 import { SportsHoverPreview } from "./sports-hover-preview";
 
-export function SportsCard({ game, onSelect }: { game: SportsGame; onSelect: (g: SportsGame) => void }) {
+export function SportsCard({ game, onSelect, artworkUrl }: { game: SportsGame; onSelect: (g: SportsGame) => void; artworkUrl?: string }) {
   const finalGame = game.state === "post";
   const live = game.state === "in";
   const hasScores = (game.home.score && game.home.score !== "0") || (game.away.score && game.away.score !== "0");
@@ -29,8 +29,9 @@ export function SportsCard({ game, onSelect }: { game: SportsGame; onSelect: (g:
     <SportsHoverPreview game={game} onSelect={() => onSelect(game)}>
       <button
         type="button"
-        className="flex h-24 w-[260px] shrink-0 flex-col justify-between rounded-xl border border-edge-soft/55 bg-elevated p-3 text-start transition-colors duration-150 hover:border-edge"
+        className="relative isolate flex h-24 w-[260px] shrink-0 flex-col justify-between overflow-hidden rounded-xl border border-edge-soft/55 bg-elevated p-3 text-start transition-colors duration-150 hover:border-edge"
       >
+        {artworkUrl && <><img aria-hidden="true" alt="" src={artworkUrl} className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-35" /><span aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-black/85 to-black/40" /></>}
         <div className="flex items-center justify-between">
           <Status game={game} />
           <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-subtle">
