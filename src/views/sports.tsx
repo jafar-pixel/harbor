@@ -381,11 +381,14 @@ function SportsHubView({ active = false }: { active?: boolean }) {
       tennis: "golf-tennis",
     };
     return [
-      ...new Set(
-        HUB_LEAGUES.filter((l) => selected.includes(l.key)).flatMap((l) =>
+      ...new Set<SportCategory>([
+        ...HUB_LEAGUES.filter((l) => selected.includes(l.key)).flatMap((l) =>
           map[l.group] ? [map[l.group]] : [],
         ),
-      ),
+        ...(selected.some((league) => league === "NCAAF" || league === "NCAAB")
+          ? ["college" as const]
+          : []),
+      ]),
     ];
   }, [selected]);
   const jlTopKeys = new Set(pageTop.map((r) => `${r.game.league}:${r.game.id}`));
