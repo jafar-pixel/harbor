@@ -84,11 +84,18 @@ import {
 import type { HomeRow } from "./home/home-types";
 import { RowSkeleton } from "./home/row-skeleton";
 import { AddSourceModal } from "@/components/add-source-modal";
+import { SportsMarquee } from "./live/live-home/sports/sports-marquee";
+import { useSports } from "./live/live-home/use-sports";
+import { DEFAULT_SPORTS_LEAGUES, LEAGUES } from "@/lib/sports/espn";
 import type { SourceRow } from "@/lib/custom-sources";
 
 export function Home({ active = true, onReady }: { active?: boolean; onReady?: () => void }) {
   const { authKey, user } = useAuth();
   const { settings, update } = useSettings();
+  const { openMatchDetail } = useView();
+  const homeSportsLeagues = settings.sportsLeagues?.length ? settings.sportsLeagues : DEFAULT_SPORTS_LEAGUES;
+  const [homeSportsLeague, setHomeSportsLeague] = useState("all");
+  const sportsGames = useSports({ enabled: active && settings.homeMode !== "classic", leagues: homeSportsLeague === "all" ? homeSportsLeagues : [homeSportsLeague] });
   const queryClient = useQueryClient();
   const t = useT();
   const uiLang = useUiLanguage();
@@ -1019,6 +1026,26 @@ export function Home({ active = true, onReady }: { active?: boolean; onReady?: (
                 </Row>
               </div>
             )}
+          {settings.homeMode !== "classic" && (
+            <section data-scroll-anchor="sports" aria-label={t("Your Sports Hub")} className="flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <span className="h-9 w-1 rounded-full bg-accent" />
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-accent">JL SPORTS</p>
+                  <h2 className="font-display text-[28px] font-black uppercase tracking-tight text-ink sm:text-[36px]">{t("Your Sports Hub")}</h2>
+                </div>
+              </div>
+              <SportsMarquee
+                games={sportsGames}
+                leagues={LEAGUES}
+                selected={homeSportsLeague}
+                selectedLeagues={homeSportsLeagues}
+                onLeague={setHomeSportsLeague}
+                onLeaguesChange={(keys) => update({ sportsLeagues: keys })}
+                onSelect={openMatchDetail}
+              />
+            </section>
+          )}
           {editMode &&
             settings.homeMode !== "classic" &&
             top10.length >= 10 &&
