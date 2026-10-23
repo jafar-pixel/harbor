@@ -1,13 +1,7 @@
+import { readVisionSession } from "./vision-session";
 import { useEffect, useState } from "react";
 const ROOT = "https://ajbjyjfiglzodbdcdapr.supabase.co";
 type Publication = { team_slug: string; slot: string; storage_path: string; approved_at: string };
-type Session = { access_token: string };
-function session(): string | null {
-  try {
-    const item = JSON.parse(sessionStorage.getItem("jl-vision-supabase-session") || "null") as Session | null;
-    return item?.access_token || null;
-  } catch { return null; }
-}
 function slug(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
@@ -30,10 +24,10 @@ export function useApprovedSportsArtwork(): Record<string, string> {
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      const jwt = session();
-      if (!jwt) return;
-      const key = import.meta.env.VITE_JL_VISION_SUPABASE_ANON_KEY as string | undefined;
-      if (!key) return;
+      const current = await readVisionSession();
+      if (!current) return;
+      const jwt = current.accessToken;
+      const key = current.publishableKey;
       const response = await fetch(ROOT + "/functions/v1/jl-sports-fanart-source?resource=published", {
         headers: { Authorization: "Bearer " + jwt, apikey: key },
       });

@@ -1,26 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, Database, Images, ShieldCheck } from "lucide-react";
+import { readVisionSession, type VisionSession } from "@/lib/sports/vision-session";
 
 const FUNCTION_URL = "https://ajbjyjfiglzodbdcdapr.supabase.co/functions/v1/jl-sports-fanart-source";
 const PROVIDERS = ["pinterest", "sportsdb", "collegefootballdata", "artist_feed", "manual_library"] as const;
 type Provider = typeof PROVIDERS[number];
 type Connector = { id: string; name: string; provider: Provider; source_url: string | null; enabled: boolean; sync_interval_hours: number; last_sync_at: string | null; last_error: string | null };
-type AuthSession = { accessToken: string; publishableKey: string };
-
-/** The app must provide an existing authenticated JL Vision session; Stremio keys are not valid JWTs. */
-function readCloudSession(): AuthSession | null {
-  const publishableKey = import.meta.env.VITE_JL_VISION_SUPABASE_ANON_KEY as string | undefined;
-  if (!publishableKey) return null;
-  try {
-    const raw = sessionStorage.getItem("jl-vision-supabase-session");
-    if (!raw) return null;
-    const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== "object") return null;
-    const token = (value as { access_token?: unknown }).access_token;
-    if (typeof token !== "string" || !token) return null;
-    return { accessToken: token, publishableKey };
-  } catch { return null; }
-}
+type AuthSession = VisionSession;
 async function callRegistry(session: AuthSession, method: "GET" | "POST" | "PATCH" | "DELETE", body?: Record<string, unknown>): Promise<{ items?: Connector[]; deleted?: boolean }> {
   const response = await fetch(FUNCTION_URL + "?resource=connectors", {
     method,
@@ -33,7 +19,7 @@ async function callRegistry(session: AuthSession, method: "GET" | "POST" | "PATC
 }
 
 export function SportsModulePanel() {
-  const [session, setSession] = useState<AuthSession | null>(readCloudSession);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [items, setItems] = useState<Connector[]>([]);
   const [name, setName] = useState("");
   const [provider, setProvider] = useState<Provider>("artist_feed");
@@ -46,6 +32,7 @@ export function SportsModulePanel() {
     setItems(response.items || []);
     setMessage("Backend source registry loaded.");
   }, []);
+  useEffect(() => { let active = true; void readVisionSession().then(value => { if (active) setSession(value); }); return () => { active = false; }; }, []);
   useEffect(() => {
     if (!session) return;
     void refresh(session).catch(e => setMessage(e instanceof Error ? e.message : "Cannot load sources"));
@@ -65,7 +52,7 @@ export function SportsModulePanel() {
     {!session ? <div className="rounded-xl border border-edge-soft/60 p-4 space-y-2">
       <p className="font-semibold">JL Vision cloud account not connected</p>
       <p className="text-sm text-ink-muted">Sports settings require an authenticated JL Vision Supabase session provided by the app's account bridge. A Stremio login is not accepted as a Supabase session.</p>
-      <button className="rounded-lg border border-edge-soft/60 px-3 py-2 text-sm" onClick={() => setSession(readCloudSession())}>Check account connection</button>
+      <button className="rounded-lg border border-edge-soft/60 px-3 py-2 text-sm" onClick={() => { void readVisionSession().then(setSession); }}>Check account connection</button>
     </div> : <>
       <div className="rounded-xl border border-edge-soft/60 p-4 space-y-3">
         <h3 className="font-semibold">Add artwork source</h3>
