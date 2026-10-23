@@ -11,6 +11,8 @@ import { useSettings } from "@/lib/settings";
 import { useView } from "@/lib/view";
 import { useT } from "@/lib/i18n";
 
+const SportsModulePanel = lazy(() => import("./settings/sports-module-panel").then((m) => ({ default: m.SportsModulePanel })));
+
 const IS_WEB = typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window);
 
 const AccountStub = lazy(() =>
@@ -89,6 +91,7 @@ const SECTION_META: Record<SectionId, { label: string; sub: string }> = {
     label: "Account",
     sub: "Your Stremio sign-in. Library, watch progress, and addons sync from here.",
   },
+  sportsModule: { label: "Sports Module Setup", sub: "Configure and review your backend Sports Hub artwork sources." },
   library: {
     label: "Library & metadata",
     sub: "Optional keys that unlock TMDB rails, baked-in poster ratings, fanart, and TVDB episode data.",
@@ -303,6 +306,8 @@ export function Settings() {
               {active === "basics" && <BasicsPanel />}
 
               {active === "account" && <AccountStub />}
+
+              {active === "sportsModule" && <SportsModulePanel />}
 
               {active === "library" && (
                 <LibraryPanel
