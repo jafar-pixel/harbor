@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { type FanartCloudSession, loadCloudFanartSources, saveCloudFanartSources, signInFanartCloud } from "@/lib/sports/fanart-cloud";
 import { Download, ExternalLink, Plus, Trash2, X } from "lucide-react";
 
 type ArtworkType = "hero" | "wallpaper" | "card" | "story" | "wordmark";
@@ -41,6 +42,40 @@ export function SportsFanartImporter({ onClose }: { onClose: () => void }) {
   const [rights, setRights] = useState<Rights>("reference");
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("All");
+  const [cloud, setCloud] = useState<FanartCloudSession | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [publishableKey, setPublishableKey] = useState(import.meta.env.VITE_JL_VISION_SUPABASE_ANON_KEY ?? "");
+  const [cloudStatus, setCloudStatus] = useState("Local only");
+  const [working, setWorking] = useState(false);
+  const signInCloud = async () => {
+    setWorking(true); setError("");
+    try {
+      const session = await signInFanartCloud(email, password, publishableKey);
+      const remote = await loadCloudFanartSources(session);
+      setCloud(session); setPassword("");
+      save([...remote, ...records.filter((local) => !remote.some((r) => r.sourceUrl === local.sourceUrl))]);
+      setCloudStatus("Connected — cloud loaded");
+    } catch (e) { setError(e instanceof Error ? e.message : "Sign-in failed"); }
+    finally { setWorking(false); }
+  };
+  const syncCloud = async () => {
+    if (!cloud) return;
+    setWorking(true); setError("");
+    try { await saveCloudFanartSources(cloud, records); setCloudStatus("Saved to cloud"); }
+    catch (e) { setError(e instanceof Error ? e.message : "Sync failed"); }
+    finally { setWorking(false); }
+  };
+  const reloadCloud = async () => {
+    if (!cloud) return;
+    setWorking(true); setError("");
+    try {
+      const remote = await loadCloudFanartSources(cloud);
+      save([...remote, ...records.filter((local) => !remote.some((r) => r.sourceUrl === local.sourceUrl))]);
+      setCloudStatus("Reloaded cloud records; local unsynced records preserved");
+    } catch (e) { setError(e instanceof Error ? e.message : "Reload failed"); }
+    finally { setWorking(false); }
+  };
   const filtered = useMemo(() => filter === "All" ? records : records.filter((r) => r.team === filter), [records, filter]);
   const save = (items: RecordItem[]) => {
     setRecords(items);
@@ -73,6 +108,20 @@ export function SportsFanartImporter({ onClose }: { onClose: () => void }) {
           <button aria-label="Close" onClick={onClose} className="rounded-lg p-2 hover:bg-elevated"><X size={18}/></button>
         </header>
         <div className="space-y-4 overflow-y-auto p-5">
+          <div className="space-y-2 rounded-xl border border-edge p-3 text-sm">
+            <div className="font-semibold">JL Vision cloud · {cloudStatus}</div>
+            <p className="text-xs text-ink-muted">Separate JL Vision Supabase sign-in. Current Stremio account token cannot authenticate to Supabase. Use only the project's public publishable key, never a service-role key.</p>
+            {!cloud ? <div className="flex flex-wrap gap-2">
+              <input aria-label="JL Vision email" type="email" autoComplete="username" className="rounded border border-edge bg-canvas p-2" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}/>
+              <input aria-label="JL Vision password" type="password" autoComplete="current-password" className="rounded border border-edge bg-canvas p-2" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}/>
+              <input aria-label="Supabase publishable key" type="password" className="rounded border border-edge bg-canvas p-2" placeholder="Publishable key" value={publishableKey} onChange={(e) => setPublishableKey(e.target.value)}/>
+              <button disabled={working || !email || !password || !publishableKey} className="rounded bg-ink p-2 text-canvas disabled:opacity-40" onClick={() => void signInCloud()}>Connect cloud</button>
+            </div> : <div className="flex flex-wrap gap-2">
+              <button disabled={working} className="rounded border border-edge p-2" onClick={() => void syncCloud()}>Save to cloud</button>
+              <button disabled={working} className="rounded border border-edge p-2" onClick={() => void reloadCloud()}>Reload from cloud</button>
+              <button className="rounded border border-edge p-2" onClick={() => { setCloud(null); setCloudStatus("Disconnected"); }}>Disconnect</button>
+            </div>}
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-edge p-3 text-sm">
             <span>Reference board: <a className="underline" href={BOARD} target="_blank" rel="noopener noreferrer">SkullSparks College Football Graphics <ExternalLink size={12} className="inline"/></a></span>
             <button className="flex items-center gap-2 rounded-lg border border-edge px-3 py-2 hover:bg-elevated disabled:opacity-40" disabled={!records.length} onClick={exportJson}><Download size={15}/> Export JSON ({records.length})</button>
@@ -86,7 +135,7 @@ export function SportsFanartImporter({ onClose }: { onClose: () => void }) {
             <div className="flex items-end"><button onClick={add} className="flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 py-2 text-sm font-semibold text-canvas"><Plus size={16}/> Add source</button></div>
           </div>
           {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
-          <p className="text-xs text-ink-muted">Links and metadata are saved in this browser only, not uploaded to Supabase. Automatic team detection uses text matching. Reference-only and pending artwork must not be published.</p>
+          <p className="text-xs text-ink-muted">Records save locally first. Connect cloud, then Save to cloud; Reload from cloud on another signed-in device. Reference-only and pending artwork must not be published.</p>
           <label className="flex items-center gap-2 text-xs">Filter team <select value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-lg border border-edge bg-canvas p-2">{["All", "Unassigned", ...TEAMS].map((t) => <option key={t}>{t}</option>)}</select></label>
           {filtered.length === 0 && <div className="rounded-xl border border-dashed border-edge p-8 text-center text-sm text-ink-muted">No sources collected yet. Add a Pinterest pin or artist link above.</div>}
           <div className="space-y-2">{filtered.map((item) => <div key={item.id} className="grid gap-2 rounded-xl border border-edge p-3 text-xs sm:grid-cols-[1fr_auto]">
