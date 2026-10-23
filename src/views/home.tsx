@@ -987,19 +987,6 @@ export function Home({ active = true, onReady }: { active?: boolean; onReady?: (
                 />
               </div>
             )}
-          <div data-scroll-anchor="cw">
-            <CWSection
-              signedIn={!!authKey}
-              items={cwItems}
-              watchedSet={traktWatched}
-              onDismiss={onDismissCw}
-            />
-          </div>
-          {settings.homeMode !== "classic" && (
-            <div data-scroll-anchor="streaming">
-              <StreamingRail services={enabledServices} />
-            </div>
-          )}
           {settings.homeMode !== "classic" &&
             top10.length >= 10 &&
             !homeRowsCustom.hidden.includes("top10") && (
@@ -1056,6 +1043,19 @@ export function Home({ active = true, onReady }: { active?: boolean; onReady?: (
                 onToggleHidden={() => handleToggleHidden("top10")}
               />
             )}
+          <div data-scroll-anchor="cw">
+            <CWSection
+              signedIn={!!authKey}
+              items={cwItems}
+              watchedSet={traktWatched}
+              onDismiss={onDismissCw}
+            />
+          </div>
+          {settings.homeMode !== "classic" && (
+            <div data-scroll-anchor="streaming">
+              <StreamingRail services={enabledServices} />
+            </div>
+          )}
           {settings.homeMode !== "classic" &&
             settings.tmdbKey &&
             !homeRowsCustom.hidden.includes("collections") && (
