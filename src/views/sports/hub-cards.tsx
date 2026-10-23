@@ -187,10 +187,10 @@ export function HubCard({
 
   const raceVenue = game ? racingVenue(game) : null;
   const venuePhoto = useEventVenuePhoto(game, visible);
-  const art = useSportsArtwork(event && visible && !venuePhoto ? game : undefined);
+  const art = useSportsArtwork(visible ? game : undefined);
 
   const [broken, setBroken] = useState<string[]>([]);
-  const eventImage = [venuePhoto?.photo, game.artwork, game.poster].find(
+  const eventImage = [art.backdrop, art.poster, venuePhoto?.photo, game.artwork, game.poster].find(
     (url): url is string => !!url && !broken.includes(url),
   );
 
@@ -492,13 +492,13 @@ export function HubHero({
 
   const raceVenue = game ? racingVenue(game) : null;
   const venuePhoto = useEventVenuePhoto(game);
-  const art = useSportsArtwork(venuePhoto ? undefined : game);
+  const art = useSportsArtwork(game);
 
   const [backdropReady, setBackdropReady] = useState("");
 
   const [backdropFailed, setBackdropFailed] = useState<string[]>([]);
 
-  const backdrop = [venuePhoto?.photo, game?.artwork, game?.poster].find(
+  const backdrop = [art.backdrop, art.poster, venuePhoto?.photo, game?.artwork, game?.poster].find(
     (url): url is string => !!url && !backdropFailed.includes(url),
   );
 
@@ -572,7 +572,11 @@ export function HubHero({
         />
       )}
 
-      <div className="sh-hero-copy" data-long={heroTitleLength > 17 || undefined} data-longest={heroTitleLength > 24 || undefined}>
+      <div
+        className="sh-hero-copy"
+        data-long={heroTitleLength > 17 || undefined}
+        data-longest={heroTitleLength > 24 || undefined}
+      >
         <div className="sh-hero-kicker">
           {game?.state === "in" && !stale ? (
             <span className="sh-live">{t("Live now")}</span>
