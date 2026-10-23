@@ -52,6 +52,12 @@ Deno.serve(async (request: Request) => {
   const userId=await userFor(jwt);
   if(!userId) return json({error:"Invalid Supabase session"},401);
   const endpoint = new URL(request.url);
+  if (request.method==="GET" && endpoint.searchParams.get("resource")==="published") {
+    // Publication RLS only allows licensed and approved artwork to be read.
+    const qs=new URLSearchParams({select:"id,conference,sport,team_slug,slot,storage_path,title,approved_at",licensing_confirmed:"eq.true",approved_at:"not.is.null",limit:"500",order:"approved_at.desc"});
+    const response=await api("/rest/v1/sports_art_publications?"+qs,jwt);
+    return json(response.ok?{items:await response.json(),source:"approved_publications"}:{error:"Published artwork lookup failed"},response.status);
+  }
   if (endpoint.searchParams.get("resource") === "connectors") {
     const base="/rest/v1/sports_art_source_connectors";
     if(request.method==="GET") {
