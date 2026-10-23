@@ -89,9 +89,7 @@ export function SharedSportsArtSection() {
           )}
           {status === "error" && (
             <p role="alert" className="text-sm text-danger">
-              {t(
-                "The shared library could not be refreshed. Check your connection and try again.",
-              )}
+              {t("The shared library could not be refreshed. Check your connection and try again.")}
             </p>
           )}
           <div className="flex flex-wrap gap-3">
