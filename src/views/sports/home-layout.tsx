@@ -43,7 +43,7 @@ export function SportsHomeLayout({
           .map((id) => {
             const item = items.find((item) => item.id === id);
             return item?.content ? (
-              <div key={id} data-sports-shelf={id}>
+              <div key={id} data-sports-shelf={id} className="[&:empty]:hidden">
                 {item.content}
               </div>
             ) : null;
