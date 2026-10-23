@@ -1,3 +1,4 @@
+import { publishedPostseason } from "./postseason";
 import type { LeagueDef, SportsGame, SportsSide } from "./espn-types";
 import { espnPublishedAthleteId } from "./athlete-identity";
 import { publishedPortraitUrl } from "./athlete-portraits.ts";
@@ -62,15 +63,16 @@ export function toSide(c: Record<string, unknown> | undefined, group?: string): 
   // this branch the side comes back unnamed and the blank-name guard below discards a real match.
   const pairName = typeof roster.displayName === "string" ? roster.displayName.trim() : "";
   if (pairName) {
-    const squad = Array.isArray(roster.athletes) ? (roster.athletes as Record<string, unknown>[]) : [];
+    const squad = Array.isArray(roster.athletes)
+      ? (roster.athletes as Record<string, unknown>[])
+      : [];
     const members = squad
       .map((entry) => {
-        const person = ((entry?.athlete ?? entry) ?? {}) as Record<string, unknown>;
+        const person = (entry?.athlete ?? entry ?? {}) as Record<string, unknown>;
         const flag = person.flag;
         return {
           id: String(person.id ?? ""),
-          name:
-            ((person.displayName as string) ?? (person.fullName as string) ?? "").trim(),
+          name: ((person.displayName as string) ?? (person.fullName as string) ?? "").trim(),
           flag:
             typeof flag === "object" && flag !== null
               ? (((flag as Record<string, unknown>).href as string) ?? "")
@@ -261,6 +263,7 @@ export function parseEvents(events: unknown[], def: LeagueDef): SportsGame[] {
       out.push({
         id: idStr,
         league: def.tag,
+        postseason: publishedPostseason(ev, comp, def.tag),
         state,
         detail: (t.shortDetail as string) ?? (t.detail as string) ?? "",
         home: hSide,
