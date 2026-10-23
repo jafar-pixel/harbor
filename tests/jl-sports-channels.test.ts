@@ -90,8 +90,8 @@ test("event channels match by kickoff and a shared team; Spanish feed goes after
   assert.deepEqual(
     found.map((c) => [c.channel.id, c.via, c.alternate]),
     [
-      ["e1", "event", false],
       ["abc", "network", false],
+      ["e1", "event", false],
       ["e2", "event", true],
     ],
   );
@@ -236,7 +236,7 @@ test("a game's event feeds lead with the best picture", () => {
   } as SportsGame;
   assert.deepEqual(
     channelsForGame(game, index, NOW).map((c) => c.channel.id),
-    ["fhd", "sd", "abc"],
+    ["abc", "fhd", "sd"],
   );
 });
 
@@ -247,4 +247,40 @@ test("quality badges", () => {
   assert.equal(qualityLabel("US: ESPN FHD"), "1080");
   assert.equal(qualityLabel("US: ESPN HD"), "HD");
   assert.equal(qualityLabel("US: ESPN"), null);
+});
+
+test("preferred broadcasters and best quality lead only among matching game broadcasts", () => {
+  const index = buildSportsChannelIndex(
+    [
+      ch("other", "Other Sports 4K", "", "other"),
+      ch("espn-hd", "US: ESPN HD"),
+      ch("espn-fhd", "US: ESPN FHD 60FPS"),
+      ch("abc", "US: ABC HD"),
+      ch("fox", "US: FOX HD"),
+      ch("nbc", "US: NBC HD"),
+    ],
+    null,
+    NOW,
+  );
+  const game: SportsGame = {
+    id: "preferred",
+    league: "NFL",
+    state: "pre",
+    detail: "",
+    startMs: NOW.getTime(),
+    home: side("Bears"),
+    away: side("Lions"),
+    network: "ABC",
+    broadcasts: ["ESPN", "FOX", "NBC"],
+  };
+  assert.deepEqual(
+    channelsForGame(game, index, NOW).map((c) => c.channel.id),
+    ["espn-fhd", "espn-hd", "abc", "fox", "nbc"],
+  );
+  assert.deepEqual(
+    channelsForGame({ ...game, network: "NBC", broadcasts: [] }, index, NOW).map(
+      (c) => c.channel.id,
+    ),
+    ["nbc"],
+  );
 });
