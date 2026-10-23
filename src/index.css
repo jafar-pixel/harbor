@@ -7802,5 +7802,7 @@ html[data-theme-layout="stremio"] .jl-sports-bleed {
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 @supports not (-webkit-text-stroke: 1px black) {
-  .jl-team-orbitron-title .jl-team-school { color: var(--team-outline, #ffffff); }
+  .jl-team-orbitron-title .jl-team-school {
+    color: var(--team-outline, #ffffff);
+  }
 }
