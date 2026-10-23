@@ -16,19 +16,27 @@ export function diverseEvents(games: SportsGame[], limit = 18): SportsGame[] {
     .slice(0, limit);
 }
 
-export function featuredEvents(live: SportsGame[], upcoming: SportsGame[]): SportsGame[] {
-  const ufc = upcoming.find((g) => g.league === "UFC" && /^UFC \d/.test(g.context?.name || ""));
-  const pool = [
-    ufc,
-    ...live.slice(0, 2),
-    upcoming.find((g) => g.league === "BOXING"),
-    upcoming.find((g) => g.league === "F1"),
-    upcoming.find((g) => g.league === "NBA"),
-    ...diverseEvents(upcoming, 8),
-  ];
+/** Favorites lead; discovery follows the viewer's sports order, without a forced fight slide. */
+export function featuredEvents(
+  live: SportsGame[],
+  upcoming: SportsGame[],
+  follows: (game: SportsGame) => boolean = () => false,
+  priority: readonly string[] = ["NCAAF", "NFL", "NBA", "NCAAB", "MLB", "NHL"],
+): SportsGame[] {
+  const order = (game: SportsGame) => {
+    const at = priority.indexOf(game.league);
+    return at < 0 ? priority.length : at;
+  };
   const seen = new Set<string>();
-  return pool
-    .filter((game): game is SportsGame => !!game)
+  return [...live, ...upcoming]
+    .filter((game) => game.state !== "post")
+    .sort(
+      (a, b) =>
+        Number(follows(b)) - Number(follows(a)) ||
+        order(a) - order(b) ||
+        Number(b.state === "in") - Number(a.state === "in") ||
+        a.startMs - b.startMs,
+    )
     .filter((game) => {
       const key = game.context?.id ? `${game.league}:${game.context.id}` : gameKey(game);
       if (seen.has(key)) return false;
