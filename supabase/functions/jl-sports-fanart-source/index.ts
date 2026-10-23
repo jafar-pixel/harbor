@@ -45,12 +45,50 @@ async function fetchBoardPins(boardId: string) {
 }
 Deno.serve(async (request: Request) => {
  try {
-  if(request.method!=="POST" && request.method!=="GET") return json({error:"Method not allowed"},405);
+  if(request.method!=="POST" && request.method!=="GET" && request.method!=="PATCH" && request.method!=="DELETE") return json({error:"Method not allowed"},405);
   const bearer=request.headers.get("authorization")||"";
   const jwt=bearer.startsWith("Bearer ")?bearer.slice(7):"";
   if(!jwt || !ANON || !URL_BASE) return json({error:"Authentication required"},401);
   const userId=await userFor(jwt);
   if(!userId) return json({error:"Invalid Supabase session"},401);
+  const endpoint = new URL(request.url);
+  if (endpoint.searchParams.get("resource") === "connectors") {
+    const base="/rest/v1/sports_art_source_connectors";
+    if(request.method==="GET") {
+      const qs=new URLSearchParams({select:"id,name,provider,source_url,enabled,sync_interval_hours,last_sync_at,last_error,created_at",owner_id:"eq."+userId,order:"created_at.asc"});
+      const res=await api(base+"?"+qs,jwt);
+      return json(res.ok?{items:await res.json()}:{error:"Could not read connectors"},res.status);
+    }
+    const body=await request.json().catch(()=>({})) as Record<string,unknown>;
+    if(request.method==="POST") {
+      const provider=String(body.provider||"");
+      if(!["pinterest","sportsdb","collegefootballdata","artist_feed","manual_library"].includes(provider)) return json({error:"Unsupported provider"},400);
+      const source=body.source_url == null ? null : safeUrl(body.source_url);
+      if(body.source_url && !source) return json({error:"Invalid HTTPS source"},400);
+      const hours=Number(body.sync_interval_hours??24);
+      if(!Number.isInteger(hours)||hours<1||hours>168) return json({error:"Invalid sync interval"},400);
+      const row={owner_id:userId,provider,name:String(body.name||provider).slice(0,120),source_url:source,enabled:body.enabled===true,sync_interval_hours:hours};
+      const res=await api(base,jwt,{method:"POST",headers:{"content-type":"application/json","prefer":"return=representation"},body:JSON.stringify(row)});
+      return json(res.ok?{items:await res.json()}:{error:"Could not create connector"},res.status);
+    }
+    const id=String(body.id||"");
+    if(!/^[0-9a-f-]{36}$/i.test(id)) return json({error:"Connector id required"},400);
+    const qs=new URLSearchParams({id:"eq."+id,owner_id:"eq."+userId});
+    if(request.method==="DELETE"){
+      const res=await api(base+"?"+qs,jwt,{method:"DELETE"});
+      return json(res.ok?{deleted:true}:{error:"Delete failed"},res.status);
+    }
+    const patch:Record<string,unknown>={};
+    if(typeof body.enabled==="boolean") patch.enabled=body.enabled;
+    if(body.sync_interval_hours!==undefined){
+      const h=Number(body.sync_interval_hours);
+      if(!Number.isInteger(h)||h<1||h>168) return json({error:"Invalid sync interval"},400);
+      patch.sync_interval_hours=h;
+    }
+    if(!Object.keys(patch).length) return json({error:"Nothing to update"},400);
+    const res=await api(base+"?"+qs,jwt,{method:"PATCH",headers:{"content-type":"application/json","prefer":"return=representation"},body:JSON.stringify(patch)});
+    return json(res.ok?{items:await res.json()}:{error:"Update failed"},res.status);
+  }
   if(request.method==="GET"){
    const qs=new URLSearchParams({select:"id,source_url,title,creator,team,slot,rights_status,created_at",user_id:"eq."+userId,limit:"1000",order:"created_at.desc"});
    const r=await api("/rest/v1/sports_fanart_sources?"+qs,jwt);
