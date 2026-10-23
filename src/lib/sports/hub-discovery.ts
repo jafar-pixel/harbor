@@ -38,7 +38,7 @@ export function featuredEvents(
     return at < 0 ? priority.length : at;
   };
   const seen = new Set<string>();
-  return [...live, ...upcoming]
+  const ranked = [...live, ...upcoming]
     .filter((game) => game.state !== "post")
     .filter((game) => isCollegeGameDay(game, now))
     .sort(
@@ -53,6 +53,12 @@ export function featuredEvents(
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    })
-    .slice(0, 8);
+    });
+  return [
+    ...ranked.filter(follows),
+    ...diverseEvents(
+      ranked.filter((game) => !follows(game)),
+      8,
+    ),
+  ].slice(0, 8);
 }
