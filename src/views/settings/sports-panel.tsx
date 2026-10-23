@@ -142,7 +142,8 @@ function SportsKeyRow({ def }: { def: SportsKeyDef }) {
       const r = await testSportsKey(def.id, draft, (url, init) => safeFetch(url, init), c.signal);
       if (!c.signal.aborted) setResult(r);
     } catch {
-      if (!c.signal.aborted) setResult({ ok: false, message: "The test didn't finish. Try again." });
+      if (!c.signal.aborted)
+        setResult({ ok: false, message: "The test didn't finish. Try again." });
     } finally {
       if (!c.signal.aborted) setTesting(false);
     }
