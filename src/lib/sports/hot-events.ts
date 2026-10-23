@@ -99,7 +99,9 @@ export function hotEvents(
         icon = "boxing";
         score += 30;
       } else if (["UCL", "NFL", "NBA"].includes(game.league)) score += 20;
-      const preferred = prefs ? leagueWeight(game.league, prefs, new Date(now)) : 0;
+      const preferred = prefs
+        ? leagueWeight(game.league === "NCAA" ? "NCAAB" : game.league, prefs, new Date(now))
+        : 0;
       score += preferred === null ? -100 : preferred * 4;
       if (follows(game)) {
         score += 300;
