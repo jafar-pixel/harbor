@@ -340,6 +340,12 @@ const NAV_GROUPS: Array<{ heading: string | null; items: NavItem[] }> = [
         ],
       },
       {
+        id: "sportsModule",
+        label: "Sports Module Setup",
+        Icon: IconLibrary,
+        keywords: ["sports", "fanart", "artwork", "sources", "pinterest", "teams", "module"],
+      },
+      {
         id: "trakt",
         label: "Trakt",
         Icon: IconTrakt,
