@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { featuredEvents } from "../src/lib/sports/hub-discovery.ts";
 import { hotEvents, hotEventCalendarParts } from "../src/lib/sports/hot-events.ts";
 import type { SportsGame } from "../src/lib/sports/espn-types.ts";
 const now = Date.UTC(2026, 8, 14);
@@ -80,8 +81,8 @@ test("highlight reasons follow explicit event signals rather than invented popul
     now,
     (game) => game.id === "followed",
   );
-  assert.equal(results[0].reason, "Championship stage");
-  assert.equal(results[1].reason, "Your team");
+  assert.equal(results[0].reason, "Your team");
+  assert.equal(results[1].reason, "Championship stage");
 });
 
 test("date-only events remain eligible after their noon anchor until the published day ends", () => {
@@ -112,4 +113,40 @@ test("weekly date labels use the published calendar day, not a converted anchor 
     "en-US",
   );
   assert.deepEqual(parts, { dateTime: "2026-09-14", day: 14, month: "Sep" });
+});
+
+test("football priorities outrank an un-followed headline fight", () => {
+  const fight = game("fight", "UFC", {
+    context: { id: "fight", name: "UFC 400", round: "", draw: "", venue: "", major: false },
+  });
+  const prefs = { priority: ["NCAAF", "NFL", "NBA"], dayFocus: {} };
+  const result = hotEvents(
+    [fight, game("college", "NCAAF"), game("pro", "NFL")],
+    now,
+    () => false,
+    prefs,
+  );
+  assert.equal(result[0].game.id, "college");
+  assert.equal(result.at(-1)?.game.id, "fight");
+});
+
+test("college football carousel appears only on game day, including a bowl", () => {
+  const today = game("bowl", "NCAAF", { startMs: now + 3600000 });
+  const later = game("future", "NCAAF", { startMs: now + 3 * 86400000 });
+  assert.deepEqual(
+    featuredEvents([], [later, today], () => true, ["NCAAF"], new Date(now)).map((g) => g.id),
+    ["bowl"],
+  );
+});
+test("college basketball feed tag follows the configured priority", () => {
+  assert.equal(
+    featuredEvents(
+      [],
+      [game("nfl", "NFL"), game("college", "NCAA")],
+      () => false,
+      ["NCAAB", "NFL"],
+      new Date(now),
+    )[0].id,
+    "college",
+  );
 });

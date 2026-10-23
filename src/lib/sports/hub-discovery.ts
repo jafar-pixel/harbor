@@ -16,24 +16,49 @@ export function diverseEvents(games: SportsGame[], limit = 18): SportsGame[] {
     .slice(0, limit);
 }
 
-export function featuredEvents(live: SportsGame[], upcoming: SportsGame[]): SportsGame[] {
-  const ufc = upcoming.find((g) => g.league === "UFC" && /^UFC \d/.test(g.context?.name || ""));
-  const pool = [
-    ufc,
-    ...live.slice(0, 2),
-    upcoming.find((g) => g.league === "BOXING"),
-    upcoming.find((g) => g.league === "F1"),
-    upcoming.find((g) => g.league === "NBA"),
-    ...diverseEvents(upcoming, 8),
-  ];
+/** College football slides appear on the fixture's local game day, including bowls and CFP. */
+export function isCollegeGameDay(game: SportsGame, now = new Date()): boolean {
+  return (
+    game.league !== "NCAAF" ||
+    game.state === "in" ||
+    new Date(game.startMs).toDateString() === now.toDateString()
+  );
+}
+
+/** Favorites lead; discovery follows the viewer's sports order, without a forced fight slide. */
+export function featuredEvents(
+  live: SportsGame[],
+  upcoming: SportsGame[],
+  follows: (game: SportsGame) => boolean = () => false,
+  priority: readonly string[] = ["NCAAF", "NFL", "NBA", "NCAAB", "MLB", "NHL"],
+  now = new Date(),
+): SportsGame[] {
+  const order = (game: SportsGame) => {
+    const at = priority.indexOf(game.league === "NCAA" ? "NCAAB" : game.league);
+    return at < 0 ? priority.length : at;
+  };
   const seen = new Set<string>();
-  return pool
-    .filter((game): game is SportsGame => !!game)
+  const ranked = [...live, ...upcoming]
+    .filter((game) => game.state !== "post")
+    .filter((game) => isCollegeGameDay(game, now))
+    .sort(
+      (a, b) =>
+        Number(follows(b)) - Number(follows(a)) ||
+        order(a) - order(b) ||
+        Number(b.state === "in") - Number(a.state === "in") ||
+        a.startMs - b.startMs,
+    )
     .filter((game) => {
       const key = game.context?.id ? `${game.league}:${game.context.id}` : gameKey(game);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    })
-    .slice(0, 8);
+    });
+  return [
+    ...ranked.filter(follows),
+    ...diverseEvents(
+      ranked.filter((game) => !follows(game)),
+      8,
+    ),
+  ].slice(0, 8);
 }

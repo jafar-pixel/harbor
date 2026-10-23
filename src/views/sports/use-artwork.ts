@@ -1,3 +1,5 @@
+import { artKey, curatedArt, useCuratedArtVersion } from "@/lib/jl/sports/curated-art";
+import { teamBrand } from "@/lib/jl/sports/vision";
 import { useEffect, useState } from "react";
 import type { SportsGame } from "@/lib/sports/espn";
 import {
@@ -6,7 +8,8 @@ import {
   fetchSportsArtwork,
   type SportsArtwork,
 } from "@/lib/sports/hub-artwork";
-export function useSportsArtwork(game?: SportsGame) {
+export function useSportsArtwork(game?: SportsGame): SportsArtwork {
+  useCuratedArtVersion();
   const key = game ? artworkCacheKey(game) : "";
   const [loaded, setLoaded] = useState<{ key: string; art: SportsArtwork }>(() => ({
     key,
@@ -23,5 +26,15 @@ export function useSportsArtwork(game?: SportsGame) {
     };
   }, [key]);
   if (!game) return {};
-  return loaded.key === key ? { ...loaded.art, ...cachedArtwork(game) } : cachedArtwork(game);
+  const fallback =
+    loaded.key === key ? { ...loaded.art, ...cachedArtwork(game) } : cachedArtwork(game);
+  const homeKey = artKey.team(game.league, game.home.id);
+  const awayKey = artKey.team(game.league, game.away.id);
+  return {
+    ...fallback,
+    backdrop: curatedArt(homeKey, "hero") || curatedArt(awayKey, "hero") || fallback.backdrop,
+    poster: curatedArt(homeKey, "card") || curatedArt(awayKey, "card") || fallback.poster,
+    home: teamBrand(game.league, game.home.id)?.logo || fallback.home,
+    away: teamBrand(game.league, game.away.id)?.logo || fallback.away,
+  };
 }

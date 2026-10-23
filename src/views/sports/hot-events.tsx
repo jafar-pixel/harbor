@@ -1,3 +1,6 @@
+import { isFavoriteGame } from "@/lib/jl/sports/rank";
+import { effectiveTeams, useJlFavoritePlayers } from "@/lib/jl/sports/favorites";
+import { useHubTeams, useSportPrefs } from "../live/live-home/jl-sports/use-jl-sports";
 import { useEventVenuePhoto } from "./use-event-venue-photo";
 import { SportsSelect } from "./sports-select";
 import { SportsHeroScenery } from "./sports-hero-scenery";
@@ -59,7 +62,7 @@ function HotArtwork({
   const visible = useInViewport(root, lead);
 
   const venuePhoto = useEventVenuePhoto(game, visible);
-  const art = useSportsArtwork(visible && !venuePhoto ? game : undefined);
+  const art = useSportsArtwork(visible ? game : undefined);
 
   const league = hubLeague(game.league);
 
@@ -67,7 +70,7 @@ function HotArtwork({
 
   const [loaded, setLoaded] = useState("");
 
-  const image = [venuePhoto?.photo, game.artwork, game.poster].find(
+  const image = [art.backdrop, art.poster, venuePhoto?.photo, game.artwork, game.poster].find(
     (url): url is string => !!url && !failed.includes(url),
   );
 
@@ -337,15 +340,26 @@ export function HotEventsContent({
   const t = useT();
 
   const locale = useUiLanguage();
+  const prefs = useSportPrefs();
+  const teams = useHubTeams();
+  const players = useJlFavoritePlayers();
+  const followed = useMemo(() => effectiveTeams(teams, players), [teams, players]);
 
   const [windowFilter, setWindowFilter] = useState("all");
 
   const [sport, setSport] = useState("all");
 
   const ranked = useMemo(
-    () => hotEvents(games, now, (game) => favourites.some((team) => involvesTeam(game, team))),
+    () =>
+      hotEvents(
+        games,
+        now,
+        (game) =>
+          isFavoriteGame(game, followed) || favourites.some((team) => involvesTeam(game, team)),
+        prefs,
+      ),
 
-    [games, now, favourites],
+    [games, now, favourites, prefs, followed],
   );
 
   const items = ranked.filter(

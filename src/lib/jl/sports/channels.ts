@@ -184,6 +184,17 @@ export function qualityLabel(name: string): string | null {
   return HIGH_FRAME_RATE.test(n) ? `${base} 60` : base;
 }
 
+/** Preferred broadcasters among sources already matched to this game. */
+export function sportsBroadcasterPriority(name: string): number {
+  const n = name.toUpperCase().replace(/^(?:US|USA)\s*[:|]\s*/, "");
+  if (/\bESPN(?:\s*[2U])?\b/.test(n)) return 0;
+  if (/\bABC\b/.test(n)) return 1;
+  if (/\bCBS\b|\bCBSSN\b/.test(n)) return 2;
+  if (/\bFOX\b|\bFS[12]\b/.test(n)) return 3;
+  if (/\bNBC\b/.test(n)) return 4;
+  return 5;
+}
+
 const byQuality = (a: IptvChannel, b: IptvChannel) =>
   channelQuality(b.name) - channelQuality(a.name);
 
@@ -267,13 +278,22 @@ export function channelsForGame(
   now: Date,
 ): GameChannel[] {
   const events = eventChannels(game, index).sort((a, b) => byQuality(a.channel, b.channel));
-  const network = game.network ? networkChannels(game.network, index) : [];
+  const networks = [
+    ...new Set([game.network, ...(game.broadcasts ?? [])].filter((name): name is string => !!name)),
+  ];
+  const network = networks.flatMap((name) => networkChannels(name, index));
   const ordered: GameChannel[] = [
     ...events.filter((c) => !c.alternate),
     ...network.map((channel) => ({ channel, via: "network" as const, alternate: false })),
     ...guideChannels(game, index, now),
     ...events.filter((c) => c.alternate),
   ];
+  ordered.sort(
+    (a, b) =>
+      Number(a.alternate) - Number(b.alternate) ||
+      sportsBroadcasterPriority(a.channel.name) - sportsBroadcasterPriority(b.channel.name) ||
+      byQuality(a.channel, b.channel),
+  );
   const seen = new Set<string>();
   const out: GameChannel[] = [];
   for (const c of ordered) {

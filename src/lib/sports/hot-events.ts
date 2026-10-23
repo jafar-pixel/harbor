@@ -1,8 +1,11 @@
 import type { SportsGame } from "./espn-types";
 import { eventCards } from "./hub-cache";
+import { leagueWeight, type SportPrefs } from "../jl/sports/sport-priorities";
 import { hubLeague } from "./hub-data";
 
 export const HOT_EVENT_LEAGUES = [
+  "NCAAF",
+  "NCAAB",
   "UFC",
   "PFL",
   "ONE",
@@ -53,6 +56,7 @@ export function hotEvents(
   games: SportsGame[],
   now: number,
   follows: (game: SportsGame) => boolean = () => false,
+  prefs?: SportPrefs,
 ): HotEvent[] {
   const candidates = eventCards(
     games.filter(
@@ -75,7 +79,7 @@ export function hotEvents(
         score = 10;
       if (
         game.context?.major ||
-        /\b(?:grand final|finals|championship|world cup|super bowl)\b|(?:^|\s)final(?:\s|$)/i.test(
+        /\b(?:grand final|finals|playoff|playoffs|championship|world cup|super bowl)\b|(?:^|\s)final(?:\s|$)/i.test(
           title,
         )
       ) {
@@ -95,8 +99,12 @@ export function hotEvents(
         icon = "boxing";
         score += 30;
       } else if (["UCL", "NFL", "NBA"].includes(game.league)) score += 20;
+      const preferred = prefs
+        ? leagueWeight(game.league === "NCAA" ? "NCAAB" : game.league, prefs, new Date(now))
+        : 0;
+      score += preferred === null ? -100 : preferred * 4;
       if (follows(game)) {
-        score += 18;
+        score += 300;
         if (reason === "In the spotlight") {
           reason = "Your team";
           icon = "crown";
@@ -112,7 +120,10 @@ export function hotEvents(
     })
     .sort(
       (a, b) =>
-        b.score - a.score || a.game.startMs - b.game.startMs || a.game.id.localeCompare(b.game.id),
+        Number(follows(b.game)) - Number(follows(a.game)) ||
+        b.score - a.score ||
+        a.game.startMs - b.game.startMs ||
+        a.game.id.localeCompare(b.game.id),
     );
   // A full slate in one league must not crowd every other sport off the page.
   const counts = new Map<string, number>();
