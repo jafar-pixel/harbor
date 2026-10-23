@@ -185,7 +185,7 @@ const SECTION_META: Record<SectionId, { label: string; sub: string }> = {
   },
   plugins: {
     label: "Plugins",
-    sub: "Small scripts that find streams, manga and books on sites Harbor does not know about, installed from repositories you choose.",
+    sub: "Personalized seasonal experiences, plus stream, manga and book extensions from repositories you choose.",
   },
   trakt: {
     label: "Trakt",

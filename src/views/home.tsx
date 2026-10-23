@@ -118,10 +118,14 @@ export function Home({
   active = true,
   onReady,
   seasonalInvitation,
+  experienceShelf,
+  experiencePlacement = "after-hero",
 }: {
   active?: boolean;
   onReady?: () => void;
   seasonalInvitation?: ReactNode;
+  experienceShelf?: ReactNode;
+  experiencePlacement?: "before-hero" | "after-hero";
 }) {
   const { authKey, user } = useAuth();
   const { activeProfile, profiles } = useProfiles();
@@ -1204,6 +1208,7 @@ export function Home({
               </div>
             </div>
           )}
+          {experiencePlacement === "before-hero" && experienceShelf}
           {cwTop && cwBlock}
           {settings.homeMode !== "classic" &&
             !homeRowsCustom.hidden.includes("hero") &&
@@ -1272,6 +1277,7 @@ export function Home({
             homeRowsCustom.hidden.includes("hero") ||
             !showHero) &&
             seasonalInvitation}
+          {experiencePlacement === "after-hero" && experienceShelf}
           {!cwTop && cwBlock}
           {settings.homeMode !== "classic" && (
             <div data-scroll-anchor="streaming">

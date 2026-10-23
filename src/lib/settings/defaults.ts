@@ -10,6 +10,7 @@ import type { Settings } from "./types";
 export const STORAGE_KEY = "harbor.settings";
 
 export const DEFAULT: Settings = {
+  experienceProfiles: {},
   soundTheme: "none",
   sfxVolume: 50,
   playerVolumeSfx: false,

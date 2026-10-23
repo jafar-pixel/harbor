@@ -1,0 +1,124 @@
+.experience-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 16px;
+  width: 100%;
+}
+.experience-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255/0.14);
+  border-radius: 20px;
+  background: radial-gradient(ellipse at 100% 0%, rgb(33 150 110/0.32), transparent 70%), #14211e;
+  color: #fff;
+  box-shadow: 0 10px 36px rgb(0 0 0/0.18);
+}
+.experience-birthday {
+  background: radial-gradient(ellipse at 100% 0%, rgb(175 111 57/0.45), transparent 70%), #291c26;
+}
+.experience-holidays {
+  background: radial-gradient(ellipse at 100% 0%, rgb(61 112 151/0.5), transparent 70%), #142332;
+}
+.experience-playoffs {
+  background: radial-gradient(ellipse at 100% 0%, rgb(184 134 43/0.4), transparent 70%), #262015;
+}
+.experience-open {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  min-height: 156px;
+  padding: 28px 46px 28px 24px;
+  text-align: start;
+}
+.experience-symbol {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  flex-shrink: 0;
+  border: 1px solid rgb(255 255 255/0.15);
+  border-radius: 50%;
+  background: rgb(255 255 255/0.07);
+}
+.experience-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+}
+.experience-copy strong {
+  font-family: Inter, "Segoe UI", sans-serif;
+  font-size: clamp(24px, 2vw, 32px);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+}
+.experience-copy > span:last-child {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgb(255 255 255/0.75);
+}
+.experience-eyebrow {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(255 255 255/0.65);
+}
+.experience-dismiss {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  color: rgb(255 255 255/0.7);
+}
+.experience-open:hover {
+  background: rgb(255 255 255/0.04);
+}
+.experience-dismiss:hover {
+  background: rgb(255 255 255/0.1);
+}
+.experience-open:focus-visible,
+.experience-dismiss:focus-visible,
+.experience-action:focus-visible {
+  outline: 3px solid var(--color-accent, #b9e8dc);
+  outline-offset: -4px;
+}
+.experience-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid rgb(255 255 255/0.2);
+  border-radius: 12px;
+  background: rgb(255 255 255/0.06);
+}
+@media (max-width: 640px) {
+  .experience-open {
+    gap: 14px;
+    padding: 24px 38px 24px 18px;
+  }
+  .experience-symbol {
+    width: 48px;
+    height: 48px;
+  }
+  .experience-symbol svg {
+    width: 26px;
+  }
+  .experience-arrow {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .experience-shelf * {
+    transition: none !important;
+  }
+}

@@ -40,6 +40,8 @@ export type EventContext = {
 };
 
 export type SportsGame = {
+  /** Explicit postseason designation published by a supported league feed. */
+  postseason?: boolean;
   /** Present only when displaying a cached slice that has not refreshed successfully. */
   savedAt?: number;
   id: string;

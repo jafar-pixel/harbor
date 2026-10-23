@@ -1,3 +1,4 @@
+import type { ExperiencePreferences } from "@/lib/experiences/catalog";
 import type { CalendarPosterSize } from "@/lib/calendar";
 import type { ControllerCursorId } from "@/lib/gamepad/cursor";
 import type { ThemeSettings } from "@/lib/theme";
@@ -105,6 +106,7 @@ export type MusicSpeedPreset = {
 };
 
 export type Settings = {
+  experienceProfiles: Record<string, ExperiencePreferences>;
   soundTheme: "none" | "glass" | "modern" | "retro" | "cinematic";
   sfxVolume: number;
   playerVolumeSfx: boolean;
