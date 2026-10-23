@@ -302,11 +302,12 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   // JL Media Vision's pieces of the hub: ranked Top 10, Game Stories, the viewer's own sports
   // channels and the Watch chooser that plays a game on them.
   const jl = useJlSportsPage({ active, onOpenGame: open, featured: heroes });
+  const scopedJlGames = gamesInSportsSelection(jl.sports.games, HUB_LEAGUES, leagues);
   const personalHeroes = featuredEvents(
-    [...live, ...jl.sports.games.filter((game) => game.state === "in")],
+    [...live, ...scopedJlGames.filter((game) => game.state === "in")],
     [
       ...(group === "all" ? next : coming),
-      ...jl.sports.games.filter(
+      ...scopedJlGames.filter(
         (game) =>
           game.state === "pre" &&
           game.startMs >= Date.now() &&
