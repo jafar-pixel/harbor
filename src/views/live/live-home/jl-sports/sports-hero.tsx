@@ -20,6 +20,7 @@ import type { InsightLeader } from "@/lib/jl/sports/insight";
 import { setPinnedWallpaper, usePinnedWallpaper } from "@/lib/jl/sports/page-wallpaper";
 import { fetchPlayerLine, fetchPregameInsight } from "@/lib/jl/sports/people";
 import { espnHeadshot } from "@/lib/jl/sports/search-parse";
+import { isCollegeGameDay } from "@/lib/sports/hub-discovery";
 import { mixHeroSlides, photoSlides } from "@/lib/jl/sports/hub-sections";
 import { teamAccent, teamLook, wordmarkAccent, wordmarkLines } from "@/lib/jl/sports/team-look";
 import { brandLook, useVisionVersion } from "@/lib/jl/sports/vision";
@@ -134,17 +135,29 @@ export function JlSportsHero({
   const t = useT();
   const root = useRef<HTMLElement>(null);
   const followed = useJlSportsFavorites();
-  const leaders = useTopGameLeaders(top[0] ?? null);
+  const leaders = useTopGameLeaders(top.find((item) => isCollegeGameDay(item.game)) ?? null);
   const slides = useMemo<Slide[]>(() => {
-    const games = top.map((item, i) => ({ kind: "game" as const, item, place: i + 1 }));
-    const teams = teamSlides.map((slide) => ({ kind: "team" as const, slide }));
+    const games = top
+      .filter((item) => isCollegeGameDay(item.game))
+      .map((item, i) => ({ kind: "game" as const, item, place: i + 1 }));
+    const teams = teamSlides
+      .filter(
+        (slide) =>
+          slide.team.league !== "NCAAF" || (slide.next && isCollegeGameDay(slide.next.game)),
+      )
+      .map((slide) => ({ kind: "team" as const, slide }));
     // A game of yours on now leads; then every team you follow, then the rest of the Top 10.
     const liveMine = games.filter((g) => g.item.mine && g.item.game.state === "in");
     const own: Slide[] = [
       ...liveMine,
       ...teams,
       ...games.filter((g) => !liveMine.includes(g)),
-      ...playerSlides.map((slide) => ({ kind: "player" as const, slide })),
+      ...playerSlides
+        .filter(
+          (slide) =>
+            slide.player.league !== "NCAAF" || (slide.next && isCollegeGameDay(slide.next.game)),
+        )
+        .map((slide) => ({ kind: "player" as const, slide })),
       ...leaders,
     ];
     const mixed = mixHeroSlides<Slide>(
