@@ -46,7 +46,7 @@ export const TOP_GROUPS: TopGroup[] = [
   },
   {
     id: "sports",
-    section: "CONTENT",
+    section: "SPORTS",
     label: "Sports Settings",
     sub: "Teams, shared artwork, sports data sources, and Sports Hub features.",
     children: ["sports"],
