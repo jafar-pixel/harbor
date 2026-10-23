@@ -475,7 +475,7 @@ export function createVisionStore(ports: VisionPorts) {
       const all = [...d.teams.values()];
       if (!group) return all;
       const within = new Set([group]);
-      for (let grew = true; grew; ) {
+      for (let grew = true; grew;) {
         grew = false;
         for (const g of d.groups)
           if (g.parent && within.has(g.parent) && !within.has(g.slug)) {
