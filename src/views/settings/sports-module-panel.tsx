@@ -1,37 +1,96 @@
+import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, Database, Images, ShieldCheck } from "lucide-react";
 
-const SOURCE_TYPES = [
-  { name: "Pinterest", detail: "Official authorized board API; third-party boards require access", status: "Authorization required" },
-  { name: "SportsDB / CollegeFootballData", detail: "Team IDs, logos and metadata from configured sports providers", status: "Provider integration" },
-  { name: "Artist & studio feeds", detail: "Licensed creator-provided asset feeds or uploads", status: "Supported source category" },
-  { name: "Your artwork library", detail: "Approved fanart from the existing Supabase publication catalog", status: "Existing database" },
-];
+const FUNCTION_URL = "https://ajbjyjfiglzodbdcdapr.supabase.co/functions/v1/jl-sports-fanart-source";
+const PROVIDERS = ["pinterest", "sportsdb", "collegefootballdata", "artist_feed", "manual_library"] as const;
+type Provider = typeof PROVIDERS[number];
+type Connector = { id: string; name: string; provider: Provider; source_url: string | null; enabled: boolean; sync_interval_hours: number; last_sync_at: string | null; last_error: string | null };
+type AuthSession = { accessToken: string; publishableKey: string };
+
+/** The app must provide an existing authenticated JL Vision session; Stremio keys are not valid JWTs. */
+function readCloudSession(): AuthSession | null {
+  const publishableKey = import.meta.env.VITE_JL_VISION_SUPABASE_ANON_KEY as string | undefined;
+  if (!publishableKey) return null;
+  try {
+    const raw = sessionStorage.getItem("jl-vision-supabase-session");
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object") return null;
+    const token = (value as { access_token?: unknown }).access_token;
+    if (typeof token !== "string" || !token) return null;
+    return { accessToken: token, publishableKey };
+  } catch { return null; }
+}
+async function callRegistry(session: AuthSession, method: "GET" | "POST" | "PATCH" | "DELETE", body?: Record<string, unknown>): Promise<{ items?: Connector[]; deleted?: boolean }> {
+  const response = await fetch(FUNCTION_URL + "?resource=connectors", {
+    method,
+    headers: { apikey: session.publishableKey, Authorization: "Bearer " + session.accessToken, ...(body ? { "Content-Type": "application/json" } : {}) },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const data = await response.json().catch(() => ({})) as { items?: Connector[]; error?: string; deleted?: boolean };
+  if (!response.ok) throw new Error(data.error || "Cloud request failed (HTTP " + response.status + ")");
+  return data;
+}
 
 export function SportsModulePanel() {
-  return (
-    <section className="space-y-5">
-      <div className="rounded-2xl border border-edge-soft/60 bg-surface/35 p-5">
-        <div className="flex items-center gap-3"><Images size={22}/><h2 className="text-lg font-semibold">Sports artwork sources</h2></div>
-        <p className="mt-2 text-sm text-ink-muted">Fanart discovery is a backend plugin, not a viewer-side importer. Multiple source connectors can feed the same rights-reviewed team artwork catalog.</p>
+  const [session, setSession] = useState<AuthSession | null>(readCloudSession);
+  const [items, setItems] = useState<Connector[]>([]);
+  const [name, setName] = useState("");
+  const [provider, setProvider] = useState<Provider>("artist_feed");
+  const [url, setUrl] = useState("");
+  const [hours, setHours] = useState(24);
+  const [working, setWorking] = useState(false);
+  const [message, setMessage] = useState("");
+  const refresh = useCallback(async (auth: AuthSession) => {
+    const response = await callRegistry(auth, "GET");
+    setItems(response.items || []);
+    setMessage("Backend source registry loaded.");
+  }, []);
+  useEffect(() => {
+    if (!session) return;
+    void refresh(session).catch(e => setMessage(e instanceof Error ? e.message : "Cannot load sources"));
+  }, [session, refresh]);
+  const run = async (fn: (s: AuthSession) => Promise<void>) => {
+    if (!session) return;
+    setWorking(true); setMessage("");
+    try { await fn(session); await refresh(session); }
+    catch (e) { setMessage(e instanceof Error ? e.message : "Operation failed"); }
+    finally { setWorking(false); }
+  };
+  return <section className="space-y-5">
+    <div className="rounded-2xl border border-edge-soft/60 bg-surface/35 p-5">
+      <div className="flex items-center gap-3"><Images size={22}/><h2 className="text-lg font-semibold">Sports Module Setup · Artwork Sources</h2></div>
+      <p className="mt-2 text-sm text-ink-muted">Configure backend connectors. Import workers run on the server; reference artwork is never automatically published.</p>
+    </div>
+    {!session ? <div className="rounded-xl border border-edge-soft/60 p-4 space-y-2">
+      <p className="font-semibold">JL Vision cloud account not connected</p>
+      <p className="text-sm text-ink-muted">Sports settings require an authenticated JL Vision Supabase session provided by the app's account bridge. A Stremio login is not accepted as a Supabase session.</p>
+      <button className="rounded-lg border border-edge-soft/60 px-3 py-2 text-sm" onClick={() => setSession(readCloudSession())}>Check account connection</button>
+    </div> : <>
+      <div className="rounded-xl border border-edge-soft/60 p-4 space-y-3">
+        <h3 className="font-semibold">Add artwork source</h3>
+        <input aria-label="Source name" className="w-full rounded-lg border border-edge bg-canvas p-2 text-sm" placeholder="Source name" value={name} onChange={e=>setName(e.target.value)} />
+        <select aria-label="Provider" className="w-full rounded-lg border border-edge bg-canvas p-2 text-sm" value={provider} onChange={e=>setProvider(e.target.value as Provider)}>{PROVIDERS.map(p=><option key={p} value={p}>{p.replaceAll("_"," ")}</option>)}</select>
+        <input aria-label="Source URL" className="w-full rounded-lg border border-edge bg-canvas p-2 text-sm" placeholder="https://authorized-source.example" value={url} onChange={e=>setUrl(e.target.value)} />
+        <label className="flex items-center gap-3 text-sm">Sync interval (hours) <input type="number" min={1} max={168} className="w-24 rounded-lg border border-edge bg-canvas p-2" value={hours} onChange={e=>setHours(Number(e.target.value))} /></label>
+        <button disabled={working || !name.trim() || !Number.isInteger(hours) || hours<1 || hours>168} onClick={()=>void run(async s=>{ await callRegistry(s,"POST",{name:name.trim(),provider,source_url:url.trim()||null,enabled:false,sync_interval_hours:hours});setName("");setUrl("");})} className="rounded-lg bg-ink px-4 py-2 text-sm text-canvas disabled:opacity-50">Save source</button>
       </div>
-      <div className="grid gap-3">
-        {SOURCE_TYPES.map((source) => (
-          <div className="rounded-xl border border-edge-soft/60 bg-elevated/30 p-4" key={source.name}>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-medium">{source.name}</h3>
-              <span className="rounded-full border border-edge-soft/60 px-2.5 py-1 text-xs text-ink-muted">{source.status}</span>
-            </div>
-            <p className="mt-1 text-sm text-ink-muted">{source.detail}</p>
-          </div>
-        ))}
-      </div>
-      <div className="rounded-xl border border-edge-soft/60 p-4">
-        <div className="flex items-center gap-2 font-medium"><Database size={17}/> Storage & sync</div>
-        <p className="mt-2 text-sm text-ink-muted">JL Vision Supabase hosts the backend function and sports_fanart_sources table. Authorized sources save metadata centrally; approved images remain separate. A verified authenticated session and publisher approval are required to operate it.</p>
-        <p className="mt-3 flex items-center gap-2 text-sm"><ShieldCheck size={16}/> Reference-only artwork is never automatically published.</p>
-      </div>
-      <p className="text-xs text-ink-muted">Source configuration is managed on the server. This screen describes available providers but does not collect API keys or claim that unconfigured providers are active. The backend connector and live synchronization must be verified separately.</p>
-      <a href="https://supabase.com/dashboard/project/ajbjyjfiglzodbdcdapr/functions" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm underline underline-offset-4">Open backend functions <ExternalLink size={14}/></a>
-    </section>
-  );
+      <div className="space-y-2">{items.map(item=><div key={item.id} className="rounded-xl border border-edge-soft/60 p-4 text-sm">
+        <div className="flex flex-wrap justify-between gap-2"><strong>{item.name}</strong><span>{item.provider}</span></div>
+        <p className="truncate text-xs text-ink-muted">{item.source_url || "No source URL"}</p>
+        <p className="text-xs text-ink-muted">Every {item.sync_interval_hours} hours · {item.last_sync_at ? "Last run "+item.last_sync_at : "Never synced"}{item.last_error ? " · "+item.last_error : ""}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button disabled={working} onClick={()=>void run(async s=>{await callRegistry(s,"PATCH",{id:item.id,enabled:!item.enabled});})} className="rounded-lg border border-edge px-3 py-1.5">{item.enabled ? "Disable" : "Enable"}</button>
+          <button disabled={working} onClick={()=>void run(async s=>{await callRegistry(s,"DELETE",{id:item.id});})} className="rounded-lg border border-edge px-3 py-1.5">Remove</button>
+        </div>
+      </div>)}</div>
+      <button className="rounded-lg border border-edge px-3 py-2 text-sm" disabled={working} onClick={()=>void run(async()=>{})}>Reload cloud sources</button>
+    </>}
+    {message && <p role="status" className="text-sm text-ink-muted">{message}</p>}
+    <div className="rounded-xl border border-edge-soft/60 p-4">
+      <p className="flex items-center gap-2 font-semibold"><Database size={17}/> JL Vision Supabase</p>
+      <p className="mt-2 flex items-center gap-2 text-sm"><ShieldCheck size={16}/> Only approved, licensed artwork is publishable.</p>
+      <a href="https://supabase.com/dashboard/project/ajbjyjfiglzodbdcdapr/functions" target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm underline">Backend functions <ExternalLink size={14}/></a>
+    </div>
+  </section>;
 }
