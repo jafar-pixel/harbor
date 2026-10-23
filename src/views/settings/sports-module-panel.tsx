@@ -41,6 +41,7 @@ export function SportsModulePanel() {
   const [hours, setHours] = useState(24);
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState("");
+  const [lastImport, setLastImport] = useState("");
   const refresh = useCallback(async (auth: AuthSession) => {
     const response = await callRegistry(auth, "GET");
     setItems(response.items || []);
@@ -50,6 +51,19 @@ export function SportsModulePanel() {
     if (!session) return;
     void refresh(session).catch(e => setMessage(e instanceof Error ? e.message : "Cannot load sources"));
   }, [session, refresh]);
+  const importAuthorizedPinterest = async (auth: AuthSession, item: Connector) => {
+    if (!item.enabled || item.provider !== "pinterest" || !item.source_url) throw new Error("Enable an authorized Pinterest source first.");
+    const id = new URL(item.source_url).searchParams.get("board_id");
+    if (!id || !/^\\d{5,30}$/.test(id)) throw new Error("The Pinterest source URL must include a numeric board_id query parameter.");
+    const response = await fetch(FUNCTION_URL, {
+      method: "POST",
+      headers: { apikey: auth.publishableKey, Authorization: "Bearer " + auth.accessToken, "Content-Type": "application/json" },
+      body: JSON.stringify({action:"pinterest_board",board_id:id}),
+    });
+    const data = await response.json().catch(() => ({})) as {imported?:number;error?:string};
+    if (!response.ok) throw new Error(data.error || "Pinterest import failed (HTTP " + response.status + ")");
+    setLastImport("Pinterest imported " + (data.imported || 0) + " source references. No artwork was published.");
+  };
   const run = async (fn: (s: AuthSession) => Promise<void>) => {
     if (!session) return;
     setWorking(true); setMessage("");
@@ -81,11 +95,13 @@ export function SportsModulePanel() {
         <p className="text-xs text-ink-muted">Every {item.sync_interval_hours} hours · {item.last_sync_at ? "Last run "+item.last_sync_at : "Never synced"}{item.last_error ? " · "+item.last_error : ""}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <button disabled={working} onClick={()=>void run(async s=>{await callRegistry(s,"PATCH",{id:item.id,enabled:!item.enabled});})} className="rounded-lg border border-edge px-3 py-1.5">{item.enabled ? "Disable" : "Enable"}</button>
+          {item.provider === "pinterest" && <button disabled={working || !item.enabled} onClick={()=>void run(async s=>{await importAuthorizedPinterest(s,item);})} className="rounded-lg border border-edge px-3 py-1.5">Import authorized board</button>}
           <button disabled={working} onClick={()=>void run(async s=>{await callRegistry(s,"DELETE",{id:item.id});})} className="rounded-lg border border-edge px-3 py-1.5">Remove</button>
         </div>
       </div>)}</div>
       <button className="rounded-lg border border-edge px-3 py-2 text-sm" disabled={working} onClick={()=>void run(async()=>{})}>Reload cloud sources</button>
     </>}
+    {lastImport && <p role="status" className="text-sm text-ink-muted">{lastImport}</p>}
     {message && <p role="status" className="text-sm text-ink-muted">{message}</p>}
     <div className="rounded-xl border border-edge-soft/60 p-4">
       <p className="flex items-center gap-2 font-semibold"><Database size={17}/> JL Vision Supabase</p>
