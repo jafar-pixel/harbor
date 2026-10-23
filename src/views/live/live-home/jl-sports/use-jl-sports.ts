@@ -30,15 +30,34 @@ import {
   type SportPrefs,
 } from "@/lib/jl/sports/sport-priorities";
 import { useVisionVersion, vision, visionTeamFor } from "@/lib/jl/sports/vision";
-import { followedGamesThisWeek, selectTopGames, teamsMissingFromScoreboard } from "@/lib/jl/sports/gameday";
+import {
+  followedGamesThisWeek,
+  selectTopGames,
+  teamsMissingFromScoreboard,
+} from "@/lib/jl/sports/gameday";
 import { alsoTodayGroups, teamSlideInfo } from "@/lib/jl/sports/hub-sections";
-import { isFavoriteGame, rankGames, type JlFavoriteTeam, type RankedGame } from "@/lib/jl/sports/rank";
+import {
+  isFavoriteGame,
+  rankGames,
+  type JlFavoriteTeam,
+  type RankedGame,
+} from "@/lib/jl/sports/rank";
 import { useActiveKid } from "@/lib/profiles";
 import { useSettings } from "@/lib/settings";
 import type { SportsGame, SportsSide } from "@/lib/sports/espn";
 import { useOddsApiGames } from "./use-sports-extras";
 
-export const JL_SPORTS_LEAGUES = ["NFL", "NCAAF", "NBA", "NCAAB", "NHL", "MLB", "EPL", "UCL", "MLS"];
+export const JL_SPORTS_LEAGUES = [
+  "NFL",
+  "NCAAF",
+  "NBA",
+  "NCAAB",
+  "NHL",
+  "MLB",
+  "EPL",
+  "UCL",
+  "MLS",
+];
 
 const POLL_MS = 30_000;
 const TICKER_GAMES = 16;
@@ -95,7 +114,9 @@ function withVisionMascot(game: SportsGame): SportsGame {
   if (game.source !== SCHOOL_SOURCE) return game;
   const side = (s: SportsSide): SportsSide => {
     const mascot = visionTeamFor(game.league, s.id)?.mascot;
-    return mascot && !s.nickname ? { ...s, nickname: mascot, name: `${s.location ?? s.name} ${mascot}` } : s;
+    return mascot && !s.nickname
+      ? { ...s, nickname: mascot, name: `${s.location ?? s.name} ${mascot}` }
+      : s;
   };
   return { ...game, home: side(game.home), away: side(game.away) };
 }
@@ -206,13 +227,18 @@ export function useJlSports(params: {
       }
       return found;
     };
-    const ranked = rankGames(games, favorites, {
+    const rankingGames = games.filter(
+      (game) => game.state === "in" || (game.startMs > 0 && game.startMs <= nowMs + 7 * DAY_MS),
+    );
+    const ranked = rankGames(rankingGames, favorites, {
       now,
-      watchable: (g) => channelsOf(g).length > 0,
       prefs,
     });
     const followed = followedGamesThisWeek(games, favorites, now);
-    const top: JlHubGame[] = selectTopGames(ranked, followed).map((r) => ({ ...r, channels: channelsOf(r.game) }));
+    const top: JlHubGame[] = selectTopGames(ranked, followed).map((r) => ({
+      ...r,
+      channels: channelsOf(r.game),
+    }));
     // The ticker follows your teams through the day: live, today's kick-offs, and today's finals.
     const ticker: JlHubGame[] = games
       .filter((g) => isFavoriteGame(g, favorites) && Math.abs(g.startMs - now.getTime()) < DAY_MS)
@@ -241,14 +267,27 @@ export function useJlSports(params: {
       now: now.getTime(),
       exclude: new Set(shownTop.map((r) => `${r.game.league}:${r.game.id}`)),
       order: leagueOrder,
-    }).map((g) => ({ league: g.league, label: g.label, live: g.live, items: g.games.map(hubItem) }));
+    }).map((g) => ({
+      league: g.league,
+      label: g.label,
+      live: g.live,
+      items: g.games.map(hubItem),
+    }));
     const playerSlides: JlPlayerSlide[] = players.map((player) => {
-      const team = player.teamId ? [{ league: player.league, id: player.teamId, name: player.teamName ?? "" }] : [];
+      const team = player.teamId
+        ? [{ league: player.league, id: player.teamId, name: player.teamName ?? "" }]
+        : [];
       const next = followedGamesThisWeek(games, team, now)[0];
-      const ranked = next ? top.find((r) => r.game.id === next.id && r.game.league === next.league) : undefined;
+      const ranked = next
+        ? top.find((r) => r.game.id === next.id && r.game.league === next.league)
+        : undefined;
       return {
         player,
-        next: ranked ?? (next ? { game: next, score: 0, reasons: [], mine: true, channels: channelsOf(next) } : null),
+        next:
+          ranked ??
+          (next
+            ? { game: next, score: 0, reasons: [], mine: true, channels: channelsOf(next) }
+            : null),
       };
     });
     return {
@@ -266,9 +305,15 @@ export function useJlSports(params: {
   }, [games, favorites, index, nowMs, teams, players, sportsTopGames, sportsScoreTicker, prefs]);
 
   // Odds overlay: The Odds API's line when the viewer has a key, else ESPN's; none when off.
-  const oddsGames = useOddsApiGames(useMemo(() => (sportsOdds ? hub.top.map((r) => r.game) : []), [hub.top, sportsOdds]));
+  const oddsGames = useOddsApiGames(
+    useMemo(() => (sportsOdds ? hub.top.map((r) => r.game) : []), [hub.top, sportsOdds]),
+  );
   const top = useMemo(
-    () => hub.top.map((r, i) => ({ ...r, game: sportsOdds ? (oddsGames[i] ?? r.game) : { ...r.game, odds: null } })),
+    () =>
+      hub.top.map((r, i) => ({
+        ...r,
+        game: sportsOdds ? (oddsGames[i] ?? r.game) : { ...r.game, odds: null },
+      })),
     [hub.top, oddsGames, sportsOdds],
   );
   const alsoToday = useMemo(
