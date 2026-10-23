@@ -63,6 +63,7 @@ export const SECTION_TABS: Partial<Record<SectionId, TabEntry[]>> = {
     { id: "server", label: "Server", icon: "TorrentServer" },
   ],
   plugins: [
+    { id: "experiences", label: "Experiences", icon: "Sparkles" },
     { id: "plugins", label: "Plugins", icon: "Puzzle" },
     { id: "repositories", label: "Repositories", icon: "Package" },
   ],
