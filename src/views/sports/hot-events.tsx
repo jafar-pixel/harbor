@@ -17,12 +17,7 @@ import { getGroupLabel, getLeagueLabel, type SportsGame } from "@/lib/sports/esp
 
 import { involvesTeam, type FavouriteTeam } from "@/lib/sports/favourites";
 
-import {
-  HOT_EVENT_LEAGUES,
-  hotEventCalendarParts,
-  hotEvents,
-  type HotEvent,
-} from "@/lib/sports/hot-events";
+import { hotEventCalendarParts, hotEvents, type HotEvent } from "@/lib/sports/hot-events";
 
 import { dayStamp, HUB_GROUPS, HUB_LEAGUES, hubLeague } from "@/lib/sports/hub-data";
 
@@ -585,6 +580,7 @@ export function HotEventsContent({
 
 export function HotEvents({
   seed,
+  leagueKeys,
 
   active,
 
@@ -597,6 +593,7 @@ export function HotEvents({
   onExplore,
 }: {
   seed: SportsGame[];
+  leagueKeys: string[];
 
   active: boolean;
 
@@ -622,22 +619,7 @@ export function HotEvents({
     return () => clearInterval(timer);
   }, [active, pageVisible]);
 
-  const leagues = useMemo(
-    () =>
-      [
-        ...new Set([
-          ...HOT_EVENT_LEAGUES,
-
-          ...favourites.map((team) => team.leagueKey),
-        ]),
-      ]
-
-        .filter((key) => HUB_LEAGUES.some((league) => league.key === key))
-
-        .slice(0, 24),
-
-    [favourites],
-  );
+  const leagues = leagueKeys;
 
   const feed = useSportsHub(
     leagues,
@@ -654,12 +636,17 @@ export function HotEvents({
   const games = useMemo(
     () =>
       mergeSlices([
-        { at: 1, games: seed },
+        {
+          at: 1,
+          games: seed.filter((game) =>
+            HUB_LEAGUES.some((l) => leagueKeys.includes(l.key) && l.tag === game.league),
+          ),
+        },
 
         { at: 2, games: feed.games },
       ]),
 
-    [seed, feed.games],
+    [seed, feed.games, leagueKeys],
   );
 
   return (

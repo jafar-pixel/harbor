@@ -445,6 +445,8 @@ export const DEFAULT: Settings = {
   profilePromptInterval: "launch",
   defaultProfileId: "",
   sportsLeagues: [],
+  sportsHomeOrder: [],
+  sportsHomeHidden: ["featured"],
   sportsAlerts: true,
   sportsShowOdds: false,
   sportsWithoutProvider: false,

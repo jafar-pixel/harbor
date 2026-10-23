@@ -23,6 +23,7 @@ import {
   sportsChannelRows,
   type LiveSportsEntry,
   type SportsChip,
+  type SportCategory,
 } from "@/lib/jl/sports/sports-channels";
 import type { SportsGame } from "@/lib/sports/espn";
 import { GuideView } from "../../guide/guide-view";
@@ -67,6 +68,7 @@ const isChip = (v: string) =>
  */
 export type LiveSportsChannelsParams = {
   active: boolean;
+  allowedSports?: readonly SportCategory[];
   /** The active provider's channels, as Live TV shows them (hidden groups removed). */
   channels: IptvChannel[];
   activeSourceId: string | null;
@@ -89,6 +91,7 @@ export function LiveSportsChannels(props: LiveSportsChannelsParams) {
  */
 export function useLiveSportsChannels({
   active,
+  allowedSports,
   channels,
   activeSourceId,
   epg,
@@ -169,8 +172,8 @@ export function useLiveSportsChannels({
           currentTitle: (c) => nowNext(c).current?.title ?? null,
           favoriteIds: favorites.ids,
         }),
-      ),
-    [collected, minute, nowNext, favorites.ids],
+      ).filter((entry) => !allowedSports || allowedSports.includes(entry.sport)),
+    [collected, minute, nowNext, favorites.ids, allowedSports],
   );
 
   const gameByChannel = useMemo(() => {

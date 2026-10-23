@@ -1,8 +1,10 @@
+import { SportsHomeLayout } from "./sports/home-layout";
+import type { SportCategory } from "@/lib/jl/sports/sports-channels";
 import { SportsSelect } from "./sports/sports-select";
 import { SportsHotEventsSkeleton, SportsRailSkeleton } from "./sports/sports-skeletons";
 import { LeagueLogo } from "./sports/league-logo";
 import { lazy, Suspense, useMemo, useRef, useState, useEffect } from "react";
-import { ArrowUp, ArrowRight, CalendarDays, Star } from "lucide-react";
+import { ArrowUp, ArrowRight, CalendarDays } from "lucide-react";
 import { SportsRefreshButton } from "./sports/refresh-button";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
@@ -11,7 +13,7 @@ import type { EsportsMatch } from "@/lib/sports/esports-feeds";
 import { officialBroadcastSource } from "@/lib/sports/esports-streams";
 import { getGroupLabel, getLeagueLabel, type SportsGame } from "@/lib/sports/espn";
 import { involvesTeam, useFavourites } from "@/lib/sports/favourites";
-import { dayStamp, HUB_DEFAULTS, HUB_GROUPS, HUB_LEAGUES, hubLeague } from "@/lib/sports/hub-data";
+import { dayStamp, HUB_GROUPS, HUB_LEAGUES, hubLeague } from "@/lib/sports/hub-data";
 import { syncSportsReminders } from "@/lib/sports/reminders";
 import { diverseEvents, featuredEvents } from "@/lib/sports/hub-discovery";
 import { currentLiveGames, liveDateRange, liveScoreboardKeys } from "@/lib/sports/live-schedule";
@@ -35,7 +37,8 @@ import {
 import { SportsAccessGate } from "./sports/access-gate";
 import { SportsNoProviderNote } from "./sports/no-provider-note";
 import { SportsPersonalizeHint } from "./sports/personalize-hint";
-import { isFavoriteGame } from "@/lib/jl/sports/rank";
+import { followedGamesThisWeek, selectTopGames } from "@/lib/jl/sports/gameday";
+import { isFavoriteGame, rankGames } from "@/lib/jl/sports/rank";
 import { effectiveTeams, useJlFavoritePlayers } from "@/lib/jl/sports/favorites";
 import { useHubTeams } from "./live/live-home/jl-sports/use-jl-sports";
 import { useSportPrefs } from "./live/live-home/jl-sports/use-jl-sports";
@@ -59,7 +62,6 @@ import { JlSportsHero } from "./live/live-home/jl-sports/sports-hero";
 import type { JlHubGame } from "./live/live-home/jl-sports/use-jl-sports";
 import { useJlSportsPage } from "./live/live-home/jl-sports/use-jl-sports-page";
 
-const LIVE_SCOREBOARDS = liveScoreboardKeys(HUB_LEAGUES);
 const NO_CHANNELS: IptvChannel[] = [];
 
 const HotEvents = lazy(() => import("./sports/hot-events").then((m) => ({ default: m.HotEvents })));
@@ -176,7 +178,11 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   }, [active]);
   const selected = useMemo(
     () =>
-      selectedSportsLeagues(HUB_LEAGUES, settings.sportsLeagues, !!fav.personalized, HUB_DEFAULTS),
+      selectedSportsLeagues(HUB_LEAGUES, settings.sportsLeagues, !!fav.personalized, [
+        "NCAAF",
+        "NFL",
+        "NBA",
+      ]),
     [settings.sportsLeagues, fav.personalized],
   );
   const scope = useMemo(
@@ -198,7 +204,8 @@ function SportsHubView({ active = false }: { active?: boolean }) {
     }
   }, [settings.sportsLeagues]);
   const boardLeagues = useMemo(() => {
-    if (tab === "live") return LIVE_SCOREBOARDS;
+    if (tab === "live")
+      return liveScoreboardKeys(HUB_LEAGUES.filter((l) => selected.includes(l.key)));
     if (scope.leagueFilter) return leagues;
     const others = leagues.filter((key) => {
       const def = HUB_LEAGUES.find((l) => l.key === key);
@@ -209,7 +216,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
         leagues.some((key) => HUB_LEAGUES.find((l) => l.key === key)?.group === "soccer"))
       ? ["SOCCER_ALL", ...others]
       : others;
-  }, [leagues, group, scope.leagueFilter, tab]);
+  }, [leagues, group, scope.leagueFilter, tab, selected]);
   const liveRange = useMemo(() => liveDateRange(today), [today]);
   const boardDay = tab === "live" ? liveRange : day;
   const boardFeed = useSportsHub(
@@ -222,10 +229,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   const board = {
     ...boardFeed,
     games: useMemo(
-      () =>
-        tab === "live"
-          ? boardFeed.games
-          : gamesInSportsSelection(boardFeed.games, HUB_LEAGUES, leagues),
+      () => gamesInSportsSelection(boardFeed.games, HUB_LEAGUES, leagues),
       [boardFeed.games, leagues, tab],
     ),
   };
@@ -263,7 +267,9 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   );
   const filtered = group === "all" ? all : all.filter((g) => hubLeague(g.league)?.group === group);
   const live = board.games.filter((g) => g.state === "in");
-  const following = filtered.filter((g) => fav.teams.some((team) => involvesTeam(g, team)));
+  const following = filtered.filter(
+    (g) => isFavoriteGame(g, discoveryTeams) || fav.teams.some((team) => involvesTeam(g, team)),
+  );
   const fights = next.filter((g) =>
     ["combat", "boxing"].includes(hubLeague(g.league)?.group || ""),
   );
@@ -318,7 +324,74 @@ function SportsHubView({ active = false }: { active?: boolean }) {
       isFavoriteGame(game, discoveryTeams) || fav.teams.some((team) => involvesTeam(game, team)),
     leaguesForToday(sportPrefs, new Date()),
   );
-  const jlTopKeys = new Set(jl.sports.top.map((r) => `${r.game.league}:${r.game.id}`));
+  const selectedTags = new Set(
+    HUB_LEAGUES.filter((l) => selected.includes(l.key)).map((l) => l.tag),
+  );
+  const scopeTags = new Set(HUB_LEAGUES.filter((l) => leagues.includes(l.key)).map((l) => l.tag));
+  const allowsGame = (game: SportsGame) => scopeTags.has(game.league);
+  const pageFavorites = [
+    ...discoveryTeams.map((team) => ({
+      ...team,
+      league: team.league === "NCAAB" ? "NCAA" : team.league,
+    })),
+    ...fav.teams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      league: HUB_LEAGUES.find((l) => l.key === team.leagueKey)?.tag ?? team.leagueKey,
+    })),
+  ];
+  const rankedPool = mergeSlices([
+    { at: 1, games: all },
+    { at: 2, games: scopedJlGames },
+  ]);
+  const rankedPrefs = {
+    ...sportPrefs,
+    priority: [
+      ...new Set([
+        ...sportPrefs.priority
+          .map((league) => (league === "NCAAB" ? "NCAA" : league))
+          .filter((league) => scopeTags.has(league)),
+        ...scopeTags,
+      ]),
+    ],
+  };
+  const pageNow = new Date(jl.nowMs);
+  const pageTop = settings.sportsTopGames
+    ? selectTopGames(
+        rankGames(rankedPool, pageFavorites, {
+          now: pageNow,
+          prefs: rankedPrefs,
+          watchable: (game) => jl.sports.channelsFor(game).length > 0,
+        }),
+        followedGamesThisWeek(rankedPool, pageFavorites, pageNow),
+      ).map((item) => ({ ...item, channels: jl.sports.channelsFor(item.game) }))
+    : [];
+  const pageTicker = jl.sports.ticker.filter((item) => allowsGame(item.game));
+  const allowedChannelSports = useMemo(() => {
+    const map: Record<string, SportCategory> = {
+      football: "football",
+      basketball: "basketball",
+      baseball: "baseball",
+      hockey: "hockey",
+      soccer: "soccer",
+      combat: "combat",
+      boxing: "combat",
+      motorsport: "racing",
+      golf: "golf-tennis",
+      tennis: "golf-tennis",
+    };
+    return [
+      ...new Set<SportCategory>([
+        ...HUB_LEAGUES.filter((l) => selected.includes(l.key)).flatMap((l) =>
+          map[l.group] ? [map[l.group]] : [],
+        ),
+        ...(selected.some((league) => league === "NCAAF" || league === "NCAAB")
+          ? ["college" as const]
+          : []),
+      ]),
+    ];
+  }, [selected]);
+  const jlTopKeys = new Set(pageTop.map((r) => `${r.game.league}:${r.game.id}`));
   const jlFeatured: JlHubGame[] = heroFeatured(personalHeroes, jlTopKeys).map((game) => ({
     game,
     score: 0,
@@ -342,7 +415,9 @@ function SportsHubView({ active = false }: { active?: boolean }) {
     ...board.games.map((g) => g.league),
     ...HUB_LEAGUES.filter((l) => leagues.includes(l.key)).map((l) => l.tag),
   ]);
-  const jlAlsoToday = jl.sports.alsoToday.filter((g) => !scheduleTags.has(g.league));
+  const jlAlsoToday = jl.sports.alsoToday.filter(
+    (g) => selectedTags.has(g.league) && !scheduleTags.has(g.league),
+  );
   // The viewer's sports channels, classified once for the photo cards and the full browser.
   const jlChannels = useLiveSportsChannels({
     active: active && jlAll,
@@ -350,10 +425,11 @@ function SportsHubView({ active = false }: { active?: boolean }) {
     activeSourceId: jl.activeSourceId,
     epg: jl.epg,
     nowMs: jl.nowMs,
-    games: jl.sports.top,
+    games: pageTop,
+    allowedSports: allowedChannelSports,
     onPlay: jl.play,
   });
-  const jlScores = useMemo(() => stripGames(jl.sports.games), [jl.sports.games]);
+  const jlScores = stripGames(jl.sports.games.filter(allowsGame));
   const jlLeagues = () => {
     setTab("explore");
     setGroup("all");
@@ -401,34 +477,10 @@ function SportsHubView({ active = false }: { active?: boolean }) {
       aria-label={t("Sports")}
       style={wallpaperStyle}
     >
-      {jlHero && (
-        <JlSportsHero
-          top={jl.sports.top}
-          teamSlides={jl.sports.teamSlides}
-          playerSlides={jl.sports.playerSlides}
-          featured={jlFeatured}
-          actions={jl.actions}
-          onOpenGame={open}
-          bleed
-          flush
-        />
-      )}
-      {jlAll && (
-        <div className="sh-body sh-jl-top relative z-10 flex flex-col gap-8 pt-2">
-          <GameStoriesRow
-            stories={jl.stories}
-            onWatch={jl.actions.watch}
-            onOpenGame={open}
-            aside={<SportsShortcuts actions={jl.actions} onLeagues={jlLeagues} />}
-          />
-          <SportChannelCards data={jlChannels} favorites={jl.sports.teams} />
-          <ScoresStrip games={jlScores} onOpenGame={open} />
-        </div>
-      )}
-      <header className={jlHero ? "sh-masthead sh-masthead-after-hero" : "sh-masthead"}>
+      <header className="sh-masthead">
         <div>
           <span className="sh-eyebrow">JL SPORTS</span>
-          <h1>{t("Every game. Your game.")}</h1>
+          <h1>{t("Your Sports Hub")}</h1>
         </div>
         <SportsPersonalizeHint active={active && !setup} onPersonalize={() => setSetup(true)} />
       </header>
@@ -470,16 +522,6 @@ function SportsHubView({ active = false }: { active?: boolean }) {
         )}
         <SportsRefreshButton busy={busy} onRefresh={() => setRefresh((n) => n + 1)} />
       </nav>
-      {tab === "home" && group !== "esports" && (
-        <HubCarousel
-          games={personalHeroes}
-          active={active && !setup}
-          onOpen={open}
-          onCustomize={() => setSetup(true)}
-          loading={busy}
-          stale={board.stale || upcoming.stale}
-        />
-      )}
       {tab === "home" && group === "esports" && !browsing && (
         <div className="sh-carousel" ref={setEsportsHeroTarget} />
       )}
@@ -615,137 +657,168 @@ function SportsHubView({ active = false }: { active?: boolean }) {
           </Suspense>
         )}
         {tab === "home" && group !== "esports" && (
-          <>
-            {!fav.personalized && !settings.sportsLeagues.length && (
-              <button className="sh-personalize-banner" onClick={() => setSetup(true)}>
-                <span className="sh-banner-icon">
-                  <Star size={22} />
-                </span>
-                <span>
-                  <strong>{t("Less searching. More of your sport.")}</strong>
-                  <small>
-                    {t("Pick your sports, leagues and teams. We will bring them to the front.")}
-                  </small>
-                </span>
-                <span className="sh-banner-action">
-                  {t("Make it yours")}
-                  <ArrowRight size={18} />
-                </span>
-              </button>
-            )}
-            {jlAll && (
-              <JlSportsHub
-                top={jl.sports.top}
-                ticker={jl.sports.ticker}
-                favorites={jl.sports.teams}
-                actions={jl.actions}
-                onOpenGame={open}
-                onLeagues={jlLeagues}
-                shortcuts={false}
-              />
-            )}
-            <HubRow
-              title={t(
-                live.some((game) => game.savedAt === undefined)
-                  ? "Live now"
-                  : "Latest saved scores",
-              )}
-              description={t("The action happening across your sports.")}
-              games={live}
-              onOpen={open}
-              stale={board.stale}
-            />
-            <HubRow
-              title={t("Your teams")}
-              games={following.filter((g) => g.state !== "post")}
-              onOpen={open}
-              stale={board.stale || upcoming.stale}
-            />
-            {day !== today && (
-              <HubSchedule
-                title={dateTitle}
-                games={board.games}
-                onOpen={open}
-                stale={board.stale}
-                loading={board.pending > 0}
-                failed={board.failed > 0}
-              />
-            )}
-            <HubRow
-              title={t("Coming up")}
-              description={t("Clear your calendar. These are worth a look.")}
-              games={diverseEvents(coming)}
-              onOpen={open}
-              stale={upcoming.stale}
-            />
-            {(group === "all" || group === "combat" || group === "boxing") && (
-              <HubRow
-                title={t("Fight nights")}
-                description={t("The headline events. The full card. The next big matchup.")}
-                games={fights}
-                onOpen={open}
-                stale={upcoming.stale}
-              />
-            )}
-            {jlAll && <LiveSportsChannelsView data={jlChannels} />}
-            {pitchGame && <HubPitchSpotlight game={pitchGame} active={active} onOpen={open} />}
-            {group === "all" && esportsLeagues.length > 0 && (
-              <Suspense fallback={<SportsRailSkeleton />}>
-                <EsportsMatchRail
-                  leagueKeys={esportsLeagues}
-                  active={active && !setup}
-                  refresh={refresh}
-                  onExplore={() => {
-                    setBrowsing(true);
-                    setGroup("esports");
-                    setLeagueFilter("");
-                    scrollRef.current?.scrollTo({ top: 0 });
-                  }}
-                />
-              </Suspense>
-            )}
-            {day === today && (
-              <HubSchedule
-                title={dateTitle}
-                games={board.games}
-                onOpen={open}
-                stale={board.stale}
-                loading={board.pending > 0}
-                failed={board.failed > 0}
-              />
-            )}
-            {jlAll && (
-              <AlsoToday
-                groups={jlAlsoToday}
-                favorites={jl.sports.teams}
-                actions={jl.actions}
-                onOpenGame={open}
-              />
-            )}
-            {!filtered.length && (
-              <div className="sh-empty">
-                <CalendarDays size={30} />
-                <h2>
-                  {t(
-                    busy
-                      ? "Your sports are on their way"
-                      : "No events available for this selection",
-                  )}
-                </h2>
-                <p>
-                  {t(
-                    busy
-                      ? "Browse sports or set up your favorites while schedules arrive."
-                      : "Try another sport or date. Saved schedules will appear here when a feed is unavailable.",
-                  )}
-                </p>
-                <button className="sh-button" onClick={() => setTab("explore")}>
-                  {t("Explore sports")}
-                  <ArrowRight size={16} />
-                </button>
-              </div>
-            )}
-          </>
+          <SportsHomeLayout
+            onSports={() => setSetup(true)}
+            items={[
+              {
+                id: "hero",
+                content: jlHero ? (
+                  <JlSportsHero
+                    top={pageTop}
+                    teamSlides={jl.sports.teamSlides.filter((s) =>
+                      scopeTags.has(s.team.league === "NCAAB" ? "NCAA" : s.team.league),
+                    )}
+                    playerSlides={jl.sports.playerSlides.filter((s) =>
+                      scopeTags.has(s.player.league === "NCAAB" ? "NCAA" : s.player.league),
+                    )}
+                    featured={jlFeatured}
+                    actions={jl.actions}
+                    onOpenGame={open}
+                  />
+                ) : null,
+              },
+              {
+                id: "top10",
+                content: jlAll ? (
+                  <JlSportsHub
+                    top={pageTop}
+                    ticker={pageTicker}
+                    favorites={jl.sports.teams}
+                    actions={jl.actions}
+                    onOpenGame={open}
+                    onLeagues={jlLeagues}
+                    shortcuts={false}
+                  />
+                ) : null,
+              },
+              {
+                id: "stories",
+                content: jlAll ? (
+                  <GameStoriesRow
+                    stories={jl.stories.filter((item) => allowsGame(item.game))}
+                    onWatch={jl.actions.watch}
+                    onOpenGame={open}
+                    aside={<SportsShortcuts actions={jl.actions} onLeagues={jlLeagues} />}
+                  />
+                ) : null,
+              },
+              {
+                id: "channel-cards",
+                content: jlAll ? (
+                  <SportChannelCards data={jlChannels} favorites={jl.sports.teams} />
+                ) : null,
+              },
+              {
+                id: "scores",
+                content: jlAll ? <ScoresStrip games={jlScores} onOpenGame={open} /> : null,
+              },
+              {
+                id: "featured",
+                content: (
+                  <HubCarousel
+                    games={personalHeroes}
+                    active={active && !setup}
+                    onOpen={open}
+                    onCustomize={() => setSetup(true)}
+                    loading={busy}
+                    stale={board.stale || upcoming.stale}
+                  />
+                ),
+              },
+              {
+                id: "live",
+                content: (
+                  <HubRow title={t("Live now")} games={live} onOpen={open} stale={board.stale} />
+                ),
+              },
+              {
+                id: "your-teams",
+                content: (
+                  <HubRow
+                    title={t("Your teams")}
+                    games={following.filter((g) => g.state !== "post")}
+                    onOpen={open}
+                    stale={board.stale || upcoming.stale}
+                  />
+                ),
+              },
+              {
+                id: "coming-up",
+                content: (
+                  <HubRow
+                    title={t("Coming up")}
+                    games={diverseEvents(coming)}
+                    onOpen={open}
+                    stale={upcoming.stale}
+                  />
+                ),
+              },
+              {
+                id: "fight-nights",
+                content: fights.length ? (
+                  <HubRow
+                    title={t("Fight nights")}
+                    games={fights}
+                    onOpen={open}
+                    stale={upcoming.stale}
+                  />
+                ) : null,
+              },
+              {
+                id: "channels",
+                content: jlAll ? <LiveSportsChannelsView data={jlChannels} /> : null,
+              },
+              {
+                id: "pitch",
+                content: pitchGame ? (
+                  <HubPitchSpotlight game={pitchGame} active={active} onOpen={open} />
+                ) : null,
+              },
+              {
+                id: "esports",
+                content:
+                  group === "all" && esportsLeagues.length > 0 ? (
+                    <Suspense fallback={<SportsRailSkeleton />}>
+                      <EsportsMatchRail
+                        leagueKeys={esportsLeagues}
+                        active={active && !setup}
+                        refresh={refresh}
+                        onExplore={() => {
+                          setBrowsing(true);
+                          setGroup("esports");
+                          setLeagueFilter("");
+                          scrollRef.current?.scrollTo({ top: 0 });
+                        }}
+                      />
+                    </Suspense>
+                  ) : null,
+              },
+              {
+                id: "schedule",
+                content: (
+                  <HubSchedule
+                    title={dateTitle}
+                    games={board.games}
+                    onOpen={open}
+                    stale={board.stale}
+                    loading={board.pending > 0}
+                    failed={board.failed > 0}
+                  />
+                ),
+              },
+              {
+                id: "also-today",
+                content: jlAll ? (
+                  <AlsoToday
+                    groups={jlAlsoToday}
+                    favorites={jl.sports.teams}
+                    actions={jl.actions}
+                    onOpenGame={open}
+                  />
+                ) : null,
+              },
+            ]}
+          />
         )}
         {tab === "live" && (
           <>
@@ -759,7 +832,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               failed={failures > 0 || board.stale}
               liveOnly
             />
-            {(group === "all" || group === "esports") && (
+            {esportsLeagues.length > 0 && (
               <Suspense fallback={<SportsRailSkeleton />}>
                 <EsportsMatchRail
                   liveOnly
@@ -794,6 +867,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               active={active && !setup}
               refresh={refresh}
               favourites={fav.teams}
+              leagueKeys={selected}
               onOpen={open}
               onExplore={() => setTab("explore")}
             />
