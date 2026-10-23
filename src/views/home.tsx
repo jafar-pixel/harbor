@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { BackToTop } from "@/components/back-to-top";
 import { HeroCarousel, type Slide } from "@/components/hero-carousel";
+import { FeaturedSportsWallpaper } from "./home/featured-sports-wallpaper";
 import { CollectionsRow } from "@/components/collections-row";
 import { TmdbNudge } from "@/components/nudge";
 import { Row, ScrollRootContext } from "@/components/row";
@@ -951,11 +952,11 @@ export function Home({ active = true, onReady }: { active?: boolean; onReady?: (
                     onToggleHidden={() => handleToggleHidden("hero")}
                   />
                 )}
-                <HeroCarousel
-                  slides={heroSlides}
-                  full={settings.heroFull}
-                  fullQuality={settings.heroFullQuality}
-                />
+                {sportsGames.length > 0 ? (
+                  <FeaturedSportsWallpaper games={sportsGames} onDetails={openMatchDetail} />
+                ) : (
+                  <HeroCarousel slides={heroSlides} full={settings.heroFull} fullQuality={settings.heroFullQuality} />
+                )}
                 {!editMode && (
                   <div className="pointer-events-none absolute -bottom-3 end-5 z-20 flex justify-end [&>*]:pointer-events-auto">
                     <CustomizeBar
