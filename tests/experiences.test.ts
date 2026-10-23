@@ -10,7 +10,9 @@ import {
   gameIsToday,
   isPostseason,
 } from "../src/lib/experiences/catalog.ts";
-import type { SportsGame } from "../src/lib/sports/espn.ts";
+import { parseEvents } from "../src/lib/sports/espn-parse.ts";
+import { experienceLeagueGames } from "../src/lib/experiences/schedule-source.ts";
+import type { LeagueDef, SportsGame } from "../src/lib/sports/espn.ts";
 
 test("birthday uses month/day and validates leap day without a birth year", () => {
   assert.equal(validBirthday("02-29"), true);
@@ -90,4 +92,103 @@ test("postseason banners require an actual postseason event", () => {
   assert.equal(isPostseason(game), false);
   assert.equal(isPostseason({ ...game, detail: "CFP Quarterfinal - Rose Bowl" }), true);
   assert.equal(isPostseason({ ...game, detail: "NBA Playoffs" }), true);
+});
+
+test("real scoreboard parsing preserves postseason season type and competition notes", () => {
+  const event = {
+    id: "playoff-1",
+    season: { type: 3 },
+    competitions: [
+      {
+        date: "2026-12-19T20:00:00Z",
+        status: { type: { state: "pre", shortDetail: "Scheduled" } },
+        competitors: [
+          { homeAway: "home", team: { id: "1", displayName: "Home" } },
+          { homeAway: "away", team: { id: "2", displayName: "Away" } },
+        ],
+      },
+    ],
+  };
+  for (const league of ["NFL", "NCAAF", "NBA", "NCAA", "MLB", "NHL"]) {
+    const def = { key: league, tag: league, group: "football" } as LeagueDef;
+    const [game] = parseEvents([event], def);
+    assert.equal(game.postseason, true);
+    assert.equal(isPostseason(game), true);
+    const [regular] = parseEvents([{ ...event, season: { type: 2 } }], def);
+    assert.equal(isPostseason(regular), false);
+    const [bowl] = parseEvents(
+      [
+        {
+          ...event,
+          season: { type: 2 },
+          competitions: [
+            { ...event.competitions[0], notes: [{ headline: "Rose Bowl - CFP Quarterfinal" }] },
+          ],
+        },
+      ],
+      def,
+    );
+    assert.equal(isPostseason(bowl), true);
+  }
+});
+test("Dota, boxing and motorsport schedules use the hub's supported provider routing", async () => {
+  const requested: string[] = [];
+  const signal = new AbortController().signal;
+  for (const [key, path] of [
+    ["DOTA2", "opendota"],
+    ["BOXING", "4445"],
+    ["SUPERCARS", "4449"],
+  ]) {
+    await experienceLeagueGames({ key, path, tag: key } as LeagueDef, "20261023", signal, {
+      hub: async (key, received) => {
+        assert.equal(received, signal);
+        requested.push(key);
+        return [];
+      },
+      esports: async () => {
+        throw new Error("Wrong provider");
+      },
+    });
+  }
+  assert.deepEqual(requested, [
+    "DOTA2@20261023@day",
+    "BOXING@20261023@day",
+    "SUPERCARS@20261023@day",
+  ]);
+});
+test("esports-only titles use their match feed and preserve published LIVE state", async () => {
+  const games = await experienceLeagueGames(
+    { key: "CS2", tag: "CS2", path: "esports-feed" } as LeagueDef,
+    "20261023",
+    new AbortController().signal,
+    {
+      hub: async () => {
+        throw new Error("Wrong provider");
+      },
+      esports: async (game) => ({
+        game,
+        status: "ready",
+        fetchedAt: 0,
+        source: { name: "Source", url: "https://example.com" },
+        matches: [
+          {
+            id: "match",
+            game,
+            state: "live",
+            startMs: 1,
+            event: { id: "event", name: "Tournament" },
+            teams: [
+              { id: "a", name: "A" },
+              { id: "b", name: "B" },
+            ],
+            streams: [],
+            sourceUrl: "https://example.com",
+          },
+        ],
+      }),
+    },
+  );
+  assert.equal(games[0].state, "in");
+  assert.equal(games[0].league, "CS2");
+  assert.equal(games[0].home.name, "B");
 });
