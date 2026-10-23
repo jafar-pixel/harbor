@@ -3483,10 +3483,10 @@
   margin-top: 8px;
   border-inline-start: 4px solid var(--color-accent);
   padding-inline-start: 14px;
-  font-family: "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  font-family: "Inter", "Segoe UI", sans-serif;
   font-size: clamp(26px, 3cqw, 40px);
   font-weight: 850;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.08;
   letter-spacing: -0.025em;
   text-transform: uppercase;
@@ -3503,10 +3503,10 @@
   ) {
   border-inline-start: 3px solid var(--color-accent);
   padding-inline-start: 12px;
-  font-family: "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  font-family: "Inter", "Segoe UI", sans-serif;
   font-size: clamp(19px, 1.7cqw, 26px);
   font-weight: 800;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.2;
   letter-spacing: 0.015em;
   text-transform: uppercase;
