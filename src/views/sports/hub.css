@@ -3539,3 +3539,13 @@
   letter-spacing: -0.025em;
   transform: none;
 }
+
+@media (max-width: 640px) {
+  .sports-hub [data-sports-shelf="hero"] > section > [aria-live="polite"] {
+    max-width: 100%;
+    padding-inline: 20px;
+  }
+  .sports-hub .jl-wordmark {
+    font-size: clamp(40px, 10cqw, 64px);
+  }
+}
