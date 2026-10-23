@@ -1,0 +1,50 @@
+name: Format JL 0.9.43 Orbitron files
+
+on:
+  push:
+    branches:
+      - release/jl-0.9.43
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jl-0943-format
+  cancel-in-progress: false
+
+jobs:
+  format-orbitron:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v6
+        with:
+          ref: release/jl-0.9.43
+          persist-credentials: true
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: 24
+          cache: true
+          run-install: |
+            args:
+              - --frozen-lockfile
+
+      - name: Apply exact repository formatter
+        run: |
+          vp fmt src/index.css src/views/live/live-home/sports/sports-hover-preview.tsx src/views/live/live-home/sports/sports-team-title.tsx
+          vp fmt --check src/index.css src/views/live/live-home/sports/sports-hover-preview.tsx src/views/live/live-home/sports/sports-team-title.tsx
+
+      - name: Commit format-only changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- src/index.css src/views/live/live-home/sports/sports-hover-preview.tsx src/views/live/live-home/sports/sports-team-title.tsx
+          if git diff --cached --quiet; then
+            echo "Already formatted"
+            exit 0
+          fi
+          git commit -m "style(release): format Orbitron files for frontend checks"
+          git push origin HEAD:release/jl-0.9.43
