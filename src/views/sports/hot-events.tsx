@@ -1,4 +1,6 @@
-import { useSportPrefs } from "../live/live-home/jl-sports/use-jl-sports";
+import { isFavoriteGame } from "@/lib/jl/sports/rank";
+import { effectiveTeams, useJlFavoritePlayers } from "@/lib/jl/sports/favorites";
+import { useHubTeams, useSportPrefs } from "../live/live-home/jl-sports/use-jl-sports";
 import { useEventVenuePhoto } from "./use-event-venue-photo";
 import { SportsSelect } from "./sports-select";
 import { SportsHeroScenery } from "./sports-hero-scenery";
@@ -339,6 +341,9 @@ export function HotEventsContent({
 
   const locale = useUiLanguage();
   const prefs = useSportPrefs();
+  const teams = useHubTeams();
+  const players = useJlFavoritePlayers();
+  const followed = useMemo(() => effectiveTeams(teams, players), [teams, players]);
 
   const [windowFilter, setWindowFilter] = useState("all");
 
@@ -346,9 +351,15 @@ export function HotEventsContent({
 
   const ranked = useMemo(
     () =>
-      hotEvents(games, now, (game) => favourites.some((team) => involvesTeam(game, team)), prefs),
+      hotEvents(
+        games,
+        now,
+        (game) =>
+          isFavoriteGame(game, followed) || favourites.some((team) => involvesTeam(game, team)),
+        prefs,
+      ),
 
-    [games, now, favourites, prefs],
+    [games, now, favourites, prefs, followed],
   );
 
   const items = ranked.filter(
