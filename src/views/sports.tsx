@@ -37,7 +37,8 @@ import {
 import { SportsAccessGate } from "./sports/access-gate";
 import { SportsNoProviderNote } from "./sports/no-provider-note";
 import { SportsPersonalizeHint } from "./sports/personalize-hint";
-import { isFavoriteGame } from "@/lib/jl/sports/rank";
+import { followedGamesThisWeek, selectTopGames } from "@/lib/jl/sports/gameday";
+import { isFavoriteGame, rankGames } from "@/lib/jl/sports/rank";
 import { effectiveTeams, useJlFavoritePlayers } from "@/lib/jl/sports/favorites";
 import { useHubTeams } from "./live/live-home/jl-sports/use-jl-sports";
 import { useSportPrefs } from "./live/live-home/jl-sports/use-jl-sports";
@@ -326,8 +327,45 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   const selectedTags = new Set(
     HUB_LEAGUES.filter((l) => selected.includes(l.key)).map((l) => l.tag),
   );
-  const allowsGame = (game: SportsGame) => selectedTags.has(game.league);
-  const pageTop = jl.sports.top.filter((item) => allowsGame(item.game));
+  const scopeTags = new Set(HUB_LEAGUES.filter((l) => leagues.includes(l.key)).map((l) => l.tag));
+  const allowsGame = (game: SportsGame) => scopeTags.has(game.league);
+  const pageFavorites = [
+    ...discoveryTeams.map((team) => ({
+      ...team,
+      league: team.league === "NCAAB" ? "NCAA" : team.league,
+    })),
+    ...fav.teams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      league: HUB_LEAGUES.find((l) => l.key === team.leagueKey)?.tag ?? team.leagueKey,
+    })),
+  ];
+  const rankedPool = mergeSlices([
+    { at: 1, games: all },
+    { at: 2, games: scopedJlGames },
+  ]);
+  const rankedPrefs = {
+    ...sportPrefs,
+    priority: [
+      ...new Set([
+        ...sportPrefs.priority
+          .map((league) => (league === "NCAAB" ? "NCAA" : league))
+          .filter((league) => scopeTags.has(league)),
+        ...scopeTags,
+      ]),
+    ],
+  };
+  const pageNow = new Date(jl.nowMs);
+  const pageTop = settings.sportsTopGames
+    ? selectTopGames(
+        rankGames(rankedPool, pageFavorites, {
+          now: pageNow,
+          prefs: rankedPrefs,
+          watchable: (game) => jl.sports.channelsFor(game).length > 0,
+        }),
+        followedGamesThisWeek(rankedPool, pageFavorites, pageNow),
+      ).map((item) => ({ ...item, channels: jl.sports.channelsFor(item.game) }))
+    : [];
   const pageTicker = jl.sports.ticker.filter((item) => allowsGame(item.game));
   const allowedChannelSports = useMemo(() => {
     const map: Record<string, SportCategory> = {
@@ -625,10 +663,10 @@ function SportsHubView({ active = false }: { active?: boolean }) {
                   <JlSportsHero
                     top={pageTop}
                     teamSlides={jl.sports.teamSlides.filter((s) =>
-                      selectedTags.has(s.team.league === "NCAAB" ? "NCAA" : s.team.league),
+                      scopeTags.has(s.team.league === "NCAAB" ? "NCAA" : s.team.league),
                     )}
                     playerSlides={jl.sports.playerSlides.filter((s) =>
-                      selectedTags.has(s.player.league === "NCAAB" ? "NCAA" : s.player.league),
+                      scopeTags.has(s.player.league === "NCAAB" ? "NCAA" : s.player.league),
                     )}
                     featured={jlFeatured}
                     actions={jl.actions}
