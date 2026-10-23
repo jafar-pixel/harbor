@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Settings2 } from "lucide-react";
+import { Images, Settings2 } from "lucide-react";
+import { SportsFanartImporter } from "./sports-fanart-importer";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { liveCount, getLeagueLabel, type LeagueDef, type SportsGame } from "@/lib/sports/espn";
 import { SportsCard } from "./sports-card";
@@ -28,6 +29,7 @@ export function SportsMarquee({
   const pausedRef = useRef(false);
   const live = liveCount(games);
   const [showCustomize, setShowCustomize] = useState(false);
+  const [showFanart, setShowFanart] = useState(false);
 
   useEffect(() => {
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -55,6 +57,8 @@ export function SportsMarquee({
               </span>
             )}
           </div>
+          <div className="flex items-center gap-2">
+          <button onClick={() => setShowFanart(true)} title="Fanart sources" className="flex items-center gap-1.5 rounded-full border border-edge-soft/50 bg-elevated px-2.5 py-1 text-[11.5px] font-medium text-ink-muted hover:text-ink"><Images size={13} /> Fanart sources</button>
           <button
             onClick={() => setShowCustomize(true)}
             title={t("sports.customize")}
@@ -63,6 +67,7 @@ export function SportsMarquee({
             <Settings2 size={13} />
             <span>{t("sports.customize")}</span>
           </button>
+          </div>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <LeagueChip active={selected === "all"} onClick={() => onLeague("all")} label={t("All")} />
@@ -93,6 +98,7 @@ export function SportsMarquee({
           </div>
         )}
       </div>
+      {showFanart && <SportsFanartImporter onClose={() => setShowFanart(false)} />}
       {showCustomize && (
         <SportsCustomizeModal
           selected={selectedLeagues}
