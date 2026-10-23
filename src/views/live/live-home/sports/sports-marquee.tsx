@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Settings2 } from "lucide-react";
+import { cardArtworkFor, useApprovedSportsArtwork } from "@/lib/sports/approved-art";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { liveCount, getLeagueLabel, type LeagueDef, type SportsGame } from "@/lib/sports/espn";
 import { SportsCard } from "./sports-card";
@@ -28,6 +29,7 @@ export function SportsMarquee({
   const pausedRef = useRef(false);
   const live = liveCount(games);
   const [showCustomize, setShowCustomize] = useState(false);
+  const approvedArt = useApprovedSportsArtwork();
 
   useEffect(() => {
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -84,7 +86,7 @@ export function SportsMarquee({
             className="flex gap-4 overflow-x-auto pb-1 [scroll-snap-type:x_mandatory] [&>*]:[scroll-snap-align:start] [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
           >
             {games.map((g) => (
-              <SportsCard key={g.id} game={g} onSelect={onSelect} />
+              <SportsCard key={g.id} game={g} onSelect={onSelect} artworkUrl={cardArtworkFor(approvedArt, g.home.name, g.away.name)} />
             ))}
           </div>
         ) : (
