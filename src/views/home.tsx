@@ -95,7 +95,9 @@ export function Home({ active = true, onReady }: { active?: boolean; onReady?: (
   const { openMatchDetail } = useView();
   const homeSportsLeagues = settings.sportsLeagues?.length ? settings.sportsLeagues : DEFAULT_SPORTS_LEAGUES;
   const [homeSportsLeague, setHomeSportsLeague] = useState("all");
+  const [sportsTab, setSportsTab] = useState<"for-you" | "live" | "schedule" | "explore" | "events">("for-you");
   const sportsGames = useSports({ enabled: active && settings.homeMode !== "classic", leagues: homeSportsLeague === "all" ? homeSportsLeagues : [homeSportsLeague] });
+  const displayedSports = sportsTab === "live" ? sportsGames.filter(game => game.state === "in") : sportsTab === "schedule" ? sportsGames.filter(game => game.state === "pre").sort((a,b) => a.startMs-b.startMs) : sportsTab === "events" ? sportsGames.filter(game => game.state === "in" || game.state === "pre") : sportsGames;
   const queryClient = useQueryClient();
   const t = useT();
   const uiLang = useUiLanguage();
@@ -1035,8 +1037,17 @@ export function Home({ active = true, onReady }: { active?: boolean; onReady?: (
                   <h2 className="font-display text-[28px] font-black uppercase tracking-tight text-ink sm:text-[36px]">{t("Your Sports Hub")}</h2>
                 </div>
               </div>
+              <div role="tablist" aria-label="Sports Hub sections" className="flex gap-6 overflow-x-auto border-b border-edge-soft/60 pb-3 text-sm">
+                {([
+                  ["for-you", "For you"], ["live", "Live now"], ["schedule", "Schedule"],
+                  ["explore", "Explore sports"], ["events", "Hot Events"]
+                ] as const).map(([id, label]) => (
+                  <button key={id} role="tab" aria-selected={sportsTab === id} onClick={() => setSportsTab(id)}
+                    className={sportsTab === id ? "border-b-2 border-ink pb-2 font-bold text-ink" : "pb-2 text-ink-muted hover:text-ink"}>{label}</button>
+                ))}
+              </div>
               <SportsMarquee
-                games={sportsGames}
+                games={displayedSports}
                 leagues={LEAGUES}
                 selected={homeSportsLeague}
                 selectedLeagues={homeSportsLeagues}
