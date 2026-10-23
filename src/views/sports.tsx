@@ -343,7 +343,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   const rankedPool = mergeSlices([
     { at: 1, games: all },
     { at: 2, games: scopedJlGames },
-  ]);
+  ]).filter((game) => game.state === "in" || game.startMs <= jl.nowMs + 7 * 86400000);
   const rankedPrefs = {
     ...sportPrefs,
     priority: [
@@ -361,7 +361,6 @@ function SportsHubView({ active = false }: { active?: boolean }) {
         rankGames(rankedPool, pageFavorites, {
           now: pageNow,
           prefs: rankedPrefs,
-          watchable: (game) => jl.sports.channelsFor(game).length > 0,
         }),
         followedGamesThisWeek(rankedPool, pageFavorites, pageNow),
       ).map((item) => ({ ...item, channels: jl.sports.channelsFor(item.game) }))
