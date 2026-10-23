@@ -789,7 +789,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
         {tab === "hot" && (
           <Suspense fallback={<SportsHotEventsSkeleton />}>
             <HotEvents
-              seed={all}
+              seed={[...all, ...jl.sports.games]}
               active={active && !setup}
               refresh={refresh}
               favourites={fav.teams}
