@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useFavourites } from "@/lib/sports/favourites";
 import { useSettings } from "@/lib/settings";
 import { useProfiles } from "@/lib/profiles";
-import { HUB_LEAGUES } from "@/lib/sports/hub-data";
+import { fetchEsportsFeed } from "@/lib/sports/esports-feeds";
+import { experienceLeagueGames } from "./schedule-source";
+import { HUB_LEAGUES, fetchHubSlice, dayStamp } from "@/lib/sports/hub-data";
 import { selectedSportsLeagues } from "@/lib/sports/personalization";
 import type { SportsGame } from "@/lib/sports/espn";
-import { fetchJlScoreboard, fetchTeamGames } from "@/lib/jl/sports/feed";
+import { fetchTeamGames } from "@/lib/jl/sports/feed";
 import { useHubTeams } from "@/views/live/live-home/jl-sports/use-jl-sports";
 import { useJlFavoritePlayers, effectiveTeams } from "@/lib/jl/sports/favorites";
 import { useFollowedColleges } from "@/lib/jl/sports/college-follows";
@@ -49,6 +51,7 @@ export function useExperienceGames(active: boolean, date: Date): SportsGame[] {
   }>({ profileId: null, key: "", games: [] });
   useEffect(() => {
     if (!active || settings.hideContent.sports) return;
+    const controller = new AbortController();
     let cancelled = false,
       running = false;
     const selected = new Set(leagues.map((key) => HUB_LEAGUES.find((l) => l.key === key)?.tag));
@@ -57,7 +60,14 @@ export function useExperienceGames(active: boolean, date: Date): SportsGame[] {
       running = true;
       try {
         const results = await Promise.allSettled([
-          ...leagues.map(fetchJlScoreboard),
+          ...leagues.map((key) =>
+            experienceLeagueGames(
+              HUB_LEAGUES.find((l) => l.key === key)!,
+              dayStamp(new Date()),
+              controller.signal,
+              { hub: fetchHubSlice, esports: fetchEsportsFeed },
+            ),
+          ),
           ...favorites
             .filter((f) => selected.has(f.league) && /^\d+$/.test(f.id))
             .map((f) => fetchTeamGames(f.league, f.id)),
@@ -103,6 +113,7 @@ export function useExperienceGames(active: boolean, date: Date): SportsGame[] {
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
+      controller.abort();
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
