@@ -8,7 +8,7 @@ import {
   fetchSportsArtwork,
   type SportsArtwork,
 } from "@/lib/sports/hub-artwork";
-export function useSportsArtwork(game?: SportsGame) {
+export function useSportsArtwork(game?: SportsGame): SportsArtwork {
   useCuratedArtVersion();
   const key = game ? artworkCacheKey(game) : "";
   const [loaded, setLoaded] = useState<{ key: string; art: SportsArtwork }>(() => ({
