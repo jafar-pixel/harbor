@@ -147,6 +147,7 @@ export function gameIsToday(game: SportsGame, date: Date): boolean {
   );
 }
 export function isPostseason(game: SportsGame): boolean {
+  if (typeof game.postseason === "boolean") return game.postseason;
   return /\b(playoffs?|postseason|bowl|championship|finals|world series)\b/i.test(
     [game.context?.name, game.context?.round, game.detail].join(" "),
   );
