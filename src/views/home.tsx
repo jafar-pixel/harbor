@@ -96,7 +96,11 @@ export function Home({ active = true, onReady }: { active?: boolean; onReady?: (
   const { openMatchDetail } = useView();
   const homeSportsLeagues = settings.sportsLeagues?.length ? settings.sportsLeagues : DEFAULT_SPORTS_LEAGUES;
   const [homeSportsLeague, setHomeSportsLeague] = useState("all");
-  const sportsGames = useSports({ enabled: active && settings.homeMode !== "classic", leagues: homeSportsLeague === "all" ? homeSportsLeagues : [homeSportsLeague] });
+  const sportsGames = useSports({
+    enabled: active && settings.homeMode !== "classic",
+    leagues:
+      homeSportsLeague === "all" ? homeSportsLeagues : [homeSportsLeague],
+  });
   const queryClient = useQueryClient();
   const t = useT();
   const uiLang = useUiLanguage();
@@ -953,7 +957,10 @@ export function Home({ active = true, onReady }: { active?: boolean; onReady?: (
                   />
                 )}
                 {sportsGames.length > 0 ? (
-                  <FeaturedSportsWallpaper games={sportsGames} onDetails={openMatchDetail} />
+                  <FeaturedSportsWallpaper
+                    games={sportsGames}
+                    onDetails={openMatchDetail}
+                  />
                 ) : (
                   <HeroCarousel slides={heroSlides} full={settings.heroFull} fullQuality={settings.heroFullQuality} />
                 )}
