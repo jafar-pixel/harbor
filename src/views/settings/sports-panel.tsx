@@ -13,6 +13,7 @@ import type { Settings } from "@/lib/settings/types";
 import { openUrl } from "@/lib/window";
 import { KeyField, Section, ToggleRow } from "./shared";
 import { SportsArtSection } from "./sports-art-panel";
+import { SharedSportsArtSection } from "./shared-sports-art-section";
 import { SportPrioritiesEditor } from "./sports-priorities";
 
 type PluginField =
@@ -90,6 +91,7 @@ export function SportsPanel() {
           ))}
         </div>
       </Section>
+      <SharedSportsArtSection />
       <SportsArtSection />
     </>
   );
