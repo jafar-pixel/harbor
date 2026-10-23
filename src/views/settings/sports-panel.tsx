@@ -13,6 +13,7 @@ import type { Settings } from "@/lib/settings/types";
 import { openUrl } from "@/lib/window";
 import { KeyField, Section, ToggleRow } from "./shared";
 import { SportsArtSection } from "./sports-art-panel";
+import { SharedSportsArtSection } from "./shared-sports-art-section";
 import { SportPrioritiesEditor } from "./sports-priorities";
 
 type PluginField =
@@ -90,6 +91,7 @@ export function SportsPanel() {
           ))}
         </div>
       </Section>
+      <SharedSportsArtSection />
       <SportsArtSection />
     </>
   );
@@ -140,7 +142,8 @@ function SportsKeyRow({ def }: { def: SportsKeyDef }) {
       const r = await testSportsKey(def.id, draft, (url, init) => safeFetch(url, init), c.signal);
       if (!c.signal.aborted) setResult(r);
     } catch {
-      if (!c.signal.aborted) setResult({ ok: false, message: "The test didn't finish. Try again." });
+      if (!c.signal.aborted)
+        setResult({ ok: false, message: "The test didn't finish. Try again." });
     } finally {
       if (!c.signal.aborted) setTesting(false);
     }
