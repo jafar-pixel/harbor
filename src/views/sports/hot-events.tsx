@@ -1,3 +1,4 @@
+import { useSportPrefs } from "../live/live-home/jl-sports/use-jl-sports";
 import { useEventVenuePhoto } from "./use-event-venue-photo";
 import { SportsSelect } from "./sports-select";
 import { SportsHeroScenery } from "./sports-hero-scenery";
@@ -337,15 +338,17 @@ export function HotEventsContent({
   const t = useT();
 
   const locale = useUiLanguage();
+  const prefs = useSportPrefs();
 
   const [windowFilter, setWindowFilter] = useState("all");
 
   const [sport, setSport] = useState("all");
 
   const ranked = useMemo(
-    () => hotEvents(games, now, (game) => favourites.some((team) => involvesTeam(game, team))),
+    () =>
+      hotEvents(games, now, (game) => favourites.some((team) => involvesTeam(game, team)), prefs),
 
-    [games, now, favourites],
+    [games, now, favourites, prefs],
   );
 
   const items = ranked.filter(
