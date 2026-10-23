@@ -118,7 +118,10 @@ export function hotEvents(
     })
     .sort(
       (a, b) =>
-        b.score - a.score || a.game.startMs - b.game.startMs || a.game.id.localeCompare(b.game.id),
+        Number(follows(b.game)) - Number(follows(a.game)) ||
+        b.score - a.score ||
+        a.game.startMs - b.game.startMs ||
+        a.game.id.localeCompare(b.game.id),
     );
   // A full slate in one league must not crowd every other sport off the page.
   const counts = new Map<string, number>();
