@@ -74,6 +74,7 @@ const BAND_LABELS: Record<string, string> = {
   WATCHING: "Playback",
   LANGUAGE: "Languages",
   CONTENT: "Sources & library",
+  SPORTS: "Sports Settings",
   "LOOK & FEEL": "Appearance",
   DEVICES: "Controls & devices",
   SYSTEM: "System",
