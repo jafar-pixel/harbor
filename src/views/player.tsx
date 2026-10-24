@@ -8,6 +8,7 @@ import { useBigPicture } from "@/lib/big-picture";
 import { useActiveKid } from "@/lib/profiles";
 import { type PlayerBridge } from "@/lib/player/bridge";
 import { nativePlayback } from "@/lib/player/native-playback";
+import { needsEnglishDub } from "@/lib/player/english-dub";
 import { useDebridClients } from "@/lib/debrid/registry";
 import { useSettings } from "@/lib/settings";
 import { writePlayerVolume } from "@/lib/player-volume";
@@ -218,7 +219,10 @@ function NativePlayerView({
     hostSource,
   } = useTogether();
   const stageRef = useRef<HTMLDivElement>(null);
-  const refreshDockGeometry = useCallback(() => window.dispatchEvent(new Event("harbor:mpv-refresh-geom")), []);
+  const refreshDockGeometry = useCallback(
+    () => window.dispatchEvent(new Event("harbor:mpv-refresh-geom")),
+    [],
+  );
   const videoMountRef = useRef<HTMLDivElement>(null);
   const bridgeRef = useRef<PlayerBridge | null>(null);
   const selfFrameReadyRef = useRef(false);
@@ -235,17 +239,25 @@ function NativePlayerView({
     settings,
   });
   const nativeDock = docked && engine === "mpv" && embedActive;
-  const prepareDockMove = useCallback((next: DockSpot, commit: () => void) => {
-    if (!nativeDock) return false;
-    const stage = stageRef.current?.getBoundingClientRect();
-    const rect = readEmbedRect(videoMountRef.current);
-    if (!stage || !rect) return false;
-    return bridgeRef.current?.moveEmbeddedSurface?.({
-      ...rect,
-      cssLeft: rect.cssLeft + next.x - stage.left,
-      cssTop: rect.cssTop + next.y - stage.top,
-    }, commit) ?? false;
-  }, [nativeDock]);
+  const prepareDockMove = useCallback(
+    (next: DockSpot, commit: () => void) => {
+      if (!nativeDock) return false;
+      const stage = stageRef.current?.getBoundingClientRect();
+      const rect = readEmbedRect(videoMountRef.current);
+      if (!stage || !rect) return false;
+      return (
+        bridgeRef.current?.moveEmbeddedSurface?.(
+          {
+            ...rect,
+            cssLeft: rect.cssLeft + next.x - stage.left,
+            cssTop: rect.cssTop + next.y - stage.top,
+          },
+          commit,
+        ) ?? false
+      );
+    },
+    [nativeDock],
+  );
   const dockDrag = useDockDrag(stageRef, docked, refreshDockGeometry, prepareDockMove);
   useSportsDockSurface(nativeDock && !src.pipDocked, videoMountRef);
   const isP2pEngine =
@@ -1100,7 +1112,11 @@ function NativePlayerView({
     const unsub = subscribePlaybackClock(() => {
       const livePos = getPlaybackPosition();
       const currentSnap = snapRef.current;
-      if (currentSnap.status === "idle" || currentSnap.status === "ended" || currentSnap.status === "error") {
+      if (
+        currentSnap.status === "idle" ||
+        currentSnap.status === "ended" ||
+        currentSnap.status === "error"
+      ) {
         clearMediaControls();
         return;
       }
@@ -1152,7 +1168,14 @@ function NativePlayerView({
     onVolumeFeedback: showVolumeFeedback,
   });
 
-  const { pendingResumeSec, acknowledgeResume, pendingSeekSec, clearPendingSeek, sourceKey, resumeReady } = useBridgeLoad({
+  const {
+    pendingResumeSec,
+    acknowledgeResume,
+    pendingSeekSec,
+    clearPendingSeek,
+    sourceKey,
+    resumeReady,
+  } = useBridgeLoad({
     bridgeRef,
     inRoomRef,
     isHostRef,
@@ -1248,6 +1271,7 @@ function NativePlayerView({
       src.sportsDocked != null ||
       cast.castDevice != null,
     canSearch: !roomGuest,
+    auto: settings.autoEnglishDub !== false && needsEnglishDub(src.meta),
   });
   useTrickplay({
     url: playUrl,

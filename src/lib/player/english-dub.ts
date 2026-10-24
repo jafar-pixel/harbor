@@ -54,6 +54,46 @@ export function englishAudioState(tracks: readonly TrackInfo[]): EnglishAudioSta
   return audio.some(isEnglishTrack) ? "available" : "missing";
 }
 
+// Countries whose films are made in English, for titles whose metadata has no original language.
+const ENGLISH_COUNTRIES = new Set([
+  "us",
+  "usa",
+  "united states",
+  "united states of america",
+  "gb",
+  "uk",
+  "united kingdom",
+  "ca",
+  "canada",
+  "au",
+  "australia",
+  "ie",
+  "ireland",
+  "nz",
+  "new zealand",
+]);
+
+/**
+ * Whether a title's own audio isn't English, so the viewer needs an English dub: its original
+ * language when the metadata has one (TMDB), else its first listed country (Cinemeta). Anime
+ * keeps its Japanese audio, and a title with neither field is left alone.
+ */
+export function needsEnglishDub(meta: {
+  type?: string;
+  originalLanguage?: string;
+  country?: string;
+  genres?: string[];
+}): boolean {
+  if (meta.type === "anime" || (meta.genres ?? []).some((g) => g.toLowerCase() === "anime")) {
+    return false;
+  }
+  const lang = (meta.originalLanguage ?? "").trim();
+  if (lang) return !isEnglishLanguage(lang);
+  const country = (meta.country ?? "").split(",")[0].trim().toLowerCase();
+  if (country) return !ENGLISH_COUNTRIES.has(country);
+  return false;
+}
+
 /** Language tags parsed from the playing stream's addon title or filename, for when tracks are unknown. */
 export function streamTextIsEnglish(text: string | null | undefined): boolean {
   return parseLanguages(text ?? "").includes("English");

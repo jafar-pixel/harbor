@@ -4,6 +4,7 @@ import { isAddonNativeMeta, type Meta } from "@/lib/cinemeta";
 import type { DebridStore } from "@/lib/debrid/types";
 import { readPlayback } from "@/lib/playback-history";
 import { browserDecodes } from "@/lib/player/native-playback";
+import { needsEnglishDub } from "@/lib/player/english-dub";
 import {
   nativeTvAvailable,
   nativeTvCapabilities,
@@ -15,7 +16,13 @@ import { resolveAddonRanks } from "./addon-priority";
 import { animeAbsoluteFromScopedId } from "./anime-identity-core";
 import type { PipelineInput } from "./pipeline";
 import { fetchProviderVodStreams } from "./provider-vod";
-import { PLUGIN_ADDON_PREFIX, isPluginAddon, pluginAddonById, pluginIdFromCatalogueBase, pluginsForAddon } from "./plugins/addon";
+import {
+  PLUGIN_ADDON_PREFIX,
+  isPluginAddon,
+  pluginAddonById,
+  pluginIdFromCatalogueBase,
+  pluginsForAddon,
+} from "./plugins/addon";
 import { unverifiedAnimeSeasonId } from "./stream-ids";
 import type { Stream } from "./types";
 
@@ -95,9 +102,7 @@ export function buildEpisodePipelineInput(params: {
   // The master switch wins: with every plugin paused there is nothing to resolve an item with,
   // however it names its source.
   if (params.resolvePinnedPlugin !== false && settings.pluginsEnabled) {
-    pinnedId = originBases
-      .map((base) => pluginIdFromCatalogueBase(base))
-      .find((id) => id != null);
+    pinnedId = originBases.map((base) => pluginIdFromCatalogueBase(base)).find((id) => id != null);
     // A plugin row names its plugin by id rather than by base, and a saved row may have kept
     // only that; either way the name is enough when it belongs to an installed plugin.
     if (!pinnedId && meta.addonOrigin?.id && pluginAddonById(meta.addonOrigin.id)) {
@@ -112,7 +117,8 @@ export function buildEpisodePipelineInput(params: {
     const covered = effectiveAddons.some(
       (a) =>
         a.transportUrl === url ||
-        (isPluginAddon(a) && pluginsForAddon(a).some((p) => `${PLUGIN_ADDON_PREFIX}${p.id}` === url)),
+        (isPluginAddon(a) &&
+          pluginsForAddon(a).some((p) => `${PLUGIN_ADDON_PREFIX}${p.id}` === url)),
     );
     if (!covered) {
       const only = pluginAddonById(pinnedId);
@@ -238,6 +244,7 @@ export function buildEpisodePipelineInput(params: {
       inTheaters: meta.inTheaters === true,
       bandwidthMbps: settings.bandwidthMbps > 0 ? settings.bandwidthMbps : undefined,
       preferSingleAudioTrack: browserDecodes(settings.playerEngine),
+      preferEnglishDub: settings.autoEnglishDub !== false && !animeReq && needsEnglishDub(meta),
       tvPassthroughAudio: nativeTvAvailable()
         ? tvPassthroughAudio(settings.tvAudioPassthrough, nativeTvCapabilities())
         : undefined,

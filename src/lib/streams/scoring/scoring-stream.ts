@@ -90,14 +90,8 @@ export function scoreStream(
     reasons.push({ signal: "zero-seeders-soft", delta: -8 });
   }
 
-  const expectedYear = opts.releaseDate
-    ? parseInt(opts.releaseDate.slice(0, 4), 10)
-    : null;
-  if (
-    expectedYear != null &&
-    Number.isFinite(expectedYear) &&
-    s.year != null
-  ) {
+  const expectedYear = opts.releaseDate ? parseInt(opts.releaseDate.slice(0, 4), 10) : null;
+  if (expectedYear != null && Number.isFinite(expectedYear) && s.year != null) {
     const diff = Math.abs(s.year - expectedYear);
     if (diff !== 0) {
       const releaseMs = opts.releaseDate ? Date.parse(opts.releaseDate) : NaN;
@@ -108,11 +102,17 @@ export function scoreStream(
       if (diff === 1) {
         const delta = isRecent ? -75 : -18;
         score += delta;
-        reasons.push({ signal: `year-off-by-1:${s.year}vs${expectedYear}${isRecent ? "-recent" : ""}`, delta });
+        reasons.push({
+          signal: `year-off-by-1:${s.year}vs${expectedYear}${isRecent ? "-recent" : ""}`,
+          delta,
+        });
       } else {
         const delta = isRecent ? -150 : -70;
         score += delta;
-        reasons.push({ signal: `year-mismatch:${s.year}vs${expectedYear}${isRecent ? "-recent" : ""}`, delta });
+        reasons.push({
+          signal: `year-mismatch:${s.year}vs${expectedYear}${isRecent ? "-recent" : ""}`,
+          delta,
+        });
       }
     }
   }
@@ -188,6 +188,26 @@ export function scoreStream(
     reasons.push({ signal: "html5-multi-audio-penalty", delta: -12 });
   }
 
+  if (opts.preferEnglishDub) {
+    // On a foreign title an untagged release is almost always the original-language audio, and a
+    // multi-audio one usually carries English; a plain <video> can't switch tracks, so multi
+    // gains nothing there.
+    const langs = s.audioLanguages;
+    const delta = langs.includes("English")
+      ? 20
+      : langs.includes("Multi")
+        ? opts.preferSingleAudioTrack
+          ? 0
+          : 6
+        : langs.length === 0
+          ? -12
+          : -10;
+    if (delta !== 0) {
+      score += delta;
+      reasons.push({ signal: "english-dub", delta });
+    }
+  }
+
   if (s.scamScore > 0) {
     score -= s.scamScore;
     reasons.push({ signal: "scam-penalty", delta: -s.scamScore });
@@ -230,7 +250,9 @@ export function scoreStream(
     reasons.push(bitratePenalty);
   }
 
-  const expectedMin = opts.runtimeMinutes ? expectedMinSizeBytes(s.resolution, opts.runtimeMinutes) : null;
+  const expectedMin = opts.runtimeMinutes
+    ? expectedMinSizeBytes(s.resolution, opts.runtimeMinutes)
+    : null;
   const hasValidSize = !!s.size && !!expectedMin && s.size >= expectedMin;
 
   const sizePenalty = sizeMislabelPenalty(s, expectedMin);

@@ -2,7 +2,7 @@ import { Ban } from "../icons";
 import { useState } from "react";
 import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
-import { Section } from "../shared";
+import { Section, ToggleRow } from "../shared";
 import { SettingRow } from "../kit";
 import { LanguagesPicker } from "../streaming-panel";
 
@@ -14,7 +14,9 @@ export function AudioLanguageTab() {
     <>
       <Section
         title={t("Audio languages")}
-        subtitle={t("When a release ships multiple audio tracks, Harbor selects the first match from this list.")}
+        subtitle={t(
+          "When a release ships multiple audio tracks, Harbor selects the first match from this list.",
+        )}
       >
         <LanguagesPicker
           value={settings.preferredAudioLangs}
@@ -23,15 +25,35 @@ export function AudioLanguageTab() {
       </Section>
 
       <Section
+        title={t("English dub")}
+        subtitle={t(
+          "For movies and shows made in another language. Anime keeps its Japanese audio.",
+        )}
+      >
+        <ToggleRow
+          label={t("Always English dub")}
+          sub={t(
+            "Rank English-dubbed sources first, and switch to one automatically when a file has no English audio. If no dub exists, the original audio plays with English subtitles.",
+          )}
+          value={settings.autoEnglishDub}
+          onChange={(v) => update({ autoEnglishDub: v })}
+        />
+      </Section>
+
+      <Section
         title={t("Skip these tracks")}
-        subtitle={t("Applies to both audio and subtitle tracks. You can still pick a skipped track by hand in the player.")}
+        subtitle={t(
+          "Applies to both audio and subtitle tracks. You can still pick a skipped track by hand in the player.",
+        )}
       >
         <SettingRow
           wide
           icon={<Ban size={18} strokeWidth={2} />}
           label={t("Never auto-select tracks containing")}
           desc={t("Tracks whose name contains one of these words are skipped.")}
-          tip={t("Comma-separated words. Audio or subtitle tracks whose name matches any of these are skipped during automatic selection. You can still pick them by hand in the player.")}
+          tip={t(
+            "Comma-separated words. Audio or subtitle tracks whose name matches any of these are skipped during automatic selection. You can still pick them by hand in the player.",
+          )}
         >
           <div className="flex w-full flex-col gap-2.5">
             <input
@@ -41,10 +63,14 @@ export function AudioLanguageTab() {
               onChange={(e) => {
                 setBlockDraft(e.target.value);
                 update({
-                  trackBlockWords: [...new Set(e.target.value
-                    .split(",")
-                    .map((w) => w.trim())
-                    .filter(Boolean))],
+                  trackBlockWords: [
+                    ...new Set(
+                      e.target.value
+                        .split(",")
+                        .map((w) => w.trim())
+                        .filter(Boolean),
+                    ),
+                  ],
                 });
               }}
               placeholder={t("commentary, descriptive")}

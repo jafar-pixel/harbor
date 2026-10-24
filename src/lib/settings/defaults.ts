@@ -338,6 +338,7 @@ export const DEFAULT: Settings = {
   skipButtonHideSec: 0,
   trackBlockWords: ["commentary"],
   forcedSubsWhenNativeAudio: false,
+  autoEnglishDub: true,
   tmdbLanguage: "",
   tmdbImageLangs: ["English", "Original"],
   nfoPosterSize: "w500",

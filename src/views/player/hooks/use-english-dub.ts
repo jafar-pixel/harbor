@@ -8,6 +8,7 @@ import {
   englishAudioState,
   findEnglishTrack,
   isEnglishLanguage,
+  isEnglishTrack,
   rankEnglishDubStreams,
   streamTextIsEnglish,
 } from "@/lib/player/english-dub";
@@ -49,6 +50,8 @@ export function useEnglishDub(params: {
   hidden: boolean;
   /** False for a Watch Together guest, who follows the host's source. */
   canSearch: boolean;
+  /** A foreign-language title with Settings → Audio → Always English dub on: act without a press. */
+  auto: boolean;
 }): EnglishDubControl {
   const t = useT();
   const { bridgeRef, src, snap, liveUrl, streamRef, hidden } = params;
@@ -88,6 +91,8 @@ export function useEnglishDub(params: {
   /** The url a dub switch left; set until the new source's tracks have been checked. */
   const switchedFromRef = useRef<string | null>(null);
   const itemKey = `${src.meta.id}|${src.episode?.season ?? ""}|${src.episode?.episode ?? ""}`;
+  /** The item the automatic dub check already ran for, so it acts once per title. */
+  const autoDoneRef = useRef<string | null>(null);
   useEffect(() => {
     triedRef.current = new Set();
     switchedFromRef.current = null;
@@ -121,8 +126,18 @@ export function useEnglishDub(params: {
     }
   }, [liveUrl, snap.audioTracks, selectTrack, showNotice, t]);
 
+  /** No dub anywhere: keep the original audio and show English subtitles, if the file has them. */
+  const englishSubsFallback = useCallback(() => {
+    const p = latest.current;
+    const subs = p.snap.subtitleTracks;
+    const selected = subs.find((s) => s.selected);
+    if (selected && isEnglishTrack(selected)) return;
+    const english = subs.find((s) => isEnglishTrack(s));
+    if (english) p.bridgeRef.current?.setSubtitleTrack(english.id, "automatic");
+  }, []);
+
   const searchDub = useCallback(
-    async (tracksKnown: boolean) => {
+    async (tracksKnown: boolean, auto = false) => {
       const run = ++runRef.current;
       const p = latest.current;
       const ref = p.streamRef;
@@ -163,13 +178,48 @@ export function useEnglishDub(params: {
             return;
           }
         }
-        showNotice(t("No English dub found for this title"), "error");
+        if (auto) {
+          englishSubsFallback();
+          showNotice(t("No English dub found. Playing the original audio with English subtitles"));
+        } else {
+          showNotice(t("No English dub found for this title"), "error");
+        }
       } finally {
         if (run === runRef.current) setBusy(false);
       }
     },
-    [refresh, showNotice, t],
+    [refresh, showNotice, englishSubsFallback, t],
   );
+
+  // Always English dub: once a foreign title's tracks are known, switch to its English track, or
+  // look for an English source when the file has none. The track autoload has usually picked the
+  // English track already; this covers a track named English without a language tag.
+  useEffect(() => {
+    if (!params.auto || hidden || !params.canSearch) return;
+    if (autoDoneRef.current === itemKey || busy) return;
+    if (snap.status !== "playing" && snap.status !== "paused" && snap.status !== "ready") return;
+    const now = englishAudioState(snap.audioTracks);
+    if (now === "unknown" && snap.audioTracks.length === 0 && snap.status === "ready") return;
+    autoDoneRef.current = itemKey;
+    if (now === "english" || (now === "unknown" && active)) return;
+    if (now === "available") {
+      const track = findEnglishTrack(snap.audioTracks);
+      if (track) selectTrack(track.id, track.lang);
+      return;
+    }
+    void searchDub(now !== "unknown", true);
+  }, [
+    params.auto,
+    params.canSearch,
+    hidden,
+    itemKey,
+    busy,
+    snap.status,
+    snap.audioTracks,
+    active,
+    selectTrack,
+    searchDub,
+  ]);
 
   const press = useCallback(() => {
     if (busy) return;
