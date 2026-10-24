@@ -39,3 +39,16 @@ test("a suggested official subscription does not claim listed event coverage", (
   assert.equal(providers.find((provider) => provider.id === "mlb")?.listed, false);
   assert.equal(new URL(providers[0].url).hostname, "www.mlb.com");
 });
+
+test("BoxCast is offered on every game, listed when the broadcast names it", () => {
+  const plain = watchProviders(game("NCAAF", []));
+  assert.deepEqual(
+    plain.map((provider) => [provider.id, provider.listed]),
+    [["boxcast", false]],
+  );
+  const named = watchProviders(game("NCAAF", ["BoxCast"]));
+  assert.equal(named.filter((provider) => provider.id === "boxcast").length, 1);
+  assert.equal(named.find((provider) => provider.id === "boxcast")?.listed, true);
+  const nba = watchProviders(game("NBA", ["ESPN"]));
+  assert.equal(nba[nba.length - 1].id, "boxcast");
+});

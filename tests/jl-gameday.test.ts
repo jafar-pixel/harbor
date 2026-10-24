@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { SportsGame, SportsSide } from "../src/lib/sports/espn.ts";
 import {
+  followedGamesForTop,
   followedGamesThisWeek,
   scheduleEventsToScoreboard,
   selectTopGames,
@@ -13,7 +14,13 @@ function side(name: string, extra: Partial<SportsSide> = {}): SportsSide {
   return { name, abbr: "", logo: "", score: "", winner: false, ...extra };
 }
 
-function game(id: string, league: string, away: SportsSide, home: SportsSide, extra: Partial<SportsGame> = {}): SportsGame {
+function game(
+  id: string,
+  league: string,
+  away: SportsSide,
+  home: SportsSide,
+  extra: Partial<SportsGame> = {},
+): SportsGame {
   return { id, league, state: "pre", detail: "", away, home, startMs: 0, ...extra };
 }
 
@@ -24,15 +31,27 @@ const GALLAUDET: JlFavoriteTeam = { league: "NCAAF", id: "417", name: "Gallaudet
 
 // Twelve ranked FBS games: more than enough to fill a Top 10 on their own.
 const FBS = Array.from({ length: 12 }, (_, i) =>
-  game(`fbs${i}`, "NCAAF", side(`Team ${i}A`, { rank: i + 1 }), side(`Team ${i}B`, { rank: i + 13 }), {
-    startMs: at("2026-10-10T19:30:00Z"),
-    network: "ABC",
-  }),
+  game(
+    `fbs${i}`,
+    "NCAAF",
+    side(`Team ${i}A`, { rank: i + 1 }),
+    side(`Team ${i}B`, { rank: i + 13 }),
+    {
+      startMs: at("2026-10-10T19:30:00Z"),
+      network: "ABC",
+    },
+  ),
 );
 
-const GALLAUDET_GAME = game("dIII", "NCAAF", side("Gallaudet Bison", { id: "417" }), side("Keystone Giants", { id: "999" }), {
-  startMs: at("2026-10-10T17:00:00Z"),
-});
+const GALLAUDET_GAME = game(
+  "dIII",
+  "NCAAF",
+  side("Gallaudet Bison", { id: "417" }),
+  side("Keystone Giants", { id: "999" }),
+  {
+    startMs: at("2026-10-10T17:00:00Z"),
+  },
+);
 
 test("a followed Division III team's game takes a Top 10 place over ranked FBS games", () => {
   const games = [...FBS, GALLAUDET_GAME];
@@ -47,7 +66,10 @@ test("a followed Division III team's game takes a Top 10 place over ranked FBS g
 
 test("without followers the small-school game is not forced in", () => {
   const games = [...FBS, GALLAUDET_GAME];
-  const top = selectTopGames(rankGames(games, [], { now: NOW }), followedGamesThisWeek(games, [], NOW));
+  const top = selectTopGames(
+    rankGames(games, [], { now: NOW }),
+    followedGamesThisWeek(games, [], NOW),
+  );
   assert.ok(!top.some((r) => r.game.id === "dIII"));
 });
 
@@ -102,17 +124,59 @@ test("team-schedule events are reshaped into scoreboard events", () => {
             {
               homeAway: "away",
               score: { value: 21, displayValue: "21" },
-              team: { id: "417", displayName: "Gallaudet Bison", logos: [{ href: "https://a.espncdn.com/417.png" }] },
+              team: {
+                id: "417",
+                displayName: "Gallaudet Bison",
+                logos: [{ href: "https://a.espncdn.com/417.png" }],
+              },
             },
-            { homeAway: "home", team: { id: "999", displayName: "Keystone Giants", logo: "https://x/999.png" } },
+            {
+              homeAway: "home",
+              team: { id: "999", displayName: "Keystone Giants", logo: "https://x/999.png" },
+            },
           ],
         },
       ],
     },
-  ]) as Array<{ competitions: Array<{ competitors: Array<{ score: string; team: { logo: string } }> }> }>;
+  ]) as Array<{
+    competitions: Array<{ competitors: Array<{ score: string; team: { logo: string } }> }>;
+  }>;
   const [away, home] = ev.competitions[0].competitors;
   assert.equal(away.score, "21");
   assert.equal(away.team.logo, "https://a.espncdn.com/417.png");
   assert.equal(home.score, "");
   assert.equal(home.team.logo, "https://x/999.png");
+});
+
+test("a followed team stays in the Top 10 after its game ends and in a bye week", () => {
+  const done = game("done", "NCAAF", side("Gallaudet Bison", { id: "417" }), side("Y"), {
+    state: "post",
+    startMs: NOW.getTime() - 3 * 24 * 3600000,
+  });
+  const afterBye = game("after-bye", "NCAAF", side("Gallaudet Bison", { id: "417" }), side("X"), {
+    startMs: NOW.getTime() + 12 * 24 * 3600000,
+  });
+  const oldFinal = { ...done, id: "old", startMs: NOW.getTime() - 20 * 24 * 3600000 };
+  // Past week's result first, then the next game however far off, then the latest result.
+  assert.deepEqual(
+    followedGamesForTop([done, afterBye], [GALLAUDET], NOW).map((g) => g.id),
+    ["done"],
+  );
+  assert.deepEqual(
+    followedGamesForTop([oldFinal, afterBye], [GALLAUDET], NOW).map((g) => g.id),
+    ["after-bye"],
+  );
+  assert.deepEqual(
+    followedGamesForTop([oldFinal], [GALLAUDET], NOW).map((g) => g.id),
+    ["old"],
+  );
+
+  // Outside the week the ranking covers, it still takes a Top 10 place over ranked FBS games.
+  const ranked = rankGames(FBS, [GALLAUDET], { now: NOW });
+  const top = selectTopGames(
+    ranked,
+    followedGamesForTop([...FBS, oldFinal, afterBye], [GALLAUDET], NOW),
+  );
+  assert.equal(top.length, 10);
+  assert.ok(top.some((r) => r.game.id === "after-bye"));
 });
