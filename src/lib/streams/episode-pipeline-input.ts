@@ -4,6 +4,7 @@ import { isAddonNativeMeta, type Meta } from "@/lib/cinemeta";
 import type { DebridStore } from "@/lib/debrid/types";
 import { readPlayback } from "@/lib/playback-history";
 import { browserDecodes } from "@/lib/player/native-playback";
+import { needsEnglishDub } from "@/lib/player/english-dub";
 import {
   nativeTvAvailable,
   nativeTvCapabilities,
@@ -238,6 +239,7 @@ export function buildEpisodePipelineInput(params: {
       inTheaters: meta.inTheaters === true,
       bandwidthMbps: settings.bandwidthMbps > 0 ? settings.bandwidthMbps : undefined,
       preferSingleAudioTrack: browserDecodes(settings.playerEngine),
+      preferEnglishDub: settings.autoEnglishDub !== false && !animeReq && needsEnglishDub(meta),
       tvPassthroughAudio: nativeTvAvailable()
         ? tvPassthroughAudio(settings.tvAudioPassthrough, nativeTvCapabilities())
         : undefined,

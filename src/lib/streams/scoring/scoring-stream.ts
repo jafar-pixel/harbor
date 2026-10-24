@@ -188,6 +188,26 @@ export function scoreStream(
     reasons.push({ signal: "html5-multi-audio-penalty", delta: -12 });
   }
 
+  if (opts.preferEnglishDub) {
+    // On a foreign title an untagged release is almost always the original-language audio, and a
+    // multi-audio one usually carries English; a plain <video> can't switch tracks, so multi
+    // gains nothing there.
+    const langs = s.audioLanguages;
+    const delta = langs.includes("English")
+      ? 20
+      : langs.includes("Multi")
+        ? opts.preferSingleAudioTrack
+          ? 0
+          : 6
+        : langs.length === 0
+          ? -12
+          : -10;
+    if (delta !== 0) {
+      score += delta;
+      reasons.push({ signal: "english-dub", delta });
+    }
+  }
+
   if (s.scamScore > 0) {
     score -= s.scamScore;
     reasons.push({ signal: "scam-penalty", delta: -s.scamScore });

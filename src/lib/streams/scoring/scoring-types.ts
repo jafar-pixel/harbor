@@ -12,6 +12,8 @@ export type ScoreOptions = {
   runtimeMinutes?: number;
   inTheaters?: boolean;
   preferSingleAudioTrack?: boolean;
+  /** The title's own audio isn't English: rank English-dub sources first (Settings → Audio). */
+  preferEnglishDub?: boolean;
   /**
    * Set only in the Android TV app: which of DTS and TrueHD the receiver takes as passthrough.
    * Undefined keeps the general playability penalty.

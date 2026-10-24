@@ -8,6 +8,7 @@ import { useBigPicture } from "@/lib/big-picture";
 import { useActiveKid } from "@/lib/profiles";
 import { type PlayerBridge } from "@/lib/player/bridge";
 import { nativePlayback } from "@/lib/player/native-playback";
+import { needsEnglishDub } from "@/lib/player/english-dub";
 import { useDebridClients } from "@/lib/debrid/registry";
 import { useSettings } from "@/lib/settings";
 import { writePlayerVolume } from "@/lib/player-volume";
@@ -1248,6 +1249,7 @@ function NativePlayerView({
       src.sportsDocked != null ||
       cast.castDevice != null,
     canSearch: !roomGuest,
+    auto: settings.autoEnglishDub !== false && needsEnglishDub(src.meta),
   });
   useTrickplay({
     url: playUrl,

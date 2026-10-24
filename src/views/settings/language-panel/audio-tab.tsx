@@ -2,7 +2,7 @@ import { Ban } from "../icons";
 import { useState } from "react";
 import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
-import { Section } from "../shared";
+import { Section, ToggleRow } from "../shared";
 import { SettingRow } from "../kit";
 import { LanguagesPicker } from "../streaming-panel";
 
@@ -19,6 +19,18 @@ export function AudioLanguageTab() {
         <LanguagesPicker
           value={settings.preferredAudioLangs}
           onChange={(langs) => update({ preferredAudioLangs: langs })}
+        />
+      </Section>
+
+      <Section
+        title={t("English dub")}
+        subtitle={t("For movies and shows made in another language. Anime keeps its Japanese audio.")}
+      >
+        <ToggleRow
+          label={t("Always English dub")}
+          sub={t("Rank English-dubbed sources first, and switch to one automatically when a file has no English audio. If no dub exists, the original audio plays with English subtitles.")}
+          value={settings.autoEnglishDub}
+          onChange={(v) => update({ autoEnglishDub: v })}
         />
       </Section>
 

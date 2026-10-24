@@ -417,6 +417,8 @@ export type Settings = {
   skipButtonHideSec: number;
   trackBlockWords: string[];
   forcedSubsWhenNativeAudio: boolean;
+  /** Non-English movies and shows rank English-dub sources first and switch to one automatically. */
+  autoEnglishDub: boolean;
   tmdbLanguage: string;
   tmdbImageLangs: string[];
   nfoPosterSize: string;

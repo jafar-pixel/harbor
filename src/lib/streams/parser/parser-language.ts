@@ -115,6 +115,8 @@ const FLAG_TO_LANGUAGE: Record<string, string> = {
   IR: "Persian",
 };
 
+const DUBBED_RX = /(?:^|[^a-z0-9])(?:dubbed|dub)(?:$|[^a-z0-9])/i;
+
 const FLAG_RX = /[\u{1F1E6}-\u{1F1FF}][\u{1F1E6}-\u{1F1FF}]/gu;
 const ISO_PAIR_RX = /(?:^|[\.\-_\s\[(])(EN|FR|ES|IT|DE|PT|RU|JA|JP|KO|KR|ZH|CN|HI|AR|TR|NL|PL|RO|SV|SE|DA|FI|CS|CZ|HU|TH|UK|UA|VI|GB|US|MX|BR|CA|AU|NZ|TW|HK|IL|HE|SA|AE|EG|GR|ID|MY|PH|IR|FA)(?:[\.\-_\s\])]|$)/g;
 const ISO_PAIR_TO_LANGUAGE: Record<string, string> = {
@@ -173,6 +175,8 @@ export function parseLanguages(text: string): string[] {
     const lang = ISO_PAIR_TO_LANGUAGE[pairMatch[1].toUpperCase()];
     if (lang) out.add(lang);
   }
+  // English-scene releases tag an English dub as plain DUBBED / DUB with no language named.
+  if (out.size === 0 && DUBBED_RX.test(text)) out.add("English");
   const concrete = [...out].filter((l) => l !== "Multi");
   if (concrete.length > 1) return ["Multi", ...concrete];
   if (concrete.length === 1) return concrete;

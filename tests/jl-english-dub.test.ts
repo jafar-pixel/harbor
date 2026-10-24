@@ -6,9 +6,11 @@ import {
   findEnglishTrack,
   isEnglishLanguage,
   isEnglishTrack,
+  needsEnglishDub,
   rankEnglishDubStreams,
   streamTextIsEnglish,
 } from "../src/lib/player/english-dub.ts";
+import { parseLanguages } from "../src/lib/streams/parser/parser-language.ts";
 import { nativeAudioTrackInfo } from "../src/lib/player/native-tv/bridge.ts";
 
 const audio = (id: string, extra: Partial<TrackInfo> = {}): TrackInfo => ({
@@ -109,4 +111,23 @@ test("English dub: native TV tracks become player tracks", () => {
   );
   assert.equal(englishAudioState(tracks), "available");
   assert.deepEqual(nativeAudioTrackInfo("nope"), []);
+});
+
+test("needsEnglishDub: original language first, then country, anime keeps Japanese", () => {
+  assert.equal(needsEnglishDub({ originalLanguage: "ko" }), true);
+  assert.equal(needsEnglishDub({ originalLanguage: "FR" }), true);
+  assert.equal(needsEnglishDub({ originalLanguage: "en" }), false);
+  assert.equal(needsEnglishDub({ country: "South Korea" }), true);
+  assert.equal(needsEnglishDub({ country: "United States, Canada" }), false);
+  assert.equal(needsEnglishDub({ country: "UK" }), false);
+  assert.equal(needsEnglishDub({}), false);
+  assert.equal(needsEnglishDub({ originalLanguage: "ja", genres: ["Anime"] }), false);
+  assert.equal(needsEnglishDub({ type: "anime", originalLanguage: "ja" }), false);
+});
+
+test("a bare DUBBED tag reads as English; a named language wins", () => {
+  assert.deepEqual(parseLanguages("Parasite.2019.DUBBED.1080p.WEB-DL"), ["English"]);
+  assert.deepEqual(parseLanguages("Lupin.S01.DUB.1080p"), ["English"]);
+  assert.deepEqual(parseLanguages("Film.2020.ITA.DUBBED.1080p"), ["Italian"]);
+  assert.deepEqual(parseLanguages("Dubai.Bling.S01.1080p"), []);
 });
