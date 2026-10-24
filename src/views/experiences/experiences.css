@@ -79,6 +79,29 @@
   border-radius: 50%;
   color: rgb(255 255 255/0.7);
 }
+/* Sports event cards: a Watch Party button in the corner, with room kept for it below the text. */
+.experience-card.has-party .experience-open {
+  padding-bottom: 68px;
+}
+.experience-party {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgb(255 255 255/0.22);
+  border-radius: 999px;
+  background: rgb(255 255 255/0.08);
+  color: rgb(255 255 255/0.92);
+  font-size: 14px;
+  font-weight: 600;
+}
+.experience-party:hover {
+  background: rgb(255 255 255/0.16);
+}
 .experience-open:hover {
   background: rgb(255 255 255/0.04);
 }
@@ -87,6 +110,7 @@
 }
 .experience-open:focus-visible,
 .experience-dismiss:focus-visible,
+.experience-party:focus-visible,
 .experience-action:focus-visible {
   outline: 3px solid var(--color-accent, #b9e8dc);
   outline-offset: -4px;
