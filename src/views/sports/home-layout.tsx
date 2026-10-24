@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Settings2, X } from "lucide-react";
+import { LazyMount } from "@/components/lazy-mount";
 import { ModalShell } from "@/components/modal-shell";
 import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
@@ -12,6 +13,8 @@ import {
   moveSportsShelf,
   type SportsShelfId,
 } from "@/lib/sports/home-layout";
+
+const EAGER_SHELVES = 2;
 
 export function SportsHomeLayout({
   items,
@@ -42,12 +45,18 @@ export function SportsHomeLayout({
       </div>
       <div className="flex flex-col gap-8">
         {order
-          .filter((id) => !hidden.includes(id))
-          .map((id) => {
+          .filter((id) => !hidden.includes(id) && items.find((item) => item.id === id)?.content)
+          .map((id, i) => {
             const item = items.find((item) => item.id === id);
             return item?.content ? (
               <div key={id} data-sports-shelf={id} className="[&:empty]:hidden">
-                {item.content}
+                {/* A full game day is hundreds of cards; build the shelves below the first two
+                    as they come near the screen, not all at once when the page opens. */}
+                {i < EAGER_SHELVES ? (
+                  item.content
+                ) : (
+                  <LazyMount minHeight={280}>{item.content}</LazyMount>
+                )}
               </div>
             ) : null;
           })}
