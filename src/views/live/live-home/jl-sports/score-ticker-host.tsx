@@ -36,7 +36,7 @@ export function ScoreTickerHost({
   const dismissed = useTickerDismissed();
   const active = !dismissed && (bar || overlay);
 
-  const live = useActiveLiveChannels(active);
+  const live = useActiveLiveChannels(active, { guide: false });
   const teams = useHubTeams();
   const players = useJlFavoritePlayers();
   const favorites = useMemo(() => effectiveTeams(teams, players), [teams, players]);

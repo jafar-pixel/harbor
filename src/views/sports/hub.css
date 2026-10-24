@@ -3575,6 +3575,9 @@
 .sh-frame {
   flex: 1;
   min-width: 0;
+  /* The page layer is a flex column: without this the frame grows to its content and the
+     scroller inside never overflows, so the page can't scroll. */
+  min-height: 0;
   display: flex;
 }
 .sh-frame-wallpaper > .sports-hub {
