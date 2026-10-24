@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 // @ts-expect-error Node test types are intentionally outside the browser-only tsconfig.
 import test from "node:test";
 import {
+  asSchoolFollows,
   collegeFavorite,
   collegeGames,
   collegeIdOfGame,
   collegeShortName,
   linkCollegesToVision,
+  schoolForEspnTeam,
   streamProvider,
 } from "../src/lib/jl/sports/college-games.ts";
 import type { College } from "../src/lib/jl/sports/colleges.ts";
@@ -134,4 +136,22 @@ test("stream hosts name their provider", () => {
   assert.equal(streamProvider("https://www.youtube.com/watch?v=x"), "YouTube");
   assert.equal(streamProvider("https://fan.hudl.com/usa/watch"), "Hudl");
   assert.equal(streamProvider("https://www.psucampusathletics.com/x/"), "School stream");
+});
+
+test("a Division II/III school is followed as a school, never as an ESPN team", () => {
+  const espn = { league: "NCAAF", id: "417", name: "Gallaudet Bison" };
+  const fbs: College = {
+    ...GALLAUDET,
+    id: "ncaa:2",
+    name: "Ohio State University",
+    division: "I",
+    subdivision: "FBS",
+  };
+  assert.equal(schoolForEspnTeam(espn, [GALLAUDET, fbs])?.id, GALLAUDET.id);
+  assert.equal(schoolForEspnTeam({ ...espn, id: "194", name: "Ohio State Buckeyes" }, [fbs]), null);
+  const buckeyes = { league: "NCAAF", id: "194", name: "Ohio State Buckeyes" };
+  assert.deepEqual(
+    asSchoolFollows([espn, buckeyes, collegeFavorite(GALLAUDET)], [GALLAUDET, fbs]),
+    [collegeFavorite(GALLAUDET), buckeyes],
+  );
 });

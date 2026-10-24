@@ -132,6 +132,9 @@ export function loadColleges(): Promise<College[]> {
  * The school behind a followed team saved with the account ("ncaa-245", see collegeTeamId), from
  * the bundled directory; null for an ESPN team.
  */
+/** The bundled school directory, available without waiting on the network. */
+export const bundledColleges = (): readonly College[] => bundled;
+
 export function collegeOfTeamId(teamId: string): College | null {
   const m = /^ncaa-(\d+)$/.exec(teamId);
   return m ? (bundled.find((c) => c.id === `ncaa:${m[1]}`) ?? null) : null;

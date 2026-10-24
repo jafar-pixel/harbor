@@ -1,6 +1,6 @@
 import type { SportsGame, SportsSide } from "../../sports/espn-types.ts";
 import type { College } from "./colleges.ts";
-import type { JlFavoriteTeam } from "./rank.ts";
+import { isFavoriteSide, type JlFavoriteTeam } from "./rank.ts";
 import { sportKey, type SchoolEvent } from "./sidearm.ts";
 import { providerKey, type VisionTeam } from "./vision-branding.ts";
 import { normalizeSchool } from "./vision-cfbd-link.ts";
@@ -169,4 +169,40 @@ export function linkCollegesToVision(
     if (orgId) links.set(providerKey("ncaa", "college", orgId), teams[0].key);
   }
   return links;
+}
+
+/**
+ * The school behind an ESPN college football team in Division II or III ("Gallaudet Bison" →
+ * Gallaudet University), when exactly one school matches. ESPN's coverage of those divisions is
+ * thin, so such schools are followed as schools, from their own athletics site.
+ */
+export function schoolForEspnTeam(
+  team: Pick<JlFavoriteTeam, "league" | "id" | "name">,
+  colleges: readonly College[],
+): College | null {
+  if (team.league !== "NCAAF" || !/^\d+$/.test(team.id) || !team.name) return null;
+  const named = { league: team.league, id: "", name: team.name };
+  const matches = colleges.filter((c) =>
+    isFavoriteSide({ name: collegeShortName(c.name), id: "" }, "NCAAF", [named]),
+  );
+  const [school] = matches;
+  return matches.length === 1 &&
+    !!school.site &&
+    (school.division === "II" || school.division === "III")
+    ? school
+    : null;
+}
+
+/** Followed teams with Division II/III schools followed as schools instead of ESPN teams. */
+export function asSchoolFollows(
+  teams: readonly JlFavoriteTeam[],
+  colleges: readonly College[],
+): JlFavoriteTeam[] {
+  const out: JlFavoriteTeam[] = [];
+  for (const team of teams) {
+    const school = schoolForEspnTeam(team, colleges);
+    const next = school ? collegeFavorite(school) : team;
+    if (!out.some((f) => f.league === next.league && f.id === next.id)) out.push(next);
+  }
+  return out;
 }
