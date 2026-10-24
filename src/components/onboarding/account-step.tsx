@@ -18,7 +18,7 @@ export function AccountStep({ onSkip }: { onSkip: () => void }) {
         {t("Step 1 of 4 · Your account")}
       </span>
       <h1 className="font-display text-[34px] font-medium leading-[1.08] tracking-tight text-ink">
-        {session ? t("You're signed in") : t("Sign in to JL Media Vision")}
+        {session ? t("You're signed in") : t("Sign in or create your account")}
       </h1>
 
       {session ? (
