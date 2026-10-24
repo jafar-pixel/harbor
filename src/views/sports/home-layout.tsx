@@ -16,9 +16,12 @@ import {
 export function SportsHomeLayout({
   items,
   onSports,
+  pinned = [],
 }: {
   items: Array<{ id: SportsShelfId; content: ReactNode }>;
   onSports: () => void;
+  /** Shelves the page always draws in a fixed place: they can be hidden here but not moved. */
+  pinned?: SportsShelfId[];
 }) {
   const t = useT();
   const { settings, update } = useSettings();
@@ -99,22 +102,23 @@ export function SportsHomeLayout({
                       />
                       {label}
                     </label>
-                    {([-1, 1] as const).map((by) => (
-                      <button
-                        key={by}
-                        className="sh-icon"
-                        disabled={by === -1 ? index === 0 : index === order.length - 1}
-                        aria-label={t(by === -1 ? "Move {shelf} up" : "Move {shelf} down", {
-                          shelf: label,
-                        })}
-                        onClick={() => {
-                          update({ sportsHomeOrder: moveSportsShelf(order, id, by) });
-                          setMessage(t("Moved {shelf}", { shelf: label }));
-                        }}
-                      >
-                        {by === -1 ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
-                      </button>
-                    ))}
+                    {!pinned.includes(id) &&
+                      ([-1, 1] as const).map((by) => (
+                        <button
+                          key={by}
+                          className="sh-icon"
+                          disabled={by === -1 ? index === 0 : index === order.length - 1}
+                          aria-label={t(by === -1 ? "Move {shelf} up" : "Move {shelf} down", {
+                            shelf: label,
+                          })}
+                          onClick={() => {
+                            update({ sportsHomeOrder: moveSportsShelf(order, id, by) });
+                            setMessage(t("Moved {shelf}", { shelf: label }));
+                          }}
+                        >
+                          {by === -1 ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
+                        </button>
+                      ))}
                   </li>
                 );
               })}

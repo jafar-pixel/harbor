@@ -3560,3 +3560,13 @@
     font-size: clamp(32px, 8cqw, 52px);
   }
 }
+
+/* For you: the Sports Wallpaper slider and Top 10 lead the page, so the Sports Hub masthead
+   below them no longer needs to clear the floating top bar. */
+.sports-hub .sh-lead-top10 {
+  padding-top: 32px;
+  padding-bottom: 0;
+}
+.sports-hub .sh-masthead.sh-masthead-below {
+  padding-top: 40px;
+}
