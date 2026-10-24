@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { ArrowRight, Cake, CalendarHeart, Trophy, X } from "lucide-react";
+import { ArrowRight, Cake, CalendarHeart, Trophy, Users, X } from "lucide-react";
 import { useView } from "@/lib/view";
 import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
@@ -11,6 +11,7 @@ import {
   type SportsEvent,
 } from "@/lib/experiences/sports-events";
 import type { SportsGame } from "@/lib/sports/espn";
+import { useStartWatchParty } from "@/lib/together/use-watch-party";
 import {
   HOLIDAYS,
   holidayInSeason,
@@ -57,6 +58,7 @@ export function HomeExperiences({
   const eventGames = useSportsEventGames(active && eventIds.length > 0, date);
   const events = detectSportsEvents(eventGames, new Date()).filter((e) => eventIds.includes(e.id));
   const openSports = onSports ?? (() => setView("sports"));
+  const startWatchParty = useStartWatchParty();
   const [collection, setCollection] = useState<ExperienceCollectionInfo | null>(null);
   const day = localDateKey(date);
   const cards: Array<{
@@ -65,6 +67,8 @@ export function HomeExperiences({
     title: string;
     description: string;
     action: () => void;
+    /** Start a Watch Party for the card's game (sports events). */
+    party?: () => void;
     content?: ReactNode;
   }> = [];
   if (shows("birthday") && preferences.enabled.birthday && isBirthday(preferences.birthday, date)) {
@@ -107,6 +111,7 @@ export function HomeExperiences({
       title: t(EXPERIENCE_PLUGINS.find((p) => p.id === event.id)!.name),
       description: eventLine(event, t),
       action: () => openMatchDetail(event.game, event.games),
+      party: () => startWatchParty(event.game, event.games),
     });
   }
   if (shows("holidays") && preferences.enabled.holidays)
@@ -155,7 +160,10 @@ export function HomeExperiences({
             {card.content}
           </div>
         ) : (
-          <div key={card.id} className={`experience-card experience-${card.plugin}`}>
+          <div
+            key={card.id}
+            className={`experience-card experience-${card.plugin}${card.party ? " has-party" : ""}`}
+          >
             <button className="experience-open" onClick={card.action}>
               <span className="experience-symbol" aria-hidden>
                 {card.plugin === "birthday" ? (
@@ -175,6 +183,12 @@ export function HomeExperiences({
               </span>
               <ArrowRight className="experience-arrow" size={22} aria-hidden />
             </button>
+            {card.party && (
+              <button className="experience-party" onClick={card.party}>
+                <Users size={16} aria-hidden />
+                {t("Watch Party")}
+              </button>
+            )}
             <button
               className="experience-dismiss"
               aria-label={t("Dismiss {name}", { name: card.title })}

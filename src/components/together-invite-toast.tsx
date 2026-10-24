@@ -4,13 +4,14 @@ import { useT } from "@/lib/i18n";
 import { useTogether } from "@/lib/together/provider";
 import { useView } from "@/lib/view";
 import type { Meta } from "@/lib/cinemeta";
+import { watchPartyGame } from "@/lib/together/watch-party";
 
 const AUTO_JOIN_MS = 4000;
 const TICK_MS = 60;
 
 export function TogetherInviteToast() {
   const { incomingInvite, dismissInvite } = useTogether();
-  const { openPicker } = useView();
+  const { openPicker, openMatchDetail } = useView();
   const t = useT();
   const handledRef = useRef<number | null>(null);
   const [progress, setProgress] = useState(0);
@@ -40,6 +41,13 @@ export function TogetherInviteToast() {
       if (handledRef.current === incomingInvite.at) return;
       handledRef.current = incomingInvite.at;
       const { invite } = incomingInvite;
+      // A Watch Party opens the game in this app: its channel here, or its match centre.
+      const game = watchPartyGame(invite);
+      if (game) {
+        openMatchDetail(game);
+        dismissInvite();
+        return;
+      }
       const meta: Meta = {
         id: invite.mediaId,
         type: invite.mediaType,
@@ -52,18 +60,24 @@ export function TogetherInviteToast() {
       openPicker(meta, invite.episode, { autoPlay: invite.guestPick !== true });
       dismissInvite();
     }
-  }, [incomingInvite, openPicker, dismissInvite]);
+  }, [incomingInvite, openPicker, openMatchDetail, dismissInvite]);
 
   if (!incomingInvite) return null;
   if (handledRef.current === incomingInvite.at) return null;
   const { name, invite } = incomingInvite;
-  const guestPick = invite.guestPick === true;
+  const partyGame = watchPartyGame(invite);
+  const guestPick = invite.guestPick === true && !partyGame;
   const subtitle = invite.episode
     ? `S${invite.episode.imdbSeason ?? invite.episode.season} · E${String(invite.episode.imdbEpisode ?? invite.episode.episode).padStart(2, "0")}`
     : null;
 
   const onJoin = () => {
     handledRef.current = incomingInvite.at;
+    if (partyGame) {
+      openMatchDetail(partyGame);
+      dismissInvite();
+      return;
+    }
     const meta: Meta = {
       id: invite.mediaId,
       type: invite.mediaType,
@@ -85,7 +99,7 @@ export function TogetherInviteToast() {
             <img
               src={invite.backgroundUrl || invite.posterUrl}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover"
+              className={`absolute inset-0 h-full w-full ${partyGame ? "object-contain p-1.5" : "object-cover"}`}
               draggable={false}
             />
           ) : (
@@ -95,12 +109,18 @@ export function TogetherInviteToast() {
 
         <div className="flex min-w-0 flex-col gap-0.5 pe-1">
           <span className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-accent">
-            {guestPick ? t("Pick your source") : t("{name} started watching", { name })}
+            {partyGame
+              ? t("{name} started a watch party", { name })
+              : guestPick
+                ? t("Pick your source")
+                : t("{name} started watching", { name })}
           </span>
           <span className="flex items-center gap-2 truncate text-[13.5px] font-semibold text-ink">
             <span className="max-w-[280px] truncate">{invite.mediaTitle}</span>
             {subtitle && (
-              <span className="font-mono text-[11px] tracking-[0.1em] text-ink-subtle">{subtitle}</span>
+              <span className="font-mono text-[11px] tracking-[0.1em] text-ink-subtle">
+                {subtitle}
+              </span>
             )}
           </span>
         </div>
@@ -109,7 +129,8 @@ export function TogetherInviteToast() {
           onClick={onJoin}
           className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink px-4 text-[12.5px] font-semibold text-canvas transition-transform hover:scale-[1.04]"
         >
-          {guestPick ? t("Choose") : t("Join")} <ArrowRight size={13} strokeWidth={2.4} className="dir-icon" />
+          {guestPick ? t("Choose") : t("Join")}{" "}
+          <ArrowRight size={13} strokeWidth={2.4} className="dir-icon" />
         </button>
 
         <button

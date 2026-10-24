@@ -1,3 +1,5 @@
+import type { WatchPartyGame } from "./watch-party";
+
 export type RoomCode = string;
 
 export type Participant = {
@@ -64,6 +66,8 @@ export type PlayInvite = {
   proto?: number;
   guestPick?: boolean;
   source?: SourceDescriptor;
+  /** A Watch Party: the live game each guest opens in their own app (see watch-party.ts). */
+  game?: WatchPartyGame;
 };
 
 export type SummonView = "home" | "discover" | "anime" | "queue" | "addons";
@@ -108,8 +112,22 @@ export type ParticipantLocation =
     };
 
 export type ClientMessage =
-  | { t: "hello"; room: RoomCode; clientId: string; name: string; avatar?: string | null; color?: string | null }
-  | { t: "profile"; room: RoomCode; clientId: string; name: string; avatar?: string | null; color?: string | null }
+  | {
+      t: "hello";
+      room: RoomCode;
+      clientId: string;
+      name: string;
+      avatar?: string | null;
+      color?: string | null;
+    }
+  | {
+      t: "profile";
+      room: RoomCode;
+      clientId: string;
+      name: string;
+      avatar?: string | null;
+      color?: string | null;
+    }
   | { t: "leave"; room: RoomCode; clientId: string }
   | { t: "state"; room: RoomCode; clientId: string; state: SyncState }
   | { t: "cmd"; room: RoomCode; clientId: string; command: RoomCommand }
@@ -120,13 +138,46 @@ export type ClientMessage =
   | { t: "claim-host"; room: RoomCode; clientId: string; fresh: boolean }
   | { t: "start"; room: RoomCode; clientId: string }
   | { t: "summon"; room: RoomCode; clientId: string; target: SummonTarget }
-  | { t: "cursor"; room: RoomCode; clientId: string; x: number; y: number; visible: boolean; path: string }
-  | { t: "draw"; room: RoomCode; clientId: string; strokeId: string; phase: "start" | "point" | "end" | "clear"; x?: number; y?: number; color?: string; path: string }
-  | { t: "presence"; room: RoomCode; clientId: string; activeAt: number; location?: ParticipantLocation }
+  | {
+      t: "cursor";
+      room: RoomCode;
+      clientId: string;
+      x: number;
+      y: number;
+      visible: boolean;
+      path: string;
+    }
+  | {
+      t: "draw";
+      room: RoomCode;
+      clientId: string;
+      strokeId: string;
+      phase: "start" | "point" | "end" | "clear";
+      x?: number;
+      y?: number;
+      color?: string;
+      path: string;
+    }
+  | {
+      t: "presence";
+      room: RoomCode;
+      clientId: string;
+      activeAt: number;
+      location?: ParticipantLocation;
+    }
   | { t: "ping"; room: RoomCode; clientId: string };
 
 export type ServerMessage =
-  | { t: "joined"; room: RoomCode; participants: Participant[]; state: SyncState | null; hostClientId: string | null; started?: boolean; srvAt?: number; relayVersion?: number }
+  | {
+      t: "joined";
+      room: RoomCode;
+      participants: Participant[];
+      state: SyncState | null;
+      hostClientId: string | null;
+      started?: boolean;
+      srvAt?: number;
+      relayVersion?: number;
+    }
   | { t: "participant-joined"; participant: Participant }
   | { t: "participant-left"; clientId: string; name?: string }
   | { t: "started"; started: boolean }
@@ -142,8 +193,26 @@ export type ServerMessage =
   | { t: "cmd"; from: string; command: RoomCommand }
   | { t: "chat"; from: string; name: string; text: string; at: number }
   | { t: "invite"; from: string; name: string; invite: PlayInvite; at: number }
-  | { t: "cursor"; from: string; name: string; x: number; y: number; visible: boolean; path: string }
-  | { t: "draw"; from: string; name: string; strokeId: string; phase: "start" | "point" | "end" | "clear"; x?: number; y?: number; color?: string; path: string }
+  | {
+      t: "cursor";
+      from: string;
+      name: string;
+      x: number;
+      y: number;
+      visible: boolean;
+      path: string;
+    }
+  | {
+      t: "draw";
+      from: string;
+      name: string;
+      strokeId: string;
+      phase: "start" | "point" | "end" | "clear";
+      x?: number;
+      y?: number;
+      color?: string;
+      path: string;
+    }
   | { t: "presence"; from: string; activeAt: number; location?: ParticipantLocation }
   | { t: "error"; code: string; message: string }
   | { t: "pong"; srvAt?: number };
@@ -162,5 +231,8 @@ export function generateRoomCode(): RoomCode {
 }
 
 export function normalizeRoomCode(input: string): RoomCode {
-  return input.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, ROOM_CODE_LENGTH);
+  return input
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, ROOM_CODE_LENGTH);
 }
