@@ -6,6 +6,7 @@ import { ConferencesPage } from "./conferences";
 import { LeaguePage } from "./league";
 import { LeaguesPage } from "./leagues";
 import { MatchCenterPage } from "./match-center";
+import { SchoolGamePage } from "./school-game";
 import { StudentPage } from "./student";
 import { TeamPage } from "./team";
 import { WorldSportsPage } from "./world-sports";
@@ -29,6 +30,8 @@ export function SportsPageView({ page }: { page: SportsPage }) {
       return <CollegesPage page={page} />;
     case "college":
       return <CollegePage page={page} />;
+    case "school-game":
+      return <SchoolGamePage page={page} />;
     case "conferences":
       return <ConferencesPage page={page} />;
     case "student":

@@ -442,3 +442,187 @@ export function newsForSport(stories: readonly SchoolStory[], sport: string | nu
   const want = sportKey(sport);
   return stories.filter((s) => s.sports.some((c) => sportKey(c) === want));
 }
+
+// ---- Game center: schedule links, box scores, recaps, opponent history ------------------
+
+export const scheduleUrl = (site: string, slug: string) =>
+  `https://${site}/sports/${slug}/schedule`;
+
+/** What a sport's schedule page links for one game, keyed by its game id (calendar game_id). */
+export type ScheduleLinks = {
+  gameId: string;
+  opponentLogo: string | null;
+  opponentSite: string | null;
+  boxScore: string | null;
+  recap: string | null;
+  photos: string | null;
+  history: string | null;
+};
+
+/** A link on a school page as an https URL: site-relative paths resolve against the site. */
+function siteLink(href: string | undefined, site: string): string | null {
+  if (!href) return null;
+  const url = decodeHtml(href).trim();
+  if (url.startsWith("/") && !url.startsWith("//")) return https(`https://${site}${url}`);
+  return https(url.replace(/^http:\/\//i, "https://"));
+}
+
+function linkByText(html: string, text: string, site: string): string | null {
+  for (const m of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
+    if (cellText(m[2]).toLowerCase() !== text.toLowerCase()) continue;
+    return siteLink(/\bhref="([^"]+)"/i.exec(m[1])?.[1], site);
+  }
+  return null;
+}
+
+/** A sport's schedule page → each game's opponent logo and site, box score, recap, photos, history. */
+export function parseScheduleLinks(html: string, site: string): Map<string, ScheduleLinks> {
+  const out = new Map<string, ScheduleLinks>();
+  const blocks = html.split(/data-game-id="/i).slice(1);
+  for (const block of blocks) {
+    const gameId = /^(\d{1,9})"/.exec(block)?.[1];
+    if (!gameId || out.has(gameId)) continue;
+    const logoTag =
+      /sidearm-schedule-game-opponent-logo[\s\S]{0,300}?<img\b([^>]*)>/i.exec(block)?.[1] ?? "";
+    const logoSrc =
+      /\bdata-src="([^"]+)"/i.exec(logoTag)?.[1] ?? /\bsrc="([^"]+)"/i.exec(logoTag)?.[1];
+    const logo = siteLink(logoSrc?.split("?")[0], site);
+    const name = /sidearm-schedule-game-opponent-name[\s\S]{0,400}?<a\b[^>]*\bhref="([^"]+)"/i.exec(
+      block,
+    )?.[1];
+    out.set(gameId, {
+      gameId,
+      opponentLogo: logo ? `${logo}?width=160&height=160&mode=max` : null,
+      opponentSite: siteLink(name, site),
+      boxScore: linkByText(block, "Box Score", site),
+      recap: linkByText(block, "Recap", site),
+      photos: linkByText(block, "Photos", site),
+      history: linkByText(block, "History", site),
+    });
+  }
+  return out;
+}
+
+export type ScoringPlay = {
+  period: string;
+  time: string;
+  play: string;
+  away: string;
+  home: string;
+};
+export type TeamStatRow = { group: string; label: string; away: string; home: string };
+export type BoxScore = {
+  /** Away team first, as the box score lists them. */
+  teams: [string, string];
+  periods: string[];
+  /** Points per period, then the total, for the away and home teams. */
+  lines: [string[], string[]];
+  scoring: ScoringPlay[];
+  stats: TeamStatRow[];
+};
+
+/** The table whose opening tag or caption contains `marker`. */
+function tableWith(html: string, marker: string): string | null {
+  const at = html.indexOf(marker);
+  if (at < 0) return null;
+  const start = html.lastIndexOf("<table", at);
+  const end = html.indexOf("</table>", at);
+  return start < 0 || end < 0 ? null : html.slice(start, end);
+}
+
+/** Text of a cell, preferring its full-size label ("1st" over "1", "Gallaudet" over "GALLAUDE"). */
+function labelText(cell: string): string {
+  const long = /class="[^"]*hide-on-small-down[^"]*"[^>]*>([\s\S]*?)<\/span>/i.exec(cell)?.[1];
+  return cellText(long ?? cell);
+}
+
+const cells = (row: string) =>
+  [...row.matchAll(/<t([hd])\b([^>]*)>([\s\S]*?)<\/t[hd]>/gi)].map((c) => ({
+    th: c[1].toLowerCase() === "h",
+    attrs: c[2],
+    html: c[3],
+  }));
+const rowsOf = (table: string) =>
+  [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((r) => cells(r[1]));
+
+/** A SIDEARM football box score → line score, scoring summary and team statistics. */
+export function parseBoxScore(html: string): BoxScore | null {
+  const line = tableWith(html, "Team Score By Quarter");
+  if (!line) return null;
+  const head = /<thead[\s\S]*?<\/thead>/i.exec(line)?.[0] ?? "";
+  const periods = cells(head)
+    .slice(1)
+    .map((c) => labelText(c.html));
+  const body = rowsOf(line.slice(line.indexOf("<tbody") >= 0 ? line.indexOf("<tbody") : 0)).filter(
+    (r) => r.length === periods.length + 1,
+  );
+  if (body.length < 2 || !periods.length) return null;
+  const teams: [string, string] = [labelText(body[0][0].html), labelText(body[1][0].html)];
+  const lines: [string[], string[]] = [
+    body[0].slice(1).map((c) => cellText(c.html)),
+    body[1].slice(1).map((c) => cellText(c.html)),
+  ];
+
+  const scoring: ScoringPlay[] = [];
+  const summary = tableWith(html, "scoring-summary");
+  for (const r of summary ? rowsOf(summary) : []) {
+    if (r.length !== 6 || r.some((c) => c.th)) continue;
+    const [, period, time, play, away, home] = r.map((c) => cellText(c.html));
+    if (play) scoring.push({ period, time, play: play.slice(0, 300), away, home });
+  }
+
+  const stats: TeamStatRow[] = [];
+  const overall = tableWith(html, "overall-stats");
+  let group = "";
+  for (const r of overall ? rowsOf(overall) : []) {
+    if (r.length === 1 && r[0].th) group = cellText(r[0].html);
+    else if (r.length === 3 && !r[0].th) {
+      const [label, away, home] = r.map((c) => cellText(c.html));
+      if (label) stats.push({ group, label, away, home });
+    }
+  }
+  return { teams, periods, lines, scoring: scoring.slice(0, 40), stats: stats.slice(0, 80) };
+}
+
+export type OpponentHistory = { title: string; items: { label: string; value: string }[] };
+
+/** The opponent-history page → its title and the series numbers (wins, losses, streak, …). */
+export function parseOpponentHistory(html: string): OpponentHistory | null {
+  const title = cellText(
+    /sidearm-opponent-history-title[^>]*>\s*<h2[^>]*>([\s\S]*?)<\/h2>/i.exec(html)?.[1] ?? "",
+  );
+  const items: { label: string; value: string }[] = [];
+  for (const m of html.matchAll(
+    /sidearm-opponent-history__item\b[^"]*"[^>]*>\s*<h2[^>]*>([\s\S]*?)<\/h2>\s*<div[^>]*__item--number[^>]*>([\s\S]*?)<\/div>/gi,
+  )) {
+    const label = cellText(m[1]);
+    const value = cellText(m[2]);
+    if (label && value && items.length < 12) items.push({ label, value });
+  }
+  return items.length ? { title, items } : null;
+}
+
+export type StorySummary = { title: string; summary: string | null; image: string | null };
+
+/** A news story page (a game recap) → its headline, summary and lead image. */
+export function parseStory(html: string): StorySummary | null {
+  const meta = (name: string) =>
+    decodeHtml(
+      new RegExp(`<meta[^>]+(?:property|name)="${name}"[^>]+content="([^"]*)"`, "i").exec(
+        html,
+      )?.[1] ??
+        new RegExp(`<meta[^>]+content="([^"]*)"[^>]+(?:property|name)="${name}"`, "i").exec(
+          html,
+        )?.[1] ??
+        "",
+    );
+  const title =
+    meta("og:title") || cellText(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? "");
+  if (!title) return null;
+  const summary = meta("og:description") || meta("description");
+  return {
+    title: title.slice(0, 300),
+    summary: summary ? summary.slice(0, 600) : null,
+    image: https(meta("og:image")),
+  };
+}

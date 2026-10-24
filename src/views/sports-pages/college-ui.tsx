@@ -260,6 +260,7 @@ export function GameCard({
 }) {
   const t = useT();
   const watch = useWatchStream();
+  const { openSportsPage } = useView();
   const live = isLiveNow(e, now);
   const name = college?.name ?? "";
   return (
@@ -309,15 +310,28 @@ export function GameCard({
             {e.result ? t("Replay") : t("Watch")}
           </button>
         )}
-        {e.url && (
+        {college && /^g:\d+$/.test(e.id) ? (
           <button
             type="button"
-            onClick={() => openInAppBrowser(e.url ?? "", matchupText(e))}
+            onClick={() =>
+              openSportsPage({ kind: "school-game", collegeId: college.id, eventId: e.id })
+            }
             className="flex h-8 items-center gap-1.5 rounded-lg border border-edge-soft px-3 text-[12px] font-medium text-ink-muted hover:text-ink"
           >
             <ExternalLink size={12} />
-            {t("Game info")}
+            {e.result ? t("Box score") : t("Game center")}
           </button>
+        ) : (
+          e.url && (
+            <button
+              type="button"
+              onClick={() => openInAppBrowser(e.url ?? "", matchupText(e))}
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-edge-soft px-3 text-[12px] font-medium text-ink-muted hover:text-ink"
+            >
+              <ExternalLink size={12} />
+              {t("Game info")}
+            </button>
+          )
         )}
       </div>
     </div>

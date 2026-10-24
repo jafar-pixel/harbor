@@ -1,7 +1,7 @@
 import type { SportsGame, SportsSide } from "../../sports/espn-types.ts";
 import type { College } from "./colleges.ts";
 import { isFavoriteSide, type JlFavoriteTeam } from "./rank.ts";
-import { sportKey, type SchoolEvent } from "./sidearm.ts";
+import { sportKey, type ScheduleLinks, type SchoolEvent } from "./sidearm.ts";
 import { providerKey, type VisionTeam } from "./vision-branding.ts";
 import { normalizeSchool } from "./vision-cfbd-link.ts";
 
@@ -84,7 +84,12 @@ export function collegeGames(
   college: College,
   events: readonly SchoolEvent[],
   now: number,
-  look: { mascot?: string | null; logo?: string | null } = {},
+  look: {
+    mascot?: string | null;
+    logo?: string | null;
+    /** The sport's schedule page links, by game id (opponent logos, box scores, recaps). */
+    links?: ReadonlyMap<string, ScheduleLinks>;
+  } = {},
 ): SportsGame[] {
   const short = collegeShortName(college.name);
   const out: SportsGame[] = [];
@@ -105,12 +110,14 @@ export function collegeGames(
       location: short,
       nickname: look.mascot ?? undefined,
     };
+    const gameId = /^g:(\d+)$/.exec(event.id)?.[1];
+    const extra = gameId ? look.links?.get(gameId) : undefined;
     const opponentName = event.opponent?.trim() || "TBA";
     const opponent: SportsSide = {
       id: `opp-${slug(opponentName)}`,
       name: opponentName,
       abbr: opponentName.slice(0, 4).toUpperCase(),
-      logo: "",
+      logo: extra?.opponentLogo ?? "",
       score: theirs,
       winner: event.result === "L",
     };
@@ -131,6 +138,15 @@ export function collegeGames(
       broadcasts: event.stream ? [streamProvider(event.stream)] : undefined,
       odds: null,
       stream: event.stream ?? undefined,
+      school: college.site
+        ? {
+            site: college.site,
+            boxScore: extra?.boxScore ?? null,
+            recap: extra?.recap ?? null,
+            photos: extra?.photos ?? null,
+            history: extra?.history ?? null,
+          }
+        : undefined,
     });
   }
   return out;

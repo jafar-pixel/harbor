@@ -71,6 +71,16 @@ export type SportsGame = {
   odds?: string | null;
   /** The school's own stream for the game (a BoxCast page, say), from its athletics calendar. */
   stream?: string;
+  /** Links from the school's own site for a game from its calendar (box score, recap, …). */
+  school?: SchoolGameLinks;
+};
+
+export type SchoolGameLinks = {
+  site: string;
+  boxScore: string | null;
+  recap: string | null;
+  photos: string | null;
+  history: string | null;
 };
 
 export type MatchPlayer = {

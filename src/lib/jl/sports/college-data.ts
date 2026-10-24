@@ -10,12 +10,21 @@ import {
   parsePlayerBio,
   parseCalendar,
   parseNews,
+  parseBoxScore,
+  parseOpponentHistory,
   parseRoster,
+  parseScheduleLinks,
   parseSchoolSports,
+  parseStory,
   rosterUrl,
+  scheduleUrl,
   validSlug,
+  type BoxScore,
+  type OpponentHistory,
   type PlayerBio,
   type RosterPlayer,
+  type ScheduleLinks,
+  type StorySummary,
   type SchoolEvent,
   type SchoolStory,
 } from "./sidearm";
@@ -180,6 +189,52 @@ export function fetchPlayerBio(profileUrl: string): Promise<PlayerBio | null> {
   return cached(`bio:${profileUrl}`, 6 * 3_600_000, async () => {
     const html = await getText(profileUrl);
     return html ? parsePlayerBio(html) : null;
+  });
+}
+
+/** A sport's schedule page: each game's opponent logo, box score, recap, photos and history. */
+export function fetchScheduleLinks(
+  site: string,
+  slug: string,
+): Promise<Map<string, ScheduleLinks>> {
+  if (!validSlug(slug)) return Promise.resolve(new Map());
+  return cached(`schedule:${site}:${slug}`, 15 * 60_000, async () => {
+    const html = await getText(scheduleUrl(site, slug));
+    return html ? parseScheduleLinks(html, site) : new Map<string, ScheduleLinks>();
+  });
+}
+
+/** Only pages on the school's own site are read; other links open in the browser. */
+function onSite(url: string, site: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && u.hostname === site;
+  } catch {
+    return false;
+  }
+}
+
+export function fetchBoxScore(site: string, url: string): Promise<BoxScore | null> {
+  if (!onSite(url, site)) return Promise.resolve(null);
+  return cached(`box:${url}`, 10 * 60_000, async () => {
+    const html = await getText(url);
+    return html ? parseBoxScore(html) : null;
+  });
+}
+
+export function fetchOpponentHistory(site: string, url: string): Promise<OpponentHistory | null> {
+  if (!onSite(url, site)) return Promise.resolve(null);
+  return cached(`history:${url}`, 6 * 3_600_000, async () => {
+    const html = await getText(url);
+    return html ? parseOpponentHistory(html) : null;
+  });
+}
+
+export function fetchStory(site: string, url: string): Promise<StorySummary | null> {
+  if (!onSite(url, site)) return Promise.resolve(null);
+  return cached(`story:${url}`, 6 * 3_600_000, async () => {
+    const html = await getText(url);
+    return html ? parseStory(html) : null;
   });
 }
 
