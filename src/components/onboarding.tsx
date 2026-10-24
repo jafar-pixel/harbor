@@ -17,9 +17,11 @@ import { isPlaceholderName, useProfiles } from "@/lib/profiles";
 import { useSettings } from "@/lib/settings";
 
 // Only what a working setup needs. Everything else keeps its default and lives in Settings.
+// The account comes first: signing in to a set-up account ends setup there (see `returning`),
+// so only a new registration goes on to language, profile, Live TV and Movies.
 type StepId = "splash" | "language" | "account" | "profile" | "live" | "movies" | "done";
 const STEPS: StepId[] = jlAccountsConfigured()
-  ? ["splash", "language", "account", "profile", "live", "movies", "done"]
+  ? ["splash", "account", "language", "profile", "live", "movies", "done"]
   : ["splash", "language", "profile", "live", "movies", "done"];
 
 export function OnboardingModal() {
