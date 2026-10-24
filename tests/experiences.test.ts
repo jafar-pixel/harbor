@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  EXPERIENCE_PLUGINS,
   normalizeExperiences,
   validBirthday,
   isBirthday,
@@ -55,7 +56,7 @@ test("stored order normalizes unknown IDs and duplicates while adding new plugin
     dismissed: ["gameday:2026-10-23", 4],
   });
   assert.equal(prefs.order[0], "holidays");
-  assert.equal(prefs.order.length, 5);
+  assert.equal(prefs.order.length, EXPERIENCE_PLUGINS.length);
   assert.equal(prefs.birthday, "");
   assert.deepEqual(prefs.dismissed, ["gameday:2026-10-23"]);
 });

@@ -1,3 +1,11 @@
+/** The first published note on a competition ("World Series - Game 3"), if any. */
+export function noteHeadline(competition: Record<string, unknown>): string | undefined {
+  const notes = Array.isArray(competition.notes)
+    ? (competition.notes as Record<string, unknown>[])
+    : [];
+  const headline = notes.map((note) => String(note.headline ?? "").trim()).find(Boolean);
+  return headline || undefined;
+}
 const POSTSEASON_LEAGUES = new Set(["NFL", "NCAAF", "NBA", "NCAA", "WNBA", "MLB", "NHL"]);
 export function publishedPostseason(
   event: Record<string, unknown>,
