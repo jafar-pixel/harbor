@@ -12,7 +12,7 @@ import {
   useJlSportsFavorites,
   type JlFavoritePlayer,
 } from "@/lib/jl/sports/favorites";
-import { fetchCalendar } from "@/lib/jl/sports/college-data";
+import { collegeOfTeamId, fetchCalendar } from "@/lib/jl/sports/college-data";
 import { useFollowedColleges } from "@/lib/jl/sports/college-follows";
 import {
   collegeFavorite,
@@ -97,7 +97,13 @@ export function useSportPrefs(): SportPrefs {
 export function useHubTeams(): JlFavoriteTeam[] {
   const teams = useJlSportsFavorites();
   const colleges = useFollowedColleges();
-  return useMemo(() => [...teams, ...colleges.map(collegeFavorite)], [teams, colleges]);
+  return useMemo(
+    () => [
+      ...teams,
+      ...colleges.map(collegeFavorite).filter((c) => !teams.some((f) => f.id === c.id)),
+    ],
+    [teams, colleges],
+  );
 }
 
 /** A followed college's games from its own athletics site (college-games.ts). */
@@ -132,7 +138,16 @@ function withVisionMascot(game: SportsGame): SportsGame {
 export function useJlGames(favorites: JlFavoriteTeam[], enabled = true): SportsGame[] {
   const [games, setGames] = useState<SportsGame[]>([]);
   const favoritesKey = favorites.map((f) => `${f.league}:${f.id}`).join(",");
-  const colleges = useFollowedColleges();
+  const deviceColleges = useFollowedColleges();
+  // Schools followed with the account are favorites with an "ncaa-<id>" team id.
+  const colleges = useMemo(() => {
+    const out = [...deviceColleges];
+    for (const f of favorites) {
+      const college = collegeOfTeamId(f.id);
+      if (college && !out.some((c) => c.id === college.id)) out.push(college);
+    }
+    return out;
+  }, [deviceColleges, favorites]);
   const collegesKey = colleges.map((c) => c.id).join(",");
   const visionVersion = useVisionVersion();
   useEffect(() => {

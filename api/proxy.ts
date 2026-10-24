@@ -1,5 +1,7 @@
 // Vercel Edge Function behind /api-proxy/<host>/<path> for the JL Media Vision web build.
 // Mirrors src-tauri/relay/harbor-web.nginx: only the API hosts safe-fetch proxies, never video.
+import colleges from "../src/lib/jl/sports/data/colleges.json";
+
 export const config = { runtime: "edge" };
 
 const TARGET_PARAM = "__target";
@@ -40,8 +42,18 @@ const SUFFIXES = [
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
 
+// College athletics sites (SIDEARM): schedules, calendars, rosters and news for College Sports.
+const SCHOOL_HOSTS = new Set(
+  (colleges as Array<{ site?: string | null }>)
+    .map((c) => c.site?.toLowerCase())
+    .filter((site): site is string => !!site),
+);
+
 function allowed(host: string): boolean {
-  return /^[a-z0-9.-]+$/.test(host) && (HOSTS.has(host) || SUFFIXES.some((s) => host.endsWith(s)));
+  return (
+    /^[a-z0-9.-]+$/.test(host) &&
+    (HOSTS.has(host) || SCHOOL_HOSTS.has(host) || SUFFIXES.some((s) => host.endsWith(s)))
+  );
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -54,7 +66,11 @@ export default async function handler(req: Request): Promise<Response> {
   const host = match[1].toLowerCase();
   if (!allowed(host)) return new Response("Forbidden", { status: 403 });
 
-  const headers = new Headers({ "User-Agent": USER_AGENT, Accept: "application/json" });
+  const headers = new Headers({
+    "User-Agent": USER_AGENT,
+    // School sites serve calendars (text/calendar), pages and RSS rather than JSON.
+    Accept: SCHOOL_HOSTS.has(host) ? "*/*" : "application/json",
+  });
   const auth = req.headers.get("x-harbor-auth");
   if (auth) headers.set("Authorization", auth);
   // AllSports API (api.market) takes the viewer's key in its own header.
