@@ -18,6 +18,21 @@ export const SCHOOL_SOURCE = "school";
 /** The sports followed colleges bring into the hub, with the league each plays as. */
 const SPORT_LEAGUE: Record<string, string> = { football: "NCAAF" };
 
+/** Who carries a school's stream, by its host: the name the hub shows as the game's network. */
+export function streamProvider(url: string): string {
+  let host = "";
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return "School stream";
+  }
+  if (host === "boxcast.tv" || host.endsWith(".boxcast.tv") || host.endsWith(".boxcast.com"))
+    return "BoxCast";
+  if (host.endsWith("youtube.com") || host === "youtu.be") return "YouTube";
+  if (host.endsWith("hudl.com")) return "Hudl";
+  return "School stream";
+}
+
 /** A game "on now" from a school calendar: started under this long ago and not yet decided. */
 const LIVE_WINDOW_MS = 3.5 * 3600_000;
 
@@ -112,8 +127,10 @@ export function collegeGames(
       startMs,
       dateOnly: event.allDay ? event.start.slice(0, 10) : undefined,
       source: SCHOOL_SOURCE,
-      network: null,
+      network: event.stream ? streamProvider(event.stream) : null,
+      broadcasts: event.stream ? [streamProvider(event.stream)] : undefined,
       odds: null,
+      stream: event.stream ?? undefined,
     });
   }
   return out;

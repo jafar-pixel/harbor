@@ -8,6 +8,7 @@ import {
   collegeIdOfGame,
   collegeShortName,
   linkCollegesToVision,
+  streamProvider,
 } from "../src/lib/jl/sports/college-games.ts";
 import type { College } from "../src/lib/jl/sports/colleges.ts";
 import type { SchoolEvent } from "../src/lib/jl/sports/sidearm.ts";
@@ -111,4 +112,26 @@ test("followed colleges link to their JL Vision team by name, only when unique",
     [team("gallaudet", "Gallaudet"), team("g2", "Gallaudet")],
   );
   assert.equal(twice.size, 0);
+});
+
+test("a school game carries its BoxCast stream and shows BoxCast as the network", () => {
+  const url = "https://boxcast.tv/view/football-gallaudet-vs-thaddeus-stevens-ci7dwu4iyoa6hmzur833";
+  const [game] = collegeGames(
+    GALLAUDET,
+    [event({ stream: url })],
+    Date.parse("2026-10-09T00:00:00Z"),
+  );
+  assert.equal(game.stream, url);
+  assert.equal(game.network, "BoxCast");
+  assert.deepEqual(game.broadcasts, ["BoxCast"]);
+  const [plain] = collegeGames(GALLAUDET, [event({})], Date.parse("2026-10-09T00:00:00Z"));
+  assert.equal(plain.stream, undefined);
+  assert.equal(plain.network, null);
+});
+
+test("stream hosts name their provider", () => {
+  assert.equal(streamProvider("https://boxcast.tv/channel/abc"), "BoxCast");
+  assert.equal(streamProvider("https://www.youtube.com/watch?v=x"), "YouTube");
+  assert.equal(streamProvider("https://fan.hudl.com/usa/watch"), "Hudl");
+  assert.equal(streamProvider("https://www.psucampusathletics.com/x/"), "School stream");
 });

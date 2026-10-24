@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { allowWebProxyHost, safeFetch } from "@/lib/safe-fetch";
 import { allsportsGet } from "./allsports";
 import { NCAA_DIRECTORY_URL, isCollege, parseNcaaDirectory, type College } from "./colleges";
 import snapshot from "./data/colleges.json";
@@ -102,6 +102,9 @@ function writeDirectoryCache(list: College[]) {
 }
 
 const bundled: College[] = (snapshot as unknown[]).filter(isCollege);
+// School sites send no CORS headers; the web build reaches them through its proxy, which allows
+// exactly these hosts (api/proxy.ts reads the same snapshot).
+for (const c of bundled) if (c.site) allowWebProxyHost(c.site);
 
 /** Every NCAA school: the bundled snapshot when present, else the directory (cached a week). */
 export function loadColleges(): Promise<College[]> {
@@ -123,6 +126,15 @@ export function loadColleges(): Promise<College[]> {
     if (stored) return stored.list;
     throw new Error("college directory unavailable");
   });
+}
+
+/**
+ * The school behind a followed team saved with the account ("ncaa-245", see collegeTeamId), from
+ * the bundled directory; null for an ESPN team.
+ */
+export function collegeOfTeamId(teamId: string): College | null {
+  const m = /^ncaa-(\d+)$/.exec(teamId);
+  return m ? (bundled.find((c) => c.id === `ncaa:${m[1]}`) ?? null) : null;
 }
 
 export async function findCollege(id: string): Promise<College | null> {

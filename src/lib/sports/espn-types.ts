@@ -69,6 +69,8 @@ export type SportsGame = {
   network?: string | null;
   /** Published betting line, e.g. "KC -3.5 · O/U 47.5". */
   odds?: string | null;
+  /** The school's own stream for the game (a BoxCast page, say), from its athletics calendar. */
+  stream?: string;
 };
 
 export type MatchPlayer = {

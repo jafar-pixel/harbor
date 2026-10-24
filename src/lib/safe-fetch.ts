@@ -123,6 +123,14 @@ const DEV_PROXY_HOSTS = new Set([
   "api.deepseek.com",
 ]);
 
+/** Hosts added at run time: school athletics sites, which api/proxy.ts allows from its own list. */
+const RUNTIME_PROXY_HOSTS = new Set<string>();
+
+/** Route a host through the web build's /api-proxy (no effect in the desktop app). */
+export function allowWebProxyHost(host: string): void {
+  if (/^[a-z0-9.-]+$/i.test(host)) RUNTIME_PROXY_HOSTS.add(host.toLowerCase());
+}
+
 const PROXY_SUFFIXES = [
   ".elfhosted.com",
   ".strem.fun",
@@ -170,7 +178,9 @@ function rewriteForWeb(url: string, init?: RequestInit): { url: string; init?: R
   }
   if (DIRECT_HOSTS.has(parsed.hostname)) return { url, init };
   const proxiable =
-    PROXY_HOSTS.has(parsed.hostname) || PROXY_SUFFIXES.some((s) => parsed.hostname.endsWith(s));
+    PROXY_HOSTS.has(parsed.hostname) ||
+    RUNTIME_PROXY_HOSTS.has(parsed.hostname) ||
+    PROXY_SUFFIXES.some((s) => parsed.hostname.endsWith(s));
   if (!proxiable) return { url, init };
   const localDev = /^(?:localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
   if (!webProxyAvailable() && !(localDev && DEV_PROXY_HOSTS.has(parsed.hostname)))
