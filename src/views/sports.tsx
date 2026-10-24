@@ -473,459 +473,468 @@ function SportsHubView({ active = false }: { active?: boolean }) {
     +day.slice(6, 8),
   ).toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric" });
   return (
-    <main
-      ref={scrollRef}
-      className="sports-hub"
-      onScroll={(e) => setShowTop(e.currentTarget.scrollTop > 700)}
-      aria-label={t("Sports")}
+    // The pinned wallpaper sits on this frame, which never scrolls, so scrolling the page
+    // doesn't repaint it (a fixed background on the scroller itself repaints every frame).
+    <div
+      className={`sh-frame${wallpaperStyle ? " sh-frame-wallpaper" : ""}`}
       style={wallpaperStyle}
     >
-      {lead && (
-        <>
-          {!homeHidden.includes("hero") && jlHero && (
-            <div data-sports-shelf="hero">
-              <JlSportsHero
-                top={pageTop}
-                teamSlides={jl.sports.teamSlides.filter((s) =>
-                  scopeTags.has(s.team.league === "NCAAB" ? "NCAA" : s.team.league),
-                )}
-                playerSlides={jl.sports.playerSlides.filter((s) =>
-                  scopeTags.has(s.player.league === "NCAAB" ? "NCAA" : s.player.league),
-                )}
-                featured={jlFeatured}
-                actions={jl.actions}
-                onOpenGame={open}
-                bleed
-                flush
-              />
-            </div>
-          )}
-          {!homeHidden.includes("top10") && jlAll && (
-            <div className="sh-body sh-lead-top10" data-sports-shelf="top10">
-              <JlSportsHub
-                top={pageTop}
-                ticker={pageTicker}
-                favorites={jl.sports.teams}
-                actions={jl.actions}
-                onOpenGame={open}
-                onLeagues={jlLeagues}
-                shortcuts={false}
-              />
-            </div>
-          )}
-        </>
-      )}
-      <header className={`sh-masthead${lead ? " sh-masthead-below" : ""}`}>
-        <div>
-          <span className="sh-eyebrow">JL SPORTS</span>
-          <h1>{t("Your Sports Hub")}</h1>
-        </div>
-        <SportsPersonalizeHint active={active && !setup} onPersonalize={() => setSetup(true)} />
-      </header>
-      <nav className="sh-view-tabs" aria-label={t("Sports navigation")}>
-        {[
-          ["home", "For you"],
-          ["live", "Live now"],
-          ["schedule", "Schedule"],
-          ["explore", "Explore sports"],
-          ["hot", "Hot Events"],
-        ].map(([key, label]) => (
-          <button
-            key={key}
-            aria-pressed={tab === key}
-            onClick={() => {
-              setTab(key);
-              if (key === "home" || key === "live") {
-                setLeagueFilter("");
-                setGroup("all");
-                setBrowsing(false);
-              }
-            }}
-          >
-            {t(label)}
-          </button>
-        ))}
-        {tab !== "hot" && (
-          <span
-            className="sh-update-status"
-            role="status"
-            title={brokenLeagues.length ? brokenLeagues.join(", ") : undefined}
-          >
-            {busy
-              ? t("Updating schedules…")
-              : failures || statusStale
-                ? t("Some schedules are unavailable")
-                : t("Up to date")}
-          </span>
+      <main
+        ref={scrollRef}
+        className="sports-hub"
+        onScroll={(e) => {
+          const past = e.currentTarget.scrollTop > 700;
+          if (past !== showTop) setShowTop(past);
+        }}
+        aria-label={t("Sports")}
+      >
+        {lead && (
+          <>
+            {!homeHidden.includes("hero") && jlHero && (
+              <div data-sports-shelf="hero">
+                <JlSportsHero
+                  top={pageTop}
+                  teamSlides={jl.sports.teamSlides.filter((s) =>
+                    scopeTags.has(s.team.league === "NCAAB" ? "NCAA" : s.team.league),
+                  )}
+                  playerSlides={jl.sports.playerSlides.filter((s) =>
+                    scopeTags.has(s.player.league === "NCAAB" ? "NCAA" : s.player.league),
+                  )}
+                  featured={jlFeatured}
+                  actions={jl.actions}
+                  onOpenGame={open}
+                  bleed
+                  flush
+                />
+              </div>
+            )}
+            {!homeHidden.includes("top10") && jlAll && (
+              <div className="sh-body sh-lead-top10" data-sports-shelf="top10">
+                <JlSportsHub
+                  top={pageTop}
+                  ticker={pageTicker}
+                  favorites={jl.sports.teams}
+                  actions={jl.actions}
+                  onOpenGame={open}
+                  onLeagues={jlLeagues}
+                  shortcuts={false}
+                />
+              </div>
+            )}
+          </>
         )}
-        <SportsRefreshButton busy={busy} onRefresh={() => setRefresh((n) => n + 1)} />
-      </nav>
-      {tab === "home" && group === "esports" && !browsing && (
-        <div className="sh-carousel" ref={setEsportsHeroTarget} />
-      )}
-      <div className="sh-body" ref={bodyRef}>
-        <SportsNoProviderNote />
-        {tab !== "explore" && tab !== "hot" && tab !== "live" && (
-          <div
-            ref={sportRail}
-            {...sportHandlers}
-            className="sh-sport-tabs"
-            aria-label={t("Filter by sport")}
-          >
+        <header className={`sh-masthead${lead ? " sh-masthead-below" : ""}`}>
+          <div>
+            <span className="sh-eyebrow">JL SPORTS</span>
+            <h1>{t("Your Sports Hub")}</h1>
+          </div>
+          <SportsPersonalizeHint active={active && !setup} onPersonalize={() => setSetup(true)} />
+        </header>
+        <nav className="sh-view-tabs" aria-label={t("Sports navigation")}>
+          {[
+            ["home", "For you"],
+            ["live", "Live now"],
+            ["schedule", "Schedule"],
+            ["explore", "Explore sports"],
+            ["hot", "Hot Events"],
+          ].map(([key, label]) => (
             <button
-              aria-pressed={group === "all"}
+              key={key}
+              aria-pressed={tab === key}
               onClick={() => {
-                setGroup("all");
-                setLeagueFilter("");
-                setBrowsing(false);
+                setTab(key);
+                if (key === "home" || key === "live") {
+                  setLeagueFilter("");
+                  setGroup("all");
+                  setBrowsing(false);
+                }
               }}
             >
-              {t("Your sports")}
+              {t(label)}
             </button>
-            {personalGroups.map((g) => (
+          ))}
+          {tab !== "hot" && (
+            <span
+              className="sh-update-status"
+              role="status"
+              title={brokenLeagues.length ? brokenLeagues.join(", ") : undefined}
+            >
+              {busy
+                ? t("Updating schedules…")
+                : failures || statusStale
+                  ? t("Some schedules are unavailable")
+                  : t("Up to date")}
+            </span>
+          )}
+          <SportsRefreshButton busy={busy} onRefresh={() => setRefresh((n) => n + 1)} />
+        </nav>
+        {tab === "home" && group === "esports" && !browsing && (
+          <div className="sh-carousel" ref={setEsportsHeroTarget} />
+        )}
+        <div className="sh-body" ref={bodyRef}>
+          <SportsNoProviderNote />
+          {tab !== "explore" && tab !== "hot" && tab !== "live" && (
+            <div
+              ref={sportRail}
+              {...sportHandlers}
+              className="sh-sport-tabs"
+              aria-label={t("Filter by sport")}
+            >
               <button
-                key={g.key}
-                aria-pressed={group === g.key}
+                aria-pressed={group === "all"}
                 onClick={() => {
-                  setGroup(g.key);
+                  setGroup("all");
                   setLeagueFilter("");
-                  setBrowsing(browsing && g.key === group && !scope.groups.has(g.key));
+                  setBrowsing(false);
                 }}
               >
-                <SportIcon name={g.key} size={20} />
-                {getGroupLabel(g)}
+                {t("Your sports")}
               </button>
-            ))}
-            <button
-              onClick={() => {
-                setTab("explore");
-                setGroup("all");
-              }}
-            >
-              {t("All sports")}
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        )}
-        {tab !== "explore" && tab !== "hot" && tab !== "live" && group !== "esports" && (
-          <>
-            <div className="sh-date-dock">
-              <button
-                className="sh-icon"
-                aria-label={t("Jump to today")}
-                onClick={() => setDay(today)}
-              >
-                <CalendarDays size={18} />
-              </button>
-              <SportsDateBar
-                days={days}
-                selected={day}
-                today={today}
-                liveDays={new Set(live.map((game) => dayStamp(new Date(game.startMs))))}
-                onSelect={setDay}
-              />
-              <label className="sh-calendar-input" title={t("Choose date")}>
-                <CalendarDays size={18} />
-                <input
-                  type="date"
-                  aria-label={t("Choose date")}
-                  value={`${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}`}
-                  onChange={(e) => {
-                    if (e.target.value) setDay(e.target.value.replaceAll("-", ""));
+              {personalGroups.map((g) => (
+                <button
+                  key={g.key}
+                  aria-pressed={group === g.key}
+                  onClick={() => {
+                    setGroup(g.key);
+                    setLeagueFilter("");
+                    setBrowsing(browsing && g.key === group && !scope.groups.has(g.key));
                   }}
-                />
-              </label>
-              <SportsSelect
-                className="sh-league-select"
-                ariaLabel={t("Filter by league")}
-                value={scope.leagueFilter}
-                onChange={setLeagueFilter}
-                options={[
-                  {
-                    value: "",
-                    label: t("All leagues"),
-                    left: <SportIcon name="trophy" size={20} />,
-                  },
-                  ...scope.options.map((l) => ({
-                    value: l.key,
-                    label: getLeagueLabel(l),
-                    left: <LeagueLogo league={l} size={20} />,
-                  })),
-                ]}
-              />
+                >
+                  <SportIcon name={g.key} size={20} />
+                  {getGroupLabel(g)}
+                </button>
+              ))}
+              <button
+                onClick={() => {
+                  setTab("explore");
+                  setGroup("all");
+                }}
+              >
+                {t("All sports")}
+                <ArrowRight size={14} />
+              </button>
             </div>
-          </>
-        )}
-        {tab !== "hot" && group !== "esports" && (statusStale || failures > 0) && (
-          <div className="sh-feed-note" role="status">
-            <span>
-              {t(
-                tab === "live"
-                  ? "Some live scores are unavailable."
-                  : statusStale
-                    ? "Showing saved schedules while feeds reconnect."
-                    : "Some feeds did not respond. Available events are still shown.",
-              )}
-              {brokenLeagues.length > 0 && ` · ${brokenShown}`}
-              {latest > 0 &&
-                ` · ${t("Last update")} ${new Date(latest).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })}`}
-            </span>
-            <button
-              className="sh-text-button"
-              disabled={busy}
-              onClick={() => setRefresh((n) => n + 1)}
-            >
-              {t("Retry")}
-            </button>
-          </div>
-        )}
-        {tab !== "explore" && tab !== "hot" && tab !== "live" && group === "esports" && (
-          <Suspense fallback={<SportsRailSkeleton />}>
-            {browsing ? (
-              <EsportsArena active={active && !setup} refresh={refresh} />
-            ) : (
-              <EsportsMatchRail
-                heroTarget={tab === "home" ? esportsHeroTarget : null}
-                leagueKeys={leagues}
-                active={active && !setup}
-                refresh={refresh}
-                onExplore={() => setBrowsing(true)}
-              />
-            )}
-          </Suspense>
-        )}
-        {tab === "home" && group !== "esports" && (
-          <SportsHomeLayout
-            onSports={() => setSetup(true)}
-            pinned={["hero", "top10"]}
-            items={[
-              {
-                id: "stories",
-                content: jlAll ? (
-                  <GameStoriesRow
-                    stories={jl.stories.filter((item) => allowsGame(item.game))}
-                    onWatch={jl.actions.watch}
-                    onOpenGame={open}
-                    aside={<SportsShortcuts actions={jl.actions} onLeagues={jlLeagues} />}
+          )}
+          {tab !== "explore" && tab !== "hot" && tab !== "live" && group !== "esports" && (
+            <>
+              <div className="sh-date-dock">
+                <button
+                  className="sh-icon"
+                  aria-label={t("Jump to today")}
+                  onClick={() => setDay(today)}
+                >
+                  <CalendarDays size={18} />
+                </button>
+                <SportsDateBar
+                  days={days}
+                  selected={day}
+                  today={today}
+                  liveDays={new Set(live.map((game) => dayStamp(new Date(game.startMs))))}
+                  onSelect={setDay}
+                />
+                <label className="sh-calendar-input" title={t("Choose date")}>
+                  <CalendarDays size={18} />
+                  <input
+                    type="date"
+                    aria-label={t("Choose date")}
+                    value={`${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}`}
+                    onChange={(e) => {
+                      if (e.target.value) setDay(e.target.value.replaceAll("-", ""));
+                    }}
                   />
-                ) : null,
-              },
-              {
-                id: "channel-cards",
-                content: jlAll ? (
-                  <SportChannelCards data={jlChannels} favorites={jl.sports.teams} />
-                ) : null,
-              },
-              {
-                id: "scores",
-                content: jlAll ? <ScoresStrip games={jlScores} onOpenGame={open} /> : null,
-              },
-              {
-                id: "featured",
-                content: (
-                  <HubCarousel
-                    games={personalHeroes}
-                    active={active && !setup}
-                    onOpen={open}
-                    onCustomize={() => setSetup(true)}
-                    loading={busy}
-                    stale={board.stale || upcoming.stale}
-                  />
-                ),
-              },
-              {
-                id: "live",
-                content: (
-                  <HubRow title={t("Live now")} games={live} onOpen={open} stale={board.stale} />
-                ),
-              },
-              {
-                id: "your-teams",
-                content: (
-                  <HubRow
-                    title={t("Your teams")}
-                    games={following.filter((g) => g.state !== "post")}
-                    onOpen={open}
-                    stale={board.stale || upcoming.stale}
-                  />
-                ),
-              },
-              {
-                id: "coming-up",
-                content: (
-                  <HubRow
-                    title={t("Coming up")}
-                    games={diverseEvents(coming)}
-                    onOpen={open}
-                    stale={upcoming.stale}
-                  />
-                ),
-              },
-              {
-                id: "fight-nights",
-                content: fights.length ? (
-                  <HubRow
-                    title={t("Fight nights")}
-                    games={fights}
-                    onOpen={open}
-                    stale={upcoming.stale}
-                  />
-                ) : null,
-              },
-              {
-                id: "channels",
-                content: jlAll ? <LiveSportsChannelsView data={jlChannels} /> : null,
-              },
-              {
-                id: "pitch",
-                content: pitchGame ? (
-                  <HubPitchSpotlight game={pitchGame} active={active} onOpen={open} />
-                ) : null,
-              },
-              {
-                id: "esports",
-                content:
-                  group === "all" && esportsLeagues.length > 0 ? (
-                    <Suspense fallback={<SportsRailSkeleton />}>
-                      <EsportsMatchRail
-                        leagueKeys={esportsLeagues}
-                        active={active && !setup}
-                        refresh={refresh}
-                        onExplore={() => {
-                          setBrowsing(true);
-                          setGroup("esports");
-                          setLeagueFilter("");
-                          scrollRef.current?.scrollTo({ top: 0 });
-                        }}
-                      />
-                    </Suspense>
-                  ) : null,
-              },
-              {
-                id: "schedule",
-                content: (
-                  <HubSchedule
-                    title={dateTitle}
-                    games={board.games}
-                    onOpen={open}
-                    stale={board.stale}
-                    loading={board.pending > 0}
-                    failed={board.failed > 0}
-                  />
-                ),
-              },
-              {
-                id: "also-today",
-                content: jlAll ? (
-                  <AlsoToday
-                    groups={jlAlsoToday}
-                    favorites={jl.sports.teams}
-                    actions={jl.actions}
-                    onOpenGame={open}
-                  />
-                ) : null,
-              },
-            ]}
-          />
-        )}
-        {tab === "live" && (
-          <>
-            <HubSchedule
-              key="live-now"
-              title={t("Live now")}
-              games={liveNow}
-              onOpen={open}
-              stale={board.stale}
-              loading={busy}
-              failed={failures > 0 || board.stale}
-              liveOnly
-            />
-            {esportsLeagues.length > 0 && (
-              <Suspense fallback={<SportsRailSkeleton />}>
+                </label>
+                <SportsSelect
+                  className="sh-league-select"
+                  ariaLabel={t("Filter by league")}
+                  value={scope.leagueFilter}
+                  onChange={setLeagueFilter}
+                  options={[
+                    {
+                      value: "",
+                      label: t("All leagues"),
+                      left: <SportIcon name="trophy" size={20} />,
+                    },
+                    ...scope.options.map((l) => ({
+                      value: l.key,
+                      label: getLeagueLabel(l),
+                      left: <LeagueLogo league={l} size={20} />,
+                    })),
+                  ]}
+                />
+              </div>
+            </>
+          )}
+          {tab !== "hot" && group !== "esports" && (statusStale || failures > 0) && (
+            <div className="sh-feed-note" role="status">
+              <span>
+                {t(
+                  tab === "live"
+                    ? "Some live scores are unavailable."
+                    : statusStale
+                      ? "Showing saved schedules while feeds reconnect."
+                      : "Some feeds did not respond. Available events are still shown.",
+                )}
+                {brokenLeagues.length > 0 && ` · ${brokenShown}`}
+                {latest > 0 &&
+                  ` · ${t("Last update")} ${new Date(latest).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })}`}
+              </span>
+              <button
+                className="sh-text-button"
+                disabled={busy}
+                onClick={() => setRefresh((n) => n + 1)}
+              >
+                {t("Retry")}
+              </button>
+            </div>
+          )}
+          {tab !== "explore" && tab !== "hot" && tab !== "live" && group === "esports" && (
+            <Suspense fallback={<SportsRailSkeleton />}>
+              {browsing ? (
+                <EsportsArena active={active && !setup} refresh={refresh} />
+              ) : (
                 <EsportsMatchRail
-                  liveOnly
+                  heroTarget={tab === "home" ? esportsHeroTarget : null}
+                  leagueKeys={leagues}
                   active={active && !setup}
                   refresh={refresh}
-                  onExplore={() => {
-                    setTab("home");
-                    setBrowsing(true);
-                    setGroup("esports");
-                    setLeagueFilter("");
-                    scrollRef.current?.scrollTo({ top: 0 });
-                  }}
+                  onExplore={() => setBrowsing(true)}
                 />
-              </Suspense>
-            )}
-          </>
-        )}
-        {tab === "schedule" && group !== "esports" && (
-          <HubSchedule
-            title={dateTitle}
-            games={board.games}
-            onOpen={open}
-            stale={board.stale}
-            loading={board.pending > 0}
-            failed={board.failed > 0}
-          />
-        )}
-        {tab === "hot" && (
-          <Suspense fallback={<SportsHotEventsSkeleton />}>
-            <HotEvents
-              seed={[...all, ...jl.sports.games]}
-              active={active && !setup}
-              refresh={refresh}
-              favourites={fav.teams}
-              leagueKeys={selected}
-              onOpen={open}
-              onExplore={() => setTab("explore")}
+              )}
+            </Suspense>
+          )}
+          {tab === "home" && group !== "esports" && (
+            <SportsHomeLayout
+              onSports={() => setSetup(true)}
+              pinned={["hero", "top10"]}
+              items={[
+                {
+                  id: "stories",
+                  content: jlAll ? (
+                    <GameStoriesRow
+                      stories={jl.stories.filter((item) => allowsGame(item.game))}
+                      onWatch={jl.actions.watch}
+                      onOpenGame={open}
+                      aside={<SportsShortcuts actions={jl.actions} onLeagues={jlLeagues} />}
+                    />
+                  ) : null,
+                },
+                {
+                  id: "channel-cards",
+                  content: jlAll ? (
+                    <SportChannelCards data={jlChannels} favorites={jl.sports.teams} />
+                  ) : null,
+                },
+                {
+                  id: "scores",
+                  content: jlAll ? <ScoresStrip games={jlScores} onOpenGame={open} /> : null,
+                },
+                {
+                  id: "featured",
+                  content: (
+                    <HubCarousel
+                      games={personalHeroes}
+                      active={active && !setup}
+                      onOpen={open}
+                      onCustomize={() => setSetup(true)}
+                      loading={busy}
+                      stale={board.stale || upcoming.stale}
+                    />
+                  ),
+                },
+                {
+                  id: "live",
+                  content: (
+                    <HubRow title={t("Live now")} games={live} onOpen={open} stale={board.stale} />
+                  ),
+                },
+                {
+                  id: "your-teams",
+                  content: (
+                    <HubRow
+                      title={t("Your teams")}
+                      games={following.filter((g) => g.state !== "post")}
+                      onOpen={open}
+                      stale={board.stale || upcoming.stale}
+                    />
+                  ),
+                },
+                {
+                  id: "coming-up",
+                  content: (
+                    <HubRow
+                      title={t("Coming up")}
+                      games={diverseEvents(coming)}
+                      onOpen={open}
+                      stale={upcoming.stale}
+                    />
+                  ),
+                },
+                {
+                  id: "fight-nights",
+                  content: fights.length ? (
+                    <HubRow
+                      title={t("Fight nights")}
+                      games={fights}
+                      onOpen={open}
+                      stale={upcoming.stale}
+                    />
+                  ) : null,
+                },
+                {
+                  id: "channels",
+                  content: jlAll ? <LiveSportsChannelsView data={jlChannels} /> : null,
+                },
+                {
+                  id: "pitch",
+                  content: pitchGame ? (
+                    <HubPitchSpotlight game={pitchGame} active={active} onOpen={open} />
+                  ) : null,
+                },
+                {
+                  id: "esports",
+                  content:
+                    group === "all" && esportsLeagues.length > 0 ? (
+                      <Suspense fallback={<SportsRailSkeleton />}>
+                        <EsportsMatchRail
+                          leagueKeys={esportsLeagues}
+                          active={active && !setup}
+                          refresh={refresh}
+                          onExplore={() => {
+                            setBrowsing(true);
+                            setGroup("esports");
+                            setLeagueFilter("");
+                            scrollRef.current?.scrollTo({ top: 0 });
+                          }}
+                        />
+                      </Suspense>
+                    ) : null,
+                },
+                {
+                  id: "schedule",
+                  content: (
+                    <HubSchedule
+                      title={dateTitle}
+                      games={board.games}
+                      onOpen={open}
+                      stale={board.stale}
+                      loading={board.pending > 0}
+                      failed={board.failed > 0}
+                    />
+                  ),
+                },
+                {
+                  id: "also-today",
+                  content: jlAll ? (
+                    <AlsoToday
+                      groups={jlAlsoToday}
+                      favorites={jl.sports.teams}
+                      actions={jl.actions}
+                      onOpenGame={open}
+                    />
+                  ) : null,
+                },
+              ]}
             />
-          </Suspense>
-        )}
-        {tab === "explore" && (
-          <SportsExplorer
-            onSport={(key) => {
-              setBrowsing(true);
-              setGroup(key);
-              setLeagueFilter("");
-              setTab("home");
-              scrollRef.current?.scrollTo({ top: 0 });
+          )}
+          {tab === "live" && (
+            <>
+              <HubSchedule
+                key="live-now"
+                title={t("Live now")}
+                games={liveNow}
+                onOpen={open}
+                stale={board.stale}
+                loading={busy}
+                failed={failures > 0 || board.stale}
+                liveOnly
+              />
+              {esportsLeagues.length > 0 && (
+                <Suspense fallback={<SportsRailSkeleton />}>
+                  <EsportsMatchRail
+                    liveOnly
+                    active={active && !setup}
+                    refresh={refresh}
+                    onExplore={() => {
+                      setTab("home");
+                      setBrowsing(true);
+                      setGroup("esports");
+                      setLeagueFilter("");
+                      scrollRef.current?.scrollTo({ top: 0 });
+                    }}
+                  />
+                </Suspense>
+              )}
+            </>
+          )}
+          {tab === "schedule" && group !== "esports" && (
+            <HubSchedule
+              title={dateTitle}
+              games={board.games}
+              onOpen={open}
+              stale={board.stale}
+              loading={board.pending > 0}
+              failed={board.failed > 0}
+            />
+          )}
+          {tab === "hot" && (
+            <Suspense fallback={<SportsHotEventsSkeleton />}>
+              <HotEvents
+                seed={[...all, ...jl.sports.games]}
+                active={active && !setup}
+                refresh={refresh}
+                favourites={fav.teams}
+                leagueKeys={selected}
+                onOpen={open}
+                onExplore={() => setTab("explore")}
+              />
+            </Suspense>
+          )}
+          {tab === "explore" && (
+            <SportsExplorer
+              onSport={(key) => {
+                setBrowsing(true);
+                setGroup(key);
+                setLeagueFilter("");
+                setTab("home");
+                scrollRef.current?.scrollTo({ top: 0 });
+              }}
+            />
+          )}
+          <footer className="sh-footer">
+            <span>{t("Schedules and scores: ESPN · TheSportsDB")}</span>
+            <span>{t("Coverage varies by league. Streams depend on your available sources.")}</span>
+            <span>
+              {t(
+                "Use only sources you are authorized to access. Harbor does not bypass subscriptions or access restrictions.",
+              )}
+            </span>
+          </footer>
+        </div>
+        {showTop && (
+          <button
+            className="sh-back-top"
+            aria-label={t("Back to top")}
+            onClick={() => {
+              scrollRef.current?.scrollTo({
+                top: 0,
+                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                  ? "instant"
+                  : "smooth",
+              });
+              scrollRef.current
+                ?.querySelector<HTMLButtonElement>(".sh-masthead button")
+                ?.focus({ preventScroll: true });
             }}
-          />
+          >
+            <ArrowUp size={18} />
+            {t("Back to top")}
+          </button>
         )}
-        <footer className="sh-footer">
-          <span>{t("Schedules and scores: ESPN · TheSportsDB")}</span>
-          <span>{t("Coverage varies by league. Streams depend on your available sources.")}</span>
-          <span>
-            {t(
-              "Use only sources you are authorized to access. Harbor does not bypass subscriptions or access restrictions.",
-            )}
-          </span>
-        </footer>
-      </div>
-      {showTop && (
-        <button
-          className="sh-back-top"
-          aria-label={t("Back to top")}
-          onClick={() => {
-            scrollRef.current?.scrollTo({
-              top: 0,
-              behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-                ? "instant"
-                : "smooth",
-            });
-            scrollRef.current
-              ?.querySelector<HTMLButtonElement>(".sh-masthead button")
-              ?.focus({ preventScroll: true });
-          }}
-        >
-          <ArrowUp size={18} />
-          {t("Back to top")}
-        </button>
-      )}
-      {jl.dialogs}
-      <Suspense fallback={null}>
-        {setup && <Personalize selected={selected} onClose={() => setSetup(false)} />}{" "}
-      </Suspense>
-    </main>
+        {jl.dialogs}
+        <Suspense fallback={null}>
+          {setup && <Personalize selected={selected} onClose={() => setSetup(false)} />}{" "}
+        </Suspense>
+      </main>
+    </div>
   );
 }

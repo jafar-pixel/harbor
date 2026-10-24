@@ -3570,3 +3570,13 @@
 .sports-hub .sh-masthead.sh-masthead-below {
   padding-top: 40px;
 }
+
+/* The Sports page frame: holds the pinned wallpaper behind the scroller (see sports.tsx). */
+.sh-frame {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+.sh-frame-wallpaper > .sports-hub {
+  background: transparent;
+}

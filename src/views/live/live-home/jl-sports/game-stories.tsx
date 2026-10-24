@@ -559,7 +559,7 @@ function StoryTeam({ side, showScore }: { side: SportsSide; showScore: boolean }
   );
 }
 
-const CARD = "rounded-3xl border border-edge-soft/50 bg-elevated/70 p-6 backdrop-blur-md lg:p-8";
+const CARD = "rounded-3xl border border-edge-soft/50 bg-elevated/90 p-6 lg:p-8";
 
 function SlideBody({ slide, game }: { slide: StorySlide; game: SportsGame }) {
   const t = useT();

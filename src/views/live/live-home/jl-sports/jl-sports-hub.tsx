@@ -223,7 +223,7 @@ function StatusChip({ game, className = "" }: { game: SportsGame; className?: st
   return (
     <span
       className={`inline-flex h-[22px] items-center gap-1.5 rounded-full px-2 text-[11px] font-semibold ${
-        live ? "bg-danger text-white" : "bg-canvas/70 text-ink backdrop-blur"
+        live ? "bg-danger text-white" : "bg-canvas/85 text-ink"
       } ${className}`}
     >
       {live && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
@@ -278,7 +278,7 @@ function TopPoster({
           >
             <GameBackdrop game={game} variant="poster" focusId={focusId} />
             <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2">
-              <span className="rounded-full bg-canvas/70 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-ink backdrop-blur">
+              <span className="rounded-full bg-canvas/85 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-ink">
                 {game.league}
               </span>
               <StatusChip game={game} />
@@ -322,7 +322,7 @@ function TopPoster({
               </p>
               <span
                 className={`mt-1.5 inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold ${
-                  channels.length ? "bg-accent text-canvas" : "bg-ink/15 text-ink backdrop-blur"
+                  channels.length ? "bg-accent text-canvas" : "bg-canvas/80 text-ink"
                 }`}
               >
                 {channels.length ? (
@@ -498,7 +498,7 @@ function WallCard({
             look={teamLook(game.home, art.home, brandLook(game.league, game.home.id))}
           />
         </div>
-        <div className="relative flex items-center justify-between gap-2 bg-canvas/65 px-4 py-2 text-[12px] backdrop-blur">
+        <div className="relative flex items-center justify-between gap-2 bg-canvas/85 px-4 py-2 text-[12px]">
           <span
             className={`flex items-center gap-1.5 font-semibold ${isCurrentLiveGame(game) ? "text-danger" : "text-ink/85"}`}
           >
@@ -629,10 +629,10 @@ function FollowButton({
           ? t("Unfollow {team}", { team: side.name })
           : t("Follow {team}", { team: side.name })
       }
-      className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-[11px] font-semibold backdrop-blur transition-colors ${
+      className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-[11px] font-semibold transition-colors ${
         following
           ? "border-accent/40 bg-accent-soft text-accent"
-          : "border-edge-soft bg-canvas/50 text-ink-subtle hover:text-ink"
+          : "border-edge-soft bg-canvas/80 text-ink-subtle hover:text-ink"
       }`}
     >
       <Star size={11} fill={following ? "currentColor" : "none"} strokeWidth={2} />
