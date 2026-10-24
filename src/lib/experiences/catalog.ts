@@ -26,6 +26,51 @@ export const EXPERIENCE_PLUGINS = [
     name: "Spooktober",
     description: "Films, music and midnight discoveries every October.",
   },
+  {
+    id: "world-series",
+    name: "World Series",
+    description: "Every game of the Fall Classic while it's on.",
+  },
+  {
+    id: "super-bowl",
+    name: "Super Bowl",
+    description: "Super Bowl Sunday, from kickoff to the trophy.",
+  },
+  {
+    id: "college-playoff",
+    name: "College Football Playoff",
+    description: "The playoff games through the national championship.",
+  },
+  {
+    id: "bowl-season",
+    name: "Bowl Season",
+    description: "The day's college bowl games, mid-December into January.",
+  },
+  {
+    id: "college-game-of-week",
+    name: "College Game of the Week",
+    description: "Saturday's biggest ranked matchup.",
+  },
+  {
+    id: "nfl-game-of-week",
+    name: "NFL Game of the Week",
+    description: "Sunday's best matchup by record.",
+  },
+  {
+    id: "nba-all-star",
+    name: "NBA All-Star",
+    description: "All-Star weekend's games.",
+  },
+  {
+    id: "nba-finals",
+    name: "NBA Finals",
+    description: "Every game of the NBA Finals.",
+  },
+  {
+    id: "final-four",
+    name: "Final Four",
+    description: "The men's and women's Final Four and title games.",
+  },
 ] as const;
 export type ExperienceId = (typeof EXPERIENCE_PLUGINS)[number]["id"];
 export const HOLIDAYS = [
@@ -75,10 +120,40 @@ export type ExperiencePreferences = {
   dismissed: string[];
 };
 export const DEFAULT_EXPERIENCES: ExperiencePreferences = {
-  enabled: { gameday: true, birthday: true, holidays: true, playoffs: true, spooktober: true },
+  enabled: {
+    gameday: true,
+    birthday: true,
+    holidays: true,
+    playoffs: true,
+    spooktober: true,
+    "world-series": true,
+    "super-bowl": true,
+    "college-playoff": true,
+    "bowl-season": true,
+    "college-game-of-week": true,
+    "nfl-game-of-week": true,
+    "nba-all-star": true,
+    "nba-finals": true,
+    "final-four": true,
+  },
   birthday: "",
   holidays: ["thanksgiving", "christmas", "new-year"],
-  order: ["birthday", "gameday", "playoffs", "holidays", "spooktober"],
+  order: [
+    "birthday",
+    "gameday",
+    "super-bowl",
+    "world-series",
+    "nba-finals",
+    "final-four",
+    "college-playoff",
+    "nba-all-star",
+    "bowl-season",
+    "college-game-of-week",
+    "nfl-game-of-week",
+    "playoffs",
+    "holidays",
+    "spooktober",
+  ],
   placement: "after-hero",
   dismissed: [],
 };

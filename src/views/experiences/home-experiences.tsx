@@ -4,11 +4,18 @@ import { useView } from "@/lib/view";
 import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
 import { useExperiences, useExperienceDate } from "@/lib/experiences/use-experiences";
-import { useExperienceGames } from "@/lib/experiences/use-game-day";
+import { useExperienceGames, useSportsEventGames } from "@/lib/experiences/use-game-day";
+import {
+  SPORTS_EVENT_IDS,
+  detectSportsEvents,
+  type SportsEvent,
+} from "@/lib/experiences/sports-events";
+import type { SportsGame } from "@/lib/sports/espn";
 import {
   HOLIDAYS,
   holidayInSeason,
   holidayOccurrence,
+  EXPERIENCE_PLUGINS,
   isBirthday,
   isPostseason,
   localDateKey,
@@ -18,7 +25,7 @@ import "./experiences.css";
 
 /** Where each plugin lives: Home keeps the personal ones, the rest sit in their own hub. */
 export const HOME_PLUGINS = ["birthday", "spooktober"] as const;
-export const SPORTS_PLUGINS = ["gameday", "playoffs"] as const;
+export const SPORTS_PLUGINS = [...SPORTS_EVENT_IDS, "gameday", "playoffs"] as const;
 export const MOVIES_PLUGINS = ["holidays"] as const;
 
 export function HomeExperiences({
@@ -37,7 +44,7 @@ export function HomeExperiences({
   const t = useT();
   const { preferences, save, profile, profileId } = useExperiences();
   const { settings } = useSettings();
-  const { setView } = useView();
+  const { setView, openMatchDetail } = useView();
   const date = useExperienceDate();
   const shows = (plugin: string) => !plugins || plugins.includes(plugin);
   const games = useExperienceGames(
@@ -46,6 +53,9 @@ export function HomeExperiences({
         (shows("playoffs") && preferences.enabled.playoffs)),
     date,
   );
+  const eventIds = SPORTS_EVENT_IDS.filter((id) => shows(id) && preferences.enabled[id]);
+  const eventGames = useSportsEventGames(active && eventIds.length > 0, date);
+  const events = detectSportsEvents(eventGames, new Date()).filter((e) => eventIds.includes(e.id));
   const openSports = onSports ?? (() => setView("sports"));
   const [collection, setCollection] = useState<ExperienceCollectionInfo | null>(null);
   const day = localDateKey(date);
@@ -89,6 +99,15 @@ export function HomeExperiences({
           playoffs[0].context?.name || `${playoffs[0].away.name} · ${playoffs[0].home.name}`,
         action: openSports,
       });
+  }
+  for (const event of events) {
+    cards.push({
+      id: `${event.id}:${day}`,
+      plugin: event.id,
+      title: t(EXPERIENCE_PLUGINS.find((p) => p.id === event.id)!.name),
+      description: eventLine(event, t),
+      action: () => openMatchDetail(event.game, event.games),
+    });
   }
   if (shows("holidays") && preferences.enabled.holidays)
     for (const holiday of HOLIDAYS) {
@@ -176,4 +195,27 @@ export function HomeExperiences({
       )}
     </section>
   );
+}
+
+/** "Dodgers 3 – 2 Yankees · Game 3 · LIVE", or "Dodgers at Yankees · Game 3 · 8:08 PM · FOX". */
+function eventLine(event: SportsEvent, t: ReturnType<typeof useT>): string {
+  const g: SportsGame = event.game;
+  const label = (side: SportsGame["home"]) => `${side.rank ? `#${side.rank} ` : ""}${side.name}`;
+  // "World Series - Game 3" -> "Game 3"; a headline without a separator is left out.
+  const note = /\s[-–]\s/.test(g.headline ?? "") ? g.headline!.split(/\s[-–]\s/).pop()! : "";
+  const parts =
+    g.state === "pre"
+      ? [
+          `${label(g.away)} ${t("at")} ${label(g.home)}`,
+          note,
+          new Date(g.startMs).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+          g.network ?? "",
+        ]
+      : [
+          `${label(g.away)} ${g.away.score} – ${g.home.score} ${label(g.home)}`,
+          note,
+          g.state === "in" ? t("LIVE") : t("Final"),
+        ];
+  if (event.games.length > 1) parts.push(t("{count} games today", { count: event.games.length }));
+  return parts.filter(Boolean).join(" · ");
 }

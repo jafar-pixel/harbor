@@ -1,4 +1,4 @@
-import { publishedPostseason } from "./postseason";
+import { noteHeadline, publishedPostseason } from "./postseason";
 import type { LeagueDef, SportsGame, SportsSide } from "./espn-types";
 import { espnPublishedAthleteId } from "./athlete-identity";
 import { publishedPortraitUrl } from "./athlete-portraits.ts";
@@ -264,6 +264,7 @@ export function parseEvents(events: unknown[], def: LeagueDef): SportsGame[] {
         id: idStr,
         league: def.tag,
         postseason: publishedPostseason(ev, comp, def.tag),
+        headline: noteHeadline(comp),
         state,
         detail: (t.shortDetail as string) ?? (t.detail as string) ?? "",
         home: hSide,

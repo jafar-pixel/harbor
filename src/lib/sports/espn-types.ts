@@ -59,6 +59,8 @@ export type SportsGame = {
   /** Published calendar date (YYYY-MM-DD) when no start time is available; startMs is a sort anchor. */
   dateOnly?: string;
   context?: EventContext;
+  /** The scoreboard's event note, e.g. "World Series - Game 3", "Super Bowl LX", "Men's Final Four". */
+  headline?: string;
   source?: string;
   artwork?: string;
   poster?: string;

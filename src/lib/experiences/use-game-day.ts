@@ -15,6 +15,7 @@ import { fetchCalendar } from "@/lib/jl/sports/college-data";
 import { collegeGames } from "@/lib/jl/sports/college-games";
 import { isFavoriteGame } from "@/lib/jl/sports/rank";
 import { gameIsToday, localDateKey } from "./catalog";
+import { SPORTS_EVENT_LEAGUES } from "./sports-events";
 
 export function useExperienceGames(active: boolean, date: Date): SportsGame[] {
   const { settings } = useSettings();
@@ -121,4 +122,56 @@ export function useExperienceGames(active: boolean, date: Date): SportsGame[] {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, activeId, key, favoritesKey, collegesKey, day, settings.hideContent.sports]);
   return active && result.profileId === activeId && result.key === key ? result.games : [];
+}
+
+const EVENT_POLL_MS = 5 * 60_000;
+
+/**
+ * Today's scoreboards for the leagues that hold the big events (World Series, Super Bowl, Final
+ * Four...), whether or not the viewer follows them: an event shows because it is on, not because
+ * its league is selected. Polled every five minutes while a plug-in can show.
+ */
+export function useSportsEventGames(active: boolean, date: Date): SportsGame[] {
+  const { settings } = useSettings();
+  const day = localDateKey(date);
+  const [games, setGames] = useState<SportsGame[]>([]);
+  useEffect(() => {
+    if (!active || settings.hideContent.sports) {
+      setGames([]);
+      return;
+    }
+    const controller = new AbortController();
+    let cancelled = false;
+    const poll = async () => {
+      if (document.visibilityState !== "visible") return;
+      const leagues = SPORTS_EVENT_LEAGUES.map((key) =>
+        HUB_LEAGUES.find((l) => l.key === key),
+      ).filter((l): l is (typeof HUB_LEAGUES)[number] => !!l);
+      const results = await Promise.allSettled(
+        leagues.map((league) =>
+          experienceLeagueGames(league, dayStamp(new Date()), controller.signal, {
+            hub: fetchHubSlice,
+            esports: fetchEsportsFeed,
+          }),
+        ),
+      );
+      if (cancelled) return;
+      setGames(
+        results.flatMap((r) =>
+          r.status === "fulfilled" ? r.value.filter((g) => gameIsToday(g, new Date())) : [],
+        ),
+      );
+    };
+    void poll();
+    const timer = setInterval(() => void poll(), EVENT_POLL_MS);
+    const onVisible = () => void poll();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [active, day, settings.hideContent.sports]);
+  return games;
 }

@@ -10,12 +10,16 @@ import {
   type ExperienceId,
   type ExperiencePreferences,
 } from "@/lib/experiences/catalog";
+import { SPORTS_EVENT_IDS, type SportsEventId } from "@/lib/experiences/sports-events";
 import {
   ExperienceCollection,
   type ExperienceCollectionInfo,
 } from "@/views/experiences/experience-collection";
 import { Section } from "./shared";
 import "@/views/experiences/experiences.css";
+
+const isSportsEvent = (id: string): id is SportsEventId =>
+  (SPORTS_EVENT_IDS as readonly string[]).includes(id);
 
 export function ExperiencesPanel() {
   const { preferences, save, profile, profileId } = useExperiences();
@@ -56,9 +60,15 @@ function ProfileExperiences({
       });
       return;
     }
-    if (id === "gameday" || id === "playoffs") {
+    if (id === "gameday" || id === "playoffs" || isSportsEvent(id)) {
       setPreview({
-        title: t(id === "gameday" ? "Your Game Day" : "The Postseason"),
+        title: t(
+          id === "gameday"
+            ? "Your Game Day"
+            : id === "playoffs"
+              ? "The Postseason"
+              : EXPERIENCE_PLUGINS.find((p) => p.id === id)!.name,
+        ),
         description: t("On game day, this banner opens your personalized Sports Hub."),
         sports: true,
         preview: true,
