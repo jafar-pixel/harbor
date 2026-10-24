@@ -16,3 +16,17 @@ test("Arabic searches retain letters and match reported aliases without vowel ma
   assert.equal(normalizeSportsSearch("الأهلي"), normalizeSportsSearch("الاهلي"));
   assert.equal(matchesTeamSearch(team, "النصر"), false);
 });
+
+test("Team searches ignore words naming the sport or level", () => {
+  const team = {
+    name: "Gallaudet Bison",
+    abbr: "GAL",
+    leagueKey: "NCAAF",
+    group: "football",
+  };
+  assert.equal(matchesTeamSearch(team, "Gallaudet Football"), true);
+  assert.equal(matchesTeamSearch(team, "gallaudet college football"), true);
+  assert.equal(matchesTeamSearch(team, "bison gallaudet"), true);
+  assert.equal(matchesTeamSearch(team, "Gallaudet Basketball"), false);
+  assert.equal(matchesTeamSearch(team, "football"), false);
+});
