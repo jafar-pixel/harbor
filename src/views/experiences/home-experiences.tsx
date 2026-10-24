@@ -16,22 +16,37 @@ import {
 import { ExperienceCollection, type ExperienceCollectionInfo } from "./experience-collection";
 import "./experiences.css";
 
+/** Where each plugin lives: Home keeps the personal ones, the rest sit in their own hub. */
+export const HOME_PLUGINS = ["birthday", "spooktober"] as const;
+export const SPORTS_PLUGINS = ["gameday", "playoffs"] as const;
+export const MOVIES_PLUGINS = ["holidays"] as const;
+
 export function HomeExperiences({
   active = true,
   spooktober,
+  plugins,
+  onSports,
 }: {
   active?: boolean;
   spooktober?: ReactNode;
+  /** The plugins this hub shows; all of them when left out. */
+  plugins?: readonly string[];
+  /** What the game-day cards open; the Sports view by default. */
+  onSports?: () => void;
 }) {
   const t = useT();
   const { preferences, save, profile, profileId } = useExperiences();
   const { settings } = useSettings();
   const { setView } = useView();
   const date = useExperienceDate();
+  const shows = (plugin: string) => !plugins || plugins.includes(plugin);
   const games = useExperienceGames(
-    active && (preferences.enabled.gameday || preferences.enabled.playoffs),
+    active &&
+      ((shows("gameday") && preferences.enabled.gameday) ||
+        (shows("playoffs") && preferences.enabled.playoffs)),
     date,
   );
+  const openSports = onSports ?? (() => setView("sports"));
   const [collection, setCollection] = useState<ExperienceCollectionInfo | null>(null);
   const day = localDateKey(date);
   const cards: Array<{
@@ -42,7 +57,7 @@ export function HomeExperiences({
     action: () => void;
     content?: ReactNode;
   }> = [];
-  if (preferences.enabled.birthday && isBirthday(preferences.birthday, date)) {
+  if (shows("birthday") && preferences.enabled.birthday && isBirthday(preferences.birthday, date)) {
     const title = t("Happy birthday, {name}!", { name: profile?.name ?? t("you") });
     const description = t("Your day. Your favorites. A collection picked from your library.");
     cards.push({
@@ -54,28 +69,28 @@ export function HomeExperiences({
     });
   }
   if (!settings.hideContent.sports && games.length) {
-    if (preferences.enabled.gameday) {
+    if (shows("gameday") && preferences.enabled.gameday) {
       const lead = games[0];
       cards.push({
         id: `gameday:${day}`,
         plugin: "gameday",
         title: t("Your Game Day"),
         description: `${lead.away.name} · ${lead.home.name} — ${t("{count} games today", { count: games.length })}`,
-        action: () => setView("sports"),
+        action: openSports,
       });
     }
     const playoffs = games.filter(isPostseason);
-    if (preferences.enabled.playoffs && playoffs.length)
+    if (shows("playoffs") && preferences.enabled.playoffs && playoffs.length)
       cards.push({
         id: `playoffs:${day}`,
         plugin: "playoffs",
         title: t("The Postseason"),
         description:
           playoffs[0].context?.name || `${playoffs[0].away.name} · ${playoffs[0].home.name}`,
-        action: () => setView("sports"),
+        action: openSports,
       });
   }
-  if (preferences.enabled.holidays)
+  if (shows("holidays") && preferences.enabled.holidays)
     for (const holiday of HOLIDAYS) {
       if (!preferences.holidays.includes(holiday.id) || !holidayInSeason(holiday.id, date))
         continue;
@@ -92,7 +107,7 @@ export function HomeExperiences({
           }),
       });
     }
-  if (spooktober)
+  if (spooktober && shows("spooktober"))
     cards.push({
       id: "spooktober",
       plugin: "spooktober",

@@ -9,6 +9,7 @@ import { SportsRefreshButton } from "./sports/refresh-button";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
 import { useScrollMemory, useView } from "@/lib/view";
+import { HomeExperiences, SPORTS_PLUGINS } from "@/views/experiences/home-experiences";
 import type { EsportsMatch } from "@/lib/sports/esports-feeds";
 import { officialBroadcastSource } from "@/lib/sports/esports-streams";
 import { getGroupLabel, getLeagueLabel, type SportsGame } from "@/lib/sports/espn";
@@ -521,6 +522,17 @@ function SportsHubView({ active = false }: { active?: boolean }) {
                 />
               </div>
             )}
+            <div className="sh-body sh-lead-experiences">
+              <HomeExperiences
+                active={active}
+                plugins={SPORTS_PLUGINS}
+                onSports={() =>
+                  scrollRef.current
+                    ?.querySelector('[data-sports-shelf="top10"]')
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              />
+            </div>
           </>
         )}
         <header className={`sh-masthead${lead ? " sh-masthead-below" : ""}`}>

@@ -1,4 +1,4 @@
-import { HomeExperiences } from "@/views/experiences/home-experiences";
+import { HOME_PLUGINS, HomeExperiences } from "@/views/experiences/home-experiences";
 import { useExperiences } from "@/lib/experiences/use-experiences";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Home } from "@/views/home";
@@ -94,6 +94,7 @@ export function SpooktoberHome({
             <HomeExperiences
               key={profileId}
               active={active && screen === "home"}
+              plugins={HOME_PLUGINS}
               spooktober={
                 available && preferences.enabled.spooktober ? (
                   <SpooktoberInvitation

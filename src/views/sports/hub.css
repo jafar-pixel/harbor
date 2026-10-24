@@ -3583,3 +3583,11 @@
 .sh-frame-wallpaper > .sports-hub {
   background: transparent;
 }
+
+/* Sports plugins (Your Game Day, The Postseason) sit between Top 10 and the hub; empty when off. */
+.sports-hub .sh-lead-experiences {
+  padding-top: 24px;
+}
+.sports-hub .sh-lead-experiences:empty {
+  display: none;
+}
