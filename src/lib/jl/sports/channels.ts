@@ -219,7 +219,36 @@ export function networkChannel(network: string, index: SportsChannelIndex): Iptv
 }
 
 /** The network's channels in the playlist (its quality versions), best picture first. */
+// A provider's list runs to tens of thousands of channels, and every game on a network asks for
+// the same scan, so results are kept per index (a new index, from new channels or a new guide
+// window, starts empty).
+const networkCache = new WeakMap<SportsChannelIndex, Map<string, IptvChannel[]>>();
+const gameCache = new WeakMap<SportsChannelIndex, Map<string, GameChannel[]>>();
+const LIVE_GUIDE_BUCKET_MS = 5 * 60000;
+
+function cacheFor<T>(
+  cache: WeakMap<SportsChannelIndex, Map<string, T>>,
+  index: SportsChannelIndex,
+) {
+  let map = cache.get(index);
+  if (!map) {
+    map = new Map();
+    cache.set(index, map);
+  }
+  return map;
+}
+
 export function networkChannels(network: string, index: SportsChannelIndex): IptvChannel[] {
+  const cache = cacheFor(networkCache, index);
+  let found = cache.get(network);
+  if (!found) {
+    found = scanNetworkChannels(network, index);
+    cache.set(network, found);
+  }
+  return found;
+}
+
+function scanNetworkChannels(network: string, index: SportsChannelIndex): IptvChannel[] {
   if (isStreamingOnly(network)) return [];
   for (const term of searchTerms(network)) {
     const word = escapeRegex(term.trim());
@@ -277,6 +306,26 @@ export function channelsForGame(
   index: SportsChannelIndex,
   now: Date,
 ): GameChannel[] {
+  // Only a live game's guide match depends on the time; it is re-read every five minutes.
+  const key = [
+    game.league,
+    game.id,
+    game.state,
+    game.startMs,
+    game.network ?? "",
+    (game.broadcasts ?? []).join("|"),
+    game.state === "in" ? Math.floor(now.getTime() / LIVE_GUIDE_BUCKET_MS) : "",
+  ].join(":");
+  const cache = cacheFor(gameCache, index);
+  let found = cache.get(key);
+  if (!found) {
+    found = matchGameChannels(game, index, now);
+    cache.set(key, found);
+  }
+  return found;
+}
+
+function matchGameChannels(game: SportsGame, index: SportsChannelIndex, now: Date): GameChannel[] {
   const events = eventChannels(game, index).sort((a, b) => byQuality(a.channel, b.channel));
   const networks = [
     ...new Set([game.network, ...(game.broadcasts ?? [])].filter((name): name is string => !!name)),
