@@ -113,7 +113,17 @@ export const WATCH_PROVIDERS: WatchProvider[] = [
     logo: "https://www.tntsports.co.uk/favicon.ico",
     matches: ["tnt sports"],
   },
+  {
+    id: "boxcast",
+    name: "BoxCast",
+    url: "https://boxcast.tv/",
+    logo: "https://boxcast.tv/img/boxcast_logo_teal_square.png",
+    matches: ["boxcast"],
+  },
 ];
+
+/** Offered on every game: many schools (Gallaudet among them) stream their own games on BoxCast. */
+const ALWAYS = ["boxcast"];
 
 export function watchProviders(game: SportsGame) {
   const names = (game.broadcasts ?? []).map((name) => name.toLowerCase());
@@ -149,6 +159,12 @@ export function watchProviders(game: SportsGame) {
     ...listed,
     ...WATCH_PROVIDERS.filter(
       (provider) => suggested.includes(provider.id) && !listed.includes(provider),
+    ),
+    ...WATCH_PROVIDERS.filter(
+      (provider) =>
+        ALWAYS.includes(provider.id) &&
+        !listed.includes(provider) &&
+        !suggested.includes(provider.id),
     ),
   ].map((provider) => ({ ...provider, listed: listed.includes(provider) }));
 }

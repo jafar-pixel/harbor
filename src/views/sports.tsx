@@ -39,7 +39,7 @@ import {
 import { SportsAccessGate } from "./sports/access-gate";
 import { SportsNoProviderNote } from "./sports/no-provider-note";
 import { SportsPersonalizeHint } from "./sports/personalize-hint";
-import { followedGamesThisWeek, selectTopGames } from "@/lib/jl/sports/gameday";
+import { followedGamesForTop, selectTopGames } from "@/lib/jl/sports/gameday";
 import { isFavoriteGame, rankGames } from "@/lib/jl/sports/rank";
 import { effectiveTeams, useJlFavoritePlayers } from "@/lib/jl/sports/favorites";
 import { useHubTeams } from "./live/live-home/jl-sports/use-jl-sports";
@@ -367,7 +367,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
           now: pageNow,
           prefs: rankedPrefs,
         }),
-        followedGamesThisWeek(rankedPool, pageFavorites, pageNow),
+        followedGamesForTop(rankedPool, pageFavorites, pageNow),
       ).map((item) => ({ ...item, channels: jl.sports.channelsFor(item.game) }))
     : [];
   const pageTicker = jl.sports.ticker.filter((item) => allowsGame(item.game));

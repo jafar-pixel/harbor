@@ -31,6 +31,7 @@ import {
 } from "@/lib/jl/sports/sport-priorities";
 import { useVisionVersion, vision, visionTeamFor } from "@/lib/jl/sports/vision";
 import {
+  followedGamesForTop,
   followedGamesThisWeek,
   selectTopGames,
   teamsMissingFromScoreboard,
@@ -256,7 +257,7 @@ export function useJlSports(params: {
       now,
       prefs,
     });
-    const followed = followedGamesThisWeek(games, favorites, now);
+    const followed = followedGamesForTop(games, favorites, now);
     const top: JlHubGame[] = selectTopGames(ranked, followed).map((r) => ({
       ...r,
       channels: channelsOf(r.game),
