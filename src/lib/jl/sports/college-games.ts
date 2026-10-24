@@ -1,6 +1,6 @@
 import type { SportsGame, SportsSide } from "../../sports/espn-types.ts";
 import type { College } from "./colleges.ts";
-import type { JlFavoriteTeam } from "./rank.ts";
+import { isFavoriteSide, type JlFavoriteTeam } from "./rank.ts";
 import { sportKey, type SchoolEvent } from "./sidearm.ts";
 import { providerKey, type VisionTeam } from "./vision-branding.ts";
 import { normalizeSchool } from "./vision-cfbd-link.ts";
@@ -169,4 +169,75 @@ export function linkCollegesToVision(
     if (orgId) links.set(providerKey("ncaa", "college", orgId), teams[0].key);
   }
   return links;
+}
+
+/** A followed ESPN team and the school whose own calendar fills in its schedule. */
+export type SchoolLink = { team: JlFavoriteTeam; college: College };
+
+/**
+ * The school behind a followed ESPN college football team ("Gallaudet Bison" → Gallaudet
+ * University), when exactly one school matches. FBS schools are skipped: ESPN carries their
+ * whole schedule.
+ */
+export function collegeForEspnTeam(
+  team: JlFavoriteTeam,
+  colleges: readonly College[],
+): College | null {
+  if (team.league !== "NCAAF" || !/^\d+$/.test(team.id) || !team.name) return null;
+  const named = { ...team, id: "" };
+  const matches = colleges.filter(
+    (c) =>
+      !!c.site &&
+      c.subdivision !== "FBS" &&
+      isFavoriteSide({ name: collegeShortName(c.name), id: "" }, "NCAAF", [named]),
+  );
+  return matches.length === 1 ? matches[0] : null;
+}
+
+const SAME_GAME_MS = 12 * 3600_000;
+
+/**
+ * Games from linked schools' calendars, merged into ESPN's: a school game ESPN also lists adds
+ * its stream to ESPN's game; one ESPN lacks (a club opponent, say) joins the list as the followed
+ * ESPN team's game, so Game Day and the Top 10 count it.
+ */
+export function mergeSchoolGames(
+  espn: readonly SportsGame[],
+  school: readonly SportsGame[],
+  links: readonly SchoolLink[],
+): SportsGame[] {
+  const out = [...espn];
+  for (const game of school) {
+    const collegeId = collegeIdOfGame(game);
+    const link = links.find((l) => l.college.id === collegeId);
+    if (!link) {
+      out.push(game);
+      continue;
+    }
+    const schoolSide = collegeTeamId(link.college);
+    const side = (s: SportsSide): SportsSide =>
+      s.id === schoolSide ? { ...s, id: link.team.id } : s;
+    const adopted = { ...game, home: side(game.home), away: side(game.away) };
+    const twin = out.findIndex(
+      (g) =>
+        g.source !== SCHOOL_SOURCE &&
+        g.league === adopted.league &&
+        (g.home.id === link.team.id || g.away.id === link.team.id) &&
+        Math.abs(g.startMs - adopted.startMs) < SAME_GAME_MS,
+    );
+    if (twin < 0) {
+      out.push(adopted);
+      continue;
+    }
+    const espnGame = out[twin];
+    if (adopted.stream && !espnGame.stream) {
+      out[twin] = {
+        ...espnGame,
+        stream: adopted.stream,
+        network: espnGame.network ?? adopted.network,
+        broadcasts: [...new Set([...(espnGame.broadcasts ?? []), ...(adopted.broadcasts ?? [])])],
+      };
+    }
+  }
+  return out;
 }
