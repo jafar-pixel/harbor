@@ -10,6 +10,7 @@ import {
 } from "@/lib/jl/sports/college-data";
 import { toggleFollowCollege, useFollowedColleges } from "@/lib/jl/sports/college-follows";
 import { collegeFavorite, collegeTeamId } from "@/lib/jl/sports/college-games";
+import type { College } from "@/lib/jl/sports/colleges";
 import { toggleFavoriteTeam, useJlSportsFavorites } from "@/lib/jl/sports/favorites";
 import type { SportsPage } from "@/lib/jl/sports/pages";
 import {
