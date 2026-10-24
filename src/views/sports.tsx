@@ -18,6 +18,7 @@ import { syncSportsReminders } from "@/lib/sports/reminders";
 import { diverseEvents, featuredEvents } from "@/lib/sports/hub-discovery";
 import { currentLiveGames, liveDateRange, liveScoreboardKeys } from "@/lib/sports/live-schedule";
 import { eventCards, mergeSlices } from "@/lib/sports/hub-cache";
+import { sportsHomeHidden } from "@/lib/sports/home-layout";
 import { HubRow } from "./sports/hub-cards";
 import { HubCarousel } from "./sports/hub-carousel";
 import { HubPitchSpotlight } from "./sports/hub-pitch-spotlight";
@@ -434,6 +435,9 @@ function SportsHubView({ active = false }: { active?: boolean }) {
     setGroup("all");
   };
   const wallpaperStyle = useSportsPageWallpaper();
+  // For you leads with the Sports Wallpaper slider and Top 10, above the Sports Hub itself.
+  const lead = tab === "home" && group !== "esports";
+  const homeHidden = sportsHomeHidden(settings.sportsHomeHidden);
   const busy =
     tab !== "hot" &&
     tab !== "explore" &&
@@ -476,7 +480,42 @@ function SportsHubView({ active = false }: { active?: boolean }) {
       aria-label={t("Sports")}
       style={wallpaperStyle}
     >
-      <header className="sh-masthead">
+      {lead && (
+        <>
+          {!homeHidden.includes("hero") && jlHero && (
+            <div data-sports-shelf="hero">
+              <JlSportsHero
+                top={pageTop}
+                teamSlides={jl.sports.teamSlides.filter((s) =>
+                  scopeTags.has(s.team.league === "NCAAB" ? "NCAA" : s.team.league),
+                )}
+                playerSlides={jl.sports.playerSlides.filter((s) =>
+                  scopeTags.has(s.player.league === "NCAAB" ? "NCAA" : s.player.league),
+                )}
+                featured={jlFeatured}
+                actions={jl.actions}
+                onOpenGame={open}
+                bleed
+                flush
+              />
+            </div>
+          )}
+          {!homeHidden.includes("top10") && jlAll && (
+            <div className="sh-body sh-lead-top10" data-sports-shelf="top10">
+              <JlSportsHub
+                top={pageTop}
+                ticker={pageTicker}
+                favorites={jl.sports.teams}
+                actions={jl.actions}
+                onOpenGame={open}
+                onLeagues={jlLeagues}
+                shortcuts={false}
+              />
+            </div>
+          )}
+        </>
+      )}
+      <header className={`sh-masthead${lead ? " sh-masthead-below" : ""}`}>
         <div>
           <span className="sh-eyebrow">JL SPORTS</span>
           <h1>{t("Your Sports Hub")}</h1>
@@ -658,38 +697,8 @@ function SportsHubView({ active = false }: { active?: boolean }) {
         {tab === "home" && group !== "esports" && (
           <SportsHomeLayout
             onSports={() => setSetup(true)}
+            pinned={["hero", "top10"]}
             items={[
-              {
-                id: "hero",
-                content: jlHero ? (
-                  <JlSportsHero
-                    top={pageTop}
-                    teamSlides={jl.sports.teamSlides.filter((s) =>
-                      scopeTags.has(s.team.league === "NCAAB" ? "NCAA" : s.team.league),
-                    )}
-                    playerSlides={jl.sports.playerSlides.filter((s) =>
-                      scopeTags.has(s.player.league === "NCAAB" ? "NCAA" : s.player.league),
-                    )}
-                    featured={jlFeatured}
-                    actions={jl.actions}
-                    onOpenGame={open}
-                  />
-                ) : null,
-              },
-              {
-                id: "top10",
-                content: jlAll ? (
-                  <JlSportsHub
-                    top={pageTop}
-                    ticker={pageTicker}
-                    favorites={jl.sports.teams}
-                    actions={jl.actions}
-                    onOpenGame={open}
-                    onLeagues={jlLeagues}
-                    shortcuts={false}
-                  />
-                ) : null,
-              },
               {
                 id: "stories",
                 content: jlAll ? (
