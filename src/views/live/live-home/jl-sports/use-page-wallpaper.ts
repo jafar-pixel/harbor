@@ -20,6 +20,5 @@ export function useSportsPageWallpaper(): CSSProperties | undefined {
     backgroundImage: `linear-gradient(${veil}, ${veil}), url(${JSON.stringify(src)})`,
     backgroundSize: "cover",
     backgroundPosition: "center",
-    backgroundAttachment: "fixed",
   };
 }
