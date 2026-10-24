@@ -11,6 +11,7 @@ import { SplashStep } from "@/components/onboarding/splash-step";
 import { useBigPicture } from "@/lib/big-picture";
 import { useT } from "@/lib/i18n";
 import { jlAccountsConfigured, useJlSession } from "@/lib/jl/account/client";
+import { useJlLink } from "@/lib/jl/account/sync";
 import { useOnboarding } from "@/lib/onboarding";
 import { isPlaceholderName, useProfiles } from "@/lib/profiles";
 import { useSettings } from "@/lib/settings";
@@ -27,6 +28,7 @@ export function OnboardingModal() {
   const { settings } = useSettings();
   const { activeProfile } = useProfiles();
   const session = useJlSession();
+  const jlLink = useJlLink();
   const t = useT();
   const [stepIdx, setStepIdx] = useState(0);
   const [closing, setClosing] = useState(false);
@@ -41,6 +43,16 @@ export function OnboardingModal() {
       document.body.style.overflow = "";
     };
   }, [onboarded, bigPicture]);
+
+  // Signed in with a JL profile linked: this account was set up before, on this device or another,
+  // and its profile, preferences, library and keys sync from the account. Setup has nothing to ask.
+  const returning = !!session && !!jlLink;
+  useEffect(() => {
+    if (onboarded || bigPicture || !returning) return;
+    setClosing(true);
+    const id = window.setTimeout(finishOnboarding, 320);
+    return () => window.clearTimeout(id);
+  }, [onboarded, bigPicture, returning, finishOnboarding]);
 
   // Big Picture ships its own ten-foot setup at z-900. Leaving this mounted
   // underneath it keeps a second focusable dialog in native tab order and a
