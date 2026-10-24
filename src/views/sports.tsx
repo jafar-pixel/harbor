@@ -67,6 +67,7 @@ import { useJlSportsPage } from "./live/live-home/jl-sports/use-jl-sports-page";
 const NO_CHANNELS: IptvChannel[] = [];
 
 const HotEvents = lazy(() => import("./sports/hot-events").then((m) => ({ default: m.HotEvents })));
+const Brackets = lazy(() => import("./sports/brackets").then((m) => ({ default: m.Brackets })));
 const EsportsMatchRail = lazy(() =>
   import("./sports/esports-match-rail").then((m) => ({ default: m.EsportsMatchRail })),
 );
@@ -128,6 +129,8 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   useScrollMemory("sports", scrollRef, active);
   const { ref: sportRail, handlers: sportHandlers } = useDragScroll<HTMLDivElement>();
   const [tab, setTab] = useState("home");
+  // Tabs that replace the schedule widgets with their own page.
+  const standalone = tab === "hot" || tab === "brackets";
   const [requestedGroup, setGroup] = useState("all");
   const [browsing, setBrowsing] = useState(false);
   const [esportsHeroTarget, setEsportsHeroTarget] = useState<HTMLDivElement | null>(null);
@@ -224,7 +227,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   const boardFeed = useSportsHub(
     boardLeagues,
     boardDay,
-    active && (tab === "live" || group !== "esports") && tab !== "hot" && tab !== "explore",
+    active && (tab === "live" || group !== "esports") && !standalone && tab !== "explore",
     refresh,
     tab === "live" ? "live" : "day",
   );
@@ -242,7 +245,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   const upcomingFeed = useSportsHub(
     upcomingLeagues,
     today,
-    active && group !== "esports" && tab !== "hot" && tab !== "live" && tab !== "explore",
+    active && group !== "esports" && !standalone && tab !== "live" && tab !== "explore",
     refresh,
     "upcoming",
   );
@@ -440,7 +443,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   const lead = tab === "home" && group !== "esports";
   const homeHidden = sportsHomeHidden(settings.sportsHomeHidden);
   const busy =
-    tab !== "hot" &&
+    !standalone &&
     tab !== "explore" &&
     (tab === "live" || group !== "esports") &&
     (board.pending > 0 || (tab !== "live" && upcoming.pending > 0));
@@ -549,6 +552,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
             ["schedule", "Schedule"],
             ["explore", "Explore sports"],
             ["hot", "Hot Events"],
+            ["brackets", "Brackets"],
           ].map(([key, label]) => (
             <button
               key={key}
@@ -565,7 +569,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               {t(label)}
             </button>
           ))}
-          {tab !== "hot" && (
+          {!standalone && (
             <span
               className="sh-update-status"
               role="status"
@@ -585,7 +589,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
         )}
         <div className="sh-body" ref={bodyRef}>
           <SportsNoProviderNote />
-          {tab !== "explore" && tab !== "hot" && tab !== "live" && (
+          {tab !== "explore" && !standalone && tab !== "live" && (
             <div
               ref={sportRail}
               {...sportHandlers}
@@ -627,7 +631,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               </button>
             </div>
           )}
-          {tab !== "explore" && tab !== "hot" && tab !== "live" && group !== "esports" && (
+          {tab !== "explore" && !standalone && tab !== "live" && group !== "esports" && (
             <>
               <div className="sh-date-dock">
                 <button
@@ -676,7 +680,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               </div>
             </>
           )}
-          {tab !== "hot" && group !== "esports" && (statusStale || failures > 0) && (
+          {!standalone && group !== "esports" && (statusStale || failures > 0) && (
             <div className="sh-feed-note" role="status">
               <span>
                 {t(
@@ -699,7 +703,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               </button>
             </div>
           )}
-          {tab !== "explore" && tab !== "hot" && tab !== "live" && group === "esports" && (
+          {tab !== "explore" && !standalone && tab !== "live" && group === "esports" && (
             <Suspense fallback={<SportsRailSkeleton />}>
               {browsing ? (
                 <EsportsArena active={active && !setup} refresh={refresh} />
@@ -887,6 +891,11 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               loading={board.pending > 0}
               failed={board.failed > 0}
             />
+          )}
+          {tab === "brackets" && (
+            <Suspense fallback={null}>
+              <Brackets active={active && !setup} />
+            </Suspense>
           )}
           {tab === "hot" && (
             <Suspense fallback={<SportsHotEventsSkeleton />}>
