@@ -9,8 +9,8 @@ import {
   useJlSportsFavorites,
 } from "@/lib/jl/sports/favorites";
 import { toggleFollowCollege, useFollowedColleges } from "@/lib/jl/sports/college-follows";
-import { collegeFavorite, collegeTeamId } from "@/lib/jl/sports/college-games";
-import { collegeOfTeamId, loadColleges } from "@/lib/jl/sports/college-data";
+import { collegeFavorite, collegeTeamId, schoolForEspnTeam } from "@/lib/jl/sports/college-games";
+import { bundledColleges, collegeOfTeamId, loadColleges } from "@/lib/jl/sports/college-data";
 import { divisionLabel, type College } from "@/lib/jl/sports/colleges";
 import { logoUrl } from "@/lib/jl/sports/sidearm";
 import { playerForFollow, searchTeamsAndPlayers } from "@/lib/jl/sports/people";
@@ -72,7 +72,11 @@ export function FollowPanel({ onClose }: { onClose: () => void }) {
   const followedColleges = useFollowedColleges();
 
   const q = query.trim();
-  const shown = q.length >= 2 ? hits : [];
+  // Division II/III schools (Gallaudet) are followed as schools, listed below, not as ESPN teams.
+  const shown =
+    q.length >= 2
+      ? hits.filter((hit) => hit.kind !== "team" || !schoolForEspnTeam(hit, bundledColleges()))
+      : [];
   const schools = useSchoolHits(q);
 
   useEffect(() => {

@@ -3,17 +3,16 @@ import assert from "node:assert/strict";
 // @ts-expect-error Node test types are intentionally outside the browser-only tsconfig.
 import test from "node:test";
 import {
+  asSchoolFollows,
   collegeFavorite,
-  collegeForEspnTeam,
   collegeGames,
   collegeIdOfGame,
   collegeShortName,
   linkCollegesToVision,
-  mergeSchoolGames,
+  schoolForEspnTeam,
   streamProvider,
 } from "../src/lib/jl/sports/college-games.ts";
 import type { College } from "../src/lib/jl/sports/colleges.ts";
-import type { SportsGame } from "../src/lib/sports/espn-types.ts";
 import type { SchoolEvent } from "../src/lib/jl/sports/sidearm.ts";
 import type { VisionTeam } from "../src/lib/jl/sports/vision-branding.ts";
 
@@ -139,49 +138,20 @@ test("stream hosts name their provider", () => {
   assert.equal(streamProvider("https://www.psucampusathletics.com/x/"), "School stream");
 });
 
-test("a followed ESPN college gets its school's games ESPN misses, and its streams", () => {
-  const team = { league: "NCAAF", id: "417", name: "Gallaudet Bison" };
-  const others: College[] = [
-    { ...GALLAUDET, id: "ncaa:1", name: "Galloway State", site: "gsu.example.com" },
-    { ...GALLAUDET, id: "ncaa:2", name: "Ohio State University", subdivision: "FBS" },
-  ];
-  assert.equal(collegeForEspnTeam(team, [GALLAUDET, ...others])?.id, GALLAUDET.id);
-  assert.equal(collegeForEspnTeam({ ...team, name: "Ohio State Buckeyes" }, others), null);
-
-  const now = Date.parse("2026-10-24T12:00:00Z");
-  const url = "https://boxcast.tv/view/football-gallaudet-vs-thaddeus-stevens-x";
-  const school = collegeGames(
-    GALLAUDET,
-    [
-      event({
-        id: "club",
-        opponent: "Thaddeus Stevens (Club)",
-        start: "2026-10-24T18:00:00.000Z",
-        stream: url,
-      }),
-      event({
-        id: "dean",
-        opponent: "Dean College",
-        start: "2026-10-10T17:00:00.000Z",
-        home: false,
-        stream: url,
-      }),
-    ],
-    now,
-  );
-  const espnDean: SportsGame = {
-    id: "401",
-    league: "NCAAF",
-    state: "post",
-    detail: "Final",
-    away: { id: "417", name: "Gallaudet Bison", abbr: "GAL", logo: "", score: "21", winner: false },
-    home: { id: "9", name: "Dean College", abbr: "DEA", logo: "", score: "45", winner: true },
-    startMs: Date.parse("2026-10-10T18:00:00Z"),
+test("a Division II/III school is followed as a school, never as an ESPN team", () => {
+  const espn = { league: "NCAAF", id: "417", name: "Gallaudet Bison" };
+  const fbs: College = {
+    ...GALLAUDET,
+    id: "ncaa:2",
+    name: "Ohio State University",
+    division: "I",
+    subdivision: "FBS",
   };
-  const merged = mergeSchoolGames([espnDean], school, [{ team, college: GALLAUDET }]);
-  assert.equal(merged.length, 2);
-  assert.equal(merged[0].stream, url, "ESPN's game gains the school's stream");
-  const club = merged[1];
-  assert.equal(club.home.id, "417", "the school game counts as the followed ESPN team's");
-  assert.equal(club.stream, url);
+  assert.equal(schoolForEspnTeam(espn, [GALLAUDET, fbs])?.id, GALLAUDET.id);
+  assert.equal(schoolForEspnTeam({ ...espn, id: "194", name: "Ohio State Buckeyes" }, [fbs]), null);
+  const buckeyes = { league: "NCAAF", id: "194", name: "Ohio State Buckeyes" };
+  assert.deepEqual(
+    asSchoolFollows([espn, buckeyes, collegeFavorite(GALLAUDET)], [GALLAUDET, fbs]),
+    [collegeFavorite(GALLAUDET), buckeyes],
+  );
 });

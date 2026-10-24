@@ -40,6 +40,8 @@ import { SportsAccessGate } from "./sports/access-gate";
 import { SportsNoProviderNote } from "./sports/no-provider-note";
 import { SportsPersonalizeHint } from "./sports/personalize-hint";
 import { followedGamesForTop, selectTopGames } from "@/lib/jl/sports/gameday";
+import { asSchoolFollows } from "@/lib/jl/sports/college-games";
+import { bundledColleges } from "@/lib/jl/sports/college-data";
 import { isFavoriteGame, rankGames } from "@/lib/jl/sports/rank";
 import { effectiveTeams, useJlFavoritePlayers } from "@/lib/jl/sports/favorites";
 import { useHubTeams } from "./live/live-home/jl-sports/use-jl-sports";
@@ -334,17 +336,21 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   );
   const scopeTags = new Set(HUB_LEAGUES.filter((l) => leagues.includes(l.key)).map((l) => l.tag));
   const allowsGame = (game: SportsGame) => scopeTags.has(game.league);
-  const pageFavorites = [
-    ...discoveryTeams.map((team) => ({
-      ...team,
-      league: team.league === "NCAAB" ? "NCAA" : team.league,
-    })),
-    ...fav.teams.map((team) => ({
-      id: team.id,
-      name: team.name,
-      league: HUB_LEAGUES.find((l) => l.key === team.leagueKey)?.tag ?? team.leagueKey,
-    })),
-  ];
+  // Division II/III schools count as their school follow (discoveryTeams), not as ESPN teams.
+  const pageFavorites = asSchoolFollows(
+    [
+      ...discoveryTeams.map((team) => ({
+        ...team,
+        league: team.league === "NCAAB" ? "NCAA" : team.league,
+      })),
+      ...fav.teams.map((team) => ({
+        id: team.id,
+        name: team.name,
+        league: HUB_LEAGUES.find((l) => l.key === team.leagueKey)?.tag ?? team.leagueKey,
+      })),
+    ],
+    bundledColleges(),
+  );
   const rankedPool = mergeSlices([
     { at: 1, games: all },
     { at: 2, games: scopedJlGames },

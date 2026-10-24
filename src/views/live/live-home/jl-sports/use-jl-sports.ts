@@ -10,15 +10,14 @@ import {
   effectiveTeams,
   useJlFavoritePlayers,
   useJlSportsFavorites,
+  writeJlFavorites,
   type JlFavoritePlayer,
 } from "@/lib/jl/sports/favorites";
 import { bundledColleges, collegeOfTeamId, fetchCalendar } from "@/lib/jl/sports/college-data";
 import { useFollowedColleges } from "@/lib/jl/sports/college-follows";
 import {
+  asSchoolFollows,
   collegeFavorite,
-  collegeForEspnTeam,
-  mergeSchoolGames,
-  type SchoolLink,
   collegeGames,
   linkCollegesToVision,
   SCHOOL_SOURCE,
@@ -47,6 +46,7 @@ import {
   type RankedGame,
 } from "@/lib/jl/sports/rank";
 import { useActiveKid } from "@/lib/profiles";
+import { useFavourites } from "@/lib/sports/favourites";
 import { useSettings } from "@/lib/settings";
 import type { SportsGame, SportsSide } from "@/lib/sports/espn";
 import { useOddsApiGames } from "./use-sports-extras";
@@ -96,17 +96,31 @@ export function useSportPrefs(): SportPrefs {
   );
 }
 
-/** The teams the hub follows: ESPN favorites plus colleges followed on their College page. */
+/**
+ * The teams the hub follows: ESPN favorites plus colleges followed on their College page. A
+ * Division II/III school saved as an ESPN team (Gallaudet) is moved to its school follow, so its
+ * games come from its own site.
+ */
 export function useHubTeams(): JlFavoriteTeam[] {
-  const teams = useJlSportsFavorites();
+  const saved = useJlSportsFavorites();
+  const teams = useMemo(() => asSchoolFollows(saved, bundledColleges()), [saved]);
+  useEffect(() => {
+    if (teams.length !== saved.length || teams.some((t, i) => t.id !== saved[i].id))
+      writeJlFavorites({ teams });
+  }, [teams, saved]);
   const colleges = useFollowedColleges();
-  return useMemo(
-    () => [
-      ...teams,
-      ...colleges.map(collegeFavorite).filter((c) => !teams.some((f) => f.id === c.id)),
-    ],
-    [teams, colleges],
-  );
+  // A school picked in the Sports Hub's team picker (its own favourites) is followed as a school too.
+  const harbor = useFavourites().teams;
+  return useMemo(() => {
+    const picked = asSchoolFollows(
+      harbor.map((t) => ({ league: t.leagueKey, id: t.id, name: t.name })),
+      bundledColleges(),
+    ).filter((f) => f.id.startsWith("ncaa-"));
+    const out = [...teams];
+    for (const f of [...colleges.map(collegeFavorite), ...picked])
+      if (!out.some((t) => t.id === f.id)) out.push(f);
+    return out;
+  }, [teams, colleges, harbor]);
 }
 
 /** A followed college's games from its own athletics site (college-games.ts). */
@@ -143,24 +157,13 @@ export function useJlGames(favorites: JlFavoriteTeam[], enabled = true): SportsG
   const favoritesKey = favorites.map((f) => `${f.league}:${f.id}`).join(",");
   const deviceColleges = useFollowedColleges();
   // Schools followed with the account are favorites with an "ncaa-<id>" team id.
-  // A followed ESPN college team (non-FBS) also reads its school's calendar, which lists games
-  // ESPN misses (club opponents) and each game's stream.
-  const { colleges, links } = useMemo(() => {
+  const colleges = useMemo(() => {
     const out = [...deviceColleges];
-    const found: SchoolLink[] = [];
-    const add = (college: College) => {
-      if (!out.some((c) => c.id === college.id)) out.push(college);
-    };
     for (const f of favorites) {
-      const school = collegeOfTeamId(f.id);
-      if (school) add(school);
-      const linked = school ? null : collegeForEspnTeam(f, bundledColleges());
-      if (linked) {
-        add(linked);
-        found.push({ team: f, college: linked });
-      }
+      const college = collegeOfTeamId(f.id);
+      if (college && !out.some((c) => c.id === college.id)) out.push(college);
     }
-    return { colleges: out, links: found };
+    return out;
   }, [deviceColleges, favorites]);
   const collegesKey = colleges.map((c) => c.id).join(",");
   const visionVersion = useVisionVersion();
@@ -184,7 +187,7 @@ export function useJlGames(favorites: JlFavoriteTeam[], enabled = true): SportsG
       ]);
       const seen = new Set<string>();
       const merged: SportsGame[] = [];
-      for (const g of mergeSchoolGames([...boards, ...extra], school, links)) {
+      for (const g of [...boards, ...extra, ...school]) {
         const key = `${g.league}:${g.id}`;
         if (seen.has(key)) continue;
         seen.add(key);
