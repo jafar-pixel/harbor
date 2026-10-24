@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { EpgIndex, IptvChannel } from "@/lib/iptv/types";
 import {
   buildSportsChannelIndex,
@@ -64,6 +64,9 @@ const TICKER_GAMES = 16;
 const DAY_MS = 24 * 3600000;
 // Event channel names carry no year; the index is rebuilt at most every ten minutes.
 const INDEX_BUCKET_MS = 10 * 60000;
+// A guide download publishes partial results every few hundred milliseconds, and each one would
+// rebuild the index over every channel and listing; take at most one a minute.
+const GUIDE_REBUILD_MS = 60_000;
 
 export type JlHubGame = RankedGame & { channels: GameChannel[] };
 
@@ -179,6 +182,23 @@ export function useJlGames(favorites: JlFavoriteTeam[], enabled = true): SportsG
   return useMemo(() => games.map(withVisionMascot), [games, visionVersion]);
 }
 
+/** The first guide, and a cleared one, apply at once; later updates at most every minute. */
+function useThrottledGuide(epg: EpgIndex | null): EpgIndex | null {
+  const [shown, setShown] = useState(epg);
+  const appliedAt = useRef(0);
+  useEffect(() => {
+    if (epg === shown) return;
+    const wait =
+      !shown || !epg ? 0 : Math.max(0, appliedAt.current + GUIDE_REBUILD_MS - Date.now());
+    const id = window.setTimeout(() => {
+      appliedAt.current = Date.now();
+      setShown(epg);
+    }, wait);
+    return () => window.clearTimeout(id);
+  }, [epg, shown]);
+  return shown;
+}
+
 /** Which of the viewer's channels carry each game; empty while Smart Channel Finder is off. */
 export function useSportsChannelIndex(
   channels: IptvChannel[],
@@ -188,9 +208,11 @@ export function useSportsChannelIndex(
   const { settings } = useSettings();
   const finder = settings.sportsChannelFinder;
   const bucket = Math.floor(nowMs / INDEX_BUCKET_MS);
+  const guide = useThrottledGuide(epg);
   return useMemo(
-    () => buildSportsChannelIndex(finder ? channels : [], epg, new Date(bucket * INDEX_BUCKET_MS)),
-    [channels, epg, bucket, finder],
+    () =>
+      buildSportsChannelIndex(finder ? channels : [], guide, new Date(bucket * INDEX_BUCKET_MS)),
+    [channels, guide, bucket, finder],
   );
 }
 

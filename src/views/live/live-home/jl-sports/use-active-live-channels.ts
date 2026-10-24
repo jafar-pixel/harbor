@@ -18,9 +18,12 @@ const EMPTY_SOURCES: IptvPlaylistSource[] = [];
 /**
  * The viewer's active IPTV provider as Live TV shows it: its channels, guide and the play action
  * Live TV uses, so sports surfaces outside Live TV play the viewer's own channels. Loads nothing
- * while inactive; the shared playlist and guide caches keep what was already loaded.
+ * while inactive; the shared playlist and guide caches keep what was already loaded. `guide: false`
+ * skips the TV guide: the score ticker runs on every page and only needs channel names, and a
+ * guide download publishes partial results several times a second.
  */
-export function useActiveLiveChannels(active: boolean) {
+export function useActiveLiveChannels(active: boolean, opts: { guide?: boolean } = {}) {
+  const guide = opts.guide !== false;
   const { settings } = useSettings();
   const sources = usePlaylists();
 
@@ -43,8 +46,12 @@ export function useActiveLiveChannels(active: boolean) {
     () => sources.filter((s) => s.kind === "epg").map((s) => s.epgUrl || s.url),
     [sources],
   );
-  const { index: baseEpg } = useEpg(active ? activeSource : null, epgOnlyUrls);
-  const epg = useXtreamEpgFallback(activeSource, playlist?.channels ?? EMPTY_CHANNELS, baseEpg);
+  const { index: baseEpg } = useEpg(active && guide ? activeSource : null, epgOnlyUrls);
+  const epg = useXtreamEpgFallback(
+    guide ? activeSource : null,
+    playlist?.channels ?? EMPTY_CHANNELS,
+    baseEpg,
+  );
   const nowMs = useNowTick(30_000);
 
   const favorites = useFavorites();
