@@ -1204,20 +1204,28 @@ export function ViewProvider({ children }: { children: ReactNode }) {
   );
 
   const openGames = useCallback(() => {
-    setNavStack(cur => cur.at(-1)?.kind === "games" ? cur : pushFrame(cur, { kind: "games" }));
+    setNavStack((cur) => (cur.at(-1)?.kind === "games" ? cur : pushFrame(cur, { kind: "games" })));
   }, [setNavStack]);
 
-  const openSportsEvent = useCallback((event?: EsportsMatch) => {
-    setNavStack(cur => pushFrame(cur, { kind: "sports", ...(event ? { esportsEvent: event } : {}) }));
-  }, [setNavStack]);
+  const openSportsEvent = useCallback(
+    (event?: EsportsMatch) => {
+      setNavStack((cur) =>
+        pushFrame(cur, { kind: "sports", ...(event ? { esportsEvent: event } : {}) }),
+      );
+    },
+    [setNavStack],
+  );
 
   const openMatchDetail = useCallback(
     (game: SportsGame, eventGames?: SportsGame[]) => {
-      // A followed college's game from its own site has no ESPN match centre; its College
-      // page holds its schedule, results and streams.
+      // A followed college's game from its own site has no ESPN match centre; it opens the
+      // school's game centre (box score, recap, stream, series history) from its site.
       const collegeId = collegeIdOfGame(game);
       if (collegeId) {
-        const page: SportsPage = { kind: "college", collegeId };
+        const eventId = game.id.slice(`school:${collegeId}:`.length);
+        const page: SportsPage = eventId
+          ? { kind: "school-game", collegeId, eventId }
+          : { kind: "college", collegeId };
         setNavStack((cur) => {
           const t = cur[cur.length - 1];
           if (t.kind === "sports-page" && sportsPageKey(t.page) === sportsPageKey(page)) return cur;
@@ -1227,7 +1235,14 @@ export function ViewProvider({ children }: { children: ReactNode }) {
       }
       setNavStack((cur) => {
         const t = cur[cur.length - 1];
-        if (t.kind === "match-detail" && t.game.id === game.id && t.game.league === game.league && t.game.source === game.source && !!t.eventGames === !!eventGames) return cur;
+        if (
+          t.kind === "match-detail" &&
+          t.game.id === game.id &&
+          t.game.league === game.league &&
+          t.game.source === game.source &&
+          !!t.eventGames === !!eventGames
+        )
+          return cur;
         return pushFrame(cur, { kind: "match-detail", game, eventGames });
       });
     },

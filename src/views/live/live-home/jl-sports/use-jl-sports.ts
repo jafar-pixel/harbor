@@ -13,7 +13,12 @@ import {
   writeJlFavorites,
   type JlFavoritePlayer,
 } from "@/lib/jl/sports/favorites";
-import { bundledColleges, collegeOfTeamId, fetchCalendar } from "@/lib/jl/sports/college-data";
+import {
+  bundledColleges,
+  collegeOfTeamId,
+  fetchCalendar,
+  fetchScheduleLinks,
+} from "@/lib/jl/sports/college-data";
 import { useFollowedColleges } from "@/lib/jl/sports/college-follows";
 import {
   asSchoolFollows,
@@ -129,8 +134,12 @@ async function schoolGames(colleges: readonly College[]): Promise<SportsGame[]> 
   const lists = await Promise.all(
     colleges.map(async (c) => {
       if (!c.site) return [];
-      const cal = await fetchCalendar(c.site).catch(() => null);
-      return cal ? collegeGames(c, cal.events, now, { logo: logoUrl(c.site) }) : [];
+      // The hub covers football; its schedule page adds opponent logos, box scores and recaps.
+      const [cal, links] = await Promise.all([
+        fetchCalendar(c.site).catch(() => null),
+        fetchScheduleLinks(c.site, "football").catch(() => undefined),
+      ]);
+      return cal ? collegeGames(c, cal.events, now, { logo: logoUrl(c.site), links }) : [];
     }),
   );
   return lists.flat();

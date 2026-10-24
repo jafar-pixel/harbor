@@ -9,6 +9,8 @@ import {
   findCollege,
 } from "@/lib/jl/sports/college-data";
 import { toggleFollowCollege, useFollowedColleges } from "@/lib/jl/sports/college-follows";
+import { collegeFavorite, collegeTeamId } from "@/lib/jl/sports/college-games";
+import { toggleFavoriteTeam, useJlSportsFavorites } from "@/lib/jl/sports/favorites";
 import type { SportsPage } from "@/lib/jl/sports/pages";
 import {
   calendarSports,
@@ -74,7 +76,17 @@ export function CollegePage({ page }: { page: Extract<SportsPage, { kind: "colle
   const { upcoming, results } = splitSeason(list, now);
   const next = upcoming[0];
   const record = sport ? seasonRecord(list) : null;
-  const following = followed.some((c) => c.id === page.collegeId);
+  // Schools follow with the account ("ncaa-<id>"); older follows were kept on this device.
+  const teams = useJlSportsFavorites();
+  const accountFollow = teams.find((f) => f.id === collegeTeamId({ id: page.collegeId }));
+  const deviceFollow = followed.some((c) => c.id === page.collegeId);
+  const following = !!accountFollow || deviceFollow;
+  const toggleFollow = (school: College) => {
+    if (following) {
+      if (accountFollow) toggleFavoriteTeam(accountFollow);
+      if (deviceFollow) toggleFollowCollege(school);
+    } else toggleFavoriteTeam(collegeFavorite(school));
+  };
   const stories = news.state === "ready" ? newsForSport(news.value, sport) : [];
   const title = college?.name ?? page.name ?? "";
 
@@ -151,7 +163,7 @@ export function CollegePage({ page }: { page: Extract<SportsPage, { kind: "colle
             )}
             <button
               type="button"
-              onClick={() => toggleFollowCollege(college)}
+              onClick={() => toggleFollow(college)}
               aria-pressed={following}
               className={`flex h-10 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition-colors ${
                 following

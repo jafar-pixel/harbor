@@ -9,6 +9,8 @@ export type SportsPage =
   | { kind: "colleges" }
   | { kind: "conferences"; group?: string; team?: string }
   | { kind: "college"; collegeId: string; name?: string }
+  /** One game from a school's own site; `eventId` is its calendar event id ("g:6583"). */
+  | { kind: "school-game"; collegeId: string; eventId: string; name?: string }
   | { kind: "student"; site: string; sport: string; studentId: string; name?: string };
 
 /** Stable identity for a page, used for navigation and React keys. */
@@ -32,6 +34,8 @@ export function sportsPageKey(p: SportsPage): string {
       return "conferences";
     case "college":
       return `college:${p.collegeId}`;
+    case "school-game":
+      return `school-game:${p.collegeId}:${p.eventId}`;
     case "student":
       return `student:${p.site}:${p.sport}:${p.studentId}`;
   }
