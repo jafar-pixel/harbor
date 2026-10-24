@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { HomeExperiences, MOVIES_PLUGINS } from "@/views/experiences/home-experiences";
 import { BackToTop } from "@/components/back-to-top";
 import { CatalogRows } from "@/components/catalog/catalog-rows";
 import { CatalogCustomizeBar } from "@/components/catalog/customize-bar";
@@ -303,6 +304,7 @@ export function Movies({ active = true }: { active?: boolean }) {
             onToggleEdit={() => pageRows.setEditMode((v) => !v)}
             onReset={() => pageRows.persist(resetPageRows())}
           />
+          <HomeExperiences active={active} plugins={MOVIES_PLUGINS} />
           {!settings.tmdbKey && <TmdbNudge />}
           {shownLetterboxdRows.map((row, i) => {
             const catalogId = row.key.replace("letterboxd-", "");
