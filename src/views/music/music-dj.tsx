@@ -15,6 +15,7 @@ import {
 import { useT } from "@/lib/i18n";
 import { useJlSession } from "@/lib/jl/account/client";
 import {
+  djState,
   goTo,
   isLiked,
   playNext,
@@ -27,6 +28,7 @@ import {
 } from "@/lib/music/dj/session";
 import { VIBES, crossfade, type DjSong, type Vibe } from "@/lib/music/dj/vibes";
 import { YT_ENDED, YT_PLAYING, loadYouTube, type YtPlayer } from "@/lib/music/dj/youtube";
+import { onPauseDj, reportPlayhead } from "@/lib/music/dj/playhead";
 import { soundById } from "@/lib/music/sounds/catalog";
 import { loadMix } from "@/lib/music/sounds/engine";
 import { useSettings } from "@/lib/settings";
@@ -143,6 +145,19 @@ export function MusicDj({ visible }: { visible: boolean }) {
       const from = active.current;
       const a = players.current[from];
       const b = players.current[1 - from];
+      const on = djState().tracks[live.current.index];
+      reportPlayhead(
+        a && on?.video && loaded.current[from] === on.video.id
+          ? {
+              videoId: on.video.id,
+              artist: on.artist,
+              title: on.title,
+              position: a.getCurrentTime(),
+              paused: live.current.paused,
+              at: Date.now(),
+            }
+          : null,
+      );
       if (!a || !b || live.current.paused) return;
       const f = fade.current;
       if (f) {
@@ -176,7 +191,10 @@ export function MusicDj({ visible }: { visible: boolean }) {
         fade.current = { start: Date.now(), to: 1 - from, nextIndex: upNext };
       }
     }, TICK_MS);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearInterval(id);
+      reportPlayhead(null);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started]);
 
@@ -224,6 +242,17 @@ export function MusicDj({ visible }: { visible: boolean }) {
     }
     setPaused(!paused);
   };
+
+  // Joining a friend's lounge quiets the decks so only the lounge plays.
+  const pauseRef = useRef(togglePause);
+  pauseRef.current = togglePause;
+  useEffect(
+    () =>
+      onPauseDj(() => {
+        if (!live.current.paused) pauseRef.current();
+      }),
+    [],
+  );
 
   const changeVolume = (v: number) => {
     setVolume(v);

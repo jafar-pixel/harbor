@@ -412,6 +412,7 @@ const music: Record<string, string> = {
 
   "music.tab.forYou": "For you",
   "music.tab.dj": "AI DJ & Vibes",
+  "music.tab.lounge": "Lounge",
   "music.tab.friends": "Friends",
   "music.tab.moods": "Moods & Sounds",
   "music.tab.explore": "Explore",

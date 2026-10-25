@@ -1,0 +1,287 @@
+.music-lounge {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.music-lounge-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(236, 72, 153, 0.35), transparent 60%),
+    radial-gradient(120% 140% at 100% 100%, rgba(99, 102, 241, 0.4), transparent 60%),
+    var(--color-elevated);
+  color: var(--color-ink);
+}
+.music-lounge-hero h2,
+.music-lounge-bar h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+.music-lounge-hero p,
+.music-lounge-bar p {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--color-ink-muted);
+}
+.music-lounge-name {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 360px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-ink-subtle);
+}
+.music-lounge-name input {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 10px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-size: 14px;
+}
+.music-friends-form .music-lounge-code-input {
+  flex: 0 0 11ch;
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.18em;
+}
+.music-lounge-link {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+.music-lounge-room {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.music-lounge-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.music-lounge-bar > div {
+  flex: 1;
+  min-width: 200px;
+}
+.music-lounge-bar > button,
+.music-lounge-requests button,
+.music-lounge-tune {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 999px;
+  background: var(--color-elevated);
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+.music-lounge-code span {
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+.music-lounge-code strong {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.16em;
+}
+.music-lounge-stage {
+  position: relative;
+  overflow: hidden;
+  min-height: 220px;
+  border-radius: 20px;
+  background:
+    radial-gradient(90% 120% at 20% 0%, rgba(236, 72, 153, 0.28), transparent 60%),
+    radial-gradient(90% 120% at 80% 100%, rgba(56, 189, 248, 0.25), transparent 60%), #0b0b14;
+  color: #fff;
+}
+.music-lounge-player {
+  aspect-ratio: 16 / 9;
+  max-height: 60vh;
+  width: 100%;
+}
+.music-lounge-player[data-on="false"] {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+.music-lounge-player > div,
+.music-lounge-player iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.music-lounge-cover {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 22px;
+}
+.music-lounge-stage > .music-lounge-now,
+.music-lounge-stage > .music-lounge-tune {
+  margin: 22px;
+}
+.music-lounge-stage > .music-lounge-tune {
+  margin-top: 0;
+}
+.music-lounge-now {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.music-lounge-now img,
+.music-lounge-now-empty {
+  display: grid;
+  place-items: center;
+  width: min(280px, 42vw);
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 24px 50px -24px rgba(0, 0, 0, 0.9);
+}
+.music-lounge-now > div,
+.music-lounge-guestbar > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.music-lounge-now strong {
+  font-size: 20px;
+  font-weight: 800;
+}
+.music-lounge-now span,
+.music-lounge-now em,
+.music-lounge-guestbar em {
+  font-style: normal;
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.72);
+}
+.music-lounge-tune {
+  border: 0;
+  background: #fff;
+  color: #0b0b14;
+}
+.music-lounge-guestbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.music-lounge-guestbar label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.music-lounge-bursts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.music-lounge-bursts span {
+  position: absolute;
+  bottom: 8px;
+  font-size: 34px;
+  animation: music-lounge-float 3.2s ease-out forwards;
+}
+@keyframes music-lounge-float {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(-20px) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-200px) scale(1);
+    opacity: 0;
+  }
+}
+.music-lounge-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.music-lounge-reactions button {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 999px;
+  background: var(--color-elevated);
+  font-size: 20px;
+  transition: transform 120ms ease;
+}
+.music-lounge-reactions button:active {
+  transform: scale(0.9);
+}
+.music-lounge-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+}
+.music-lounge-requests {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.music-lounge-requests li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.music-lounge-requests li > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.music-lounge-requests em {
+  font-style: normal;
+  font-size: 12.5px;
+  color: var(--color-ink-muted);
+}
+.music-lounge-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.music-lounge-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  font-size: 13.5px;
+}
+.music-lounge-feed li[data-kind="request"] {
+  color: var(--color-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .music-lounge-bursts span {
+    animation-duration: 0.01s;
+  }
+}
