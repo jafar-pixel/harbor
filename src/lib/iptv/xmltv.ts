@@ -144,7 +144,9 @@ export async function fetchAndParseXmltv(
     buffer += decoder.decode();
     drainBlocks(buffer, out, channelMeta);
     const totalSec = ((Date.now() - startedAt) / 1000).toFixed(1);
-    console.info(`[epg] parsed ${out.length} programs, ${channelMeta.size} channel defs, ${(received / 1024 / 1024).toFixed(1)}MB in ${totalSec}s from ${url}`);
+    console.info(
+      `[epg] parsed ${out.length} programs, ${channelMeta.size} channel defs, ${(received / 1024 / 1024).toFixed(1)}MB in ${totalSec}s from ${url}`,
+    );
     return { programs: out, channelMeta };
   } finally {
     if (stallTimer) clearTimeout(stallTimer);
@@ -163,32 +165,36 @@ function drainBlocks(
   out: EpgProgram[],
   channelMeta: Map<string, EpgChannelMeta>,
 ): string {
+  // Walk the buffer with a cursor and remember where the next tag of each kind is. Searching the
+  // whole remainder for "<channel " before every programme made a large guide quadratic: once the
+  // channel list ends, each search ran to the end of the buffer, and the page froze for a minute.
+  let pos = 0;
+  let chIdx = buffer.indexOf("<channel ");
+  let prIdx = buffer.indexOf("<programme");
   while (true) {
-    const chIdx = buffer.indexOf("<channel ");
-    const prIdx = buffer.indexOf("<programme");
-    if (chIdx < 0 && prIdx < 0) return trimLeftover(buffer);
+    if (chIdx >= 0 && chIdx < pos) chIdx = buffer.indexOf("<channel ", pos);
+    if (prIdx >= 0 && prIdx < pos) prIdx = buffer.indexOf("<programme", pos);
+    if (chIdx < 0 && prIdx < 0) return trimLeftover(buffer, pos);
     const channelFirst = chIdx >= 0 && (prIdx < 0 || chIdx < prIdx);
     if (channelFirst) {
       const close = buffer.indexOf("</channel>", chIdx);
       if (close < 0) return buffer.slice(chIdx);
-      const block = buffer.slice(chIdx, close + "</channel>".length);
-      parseChannel(block, channelMeta);
-      buffer = buffer.slice(close + "</channel>".length);
+      parseChannel(buffer.slice(chIdx, close + "</channel>".length), channelMeta);
+      pos = close + "</channel>".length;
       continue;
     }
     const closeOpen = buffer.indexOf(">", prIdx);
     if (closeOpen < 0) return buffer.slice(prIdx);
     const endIdx = buffer.indexOf("</programme>", closeOpen);
     if (endIdx < 0) return buffer.slice(prIdx);
-    const block = buffer.slice(prIdx, endIdx + "</programme>".length);
-    const prog = parseProgramme(block);
+    const prog = parseProgramme(buffer.slice(prIdx, endIdx + "</programme>".length));
     if (prog) out.push(prog);
-    buffer = buffer.slice(endIdx + "</programme>".length);
+    pos = endIdx + "</programme>".length;
   }
 }
 
-function trimLeftover(buffer: string): string {
-  return buffer.length > 64 ? buffer.slice(-64) : buffer;
+function trimLeftover(buffer: string, pos = 0): string {
+  return buffer.length - pos > 64 ? buffer.slice(-64) : buffer.slice(pos);
 }
 
 function parseChannel(block: string, channelMeta: Map<string, EpgChannelMeta>): void {
@@ -291,7 +297,10 @@ export function indexProgramsByChannel(programs: EpgProgram[]): Map<string, EpgP
   return map;
 }
 
-export function findCurrent(arr: EpgProgram[] | undefined, nowMs: number): {
+export function findCurrent(
+  arr: EpgProgram[] | undefined,
+  nowMs: number,
+): {
   current: EpgProgram | null;
   next: EpgProgram | null;
 } {
