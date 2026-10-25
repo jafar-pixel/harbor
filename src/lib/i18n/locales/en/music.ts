@@ -411,6 +411,7 @@ const music: Record<string, string> = {
   "music.rail.artistsSubtitle": "Built from what you actually listen to",
 
   "music.tab.forYou": "For you",
+  "music.tab.dj": "AI DJ & Vibes",
   "music.tab.moods": "Moods & Sounds",
   "music.tab.explore": "Explore",
   "music.tab.library": "Library",

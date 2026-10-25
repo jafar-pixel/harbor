@@ -1,0 +1,388 @@
+.music-dj {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  container-type: inline-size;
+}
+.music-dj[hidden] {
+  display: none;
+}
+.music-dj-signin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--color-ink-muted);
+}
+.music-dj-signin h2 {
+  margin: 0;
+  color: var(--color-ink);
+}
+.music-dj-stage {
+  position: relative;
+  overflow: hidden;
+  min-height: 260px;
+  aspect-ratio: 16 / 7;
+  border-radius: 22px;
+  background:
+    radial-gradient(
+      90% 120% at 10% 10%,
+      color-mix(in srgb, var(--dj-a) 55%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 120% at 90% 90%,
+      color-mix(in srgb, var(--dj-b) 70%, transparent),
+      transparent 65%
+    ),
+    #05060a;
+  isolation: isolate;
+}
+.music-dj-stage[data-on="true"] {
+  aspect-ratio: 16 / 9;
+  max-height: 72vh;
+}
+.music-dj-decks,
+.music-dj-deck {
+  position: absolute;
+  inset: 0;
+}
+.music-dj-deck {
+  transition: opacity 0.25s linear;
+}
+.music-dj-deck iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  pointer-events: none;
+}
+.music-dj-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 35%, rgba(0, 0, 0, 0.82)),
+    linear-gradient(90deg, color-mix(in srgb, var(--dj-a) 30%, transparent), transparent 40%);
+  box-shadow: inset 0 0 120px color-mix(in srgb, var(--dj-a) 35%, transparent);
+}
+.music-dj-overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: clamp(16px, 3cqw, 32px);
+  color: #fff;
+}
+.music-dj-hello {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 560px;
+}
+.music-dj-hello h2 {
+  margin: 0;
+  font-size: clamp(28px, 4.5cqw, 48px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+.music-dj-hello p {
+  margin: 0;
+  font-size: 14.5px;
+  color: rgba(255, 255, 255, 0.78);
+}
+.music-dj-vibe {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.music-dj-intro {
+  margin: 0;
+  max-width: 640px;
+  font-size: 14px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.85);
+}
+.music-dj-now .music-dj-song strong {
+  font-size: clamp(22px, 3.4cqw, 38px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.music-dj-now .music-dj-song span {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.82);
+}
+.music-dj-why {
+  margin: 4px 0 0;
+  max-width: 640px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.music-dj-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.music-dj-controls > button,
+.music-dj-volume {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.music-dj-controls > button:disabled {
+  opacity: 0.4;
+}
+.music-dj-controls .music-dj-play {
+  width: 52px;
+  height: 52px;
+  background: #fff;
+  color: #000;
+}
+.music-dj-controls button[aria-pressed="true"] {
+  color: #fb7185;
+}
+.music-dj-volume input {
+  width: 90px;
+}
+.music-dj-end {
+  margin-inline-start: auto;
+}
+.music-dj-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13.5px;
+}
+.music-dj-ask,
+.music-dj-request {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 999px;
+  background: var(--color-elevated);
+  color: var(--color-accent);
+}
+.music-dj-request {
+  border-radius: 18px;
+}
+.music-dj-ask input,
+.music-dj-request input {
+  flex: 1 1 220px;
+  min-width: 0;
+  min-height: 40px;
+  background: transparent;
+  outline: none;
+  color: var(--color-ink);
+  font-size: 14.5px;
+}
+.music-dj-ask button,
+.music-dj-request > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--color-ink);
+  color: var(--color-canvas);
+  font-weight: 700;
+  font-size: 13px;
+}
+.music-dj-ask button:disabled,
+.music-dj-request button:disabled {
+  opacity: 0.4;
+}
+.music-dj-quick {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.music-dj-quick button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.music-dj-vibes {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.music-dj-vibes button {
+  flex: 0 0 auto;
+  min-height: 64px;
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--v-a), var(--v-b));
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.music-dj-vibes button[aria-pressed="true"] {
+  box-shadow:
+    inset 0 0 0 2px #fff,
+    0 8px 30px -12px var(--v-a);
+}
+.music-dj-list h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-subtle);
+}
+.music-dj-list ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.music-dj-list li > button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  text-align: start;
+}
+.music-dj-list li > button:hover {
+  background: var(--color-elevated);
+}
+.music-dj-list li[data-current="true"] > button {
+  border-color: var(--dj-a);
+  background: color-mix(in srgb, var(--dj-a) 14%, var(--color-elevated));
+}
+.music-dj-list li[data-played="true"] {
+  opacity: 0.55;
+}
+.music-dj-list li img,
+.music-dj-thumb {
+  flex-shrink: 0;
+  width: 72px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--color-raised);
+}
+.music-dj-song {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.music-dj-song strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-dj-song span {
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--color-ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-dj-song em {
+  font-size: 11.5px;
+  font-style: normal;
+  color: var(--color-danger);
+}
+.music-dj-discover {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.music-dj-discover article {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 14px;
+  background: var(--color-elevated);
+}
+.music-dj-discover p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--color-ink-muted);
+}
+.music-dj-discover article > div {
+  display: flex;
+  gap: 8px;
+}
+.music-dj-discover article button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.music-dj-discover button[aria-pressed="true"] {
+  color: #fb7185;
+}
+.music-dj-finds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.music-dj-finds button {
+  max-width: 260px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 12px;
+  text-align: start;
+}
+@container (max-width: 640px) {
+  .music-dj-stage,
+  .music-dj-stage[data-on="true"] {
+    aspect-ratio: auto;
+    min-height: 360px;
+  }
+  .music-dj-end {
+    margin-inline-start: 0;
+  }
+}

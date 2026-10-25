@@ -331,7 +331,7 @@ export function createJlSessionClient(options: {
   }
   /** An account request under `/<base>/v1/`, renewing the session once on a 401. */
   async function authed(
-    base: "rest" | "storage",
+    base: "rest" | "storage" | "functions",
     path: string,
     init: RequestInit,
     expected: JlAccountContext | null,
@@ -350,8 +350,9 @@ export function createJlSessionClient(options: {
     }
     if (typeof init.body === "string" && !headers.has("Content-Type"))
       headers.set("Content-Type", "application/json");
-    // Uploads carry up to a few megabytes; give them longer than a JSON call.
-    const timeout = base === "storage" ? 90_000 : undefined;
+    // Uploads carry up to a few megabytes, and server functions call other services; give
+    // them longer than a JSON call.
+    const timeout = base === "storage" ? 90_000 : base === "functions" ? 60_000 : undefined;
     let res = await request(`/${base}/v1/${path}`, { ...init, headers }, timeout);
     if (res.status === 401) {
       assertCurrent(expected);
@@ -369,6 +370,14 @@ export function createJlSessionClient(options: {
     return authed("rest", path, init, expected);
   }
   /** Supabase Storage (the private `media-art` bucket); RLS keeps each account in its folder. */
+  /** A JL Vision edge function (supabase/functions), called as the signed-in account. */
+  function functions(
+    name: string,
+    init: RequestInit = {},
+    expected = context(),
+  ): Promise<Response> {
+    return authed("functions", name, init, expected);
+  }
   function storage(path: string, init: RequestInit = {}, expected = context()): Promise<Response> {
     return authed("storage", path, init, expected);
   }
@@ -399,6 +408,7 @@ export function createJlSessionClient(options: {
     fresh,
     rest,
     rpc,
+    functions,
     storage,
     storageUrl,
     adoptLink,
