@@ -129,6 +129,61 @@ export async function startDj(vibe: Vibe, styleKeys: readonly string[]): Promise
   }
 }
 
+/**
+ * Start a set from one song (a song a friend sent): it plays first, then the DJ keeps going
+ * with songs that flow from it.
+ */
+export async function startFromSong(
+  song: DjSong & { videoId?: string | null },
+  styleKeys: readonly string[],
+  from?: string,
+): Promise<void> {
+  const run = ++generation;
+  const vibe: Vibe = {
+    id: "shared",
+    name: from ? `${song.title} · from ${from}` : song.title,
+    prompt: `Start from "${song.title}" by ${song.artist} and keep the same feel`,
+    colors: ["#ec4899", "#312e81"],
+  };
+  const first: DjTrack = {
+    artist: song.artist,
+    title: song.title,
+    why: song.why,
+    video:
+      song.videoId && /^[A-Za-z0-9_-]{11}$/.test(song.videoId)
+        ? {
+            id: song.videoId,
+            title: song.title,
+            channel: song.artist,
+            thumb: `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg`,
+          }
+        : undefined,
+  };
+  set({
+    status: "ready",
+    error: null,
+    vibe,
+    intro: "",
+    tracks: [first],
+    index: 0,
+    discover: [],
+    colors: vibe.colors,
+    sounds: [],
+  });
+  void resolveAhead();
+  try {
+    const result = await askDj({
+      vibe: vibe.prompt,
+      ...context(styleKeys),
+      avoid: [songKey(first)],
+      count: 10,
+    });
+    if (run === generation) apply(result, state.tracks);
+  } catch (error) {
+    if (run === generation) set({ error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
 /** "More like this", "switch to 90s": replaces what's coming up, keeps what's played. */
 export async function requestDj(request: string, styleKeys: readonly string[]): Promise<void> {
   if (!state.vibe || !request.trim()) return;

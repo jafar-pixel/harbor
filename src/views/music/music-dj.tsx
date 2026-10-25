@@ -31,6 +31,8 @@ import { soundById } from "@/lib/music/sounds/catalog";
 import { loadMix } from "@/lib/music/sounds/engine";
 import { useSettings } from "@/lib/settings";
 import { DjVinyl } from "./music-dj-vinyl";
+import type { SongToShare } from "@/lib/music/social/api";
+import { SendSongDialog } from "./music-send";
 import "./music-dj.css";
 
 const FADE_MS = 8000;
@@ -62,6 +64,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
   const [paused, setPaused] = useState(false);
   const [volume, setVolume] = useState(90);
   const [opacity, setOpacity] = useState<[number, number]>([1, 0]);
+  const [sending, setSending] = useState<SongToShare | null>(null);
 
   const hosts = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
   const players = useRef<(YtPlayer | null)[]>([null, null]);
@@ -186,6 +189,15 @@ export function MusicDj({ visible }: { visible: boolean }) {
     [],
   );
 
+  /** A set started elsewhere (a song a friend sent) waits for a tap to start the decks. */
+  const resume = async () => {
+    fade.current = null;
+    loaded.current = [null, null];
+    setPaused(false);
+    await ensureDecks().catch(() => {});
+    setStarted(true);
+  };
+
   const begin = async (vibe: Vibe) => {
     fade.current = null;
     loaded.current = [null, null];
@@ -272,6 +284,11 @@ export function MusicDj({ visible }: { visible: boolean }) {
                   why={current.why}
                 />
               )}
+              {!started && current && (
+                <button type="button" className="music-dj-start" onClick={() => void resume()}>
+                  <Play size={18} /> {t("Start listening")}
+                </button>
+              )}
               <div className="music-dj-controls">
                 <button
                   type="button"
@@ -305,6 +322,21 @@ export function MusicDj({ visible }: { visible: boolean }) {
                     onClick={() => toggleLike(current)}
                   >
                     <Heart size={18} fill={isLiked(current) ? "currentColor" : "none"} />
+                  </button>
+                )}
+                {current && (
+                  <button
+                    type="button"
+                    aria-label={t("Send to a friend")}
+                    onClick={() =>
+                      setSending({
+                        artist: current.artist,
+                        title: current.title,
+                        videoId: current.video?.id,
+                      })
+                    }
+                  >
+                    <Send size={18} />
                   </button>
                 )}
                 <label className="music-dj-volume">
@@ -479,6 +511,13 @@ export function MusicDj({ visible }: { visible: boolean }) {
                     <Heart size={14} fill={isLiked(d) ? "currentColor" : "none"} />{" "}
                     {isLiked(d) ? t("Kept") : t("Keep")}
                   </button>
+                  <button
+                    type="button"
+                    aria-label={t("Send to a friend")}
+                    onClick={() => setSending({ artist: d.artist, title: d.title })}
+                  >
+                    <Send size={14} />
+                  </button>
                 </div>
               </article>
             ))}
@@ -503,6 +542,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
           </div>
         </section>
       )}
+      {sending && <SendSongDialog song={sending} onClose={() => setSending(null)} />}
     </section>
   );
 }
