@@ -1,4 +1,5 @@
 import { HoverTooltip } from "@/components/hover-tooltip";
+import { MusicDj } from "./music/music-dj";
 import { MusicMoods } from "./music/music-moods";
 import { MusicStyles, MusicStylesCard } from "./music/music-styles";
 import { PRODUCT_NAME } from "@/lib/i18n/brand";
@@ -1515,6 +1516,7 @@ function MusicViewContent({ active }: { active: boolean }) {
                       />
                     </>
                   )}
+                  <MusicDj visible={tab === "dj"} />
                   {tab === "moods" && <MusicMoods />}
                   {tab === "library" ? (
                     <MusicLibrary
@@ -1537,7 +1539,7 @@ function MusicViewContent({ active }: { active: boolean }) {
                       initialView={libraryTarget?.view}
                       initialSpotifyKind={libraryTarget?.spotifyKind}
                     />
-                  ) : tab === "explore" || tab === "moods" ? null : stalled ? (
+                  ) : tab === "explore" || tab === "moods" || tab === "dj" ? null : stalled ? (
                     <MusicStalled message={data.homeError} onRetry={retry} />
                   ) : (
                     <MusicBandStack
