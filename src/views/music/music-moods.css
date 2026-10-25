@@ -1,0 +1,298 @@
+.music-moods {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+  container-type: inline-size;
+}
+.music-moods-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  color: var(--color-accent);
+}
+.music-moods-head h2 {
+  margin: 0;
+  font-size: clamp(24px, 3.4cqw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+.music-moods-head p {
+  margin: 6px 0 0;
+  max-width: 65ch;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-ink-muted);
+}
+.music-moods-presets {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.music-moods-preset {
+  display: flex;
+  flex: 0 0 210px;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 96px;
+  padding: 16px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 16%, var(--color-elevated)),
+    var(--color-elevated)
+  );
+  text-align: start;
+}
+.music-moods-preset strong {
+  font-size: 15px;
+  color: var(--color-ink);
+}
+.music-moods-preset span {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--color-ink-muted);
+}
+.music-moods-preset[aria-pressed="true"],
+.music-moods-preset:hover,
+.music-moods-preset:focus-visible {
+  border-color: var(--color-accent);
+}
+.music-moods-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-elevated) 92%, transparent);
+  backdrop-filter: blur(12px);
+}
+.music-moods-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--color-ink);
+  color: var(--color-canvas);
+}
+.music-moods-play:disabled {
+  opacity: 0.4;
+}
+.music-moods-master,
+.music-moods-select,
+.music-moods-focus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+.music-moods-master input {
+  width: 140px;
+}
+.music-moods-select select {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 8px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+.music-moods-focus button,
+.music-moods-clear,
+.music-moods-mode button,
+.music-moods-save button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.music-moods-focus button:disabled,
+.music-moods-save button:disabled {
+  opacity: 0.4;
+}
+.music-moods-clear {
+  margin-inline-start: auto;
+  color: var(--color-ink-muted);
+}
+.music-moods-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+.music-moods-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.music-moods-group h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-subtle);
+}
+.music-moods-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.music-moods-mode {
+  display: flex;
+  gap: 6px;
+}
+.music-moods-mode button[aria-checked="true"] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.music-moods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+.music-moods-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px;
+  border-radius: 14px;
+  background: var(--color-elevated);
+  border: 1px solid var(--color-edge-soft);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.music-moods-tile > button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 14px 10px;
+  text-align: start;
+  border-radius: 12px;
+}
+.music-moods-tile-name {
+  position: relative;
+  padding-inline-start: 16px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.music-moods-tile-name::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--tile);
+  transform: translateY(-50%);
+}
+.music-moods-tile-blurb {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-ink-muted);
+}
+.music-moods-tile input {
+  margin: 0 14px 12px;
+}
+.music-moods-tile[data-on="true"] {
+  border-color: var(--tile);
+  box-shadow:
+    0 0 0 1px var(--tile),
+    0 10px 30px -18px var(--tile);
+}
+.music-moods-tile[data-on="true"] .music-moods-tile-name::before {
+  animation: music-moods-pulse 1.6s ease-in-out infinite;
+}
+@keyframes music-moods-pulse {
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--tile) 30%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .music-moods-tile[data-on="true"] .music-moods-tile-name::before {
+    animation: none;
+  }
+}
+.music-moods-save {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.music-moods-save input {
+  flex: 1 1 220px;
+  max-width: 360px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 10px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+.music-moods-saved {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.music-moods-saved li {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 12px;
+  background: var(--color-elevated);
+}
+.music-moods-saved li > button:first-child {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  text-align: start;
+}
+.music-moods-saved strong {
+  font-size: 13.5px;
+  color: var(--color-ink);
+}
+.music-moods-saved span {
+  font-size: 11.5px;
+  color: var(--color-ink-muted);
+}
+.music-moods-saved li > button:last-child {
+  padding: 0 10px;
+  color: var(--color-ink-muted);
+}
+.music-moods-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-ink-subtle);
+}
+@container (max-width: 560px) {
+  .music-moods-master input {
+    width: 100px;
+  }
+  .music-moods-clear {
+    margin-inline-start: 0;
+  }
+}
