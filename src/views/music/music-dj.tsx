@@ -30,6 +30,7 @@ import { YT_ENDED, YT_PLAYING, loadYouTube, type YtPlayer } from "@/lib/music/dj
 import { soundById } from "@/lib/music/sounds/catalog";
 import { loadMix } from "@/lib/music/sounds/engine";
 import { useSettings } from "@/lib/settings";
+import { DjVinyl } from "./music-dj-vinyl";
 import "./music-dj.css";
 
 const FADE_MS = 8000;
@@ -264,10 +265,12 @@ export function MusicDj({ visible }: { visible: boolean }) {
               )}
               {dj.intro && <p className="music-dj-intro">“{dj.intro}”</p>}
               {current && (
-                <div className="music-dj-now">
-                  {song(current)}
-                  {current.why && <p className="music-dj-why">{current.why}</p>}
-                </div>
+                <DjVinyl
+                  track={current}
+                  index={dj.index}
+                  playing={started && !paused}
+                  why={current.why}
+                />
               )}
               <div className="music-dj-controls">
                 <button
