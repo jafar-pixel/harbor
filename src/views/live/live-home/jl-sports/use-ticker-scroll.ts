@@ -36,7 +36,14 @@ export function useTickerScroll(
     let drag: { id: number; x: number; from: number; moved: boolean; touch: boolean } | null = null;
     let resumeAt = 0;
 
-    const half = () => track.scrollWidth / 2;
+    // Measured when the track changes size, not every frame: reading scrollWidth right after
+    // moving the track made the browser lay out the whole page sixty times a second.
+    let width = track.scrollWidth / 2;
+    const resize = new ResizeObserver(() => {
+      width = track.scrollWidth / 2;
+    });
+    resize.observe(track);
+    const half = () => width;
     const wrap = (v: number) => {
       const h = half();
       return h > 0 ? ((v % h) + h) % h : 0;
@@ -144,6 +151,7 @@ export function useTickerScroll(
     view.addEventListener("mouseleave", onLeave);
     return () => {
       cancelAnimationFrame(raf);
+      resize.disconnect();
       if (nudgeRef) nudgeRef.current = null;
       view.removeEventListener("wheel", onWheel);
       view.removeEventListener("pointerdown", onDown);
