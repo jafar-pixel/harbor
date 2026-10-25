@@ -1,5 +1,7 @@
 import { HoverTooltip } from "@/components/hover-tooltip";
 import { MusicDj } from "./music/music-dj";
+import { MusicFriends } from "./music/music-friends";
+import { MUSIC_TAB_EVENT, takeMusicTabRequest, useSongInbox } from "@/lib/music/social/inbox";
 import { MusicMoods } from "./music/music-moods";
 import { MusicStyles, MusicStylesCard } from "./music/music-styles";
 import { PRODUCT_NAME } from "@/lib/i18n/brand";
@@ -65,6 +67,7 @@ import {
   useMusicSourcePicker,
 } from "@/components/music/music-source-picker";
 import {
+  MUSIC_TABS,
   MusicTabs,
   musicTabButtonId,
   musicTabPanelId,
@@ -242,6 +245,18 @@ function MusicViewContent({ active }: { active: boolean }) {
     if (!active) setQuickListen(null);
   }, [active]);
   const [tab, setTab] = useState<MusicTabId>("forYou");
+  const inbox = useSongInbox();
+  // Another part of the app (a song toast, the inbox's Play) can ask for a tab.
+  useEffect(() => {
+    const receive = () => {
+      const wanted = takeMusicTabRequest();
+      if (wanted && (MUSIC_TABS as readonly string[]).includes(wanted))
+        setTab(wanted as MusicTabId);
+    };
+    receive();
+    window.addEventListener(MUSIC_TAB_EVENT, receive);
+    return () => window.removeEventListener(MUSIC_TAB_EVENT, receive);
+  }, []);
   const [search, setSearch] = useState<SearchState | null>(null);
   const [searching, setSearching] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -1417,7 +1432,12 @@ function MusicViewContent({ active }: { active: boolean }) {
                   data-scroll-anchor="tabs"
                   className="music-navigation flex flex-wrap items-center justify-between gap-3"
                 >
-                  <MusicTabs className="min-w-0 flex-1" value={tab} onChange={setTab} />
+                  <MusicTabs
+                    className="min-w-0 flex-1"
+                    value={tab}
+                    onChange={setTab}
+                    counts={{ friends: inbox.unread }}
+                  />
                   {tab === "forYou" && (
                     <HoverTooltip label={t("music.quickListen.title")}>
                       <button
@@ -1517,6 +1537,7 @@ function MusicViewContent({ active }: { active: boolean }) {
                     </>
                   )}
                   <MusicDj visible={tab === "dj"} />
+                  {tab === "friends" && <MusicFriends active={active} />}
                   {tab === "moods" && <MusicMoods />}
                   {tab === "library" ? (
                     <MusicLibrary
@@ -1539,7 +1560,10 @@ function MusicViewContent({ active }: { active: boolean }) {
                       initialView={libraryTarget?.view}
                       initialSpotifyKind={libraryTarget?.spotifyKind}
                     />
-                  ) : tab === "explore" || tab === "moods" || tab === "dj" ? null : stalled ? (
+                  ) : tab === "explore" ||
+                    tab === "moods" ||
+                    tab === "dj" ||
+                    tab === "friends" ? null : stalled ? (
                     <MusicStalled message={data.homeError} onRetry={retry} />
                   ) : (
                     <MusicBandStack
