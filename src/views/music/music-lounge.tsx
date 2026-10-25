@@ -592,8 +592,8 @@ function GuestStage({ lounge }: { lounge: Lounge }) {
       if (!host || player.current) return setTuned(true);
       const el = document.createElement("div");
       host.replaceChildren(el);
-      await new Promise<void>((resolve) => {
-        player.current = new api.Player(el, {
+      const created = await new Promise<YtPlayer>((resolve) => {
+        const p: YtPlayer = new api.Player(el, {
           width: "100%",
           height: "100%",
           playerVars: {
@@ -606,12 +606,13 @@ function GuestStage({ lounge }: { lounge: Lounge }) {
             origin: location.origin,
           },
           events: {
-            onReady: () => resolve(),
+            onReady: () => resolve(p),
             onError: () => setFailed(t("This song can't play here. The next one will.")),
           },
         });
       });
-      player.current?.setVolume(volume);
+      player.current = created;
+      created.setVolume(volume);
       setTuned(true);
       sync();
     } catch (error) {
