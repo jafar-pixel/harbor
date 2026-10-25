@@ -148,23 +148,48 @@ export function addDays(day: string, n: number) {
   d.setDate(d.getDate() + n);
   return dayStamp(d);
 }
-export async function sportsJson(
-  url: string,
-  signal: AbortSignal,
-): Promise<Record<string, unknown>> {
+/**
+ * Sections of the Sports Hub load the same feeds side by side (the hero, the schedule and the
+ * match center all want today's NFL scoreboard), so one request per URL is shared by everyone
+ * asking within a few seconds. Polls run a minute or more apart, so live scores stay fresh.
+ */
+const SHARE_MS = 10_000;
+const SHARE_MAX = 200;
+const shared = new Map<string, { at: number; data: Promise<Record<string, unknown>> }>();
+
+function load(url: string): Promise<Record<string, unknown>> {
   const controller = new AbortController();
-  const abort = () => controller.abort();
-  signal.addEventListener("abort", abort, { once: true });
-  if (signal.aborted) abort();
-  const timer = setTimeout(abort, 9000);
-  try {
-    const response = await safeFetch(url, { signal: controller.signal });
-    if (!response.ok) throw new Error(`Sports feed ${response.status}`);
-    return await response.json();
-  } finally {
-    clearTimeout(timer);
-    signal.removeEventListener("abort", abort);
+  const timer = setTimeout(() => controller.abort(), 9000);
+  return safeFetch(url, { signal: controller.signal })
+    .then((response) => {
+      if (!response.ok) throw new Error(`Sports feed ${response.status}`);
+      return response.json() as Promise<Record<string, unknown>>;
+    })
+    .finally(() => clearTimeout(timer));
+}
+
+export function sportsJson(url: string, signal: AbortSignal): Promise<Record<string, unknown>> {
+  const now = Date.now();
+  let entry = shared.get(url);
+  if (!entry || now - entry.at > SHARE_MS) {
+    const data = load(url);
+    entry = { at: now, data };
+    shared.set(url, entry);
+    // A failure isn't shared: the next caller tries again.
+    data.catch(() => {
+      if (shared.get(url)?.data === data) shared.delete(url);
+    });
+    if (shared.size > SHARE_MAX)
+      for (const [key, value] of shared) if (now - value.at > SHARE_MS) shared.delete(key);
   }
+  // Leaving a page stops waiting for its feeds without cancelling them for anyone else.
+  const data = entry.data;
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(new DOMException("Aborted", "AbortError"));
+    if (signal.aborted) return abort();
+    signal.addEventListener("abort", abort, { once: true });
+    data.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+  });
 }
 
 type DbEvent = Record<string, string | null>;
