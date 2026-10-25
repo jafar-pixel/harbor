@@ -557,6 +557,8 @@ export type Settings = {
   sportsLeagues: string[];
   sportsHomeOrder: string[];
   sportsHomeHidden: string[];
+  /** Music styles the listener picked ("hip-hop/boom-bap"), from the Music Hub taste picker. */
+  musicStyles: string[];
   /** Pop-up alerts for followed teams, athletes and Top 10 games. */
   sportsAlerts: boolean;
   sportsShowOdds: boolean;

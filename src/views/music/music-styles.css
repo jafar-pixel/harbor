@@ -1,0 +1,233 @@
+.music-styles {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+  container-type: inline-size;
+}
+.music-styles-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  width: fit-content;
+  color: var(--color-ink-muted);
+}
+.music-styles-genres {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.music-styles-genres button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-ink-muted);
+}
+.music-styles-genres button[aria-pressed="true"] {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-canvas);
+}
+.music-styles-genres button span {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-canvas);
+  font-size: 11px;
+}
+.music-styles header h1 {
+  margin: 0;
+  font-size: clamp(26px, 4cqw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.music-styles header p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}
+.music-styles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.music-styles-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 88px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 14px;
+  background: var(--color-elevated);
+  text-align: start;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+.music-styles-chip:hover,
+.music-styles-chip:focus-visible {
+  border-color: var(--color-edge);
+}
+.music-styles-chip[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-elevated));
+}
+.music-styles-chip-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.music-styles-chip strong {
+  font-size: 14.5px;
+  color: var(--color-ink);
+}
+.music-styles-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--color-edge-soft);
+  color: var(--color-ink-muted);
+}
+.music-styles-chip[aria-pressed="true"] .music-styles-check {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-canvas);
+}
+.music-styles-artists {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-ink-muted);
+}
+.music-styles-custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.music-styles-custom input {
+  flex: 1 1 220px;
+  max-width: 380px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 10px;
+  background: var(--color-elevated);
+  color: var(--color-ink);
+}
+.music-styles-custom button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 10px;
+  font-weight: 700;
+}
+.music-styles-custom button:disabled {
+  opacity: 0.4;
+}
+.music-styles-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-elevated) 94%, transparent);
+  backdrop-filter: blur(12px);
+}
+.music-styles-footer p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+.music-styles-footer .music-styles-sync {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-ink-subtle);
+}
+.music-styles-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.music-styles-actions .music-home-primary:disabled {
+  opacity: 0.45;
+}
+.music-styles-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 16px;
+  background:
+    radial-gradient(
+      120% 140% at 0% 0%,
+      color-mix(in srgb, var(--color-accent) 20%, transparent),
+      transparent 60%
+    ),
+    var(--color-elevated);
+}
+.music-styles-card > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-accent);
+}
+.music-styles-card h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--color-ink);
+}
+.music-styles-card-mine > div:first-child .music-home-text {
+  margin-inline-start: auto;
+}
+.music-styles-card-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.music-styles-card-questions button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 999px;
+  background: var(--color-canvas);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.music-styles-card-questions button:hover,
+.music-styles-card-questions button:focus-visible {
+  border-color: var(--color-accent);
+}
+.music-styles-card-questions span {
+  align-self: center;
+  font-size: 12.5px;
+  color: var(--color-ink-muted);
+}
