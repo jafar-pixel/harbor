@@ -1,5 +1,6 @@
 import { HoverTooltip } from "@/components/hover-tooltip";
 import { MusicMoods } from "./music/music-moods";
+import { MusicStyles, MusicStylesCard } from "./music/music-styles";
 import { PRODUCT_NAME } from "@/lib/i18n/brand";
 import { MusicQuickListenIcon } from "@/components/music/music-quick-listen-icon";
 import { MusicSurpriseButton } from "@/components/music/music-surprise-button";
@@ -181,13 +182,14 @@ function MusicViewContent({ active }: { active: boolean }) {
 
   const [genre, setGenre] = useState<MusicGenreEntry | null>(null);
   const [discoveryPage, setDiscoveryPage] = useState<
-    "tastes" | "playlists" | "videos" | "billboard" | "rollingStone" | null
+    "tastes" | "styles" | "playlists" | "videos" | "billboard" | "rollingStone" | null
   >(null);
+  const [stylesGenre, setStylesGenre] = useState<string | undefined>(undefined);
   const [billboardChart, setBillboardChart] = useState("hot-100");
   const [videoQuery, setVideoQuery] = useState("music videos");
   const discoveryOrigin = useRef<{ text: string | null } | null>(null);
   const openDiscovery = (
-    page: "tastes" | "playlists" | "videos" | "billboard" | "rollingStone",
+    page: "tastes" | "styles" | "playlists" | "videos" | "billboard" | "rollingStone",
   ) => {
     discoveryOrigin.current = { text: document.activeElement?.textContent ?? null };
     setDiscoveryPage(page);
@@ -1339,6 +1341,12 @@ function MusicViewContent({ active }: { active: boolean }) {
                   playTrack(track, queue);
                 }}
               />
+            ) : discoveryPage === "styles" ? (
+              <MusicStyles
+                key={stylesGenre ?? "all"}
+                initialGenre={stylesGenre}
+                onBack={closeDiscovery}
+              />
             ) : discoveryPage === "tastes" ? (
               <MusicTastes
                 selected={tastes}
@@ -1461,6 +1469,14 @@ function MusicViewContent({ active }: { active: boolean }) {
                   tabIndex={0}
                   className="flex flex-col gap-8 outline-none"
                 >
+                  {tab === "forYou" && (
+                    <MusicStylesCard
+                      onOpen={(genre) => {
+                        setStylesGenre(genre);
+                        openDiscovery("styles");
+                      }}
+                    />
+                  )}
                   {tab === "forYou" && (
                     <section data-scroll-anchor="hero">
                       <MusicHomeHero

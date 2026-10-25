@@ -449,6 +449,7 @@ export const DEFAULT: Settings = {
   sportsLeagues: [],
   sportsHomeOrder: [],
   sportsHomeHidden: ["featured"],
+  musicStyles: [],
   sportsAlerts: true,
   sportsShowOdds: false,
   sportsWithoutProvider: false,

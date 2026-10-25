@@ -15,6 +15,7 @@ export const PROFILE_PREFERENCES = [
   "defaultPlaybackSpeed",
   "detailTrailerAutoplay",
   "streaming",
+  "musicStyles",
 ] as const;
 type Port = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 const STORES = [
@@ -109,6 +110,14 @@ function itemKey(value: unknown, index: string, section: string): string | null 
   return section === "history" ? `${id}|s${value.season ?? ""}e${value.episode ?? ""}` : id;
 }
 function safePreference(key: string, value: unknown): boolean {
+  if (key === "musicStyles")
+    return (
+      Array.isArray(value) &&
+      value.length <= 200 &&
+      value.every(
+        (v) => typeof v === "string" && /^[a-z0-9-]{1,40}\/(?:x-)?[a-z0-9-]{1,48}$/.test(v),
+      )
+    );
   if (key === "streaming")
     return (
       record(value) &&
