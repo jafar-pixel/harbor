@@ -186,11 +186,13 @@ export function JlSportsHero({
     return () => window.clearInterval(id);
   }, [paused, count]);
 
+  // Hooks run on every render: the hero renders nothing until its games arrive, then slides.
+  useVisionVersion();
+
   if (!current) return null;
   const go = (delta: number) => setIndex((position + delta + count) % count);
   const key = slideKey(current);
   const focus = slideFocus(current, followed);
-  useVisionVersion();
   // The slide's team colours the hero's accents (wordmark, Watch pill, glow, dots), not the app's.
   const accent = focus
     ? teamAccent(teamLook(focus.side, null, brandLook(focus.league, focus.side.id)))
