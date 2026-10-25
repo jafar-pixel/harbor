@@ -64,9 +64,12 @@ alter table media.lounge_members enable row level security;
 alter table media.lounge_invites enable row level security;
 alter table media.lounge_events enable row level security;
 
+-- The host check is inline: a host reading back the row they just created can't rely on
+-- is_lounge_member, whose snapshot doesn't see the new row yet.
 create policy lounges_read on media.lounges for select to authenticated
   using (
-    media.is_lounge_member(id)
+    host = auth.uid()
+    or media.is_lounge_member(id)
     or exists (select 1 from media.lounge_invites i where i.lounge_id = id and i.invitee = auth.uid())
   );
 create policy lounges_create on media.lounges for insert to authenticated

@@ -7,6 +7,7 @@ export type YtPlayer = {
   pauseVideo(): void;
   stopVideo(): void;
   setVolume(volume: number): void;
+  seekTo(seconds: number, allowSeekAhead: boolean): void;
   getCurrentTime(): number;
   getDuration(): number;
   getPlayerState(): number;

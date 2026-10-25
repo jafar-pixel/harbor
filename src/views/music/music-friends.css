@@ -376,3 +376,6 @@
     animation: none;
   }
 }
+.lounge-invite-toasts {
+  bottom: calc(96px + var(--harbor-viewport-bottom, 0px));
+}
