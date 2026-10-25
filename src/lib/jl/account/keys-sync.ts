@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { usePlaylists, readPlaylists, writePlaylists } from "@/lib/iptv/playlists-store";
 import { useSettings, type Settings } from "@/lib/settings";
 import {
   assertJlAccountCurrent,
@@ -52,7 +53,9 @@ function localValues(settings: Settings): KeyValues {
   const out: KeyValues = {};
   for (const key of SYNCED_SETTING_KEYS) {
     if (key === "iptvPlaylists") {
-      out[key] = settings.iptvPlaylists.length ? JSON.stringify(settings.iptvPlaylists) : "";
+      // Playlists live in their own store (Live TV and Sports read it), not in settings.
+      const lists = readPlaylists();
+      out[key] = lists.length ? JSON.stringify(lists) : "";
     } else {
       out[key] = (settings[key] ?? "").trim();
     }
@@ -66,7 +69,7 @@ function toPatch(values: KeyValues): Partial<Settings> {
     if (key === "iptvPlaylists") {
       try {
         const list = value ? (JSON.parse(value) as unknown) : [];
-        if (Array.isArray(list)) patch.iptvPlaylists = list as Settings["iptvPlaylists"];
+        if (Array.isArray(list)) writePlaylists(list as Settings["iptvPlaylists"]);
       } catch {
         /* a damaged value is left out rather than wiping this device's playlists */
       }
@@ -136,7 +139,8 @@ export function useJlKeySync(): void {
   const latest = useRef({ settings, update });
   latest.current = { settings, update };
   const userId = session?.userId ?? "";
-  const fingerprint = JSON.stringify(localValues(settings));
+  const playlists = usePlaylists();
+  const fingerprint = JSON.stringify(localValues(settings)) + playlists.length;
 
   useEffect(() => {
     if (!userId) return;

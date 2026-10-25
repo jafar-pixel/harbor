@@ -27,6 +27,7 @@ import {
 import { createJlLinkStore, type JlLink } from "./profile-links";
 import { syncFavoriteRows } from "./favorites-sync";
 import { syncJlProfileData } from "./profile-data-sync";
+import { syncJlDeviceSettings } from "./device-settings-sync";
 import { setJlSyncStatus } from "./sync-status";
 
 export type { JlLink } from "./profile-links";
@@ -395,6 +396,14 @@ async function runSync(scope: Scope): Promise<number> {
     pull: () => pullRows(scope),
     push: (desired, remote) => pushDiff(scope, desired, remote),
   });
+  // Desktop, web and Android each keep their own settings for the profile; a failure here
+  // leaves this device's settings as they are and retries on the next run.
+  await syncJlDeviceSettings({
+    account: scope.account,
+    localId: scope.localId,
+    profileId: scope.link.profileId,
+    assertCurrent: () => assertScope(scope),
+  }).catch(() => {});
   assertScope(scope);
   // Resolution is supplemental. Membership and its checkpoint are already durable.
   void enrichPlayers(scope).catch(() => {});
@@ -453,7 +462,7 @@ export function syncNow(): Promise<void> {
       phase: "idle",
       message: conflicts
         ? `Synced with ${conflicts} saved conflicts. The account version won; your earlier edits are available in the conflict backup.`
-        : "JL profile and addons are synced. Device-only settings stay local.",
+        : "JL profile, addons and this device type's settings are synced.",
     });
   })()
     .catch(() => {
