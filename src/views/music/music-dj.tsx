@@ -30,6 +30,7 @@ import {
 } from "@/lib/music/dj/session";
 import { VIBES, crossfade, type DjSong, type Vibe } from "@/lib/music/dj/vibes";
 import { YT_ENDED, YT_PLAYING, loadYouTube, type YtPlayer } from "@/lib/music/dj/youtube";
+import { coverArt } from "@/lib/music/cover-art";
 import { useSongArt } from "@/lib/music/dj/art";
 import { onPauseDj, reportPlayhead } from "@/lib/music/dj/playhead";
 import { soundById } from "@/lib/music/sounds/catalog";
@@ -92,8 +93,13 @@ export function MusicDj({ visible }: { visible: boolean }) {
 
   // Posters, the wallpaper and the record label all use the song's cover art.
   const artFor = useSongArt([...dj.tracks, ...dj.discover, ...dj.liked.slice(0, 24)]);
-  const cover = (song: DjSong & { video?: { thumb: string } | null }) =>
-    artFor(song)?.art ?? song.video?.thumb ?? null;
+  // While the lookup runs, the video thumbnail; once no catalog has a cover, original art.
+  const cover = (song: DjSong & { video?: { thumb: string } | null }) => {
+    const meta = artFor(song);
+    if (meta?.art) return meta.art;
+    if (song.video?.thumb) return song.video.thumb;
+    return meta ? coverArt(song.title, song.artist) : null;
+  };
 
   // While a song plays the controls fade so the video shows; any mouse move brings them back.
   const stageRef = useRef<HTMLDivElement>(null);
@@ -507,11 +513,16 @@ export function MusicDj({ visible }: { visible: boolean }) {
             type="button"
             role="listitem"
             aria-pressed={dj.vibe?.id === v.id}
-            style={{ "--v-a": v.colors[0], "--v-b": v.colors[1] } as CSSProperties}
+            aria-label={t(v.name)}
+            style={
+              {
+                "--v-a": v.colors[0],
+                "--v-b": v.colors[1],
+                backgroundImage: `url("${coverArt(t(v.name), t("AI DJ vibe"), v.colors)}")`,
+              } as CSSProperties
+            }
             onClick={() => void begin(v)}
-          >
-            {t(v.name)}
-          </button>
+          />
         ))}
       </div>
 

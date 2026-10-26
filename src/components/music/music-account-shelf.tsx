@@ -1,5 +1,6 @@
-import { Heart, Play, Sparkles } from "lucide-react";
+import { Heart, Play } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { coverArt } from "@/lib/music/cover-art";
 import "./music-account-shelf.css";
 
 export type ShelfPlaylist = { id: string; name: string; image: string | null; count?: number };
@@ -110,7 +111,7 @@ export function MusicAccountShelf({
                   onClick={() => onPlaylist(p)}
                 >
                   <span className="music-shelf-cover">
-                    {p.image ? <img src={p.image} alt="" loading="lazy" /> : <Sparkles size={30} />}
+                    <img src={p.image ?? coverArt(p.name, t("Playlist"))} alt="" loading="lazy" />
                   </span>
                   <strong>{p.name}</strong>
                   {typeof p.count === "number" && (
@@ -148,7 +149,7 @@ export function MusicAccountShelf({
               <li key={s.id}>
                 <button type="button" onClick={() => onTrack(i)}>
                   <span className="music-shelf-track-art">
-                    {s.image && <img src={s.image} alt="" loading="lazy" />}
+                    <img src={s.image ?? coverArt(s.title, s.artist)} alt="" loading="lazy" />
                     <span className="music-shelf-play" aria-hidden="true">
                       <Play size={14} fill="currentColor" />
                     </span>
