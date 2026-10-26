@@ -41,19 +41,28 @@ export async function fetchLibraryStreams(
 }
 
 function matchEntry(entry: LibraryEntry, query: LibraryQuery): MatchInfo | null {
+  // Only video plays as a movie or episode: music, books and software in the library never match.
   if (entry.files && entry.files.length > 0) {
+    const firstVideo = entry.files.findIndex((f) => VIDEO_EXT_RE.test(f.name));
+    if (firstVideo < 0) return null;
     for (let idx = 0; idx < entry.files.length; idx++) {
       const f = entry.files[idx];
+      if (!VIDEO_EXT_RE.test(f.name)) continue;
       const m = checkText(f.name, query, idx);
       if (m) return m;
     }
+    const nameMatch = checkText(entry.name, query, firstVideo);
+    if (nameMatch) return nameMatch;
+    return positionalMatch(entry, query);
   }
-  const nameMatch = checkText(entry.name, query, undefined);
-  if (nameMatch) return nameMatch;
-  return positionalMatch(entry, query);
+  if (AUDIO_RE.test(entry.name)) return null;
+  return checkText(entry.name, query, undefined);
 }
 
 const VIDEO_EXT_RE = /\.(mkv|mp4|avi|mov|m4v|webm|ts|flv|wmv|m2ts|mpg|mpeg|ogv|3gp)(\?|#|$)/i;
+// Files and releases that are only sound, by extension or by name.
+const AUDIO_RE =
+  /\.(mp3|flac|m4a|aac|ogg|opus|wav|alac|wma)(\?|#|$)|(?:^|[^a-z0-9])(?:mp3|flac|discography|album|ost|soundtrack)(?:[^a-z0-9]|$)/i;
 const NON_EPISODE_RE =
   /(?:^|[^a-z0-9])(?:ncop|nced|creditless|opening|ending|preview|trailer|extra|special|sample|menu|bonus|interview|making|scan|booklet|ost)(?:[^a-z0-9]|$)/i;
 
@@ -75,12 +84,19 @@ function positionalMatch(entry: LibraryEntry, query: LibraryQuery): MatchInfo | 
     .map((f, idx) => ({ name: f.name, idx }))
     .filter((f) => VIDEO_EXT_RE.test(f.name) && !NON_EPISODE_RE.test(f.name));
   if (vids.length < 2) return null;
-  vids.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+  vids.sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }),
+  );
   const pos = query.episode - 1;
   if (pos < 0 || pos >= vids.length) return null;
   const chosen = vids[pos];
   const p = parse(chosen.name);
-  return { fileIdx: chosen.idx, parsedTitle: p.title ?? chosen.name, resolution: p.resolution, codec: p.codec };
+  return {
+    fileIdx: chosen.idx,
+    parsedTitle: p.title ?? chosen.name,
+    resolution: p.resolution,
+    codec: p.codec,
+  };
 }
 
 function checkText(
