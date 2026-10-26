@@ -111,6 +111,11 @@ export function MusicDj({ visible }: { visible: boolean }) {
     idleTimer.current = window.setTimeout(() => setIdle(true), 3200);
   }, []);
   useEffect(() => () => window.clearTimeout(idleTimer.current), []);
+  // A new song (or the first) shows the controls for a moment, then they fade on their own.
+  const songKeyNow = current ? `${current.artist} - ${current.title}` : "";
+  useEffect(() => {
+    if (started && songKeyNow) wake();
+  }, [started, songKeyNow, wake]);
   const [full, setFull] = useState(false);
   useEffect(() => {
     const onChange = () => setFull(document.fullscreenElement === stageRef.current);
@@ -325,7 +330,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
         ref={stageRef}
         className="music-dj-stage"
         data-on={started && !!dj.vibe}
-        data-idle={started && !paused && !!current && idle}
+        data-idle={started && !!current && idle}
         data-full={full}
         onMouseMove={wake}
         onMouseLeave={() => setIdle(true)}
