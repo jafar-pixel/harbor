@@ -43,16 +43,78 @@ function signedIn(req: Request): boolean {
   }
 }
 
+const serviceDb = () =>
+  createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+    db: { schema: "media" },
+  });
+
+/**
+ * Each video's real shape (width / height), so the player can zoom past YouTube's black bars on
+ * 4:3 and other non-widescreen videos. One API call (1 quota unit) covers up to 50 videos; the
+ * answer is cached per video for good.
+ */
+async function aspects(raw: unknown[]): Promise<Response> {
+  const ids = [
+    ...new Set(
+      raw.filter((v): v is string => typeof v === "string" && /^[A-Za-z0-9_-]{11}$/.test(v)),
+    ),
+  ].slice(0, 50);
+  if (!ids.length) return json({ aspects: {} });
+  const client = serviceDb();
+  const out: Record<string, number> = {};
+  const { data: hits } = await client
+    .from("music_search_cache")
+    .select("q, results")
+    .in(
+      "q",
+      ids.map((id) => `aspect:${id}`),
+    );
+  for (const h of hits ?? []) {
+    const ratio = (h.results as number[])[0];
+    if (typeof ratio === "number") out[h.q.slice(7)] = ratio;
+  }
+  const missing = ids.filter((id) => !(id in out));
+  if (missing.length && YOUTUBE_API_KEY) {
+    const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+    url.searchParams.set("part", "player");
+    url.searchParams.set("id", missing.join(","));
+    url.searchParams.set("maxWidth", "1280");
+    url.searchParams.set("key", YOUTUBE_API_KEY);
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = (await res.json()) as {
+        items?: { id?: string; player?: { embedWidth?: string; embedHeight?: string } }[];
+      };
+      const fresh: { q: string; results: number[]; fetched_at: string }[] = [];
+      for (const item of data.items ?? []) {
+        const w = Number(item.player?.embedWidth);
+        const h = Number(item.player?.embedHeight);
+        if (!item.id || !(w > 0) || !(h > 0)) continue;
+        const ratio = Math.round((w / h) * 1000) / 1000;
+        out[item.id] = ratio;
+        fresh.push({
+          q: `aspect:${item.id}`,
+          results: [ratio],
+          fetched_at: new Date().toISOString(),
+        });
+      }
+      if (fresh.length) await client.from("music_search_cache").upsert(fresh);
+    }
+  }
+  return json({ aspects: out });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   if (!signedIn(req)) return json({ error: "Sign in to your JL Media Vision account." }, 401);
-  let body: { q?: unknown; max?: unknown; kind?: unknown };
+  let body: { q?: unknown; max?: unknown; kind?: unknown; aspects?: unknown };
   try {
     body = await req.json();
   } catch {
     return json({ error: "Invalid JSON" }, 400);
   }
+  if (Array.isArray(body.aspects)) return aspects(body.aspects);
   const q = typeof body.q === "string" ? normalize(body.q) : "";
   if (!q) return json({ error: "Missing q" }, 400);
   const max = Math.min(15, Math.max(1, Number(body.max) || 8));

@@ -31,6 +31,7 @@ import {
 import { VIBES, crossfade, type DjSong, type Vibe } from "@/lib/music/dj/vibes";
 import { YT_ENDED, YT_PLAYING, loadYouTube, type YtPlayer } from "@/lib/music/dj/youtube";
 import { coverArt } from "@/lib/music/cover-art";
+import { videoAspects } from "@/lib/music/dj/api";
 import { useSongArt } from "@/lib/music/dj/art";
 import { onPauseDj, reportPlayhead } from "@/lib/music/dj/playhead";
 import { soundById } from "@/lib/music/sounds/catalog";
@@ -91,6 +92,32 @@ export function MusicDj({ visible }: { visible: boolean }) {
   const nextIdRef = useRef<string | null>(null);
   nextIdRef.current = next?.video?.id ?? null;
 
+  // Which video each deck shows, and every video's shape: a deck zooms just enough to cover the
+  // stage, so 4:3 and other non-widescreen videos fill it with no black bars.
+  const [deckIds, setDeckIds] = useState<[string | null, string | null]>([null, null]);
+  const showDeck = (deck: number, id: string | null) =>
+    setDeckIds((ids) => (deck === 0 ? [id, ids[1]] : [ids[0], id]));
+  const [aspects, setAspects] = useState<Map<string, number>>(new Map());
+  const upcoming = dj.tracks
+    .slice(dj.index, dj.index + 3)
+    .map((tr) => tr.video?.id)
+    .filter((id): id is string => !!id)
+    .join(",");
+  useEffect(() => {
+    if (!upcoming) return;
+    let live = true;
+    void videoAspects(upcoming.split(",")).then((map) => live && setAspects(new Map(map)));
+    return () => {
+      live = false;
+    };
+  }, [upcoming]);
+  const [stageAspect, setStageAspect] = useState(16 / 9);
+  const deckZoom = (id: string | null) => {
+    const ratio = id ? aspects.get(id) : undefined;
+    if (!ratio) return 1;
+    return Math.min(2.4, Math.max(ratio / stageAspect, stageAspect / ratio));
+  };
+
   // Posters, the wallpaper and the record label all use the song's cover art.
   const artFor = useSongArt([...dj.tracks, ...dj.discover, ...dj.liked.slice(0, 24)]);
   // While the lookup runs, the video thumbnail; once no catalog has a cover, original art.
@@ -117,6 +144,15 @@ export function MusicDj({ visible }: { visible: boolean }) {
     if (started && songKeyNow) wake();
   }, [started, songKeyNow, wake]);
   const [full, setFull] = useState(false);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const resize = new ResizeObserver(() => {
+      if (el.clientHeight > 0) setStageAspect(el.clientWidth / el.clientHeight);
+    });
+    resize.observe(el);
+    return () => resize.disconnect();
+  }, []);
   useEffect(() => {
     const onChange = () => setFull(document.fullscreenElement === stageRef.current);
     document.addEventListener("fullscreenchange", onChange);
@@ -175,6 +211,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
     const player = players.current[deck];
     if (!player || !currentId || loaded.current[deck] === currentId) return;
     loaded.current[deck] = currentId;
+    showDeck(deck, currentId);
     player.setVolume(live.current.volume);
     player.loadVideoById(currentId);
     if (live.current.paused) player.pauseVideo();
@@ -231,6 +268,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
         a.getPlayerState() === YT_PLAYING
       ) {
         loaded.current[1 - from] = nextId;
+        showDeck(1 - from, nextId);
         b.setVolume(0);
         b.loadVideoById(nextId);
         fade.current = { start: Date.now(), to: 1 - from, nextIndex: upNext };
@@ -345,8 +383,16 @@ export function MusicDj({ visible }: { visible: boolean }) {
           />
         )}
         <div className="music-dj-decks" aria-hidden={!started}>
-          <div ref={hosts[0]} className="music-dj-deck" style={{ opacity: opacity[0] }} />
-          <div ref={hosts[1]} className="music-dj-deck" style={{ opacity: opacity[1] }} />
+          <div
+            ref={hosts[0]}
+            className="music-dj-deck"
+            style={{ opacity: opacity[0], transform: `scale(${deckZoom(deckIds[0])})` }}
+          />
+          <div
+            ref={hosts[1]}
+            className="music-dj-deck"
+            style={{ opacity: opacity[1], transform: `scale(${deckZoom(deckIds[1])})` }}
+          />
         </div>
         <div className="music-dj-glow" />
         {started && dj.vibe && (
