@@ -7,13 +7,23 @@ import { MusicFriends } from "./music/music-friends";
 import { MusicLounge } from "./music/music-lounge";
 import { MusicMoods } from "./music/music-moods";
 import { MusicSpotify } from "./music/music-spotify";
+import { MusicWebForYou } from "./music/music-web-for-you";
 import { MusicStyles } from "./music/music-styles";
 
 type Track = { id: string; title: string; url: string; local: boolean };
 
-type WebMusicTab = "dj" | "lounge" | "friends" | "spotify" | "moods" | "styles" | "files";
+type WebMusicTab =
+  | "forYou"
+  | "dj"
+  | "lounge"
+  | "friends"
+  | "spotify"
+  | "moods"
+  | "styles"
+  | "files";
 
 const WEB_TABS: { id: WebMusicTab; label: string }[] = [
+  { id: "forYou", label: "music.tab.forYou" },
   { id: "dj", label: "music.tab.dj" },
   { id: "lounge", label: "music.tab.lounge" },
   { id: "friends", label: "music.tab.friends" },
@@ -29,7 +39,7 @@ const WEB_TABS: { id: WebMusicTab; label: string }[] = [
  */
 export function MusicView({ active }: { active: boolean; shellBackAvailable?: boolean }) {
   const t = useT();
-  const [tab, setTab] = useState<WebMusicTab>("dj");
+  const [tab, setTab] = useState<WebMusicTab>("forYou");
   const inbox = useSongInbox();
 
   // A song toast or an invite can ask for a tab.
@@ -81,6 +91,7 @@ export function MusicView({ active }: { active: boolean; shellBackAvailable?: bo
             );
           })}
         </div>
+        {tab === "forYou" && <MusicWebForYou active={active} />}
         <MusicDj visible={active && tab === "dj"} />
         <MusicLounge visible={active && tab === "lounge"} />
         {tab === "friends" && <MusicFriends active={active} />}

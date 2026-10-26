@@ -1,0 +1,313 @@
+.music-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.music-shelf-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.music-shelf-head h2 {
+  margin: 0;
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+.music-shelf-head button {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink-muted);
+}
+.music-shelf-head button:hover {
+  color: var(--color-ink);
+}
+.music-shelf-h {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-subtle);
+}
+.music-shelf-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+.music-shelf-playlists,
+.music-shelf-artists {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+  padding: 4px 2px 10px;
+  overflow-x: auto;
+  list-style: none;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+.music-shelf-playlists > li {
+  flex: 0 0 clamp(160px, 15vw, 210px);
+  scroll-snap-align: start;
+}
+.music-shelf-poster {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  text-align: start;
+}
+.music-shelf-cover,
+.music-shelf-liked {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1;
+  margin-bottom: 6px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #312e81, #0f172a);
+  color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 20px 40px -24px rgba(0, 0, 0, 0.9);
+  transition: transform 0.25s ease;
+}
+.music-shelf-cover img,
+.music-shelf-liked img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.music-shelf-liked {
+  background: linear-gradient(135deg, #7c3aed, #1d4ed8 55%, #10b981);
+  color: #fff;
+}
+.music-shelf-liked img {
+  opacity: 0.35;
+  filter: blur(6px) saturate(1.3);
+  transform: scale(1.15);
+}
+.music-shelf-liked svg {
+  position: relative;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+}
+.music-shelf-poster:hover .music-shelf-cover,
+.music-shelf-poster:hover .music-shelf-liked,
+.music-shelf-poster:focus-visible .music-shelf-cover {
+  transform: translateY(-4px);
+}
+.music-shelf-poster strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-shelf-poster em {
+  font-size: 12.5px;
+  font-style: normal;
+  color: var(--color-ink-muted);
+}
+/* The round play button rises onto the cover on hover. */
+.music-shelf-play {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: #1db954;
+  color: #000;
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.music-shelf-poster > .music-shelf-play {
+  right: 10px;
+  bottom: 52px;
+}
+.music-shelf-poster:hover > .music-shelf-play,
+.music-shelf-poster:focus-visible > .music-shelf-play,
+.music-shelf-tracks button:hover .music-shelf-play {
+  opacity: 1;
+  transform: none;
+}
+.music-shelf-skeleton {
+  aspect-ratio: 1;
+  border-radius: 14px;
+  background: var(--color-elevated);
+  animation: music-shelf-pulse 1.2s ease-in-out infinite alternate;
+}
+@keyframes music-shelf-pulse {
+  to {
+    opacity: 0.5;
+  }
+}
+.music-shelf-artists > li {
+  flex: 0 0 auto;
+}
+.music-shelf-artists button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 120px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+}
+.music-shelf-artists img,
+.music-shelf-artists span {
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: var(--color-elevated);
+  box-shadow: 0 16px 30px -18px rgba(0, 0, 0, 0.9);
+  transition: transform 0.2s ease;
+}
+.music-shelf-artists button:hover img {
+  transform: scale(1.05);
+}
+.music-shelf-artists strong {
+  overflow: hidden;
+  width: 100%;
+  font-size: 13px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-shelf-tracks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.music-shelf-tracks button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-elevated);
+  color: var(--color-ink);
+  text-align: start;
+  transition: background 0.2s ease;
+}
+.music-shelf-tracks button:hover {
+  background: color-mix(in srgb, var(--color-elevated) 80%, #fff 8%);
+}
+.music-shelf-track-art {
+  position: relative;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  overflow: hidden;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #312e81, #0f172a);
+}
+.music-shelf-track-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.music-shelf-track-art .music-shelf-play {
+  width: 30px;
+  height: 30px;
+}
+.music-shelf-tracks button > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.music-shelf-tracks strong,
+.music-shelf-tracks em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-shelf-tracks strong {
+  font-size: 14px;
+}
+.music-shelf-tracks em {
+  font-size: 12.5px;
+  font-style: normal;
+  color: var(--color-ink-muted);
+}
+.music-shelf-invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 24px;
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 160% at 0% 0%, rgba(29, 185, 84, 0.28), transparent 55%),
+    radial-gradient(120% 160% at 100% 100%, rgba(255, 0, 0, 0.22), transparent 55%),
+    var(--color-elevated);
+  color: var(--color-ink);
+}
+.music-shelf-invite h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+}
+.music-shelf-invite p {
+  margin: 4px 0 0;
+  max-width: 560px;
+  font-size: 13.5px;
+  color: var(--color-ink-muted);
+}
+.music-shelf-invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.music-shelf-invite-actions button {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+}
+.music-shelf-spotify {
+  background: #1db954;
+  color: #04150a;
+}
+.music-shelf-youtube {
+  background: #ff0033;
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .music-shelf-play,
+  .music-shelf-cover,
+  .music-shelf-liked {
+    transition: none;
+  }
+  .music-shelf-skeleton {
+    animation: none;
+  }
+}

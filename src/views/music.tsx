@@ -1,6 +1,7 @@
 import { HoverTooltip } from "@/components/hover-tooltip";
 import { MusicDj } from "./music/music-dj";
 import { MusicFriends } from "./music/music-friends";
+import { MusicForYouAccount } from "./music/music-for-you-account";
 import { MusicLounge } from "./music/music-lounge";
 import { MUSIC_TAB_EVENT, takeMusicTabRequest, useSongInbox } from "@/lib/music/social/inbox";
 import { MusicMoods } from "./music/music-moods";
@@ -1491,6 +1492,19 @@ function MusicViewContent({ active }: { active: boolean }) {
                   tabIndex={0}
                   className="flex flex-col gap-8 outline-none"
                 >
+                  {tab === "forYou" && (
+                    <MusicForYouAccount
+                      active={active}
+                      spotifyConnected={connections.some(
+                        (connection) =>
+                          connection.id === "spotify" && connection.status === "connected",
+                      )}
+                      onConnect={() => openConnections("spotify")}
+                      onYouTube={() => setYtm(true)}
+                      onPlay={playTrack}
+                      onSeeAll={() => openLibrary({ view: "spotify", spotifyKind: "playlists" })}
+                    />
+                  )}
                   {tab === "forYou" && (
                     <MusicStylesCard
                       onOpen={(genre) => {
