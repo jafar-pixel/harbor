@@ -27,6 +27,7 @@ export function MusicAccountShelf({
   onTrack,
   onArtist,
   onSeeAll,
+  youtubeLabel,
 }: {
   connected: boolean;
   provider: string;
@@ -42,6 +43,8 @@ export function MusicAccountShelf({
   onTrack: (index: number) => void;
   onArtist?: (artist: ShelfArtist) => void;
   onSeeAll?: () => void;
+  /** Overrides "Connect YouTube" (e.g. "Reconnect YouTube" after the sign in ran out). */
+  youtubeLabel?: string;
 }) {
   const t = useT();
   if (!connected) {
@@ -49,6 +52,7 @@ export function MusicAccountShelf({
       <section className="music-shelf-invite">
         <div>
           <h2>{t("Make For you yours")}</h2>
+          {error && <p className="music-shelf-error">{error}</p>}
           <p>
             {t(
               "Connect your Spotify or YouTube and this page fills with your playlists, the songs you love and your top artists.",
@@ -61,7 +65,7 @@ export function MusicAccountShelf({
           </button>
           {onConnectYouTube && (
             <button type="button" className="music-shelf-youtube" onClick={onConnectYouTube}>
-              {t("Connect YouTube")}
+              {youtubeLabel ?? t("Connect YouTube")}
             </button>
           )}
         </div>
@@ -71,7 +75,11 @@ export function MusicAccountShelf({
 
   const likedCover = liked.find((s) => s.image)?.image ?? null;
   return (
-    <section className="music-shelf" aria-label={t("Your {provider}", { provider })}>
+    <section
+      className="music-shelf"
+      data-provider={provider.toLowerCase().startsWith("youtube") ? "youtube" : "spotify"}
+      aria-label={t("Your {provider}", { provider })}
+    >
       <header className="music-shelf-head">
         <h2>{t("Your {provider}", { provider })}</h2>
         {onSeeAll && (
