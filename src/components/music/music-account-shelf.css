@@ -126,8 +126,8 @@
   width: 44px;
   height: 44px;
   border-radius: 999px;
-  background: #1db954;
-  color: #000;
+  background: var(--shelf-accent, #1db954);
+  color: var(--shelf-on-accent, #000);
   box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.8);
   opacity: 0;
   transform: translateY(8px);
@@ -310,4 +310,8 @@
   .music-shelf-skeleton {
     animation: none;
   }
+}
+.music-shelf[data-provider="youtube"] {
+  --shelf-accent: #ff0033;
+  --shelf-on-accent: #fff;
 }
