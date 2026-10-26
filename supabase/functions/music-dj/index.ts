@@ -56,7 +56,8 @@ Rules:
 - "colors" are two hex colours for the vibe.
 - "sounds" are 0-2 background sounds from this list that suit the vibe, or none for a party: ${SOUNDS.join(", ")}.
 - "intro" is one or two short, warm DJ lines (under 200 characters).
-Reply with JSON only: {"intro":"","tracks":[{"artist":"","title":"","why":""}],"discover":[{"artist":"","title":"","why":""}],"scene":"","colors":["#000000","#000000"],"sounds":[]}`;
+- Mix like a club DJ. For every track give "bpm" (its tempo, a whole number), "key" (its musical key as a Camelot code, 1A-12B) and "energy" (1-10). Order the set for harmonic mixing: each next track in the same key, one step around the wheel (8A to 7A or 9A) or the relative key (8A to 8B), with bpm within about 8% of the last unless the vibe calls for a change; build energy in waves, not all at once.
+Reply with JSON only: {"intro":"","tracks":[{"artist":"","title":"","why":"","bpm":0,"key":"8A","energy":5}],"discover":[{"artist":"","title":"","why":""}],"scene":"","colors":["#000000","#000000"],"sounds":[]}`;
 
 /** The platform has verified the token's signature; only signed-in JL accounts may use quota. */
 function signedIn(req: Request): boolean {
@@ -137,7 +138,18 @@ Deno.serve(async (req) => {
     const o = (v ?? {}) as Record<string, unknown>;
     const artist = text(o.artist, 80);
     const title = text(o.title, 120);
-    return artist && title ? { artist, title, why: text(o.why, 160) } : null;
+    if (!artist || !title) return null;
+    const bpm = Math.round(Number(o.bpm));
+    const key = text(o.key, 3).toUpperCase();
+    const energy = Math.round(Number(o.energy));
+    return {
+      artist,
+      title,
+      why: text(o.why, 160),
+      ...(bpm >= 50 && bpm <= 220 ? { bpm } : {}),
+      ...(/^(1[0-2]|[1-9])[AB]$/.test(key) ? { key } : {}),
+      ...(energy >= 1 && energy <= 10 ? { energy } : {}),
+    };
   };
   const seen = new Set(avoid.map((a) => a.toLowerCase()));
   const tracks = (Array.isArray(raw.tracks) ? raw.tracks : [])

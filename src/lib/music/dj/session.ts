@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { readMusicPreference, writeMusicPreference } from "../preferences";
 import { resolveStyles, seedArtists } from "../tastes/styles";
 import { accountSeeds } from "./account-seeds";
+import { harmonicOrder } from "./mixing";
 import { askDj, searchVideos, type DjSet } from "./api";
 import { pickVideo, songKey, songQuery, type DjSong, type VideoResult, type Vibe } from "./vibes";
 
@@ -97,7 +98,11 @@ function context(styleKeys: readonly string[]) {
 
 function apply(set_: DjSet, keep: DjTrack[]) {
   const known = new Set(keep.map(songKey));
-  const fresh = set_.tracks.filter((t) => !known.has(songKey(t)));
+  const added = set_.tracks.filter((t) => !known.has(songKey(t)));
+  // Mix order: each song in a key and tempo that flows from the one before it.
+  const fresh = keep.length
+    ? harmonicOrder(keep[keep.length - 1], added)
+    : added.slice(0, 1).concat(harmonicOrder(added[0], added.slice(1)));
   set({
     status: "ready",
     error: null,
