@@ -90,9 +90,13 @@ Deno.serve(async (req) => {
     .filter((i) => i.artist && i.title);
   if (!items.length) return json({ results: {} });
 
-  const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
-    db: { schema: "media" },
-  });
+  const db = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    {
+      db: { schema: "media" },
+    },
+  );
   const keyOf = (i: { artist: string; title: string }) => `art:${i.artist}|${i.title}`;
   const keys = [...new Set(items.map(keyOf))];
   const { data: hits } = await db
@@ -117,7 +121,11 @@ Deno.serve(async (req) => {
         try {
           const art = await lookup(item.artist, item.title);
           out[keyOf(item)] = art;
-          fresh.push({ q: keyOf(item), results: art ? [art] : [], fetched_at: new Date().toISOString() });
+          fresh.push({
+            q: keyOf(item),
+            results: art ? [art] : [],
+            fetched_at: new Date().toISOString(),
+          });
         } catch {
           // Rate-limited or offline: leave it out, the next request tries again.
         }
