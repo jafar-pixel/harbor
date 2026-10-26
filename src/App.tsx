@@ -86,6 +86,7 @@ import { TogetherInviteToast } from "@/components/together-invite-toast";
 import { SongShareToast } from "@/components/song-share-toast";
 import { LoungeInviteToast } from "@/components/lounge-invite-toast";
 import { SpotifyReturn } from "@/components/spotify-return";
+import { NowPlayingReporter } from "@/components/now-playing-reporter";
 import { TogetherSummonToast } from "@/components/together-summon-toast";
 import { TogetherParticipantLeftToast } from "@/components/together-participant-left-toast";
 import { AnilistSyncToast } from "@/components/anilist/anilist-sync-toast";
@@ -478,6 +479,7 @@ function AppProviders({ onReady }: { onReady?: () => void }) {
                                                     <SongShareToast />
                                                     <LoungeInviteToast />
                                                     <SpotifyReturn />
+                                                    <NowPlayingReporter />
                                                     <TogetherFloater />
                                                     <TogetherHostLeavingPrompt />
                                                     <TogetherSummonToast />

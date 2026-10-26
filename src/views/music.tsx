@@ -2,6 +2,7 @@ import { HoverTooltip } from "@/components/hover-tooltip";
 import { MusicDj } from "./music/music-dj";
 import { MusicFriends } from "./music/music-friends";
 import { MusicForYouAccount } from "./music/music-for-you-account";
+import { MusicOtherDevices } from "@/components/music/music-other-devices";
 import { MusicLounge } from "./music/music-lounge";
 import { MUSIC_TAB_EVENT, takeMusicTabRequest, useSongInbox } from "@/lib/music/social/inbox";
 import { MusicMoods } from "./music/music-moods";
@@ -1492,6 +1493,7 @@ function MusicViewContent({ active }: { active: boolean }) {
                   tabIndex={0}
                   className="flex flex-col gap-8 outline-none"
                 >
+                  <MusicOtherDevices />
                   {tab === "forYou" && (
                     <MusicForYouAccount
                       active={active}

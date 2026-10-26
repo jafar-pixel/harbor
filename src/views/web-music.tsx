@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Headphones, Music2, Pause, Play, Plus, Trash2 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { MUSIC_TAB_EVENT, takeMusicTabRequest, useSongInbox } from "@/lib/music/social/inbox";
+import { MusicOtherDevices } from "@/components/music/music-other-devices";
 import { MusicDj } from "./music/music-dj";
 import { MusicFriends } from "./music/music-friends";
 import { MusicLounge } from "./music/music-lounge";
@@ -61,6 +62,7 @@ export function MusicView({ active }: { active: boolean; shellBackAvailable?: bo
           <Headphones className="text-accent" size={28} />
           <h1 className="font-display text-3xl">{t("Music")}</h1>
         </header>
+        <MusicOtherDevices />
         <div
           role="tablist"
           aria-label={t("Music")}
