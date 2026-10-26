@@ -9,6 +9,7 @@ pub const EXPIRED: &str = "Spotify sign in expired";
 pub const REJECTED_CLIENT: &str = "Spotify rejected that client id";
 pub const MISSING_CLIENT_ID: &str = "Spotify needs your own client id";
 pub const BRING_YOUR_OWN: &str = "Bring your own Spotify app";
+pub const SIGN_IN_WITH_SPOTIFY: &str = "Sign in with your Spotify account";
 
 const REDIRECT_PORT: u16 = 8898;
 const OAUTH_TIMEOUT: Duration = Duration::from_secs(90);
@@ -40,8 +41,23 @@ pub struct Authorization {
     pub scopes: Vec<String>,
 }
 
+/// JL Media Vision's own Spotify app (a JL_SPOTIFY_CLIENT_ID build variable can swap it). A client
+/// id is public (sign in uses PKCE, no secret), so listeners just sign in with their own Spotify
+/// account. Spotify still limits a new app to the listeners added under its
+/// User Management.
+pub fn built_in_client_id() -> Option<&'static str> {
+    Some(option_env!("JL_SPOTIFY_CLIENT_ID").unwrap_or(JL_SPOTIFY_CLIENT_ID))
+        .map(str::trim)
+        .filter(|id| id.len() == 32 && id.chars().all(|c| c.is_ascii_hexdigit()))
+}
+
+/// Keep in sync with JL_SPOTIFY_CLIENT_ID in src/lib/music/spotify-setup.ts.
+const JL_SPOTIFY_CLIENT_ID: &str = "739d5262cbb44453ba1f933230eef197";
+
+/// A client id saved on this device (a listener's own app) wins over the built-in one.
 pub fn client_id(app: &AppHandle) -> Result<String, String> {
     keystore::read(app, keystore::CLIENT_ID_KEY)
+        .or_else(|| built_in_client_id().map(str::to_string))
         .ok_or_else(|| format!("{MISSING_CLIENT_ID}. {}", setup_hint()))
 }
 

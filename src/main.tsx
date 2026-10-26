@@ -22,8 +22,10 @@ import "flag-icons/css/flag-icons.min.css";
 import { startTaskbarProgress } from "@/lib/download/taskbar-progress";
 import { completeBetaReturnPreferences } from "@/lib/updater/beta-return";
 import { captureSharedLink } from "@/lib/shared-link";
+import { captureSpotifyCallback } from "@/lib/music/spotify-web/auth";
 
 captureSharedLink();
+captureSpotifyCallback();
 
 let returnPreferencesReady = true;
 
