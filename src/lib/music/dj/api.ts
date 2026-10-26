@@ -54,3 +54,27 @@ export function searchVideos(q: string, kind: "music" | "any" = "music"): Promis
   searches.set(key, run);
   return run;
 }
+
+const aspectCache = new Map<string, number>();
+const aspectAsked = new Set<string>();
+
+/**
+ * Each video's real shape (width / height), so the decks can zoom past YouTube's black bars.
+ * Unknown videos are looked up once per session; failures leave the video unzoomed.
+ */
+export async function videoAspects(ids: string[]): Promise<Map<string, number>> {
+  const wanted = [...new Set(ids)].filter((id) => !aspectCache.has(id) && !aspectAsked.has(id));
+  if (wanted.length) {
+    for (const id of wanted) aspectAsked.add(id);
+    try {
+      const { aspects } = await call<{ aspects: Record<string, number> }>("music-search", {
+        aspects: wanted.slice(0, 50),
+      });
+      for (const [id, ratio] of Object.entries(aspects ?? {}))
+        if (Number.isFinite(ratio) && ratio > 0) aspectCache.set(id, ratio);
+    } catch {
+      for (const id of wanted) aspectAsked.delete(id);
+    }
+  }
+  return aspectCache;
+}
