@@ -16,7 +16,7 @@ import { useT } from "@/lib/i18n";
 import { useJlSession } from "@/lib/jl/account/client";
 import { pauseDj, readPlayhead } from "@/lib/music/dj/playhead";
 import { requestDj, useDj } from "@/lib/music/dj/session";
-import { YT_PLAYING, loadYouTube, type YtPlayer } from "@/lib/music/dj/youtube";
+import { YT_PLAYING, loadYouTube, youtubeFrame, type YtPlayer } from "@/lib/music/dj/youtube";
 import { inviteToLounge, myOpenLounges, type Lounge } from "@/lib/music/lounge/api";
 import {
   LOUNGE_JOIN_EVENT,
@@ -590,21 +590,16 @@ function GuestStage({ lounge }: { lounge: Lounge }) {
       const api = await loadYouTube();
       const host = mount.current;
       if (!host || player.current) return setTuned(true);
-      const el = document.createElement("div");
-      host.replaceChildren(el);
+      const frame = youtubeFrame(host, {
+        autoplay: 1,
+        controls: 0,
+        disablekb: 1,
+        playsinline: 1,
+        rel: 0,
+        iv_load_policy: 3,
+      });
       const created = await new Promise<YtPlayer>((resolve) => {
-        const p: YtPlayer = new api.Player(el, {
-          width: "100%",
-          height: "100%",
-          playerVars: {
-            autoplay: 1,
-            controls: 0,
-            disablekb: 1,
-            playsinline: 1,
-            rel: 0,
-            iv_load_policy: 3,
-            origin: location.origin,
-          },
+        const p: YtPlayer = new api.Player(frame, {
           events: {
             onReady: () => resolve(p),
             onError: () => setFailed(t("This song can't play here. The next one will.")),

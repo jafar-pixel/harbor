@@ -29,7 +29,13 @@ import {
   videoFailed,
 } from "@/lib/music/dj/session";
 import { VIBES, crossfade, type DjSong, type Vibe } from "@/lib/music/dj/vibes";
-import { YT_ENDED, YT_PLAYING, loadYouTube, type YtPlayer } from "@/lib/music/dj/youtube";
+import {
+  YT_ENDED,
+  YT_PLAYING,
+  loadYouTube,
+  youtubeFrame,
+  type YtPlayer,
+} from "@/lib/music/dj/youtube";
 import { coverArt } from "@/lib/music/cover-art";
 import { videoAspects } from "@/lib/music/dj/api";
 import { useSongArt } from "@/lib/music/dj/art";
@@ -173,20 +179,15 @@ export function MusicDj({ visible }: { visible: boolean }) {
           new Promise<void>((resolve) => {
             const host = hosts[deck].current;
             if (!host || players.current[deck]) return resolve();
-            const mount = document.createElement("div");
-            host.replaceChildren(mount);
-            players.current[deck] = new api.Player(mount, {
-              width: "100%",
-              height: "100%",
-              playerVars: {
-                autoplay: 0,
-                controls: 0,
-                disablekb: 1,
-                playsinline: 1,
-                rel: 0,
-                iv_load_policy: 3,
-                origin: location.origin,
-              },
+            const frame = youtubeFrame(host, {
+              autoplay: 0,
+              controls: 0,
+              disablekb: 1,
+              playsinline: 1,
+              rel: 0,
+              iv_load_policy: 3,
+            });
+            players.current[deck] = new api.Player(frame, {
               events: {
                 onReady: () => resolve(),
                 onStateChange: ({ data }: { data: number }) => {

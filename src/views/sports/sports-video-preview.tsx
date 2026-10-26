@@ -1,3 +1,4 @@
+import { youtubeFrame } from "@/lib/music/dj/youtube";
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Volume2, VolumeX } from "lucide-react";
 import { useT } from "@/lib/i18n";
@@ -202,20 +203,20 @@ export function SportsVideoPreview({
           soundOn = resume?.unmuted ?? false;
           intentional = soundOn;
           setMuted(!soundOn);
-          player = new api.Player(host, {
-            host: "https://www.youtube-nocookie.com",
-            width: "100%",
-            height: "100%",
-            videoId: videos[0].id,
-            playerVars: {
+          host.style.cssText = "display:block;width:100%;height:100%";
+          const embed = youtubeFrame(
+            host,
+            {
               autoplay: 0,
               start: Math.floor(resume?.seconds ?? 0),
               controls: 0,
               disablekb: 1,
               playsinline: 1,
               rel: 0,
-              origin: location.origin,
             },
+            { videoId: videos[0].id, host: "https://www.youtube-nocookie.com" },
+          );
+          player = new api.Player(embed, {
             events: {
               onReady: ({ target }: { target: Player }) => {
                 if (!controller.signal.aborted) {
