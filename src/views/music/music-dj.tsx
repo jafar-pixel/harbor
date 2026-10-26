@@ -10,6 +10,7 @@ import {
   Send,
   SkipBack,
   SkipForward,
+  SlidersHorizontal,
   Sparkles,
   Volume2,
   Waves,
@@ -37,6 +38,15 @@ import {
   type YtPlayer,
 } from "@/lib/music/dj/youtube";
 import { coverArt } from "@/lib/music/cover-art";
+import {
+  MATCH_LABEL,
+  STYLE_LABEL,
+  keyMatch,
+  phrasePlan,
+  transitionGains,
+  transitionStyle,
+  type TransitionStyle,
+} from "@/lib/music/dj/mixing";
 import { videoAspects } from "@/lib/music/dj/api";
 import { useSongArt } from "@/lib/music/dj/art";
 import { onPauseDj, reportPlayhead } from "@/lib/music/dj/playhead";
@@ -88,9 +98,21 @@ export function MusicDj({ visible }: { visible: boolean }) {
   const players = useRef<(YtPlayer | null)[]>([null, null]);
   const loaded = useRef<(string | null)[]>([null, null]);
   const active = useRef(0);
-  const fade = useRef<{ start: number; to: number; nextIndex: number } | null>(null);
-  const live = useRef({ index: dj.index, volume, paused });
-  live.current = { index: dj.index, volume, paused };
+  const fade = useRef<{
+    start: number;
+    to: number;
+    nextIndex: number;
+    ms: number;
+    style: TransitionStyle;
+    beat: number;
+  } | null>(null);
+  // DJ mixing: transitions on the phrase, shaped for the two songs. Off is the plain end fade.
+  const [mixing, setMixing] = useState(true);
+  const [mixOpen, setMixOpen] = useState(false);
+  const [mixIn, setMixIn] = useState<number | null>(null);
+  const mixNow = useRef(false);
+  const live = useRef({ index: dj.index, volume, paused, mixing });
+  live.current = { index: dj.index, volume, paused, mixing };
 
   const current = dj.tracks[dj.index];
   const next = dj.tracks[dj.index + 1];
@@ -244,11 +266,14 @@ export function MusicDj({ visible }: { visible: boolean }) {
       if (!a || !b || live.current.paused) return;
       const f = fade.current;
       if (f) {
-        const [out, inn] = crossfade((Date.now() - f.start) / FADE_MS);
+        const elapsed = Date.now() - f.start;
+        const [out, inn] = transitionGains(f.style, elapsed / f.ms, elapsed / 1000 / f.beat);
         a.setVolume(out * live.current.volume);
         b.setVolume(inn * live.current.volume);
-        setOpacity(from === 0 ? [out, inn] : [inn, out]);
-        if (Date.now() - f.start >= FADE_MS) {
+        // The picture always blends smoothly, whatever the sound does.
+        const [seen, coming] = crossfade(elapsed / f.ms);
+        setOpacity(from === 0 ? [seen, coming] : [coming, seen]);
+        if (elapsed >= f.ms) {
           a.stopVideo();
           loaded.current[from] = null;
           active.current = f.to;
@@ -260,19 +285,32 @@ export function MusicDj({ visible }: { visible: boolean }) {
       const upNext = live.current.index + 1;
       const nextId = nextIdRef.current;
       const duration = a.getDuration();
-      const left = duration - a.getCurrentTime();
-      if (
-        nextId &&
-        duration > 30 &&
-        left > 0 &&
-        left * 1000 <= FADE_MS &&
-        a.getPlayerState() === YT_PLAYING
-      ) {
+      const position = a.getCurrentTime();
+      const left = duration - position;
+      const coming = djState().tracks[upNext];
+      const style: TransitionStyle =
+        live.current.mixing && on && coming ? transitionStyle(on, coming) : "blend";
+      const plan = live.current.mixing
+        ? phrasePlan(on?.bpm, duration, style)
+        : { start: duration - FADE_MS / 1000, seconds: FADE_MS / 1000 };
+      const until = nextId && duration > 30 ? Math.max(0, Math.ceil(plan.start - position)) : null;
+      setMixIn((was) => (was === until ? was : until));
+      const manual = mixNow.current;
+      const due = position >= plan.start || manual;
+      if (nextId && duration > 30 && left > 0 && due && a.getPlayerState() === YT_PLAYING) {
+        mixNow.current = false;
         loaded.current[1 - from] = nextId;
         showDeck(1 - from, nextId);
         b.setVolume(0);
         b.loadVideoById(nextId);
-        fade.current = { start: Date.now(), to: 1 - from, nextIndex: upNext };
+        fade.current = {
+          start: Date.now(),
+          to: 1 - from,
+          nextIndex: upNext,
+          ms: Math.min(plan.seconds, Math.max(1, left - 0.5)) * 1000,
+          style: manual || !live.current.mixing ? "blend" : style,
+          beat: 60 / (on?.bpm || 120),
+        };
       }
     }, TICK_MS);
     return () => {
@@ -430,6 +468,18 @@ export function MusicDj({ visible }: { visible: boolean }) {
                   <Play size={18} /> {t("Start listening")}
                 </button>
               )}
+              {mixOpen && current && (
+                <MixPanel
+                  now={current}
+                  next={next}
+                  mixing={mixing}
+                  mixIn={mixIn}
+                  onToggle={() => setMixing(!mixing)}
+                  onMixNow={() => {
+                    mixNow.current = true;
+                  }}
+                />
+              )}
               <div className="music-dj-controls">
                 <button
                   type="button"
@@ -480,6 +530,14 @@ export function MusicDj({ visible }: { visible: boolean }) {
                     <Send size={18} />
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="music-dj-mix-toggle"
+                  aria-pressed={mixOpen}
+                  onClick={() => setMixOpen(!mixOpen)}
+                >
+                  <SlidersHorizontal size={15} /> {t("Mix")}
+                </button>
                 <label className="music-dj-volume">
                   <Volume2 size={16} />
                   <input
@@ -781,5 +839,66 @@ export function MusicDj({ visible }: { visible: boolean }) {
       )}
       {sending && <SendSongDialog song={sending} onClose={() => setSending(null)} />}
     </section>
+  );
+}
+
+/** What the DJ is mixing: tempo and key of both songs, how they fit, and when the mix starts. */
+function MixPanel({
+  now,
+  next,
+  mixing,
+  mixIn,
+  onToggle,
+  onMixNow,
+}: {
+  now: DjSong;
+  next: (DjSong & { video?: unknown }) | undefined;
+  mixing: boolean;
+  mixIn: number | null;
+  onToggle: () => void;
+  onMixNow: () => void;
+}) {
+  const t = useT();
+  const match = next ? keyMatch(now.key, next.key) : null;
+  const style = next ? transitionStyle(now, next) : null;
+  const deck = (label: string, song: DjSong) => (
+    <div className="music-dj-mix-deck">
+      <span className="music-dj-mix-label">{t(label)}</span>
+      <strong>{song.title}</strong>
+      <span className="music-dj-mix-stats">
+        <span>{song.bpm ? `${song.bpm} BPM` : "– BPM"}</span>
+        <span>{song.key ?? "–"}</span>
+        {song.energy ? <span>{t("Energy {n}", { n: song.energy })}</span> : null}
+      </span>
+    </div>
+  );
+  return (
+    <div className="music-dj-mix" role="group" aria-label={t("DJ mixing")}>
+      <div className="music-dj-mix-decks">
+        {deck("Now", now)}
+        {next && deck("Next", next)}
+      </div>
+      <p className="music-dj-mix-plan">
+        {match && <span data-match={match}>{t(MATCH_LABEL[match])}</span>}
+        {mixing && style && <span>{t(STYLE_LABEL[style])}</span>}
+        {mixIn !== null && (
+          <span>
+            {mixIn > 0
+              ? t("Mixing in {time}", {
+                  time: `${Math.floor(mixIn / 60)}:${String(mixIn % 60).padStart(2, "0")}`,
+                })
+              : t("Mixing now")}
+          </span>
+        )}
+      </p>
+      <div className="music-dj-mix-actions">
+        <button type="button" aria-pressed={mixing} onClick={onToggle}>
+          {mixing ? t("Phrase mixing on") : t("Phrase mixing off")}
+        </button>
+        <button type="button" disabled={!next?.video} onClick={onMixNow}>
+          {t("Mix now")}
+        </button>
+      </div>
+    </div>
   );
 }

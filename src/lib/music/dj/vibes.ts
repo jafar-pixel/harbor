@@ -68,7 +68,17 @@ export const VIBES: readonly Vibe[] = [
   },
 ];
 
-export type DjSong = { artist: string; title: string; why: string };
+export type DjSong = {
+  artist: string;
+  title: string;
+  why: string;
+  /** Tempo, from the AI DJ. */
+  bpm?: number;
+  /** Musical key as a Camelot code (1A-12B), from the AI DJ. */
+  key?: string;
+  /** 1-10, from the AI DJ. */
+  energy?: number;
+};
 
 export type VideoResult = {
   id: string;

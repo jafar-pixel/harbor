@@ -1138,3 +1138,88 @@ li[data-current="true"] > .music-dj-poster {
 .music-dj-poster img.music-dj-poster-art {
   transition: transform 0.4s ease;
 }
+
+/* DJ mixing panel */
+.music-dj-mix {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 560px;
+  padding: 12px 14px;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 14px;
+  background: rgb(10 10 16 / 0.62);
+  backdrop-filter: blur(14px);
+}
+.music-dj-mix-decks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.music-dj-mix-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.music-dj-mix-deck strong {
+  overflow: hidden;
+  font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-dj-mix-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+.music-dj-mix-stats,
+.music-dj-mix-plan {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.8rem;
+}
+.music-dj-mix-stats span,
+.music-dj-mix-plan span {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.1);
+  font-variant-numeric: tabular-nums;
+}
+.music-dj-mix-plan span[data-match="same"],
+.music-dj-mix-plan span[data-match="neighbour"] {
+  background: rgb(52 211 153 / 0.28);
+}
+.music-dj-mix-plan span[data-match="clash"] {
+  background: rgb(251 146 60 / 0.3);
+}
+.music-dj-mix-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.music-dj-mix-actions button,
+.music-dj-mix-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.08);
+  color: inherit;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.music-dj-mix-actions button[aria-pressed="true"],
+.music-dj-mix-toggle[aria-pressed="true"] {
+  background: rgb(255 255 255 / 0.22);
+}
+.music-dj-mix-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
