@@ -265,9 +265,12 @@ impl SpotifyState {
         connection.account = status.username;
         connection.error = status.error;
         // Spotify only issues tokens to a registered app, and a new app may add at most a
-        // handful of listeners. Harbor ships no client id: each listener brings their own.
+        // handful of listeners. Without a built-in client id, each listener brings their own.
         if status.connected {
             connection.detail = status.account_type;
+        } else if auth::built_in_client_id().is_some() {
+            // This build carries JL Media Vision's own app: Connect goes straight to Spotify.
+            connection.detail = Some(auth::SIGN_IN_WITH_SPOTIFY.to_string());
         } else {
             // The row truncates this line, so it stays short. The full walkthrough rides
             // on the error from auth::client_id, which renders unclamped underneath.
@@ -389,18 +392,21 @@ mod tests {
         assert_eq!(connection.capabilities, vec!["search", "browse", "play"]);
         assert_eq!(connection.error.as_deref(), Some(session::FREE_ACCOUNT));
         assert!(connection.account.is_none());
-        assert_eq!(connection.detail.as_deref(), Some(auth::BRING_YOUR_OWN));
+        assert_eq!(connection.detail.as_deref(), Some(auth::SIGN_IN_WITH_SPOTIFY));
     }
 
     #[test]
-    fn a_disconnected_spotify_asks_for_a_client_id_of_your_own() {
+    fn a_disconnected_spotify_signs_in_with_the_built_in_app() {
         let connection = SpotifyState::new().connection();
-        let field = connection
-            .needs
-            .iter()
-            .find(|field| field.key == "clientId")
-            .expect("disconnected Spotify offers a client id field");
-        assert!(!field.required, "connecting without one is a valid attempt");
+        assert!(auth::built_in_client_id().is_some());
+        assert!(
+            connection.needs.is_empty(),
+            "Connect goes straight to Spotify, no client id to paste"
+        );
+        assert_eq!(
+            connection.detail.as_deref(),
+            Some(auth::SIGN_IN_WITH_SPOTIFY)
+        );
         assert!(auth::setup_hint().contains("127.0.0.1:8898/login"));
     }
 

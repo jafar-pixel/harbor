@@ -6,16 +6,18 @@ import { MusicDj } from "./music/music-dj";
 import { MusicFriends } from "./music/music-friends";
 import { MusicLounge } from "./music/music-lounge";
 import { MusicMoods } from "./music/music-moods";
+import { MusicSpotify } from "./music/music-spotify";
 import { MusicStyles } from "./music/music-styles";
 
 type Track = { id: string; title: string; url: string; local: boolean };
 
-type WebMusicTab = "dj" | "lounge" | "friends" | "moods" | "styles" | "files";
+type WebMusicTab = "dj" | "lounge" | "friends" | "spotify" | "moods" | "styles" | "files";
 
 const WEB_TABS: { id: WebMusicTab; label: string }[] = [
   { id: "dj", label: "music.tab.dj" },
   { id: "lounge", label: "music.tab.lounge" },
   { id: "friends", label: "music.tab.friends" },
+  { id: "spotify", label: "Spotify" },
   { id: "moods", label: "music.tab.moods" },
   { id: "styles", label: "Your styles" },
   { id: "files", label: "Your files" },
@@ -82,6 +84,7 @@ export function MusicView({ active }: { active: boolean; shellBackAvailable?: bo
         <MusicDj visible={active && tab === "dj"} />
         <MusicLounge visible={active && tab === "lounge"} />
         {tab === "friends" && <MusicFriends active={active} />}
+        {tab === "spotify" && <MusicSpotify active={active} />}
         {tab === "moods" && <MusicMoods />}
         {tab === "styles" && <MusicStyles onBack={() => setTab("dj")} />}
         {tab === "files" && <WebMusicFiles active={active} />}

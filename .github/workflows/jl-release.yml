@@ -32,6 +32,9 @@ concurrency:
 env:
   VITE_JL_SUPABASE_URL: ${{ vars.JL_SUPABASE_URL }}
   VITE_JL_SUPABASE_ANON_KEY: ${{ vars.JL_SUPABASE_ANON_KEY }}
+  # Optional: swaps JL Media Vision's built-in Spotify app (a public client id; sign in uses PKCE).
+  JL_SPOTIFY_CLIENT_ID: ${{ vars.JL_SPOTIFY_CLIENT_ID }}
+  VITE_JL_SPOTIFY_CLIENT_ID: ${{ vars.JL_SPOTIFY_CLIENT_ID }}
 
 jobs:
   # Stops the release before anything is built or published when a GitHub setting is missing or

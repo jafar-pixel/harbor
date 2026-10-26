@@ -9,6 +9,7 @@ pub const EXPIRED: &str = "Spotify sign in expired";
 pub const REJECTED_CLIENT: &str = "Spotify rejected that client id";
 pub const MISSING_CLIENT_ID: &str = "Spotify needs your own client id";
 pub const BRING_YOUR_OWN: &str = "Bring your own Spotify app";
+pub const SIGN_IN_WITH_SPOTIFY: &str = "Sign in with your Spotify account";
 
 const REDIRECT_PORT: u16 = 8898;
 const OAUTH_TIMEOUT: Duration = Duration::from_secs(90);
@@ -29,9 +30,9 @@ const SCOPES: &[&str] = &[
     "playlist-modify-public",
 ];
 const CALLBACK_HTML: &str = r#"<!doctype html>
-<html><head><meta charset="utf-8"><title>Harbor Music connected</title>
+<html><head><meta charset="utf-8"><title>Spotify connected · JL Media Vision</title>
 <style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#0b0d10;color:#f5f3ec;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center}h1{font-weight:500;margin:0 0 .5rem;font-size:1.25rem}p{opacity:.6;margin:0;font-size:.875rem}</style></head>
-<body><main><h1>Connected to Harbor Music</h1><p>You can close this tab.</p></main></body></html>"#;
+<body><main><h1>Spotify is connected to JL Media Vision</h1><p>You can close this tab and go back to the app.</p></main></body></html>"#;
 
 pub struct Authorization {
     pub access_token: String,
@@ -40,8 +41,23 @@ pub struct Authorization {
     pub scopes: Vec<String>,
 }
 
+/// JL Media Vision's own Spotify app (a JL_SPOTIFY_CLIENT_ID build variable can swap it). A client
+/// id is public (sign in uses PKCE, no secret), so listeners just sign in with their own Spotify
+/// account. Spotify still limits a new app to the listeners added under its
+/// User Management.
+pub fn built_in_client_id() -> Option<&'static str> {
+    Some(option_env!("JL_SPOTIFY_CLIENT_ID").unwrap_or(JL_SPOTIFY_CLIENT_ID))
+        .map(str::trim)
+        .filter(|id| id.len() == 32 && id.chars().all(|c| c.is_ascii_hexdigit()))
+}
+
+/// Keep in sync with JL_SPOTIFY_CLIENT_ID in src/lib/music/spotify-setup.ts.
+const JL_SPOTIFY_CLIENT_ID: &str = "739d5262cbb44453ba1f933230eef197";
+
+/// A client id saved on this device (a listener's own app) wins over the built-in one.
 pub fn client_id(app: &AppHandle) -> Result<String, String> {
     keystore::read(app, keystore::CLIENT_ID_KEY)
+        .or_else(|| built_in_client_id().map(str::to_string))
         .ok_or_else(|| format!("{MISSING_CLIENT_ID}. {}", setup_hint()))
 }
 

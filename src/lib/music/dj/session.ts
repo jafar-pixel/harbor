@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { readMusicPreference, writeMusicPreference } from "../preferences";
 import { resolveStyles, seedArtists } from "../tastes/styles";
+import { accountSeeds } from "./account-seeds";
 import { askDj, searchVideos, type DjSet } from "./api";
 import { pickVideo, songKey, songQuery, type DjSong, type VideoResult, type Vibe } from "./vibes";
 
@@ -84,8 +85,13 @@ function context(styleKeys: readonly string[]) {
   return {
     styles: resolveStyles(styleKeys).map((r) => `${r.genre.name}: ${r.name}`),
     seeds: [
-      ...new Set([...seedArtists(styleKeys, 20), ...state.liked.slice(0, 10).map((s) => s.artist)]),
-    ],
+      // The DJ reads at most 30: what they actually play first, then their styles and likes.
+      ...new Set([
+        ...accountSeeds(12),
+        ...seedArtists(styleKeys, 20),
+        ...state.liked.slice(0, 10).map((s) => s.artist),
+      ]),
+    ].slice(0, 30),
   };
 }
 
