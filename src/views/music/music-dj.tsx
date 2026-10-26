@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import {
   Heart,
   ListPlus,
+  Maximize2,
+  Minimize2,
   Pause,
   Play,
   Radio,
@@ -28,6 +30,7 @@ import {
 } from "@/lib/music/dj/session";
 import { VIBES, crossfade, type DjSong, type Vibe } from "@/lib/music/dj/vibes";
 import { YT_ENDED, YT_PLAYING, loadYouTube, type YtPlayer } from "@/lib/music/dj/youtube";
+import { useSongArt } from "@/lib/music/dj/art";
 import { onPauseDj, reportPlayhead } from "@/lib/music/dj/playhead";
 import { soundById } from "@/lib/music/sounds/catalog";
 import { loadMix } from "@/lib/music/sounds/engine";
@@ -38,6 +41,11 @@ import { SendSongDialog } from "./music-send";
 import "./music-dj.css";
 
 const FADE_MS = 8000;
+
+/** A cover that fails to load hides, leaving the poster's own art behind it. */
+const hideBroken = (e: { currentTarget: HTMLImageElement }) => {
+  e.currentTarget.style.visibility = "hidden";
+};
 const TICK_MS = 200;
 const QUICK_REQUESTS = [
   "More like this",
@@ -81,6 +89,32 @@ export function MusicDj({ visible }: { visible: boolean }) {
   const currentId = current?.video?.id ?? null;
   const nextIdRef = useRef<string | null>(null);
   nextIdRef.current = next?.video?.id ?? null;
+
+  // Posters, the wallpaper and the record label all use the song's cover art.
+  const artFor = useSongArt([...dj.tracks, ...dj.discover, ...dj.liked.slice(0, 24)]);
+  const cover = (song: DjSong & { video?: { thumb: string } | null }) =>
+    artFor(song)?.art ?? song.video?.thumb ?? null;
+
+  // While a song plays the controls fade so the video shows; any mouse move brings them back.
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [idle, setIdle] = useState(false);
+  const idleTimer = useRef(0);
+  const wake = useCallback(() => {
+    setIdle(false);
+    window.clearTimeout(idleTimer.current);
+    idleTimer.current = window.setTimeout(() => setIdle(true), 3200);
+  }, []);
+  useEffect(() => () => window.clearTimeout(idleTimer.current), []);
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    const onChange = () => setFull(document.fullscreenElement === stageRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggleFull = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void stageRef.current?.requestFullscreen?.().catch(() => {});
+  };
 
   /** Build both decks once, on the first Play (browsers need a tap before sound). */
   const ensureDecks = useCallback(async () => {
@@ -279,22 +313,41 @@ export function MusicDj({ visible }: { visible: boolean }) {
     ) : null;
   }
 
-  const song = (s: DjSong, i?: number) => (
-    <span className="music-dj-song">
-      <strong>{s.title}</strong>
-      <span>{s.artist}</span>
-      {i !== undefined && dj.tracks[i]?.video === null && <em>{t("Not found on YouTube")}</em>}
-    </span>
-  );
-
   return (
     <section className="music-dj" hidden={!visible} style={stage}>
-      <div className="music-dj-stage" data-on={started && !!dj.vibe}>
+      <div
+        ref={stageRef}
+        className="music-dj-stage"
+        data-on={started && !!dj.vibe}
+        data-idle={started && !paused && !!current && idle}
+        data-full={full}
+        onMouseMove={wake}
+        onMouseLeave={() => setIdle(true)}
+        onTouchStart={wake}
+        onFocusCapture={wake}
+      >
+        {current && cover(current) && (
+          <div
+            className="music-dj-wallpaper"
+            aria-hidden="true"
+            style={{ backgroundImage: `url("${cover(current)}")` }}
+          />
+        )}
         <div className="music-dj-decks" aria-hidden={!started}>
           <div ref={hosts[0]} className="music-dj-deck" style={{ opacity: opacity[0] }} />
           <div ref={hosts[1]} className="music-dj-deck" style={{ opacity: opacity[1] }} />
         </div>
         <div className="music-dj-glow" />
+        {started && dj.vibe && (
+          <button
+            type="button"
+            className="music-dj-full"
+            aria-label={full ? t("Exit full screen") : t("Full screen")}
+            onClick={toggleFull}
+          >
+            {full ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
+        )}
         <div className="music-dj-overlay">
           {dj.vibe ? (
             <>
@@ -311,6 +364,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
                   index={dj.index}
                   playing={started && !paused}
                   why={current.why}
+                  coverOf={cover}
                 />
               )}
               {!started && current && (
@@ -503,23 +557,55 @@ export function MusicDj({ visible }: { visible: boolean }) {
       {dj.tracks.length > 0 && (
         <section className="music-dj-list">
           <h3>{t("The set")}</h3>
-          <ol>
-            {dj.tracks.map((tr, i) => (
-              <li
-                key={`${tr.artist}-${tr.title}`}
-                data-current={i === dj.index}
-                data-played={i < dj.index}
-              >
-                <button type="button" onClick={() => cut(i)} disabled={tr.video === null}>
-                  {tr.video ? (
-                    <img src={tr.video.thumb} alt="" loading="lazy" />
-                  ) : (
-                    <span className="music-dj-thumb" />
-                  )}
-                  {song(tr, i)}
-                </button>
-              </li>
-            ))}
+          <ol className="music-dj-posters">
+            {dj.tracks.map((tr, i) => {
+              const art = cover(tr);
+              const meta = artFor(tr);
+              return (
+                <li
+                  key={`${tr.artist}-${tr.title}`}
+                  data-current={i === dj.index}
+                  data-played={i < dj.index}
+                >
+                  <button
+                    type="button"
+                    className="music-dj-poster"
+                    onClick={() => cut(i)}
+                    disabled={tr.video === null}
+                  >
+                    <span className="music-dj-poster-blank" />
+                    {art && (
+                      <>
+                        <img className="music-dj-poster-bg" src={art} alt="" loading="lazy" />
+                        <img
+                          className="music-dj-poster-art"
+                          src={art}
+                          alt=""
+                          loading="lazy"
+                          onError={hideBroken}
+                        />
+                      </>
+                    )}
+                    <span className="music-dj-poster-no">{String(i + 1).padStart(2, "0")}</span>
+                    {i === dj.index && (
+                      <span className="music-dj-eq" aria-label={t("Playing")}>
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                    )}
+                    <span className="music-dj-poster-text">
+                      <strong>{tr.title}</strong>
+                      <span>{tr.artist}</span>
+                      {(meta?.year || meta?.album) && (
+                        <em>{[meta.album, meta.year].filter(Boolean).join(" · ")}</em>
+                      )}
+                      {tr.video === null && <em>{t("Not found on YouTube")}</em>}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ol>
         </section>
       )}
@@ -527,29 +613,66 @@ export function MusicDj({ visible }: { visible: boolean }) {
       {dj.discover.length > 0 && (
         <section className="music-dj-list">
           <h3>{t("New artists for you")}</h3>
-          <div className="music-dj-discover">
-            {dj.discover.map((d) => (
-              <article key={`${d.artist}-${d.title}`}>
-                {song(d)}
-                {d.why && <p>{d.why}</p>}
-                <div>
-                  <button type="button" onClick={() => playNext(d)}>
-                    <ListPlus size={14} /> {t("Play next")}
-                  </button>
-                  <button type="button" aria-pressed={isLiked(d)} onClick={() => toggleLike(d)}>
-                    <Heart size={14} fill={isLiked(d) ? "currentColor" : "none"} />{" "}
-                    {isLiked(d) ? t("Kept") : t("Keep")}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={t("Send to a friend")}
-                    onClick={() => setSending({ artist: d.artist, title: d.title })}
-                  >
-                    <Send size={14} />
-                  </button>
-                </div>
-              </article>
-            ))}
+          <div className="music-dj-new">
+            {dj.discover.map((d) => {
+              const art = cover(d);
+              return (
+                <article key={`${d.artist}-${d.title}`}>
+                  {art && (
+                    <span
+                      className="music-dj-new-bg"
+                      aria-hidden="true"
+                      style={{ backgroundImage: `url("${art}")` }}
+                    />
+                  )}
+                  <span className="music-dj-new-cover">
+                    <span className="music-dj-poster-blank" />
+                    {art && (
+                      <>
+                        <img className="music-dj-poster-bg" src={art} alt="" loading="lazy" />
+                        <img
+                          className="music-dj-poster-art"
+                          src={art}
+                          alt=""
+                          loading="lazy"
+                          onError={hideBroken}
+                        />
+                      </>
+                    )}
+                  </span>
+                  <div className="music-dj-new-body">
+                    <span className="music-dj-new-tag">
+                      <Sparkles size={12} /> {t("New artist")}
+                    </span>
+                    <h4>{d.artist}</h4>
+                    <p className="music-dj-new-song">
+                      {t("Start with “{title}”", { title: d.title })}
+                    </p>
+                    {d.why && <p className="music-dj-new-why">{d.why}</p>}
+                    <div className="music-dj-new-actions">
+                      <button type="button" className="music-dj-new-go" onClick={() => playNext(d)}>
+                        <ListPlus size={15} /> {t("Play next")}
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={isLiked(d)}
+                        aria-label={isLiked(d) ? t("Kept") : t("Keep")}
+                        onClick={() => toggleLike(d)}
+                      >
+                        <Heart size={15} fill={isLiked(d) ? "currentColor" : "none"} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t("Send to a friend")}
+                        onClick={() => setSending({ artist: d.artist, title: d.title })}
+                      >
+                        <Send size={15} />
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       )}
@@ -557,18 +680,40 @@ export function MusicDj({ visible }: { visible: boolean }) {
       {dj.liked.length > 0 && (
         <section className="music-dj-list">
           <h3>{t("My DJ finds")}</h3>
-          <div className="music-dj-finds">
-            {dj.liked.slice(0, 24).map((s) => (
-              <button
-                key={`${s.artist}-${s.title}`}
-                type="button"
-                disabled={!dj.vibe}
-                onClick={() => playNext(s)}
-              >
-                {song(s)}
-              </button>
-            ))}
-          </div>
+          <ol className="music-dj-posters music-dj-posters-small">
+            {dj.liked.slice(0, 24).map((sg) => {
+              const art = cover(sg);
+              return (
+                <li key={`${sg.artist}-${sg.title}`}>
+                  <button
+                    type="button"
+                    className="music-dj-poster"
+                    disabled={!dj.vibe}
+                    title={dj.vibe ? t("Play next") : undefined}
+                    onClick={() => playNext(sg)}
+                  >
+                    <span className="music-dj-poster-blank" />
+                    {art && (
+                      <>
+                        <img className="music-dj-poster-bg" src={art} alt="" loading="lazy" />
+                        <img
+                          className="music-dj-poster-art"
+                          src={art}
+                          alt=""
+                          loading="lazy"
+                          onError={hideBroken}
+                        />
+                      </>
+                    )}
+                    <span className="music-dj-poster-text">
+                      <strong>{sg.title}</strong>
+                      <span>{sg.artist}</span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
         </section>
       )}
       {sending && <SendSongDialog song={sending} onClose={() => setSending(null)} />}

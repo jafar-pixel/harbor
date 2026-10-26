@@ -17,12 +17,15 @@ export function DjVinyl({
   index,
   playing,
   why,
+  coverOf,
 }: {
   track: DjTrack | undefined;
   /** The song's place in the set: a lower index than before swaps the other way. */
   index: number;
   playing: boolean;
   why?: string;
+  /** The song's album cover for the record label (falls back to the video thumbnail). */
+  coverOf?: (track: DjTrack) => string | null;
 }) {
   const [shown, setShown] = useState<Shown | null>(track ? { key: songKey(track), track } : null);
   const [leaving, setLeaving] = useState<Shown | null>(null);
@@ -52,10 +55,24 @@ export function DjVinyl({
     <div className="dj-vinyl" data-dir={direction} data-swapping={!!leaving}>
       <div className="dj-vinyl-deck" aria-hidden>
         {leaving && (
-          <Record key={`out:${leaving.key}`} track={leaving.track} phase="out" spinning />
+          <Record
+            key={`out:${leaving.key}`}
+            cover={coverOf?.(leaving.track) ?? leaving.track.video?.thumb ?? null}
+            phase="out"
+            spinning
+          />
         )}
-        <Record key={`in:${shown.key}`} track={shown.track} phase="in" spinning={playing} />
-        <span className="dj-vinyl-arm" />
+        <Record
+          key={`in:${shown.key}`}
+          cover={coverOf?.(shown.track) ?? shown.track.video?.thumb ?? null}
+          phase="in"
+          spinning={playing}
+        />
+        <span className="dj-vinyl-arm">
+          <span className="dj-vinyl-arm-base" />
+          <span className="dj-vinyl-arm-rod" />
+          <span className="dj-vinyl-arm-head" />
+        </span>
       </div>
       <div className="dj-vinyl-text">
         {leaving && (
@@ -80,20 +97,18 @@ export function DjVinyl({
 }
 
 function Record({
-  track,
+  cover,
   phase,
   spinning,
 }: {
-  track: DjTrack;
+  cover: string | null;
   phase: "in" | "out";
   spinning: boolean;
 }) {
   return (
     <span className="dj-vinyl-record" data-phase={phase}>
       <span className="dj-vinyl-disc" data-spinning={spinning}>
-        <span className="dj-vinyl-label">
-          {track.video?.thumb ? <img src={track.video.thumb} alt="" /> : null}
-        </span>
+        <span className="dj-vinyl-label">{cover ? <img src={cover} alt="" /> : null}</span>
       </span>
     </span>
   );

@@ -25,7 +25,7 @@ export type DjAsk = {
   count?: number;
 };
 
-async function call<T>(name: string, body: unknown): Promise<T> {
+export async function call<T>(name: string, body: unknown): Promise<T> {
   if (!jlAccountContext())
     throw new Error("Sign in to your JL Media Vision account to use the AI DJ.");
   const res = await jlFunction(name, { method: "POST", body: JSON.stringify(body) });

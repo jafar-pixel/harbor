@@ -129,3 +129,11 @@ export async function spotifyPlaylistTracks(id: string, limit = 100): Promise<Sp
     .map((item) => track((item.item ?? item.track) as Json))
     .filter((t): t is SpotifyWebTrack => !!t);
 }
+
+/** The album cover for a song, from the listener's own Spotify (no extra quota). */
+export async function spotifyCover(artist: string, title: string): Promise<string | null> {
+  const q = `track:${title.replace(/"/g, "")} artist:${artist.replace(/"/g, "")}`;
+  const page = await get(`/search?type=track&limit=1&q=${encodeURIComponent(q)}`);
+  const first = arr((page.tracks as Json | undefined)?.items)[0];
+  return first ? firstImage((first.album as Json | undefined)?.images) : null;
+}

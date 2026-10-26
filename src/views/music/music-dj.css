@@ -635,3 +635,500 @@
   font-size: 15px;
   font-weight: 800;
 }
+
+/* ---- Redesign: wallpaper hero, a real turntable, and music posters ---- */
+
+/* The song's album art, blurred and huge, behind everything: the hero's wallpaper. */
+.music-dj-wallpaper {
+  position: absolute;
+  inset: -40px;
+  z-index: -1;
+  background: center / cover no-repeat;
+  filter: blur(42px) saturate(1.35) brightness(0.55);
+  transform: scale(1.12);
+  transition: background-image 0.6s ease;
+}
+.music-dj-stage[data-on="true"] {
+  max-height: 78vh;
+}
+/* The video is the show: only a soft fade at the bottom for the controls, gone while watching. */
+.music-dj-glow {
+  background:
+    linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.78)),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.45), transparent 45%);
+  box-shadow: none;
+  transition: opacity 0.5s ease;
+}
+.music-dj-overlay,
+.music-dj-full {
+  transition:
+    opacity 0.45s ease,
+    transform 0.45s ease;
+}
+.music-dj-stage[data-idle="true"] {
+  cursor: none;
+}
+.music-dj-stage[data-idle="true"] .music-dj-overlay,
+.music-dj-stage[data-idle="true"] .music-dj-full {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+.music-dj-stage[data-idle="true"] .music-dj-glow {
+  opacity: 0;
+}
+.music-dj-full {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  color: #fff;
+}
+.music-dj-full:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+.music-dj-stage:fullscreen {
+  max-height: none;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+.music-dj-stage:fullscreen .music-dj-overlay {
+  padding: 40px 56px;
+}
+
+/* A real turntable: a smoked-glass plinth you can see the video through, a grooved record with
+   the album as its label, and a metal tonearm with a headshell. */
+.dj-vinyl-deck {
+  width: clamp(120px, 17cqw, 210px);
+  padding: 9%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14%;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow:
+    0 24px 50px -22px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  box-sizing: border-box;
+}
+.dj-vinyl-record {
+  inset: 9%;
+  right: 17%;
+}
+.dj-vinyl-disc {
+  background:
+    radial-gradient(
+      circle,
+      transparent 0 34%,
+      rgba(255, 255, 255, 0.07) 34.4% 34.8%,
+      transparent 35.2%
+    ),
+    radial-gradient(
+      circle,
+      transparent 0 62%,
+      rgba(255, 255, 255, 0.05) 62.3% 62.7%,
+      transparent 63%
+    ),
+    repeating-radial-gradient(
+      circle,
+      rgba(10, 10, 12, 0.92) 0 0.9px,
+      rgba(28, 28, 32, 0.92) 1.2px 1.9px
+    ),
+    rgba(8, 8, 10, 0.9);
+  box-shadow:
+    0 10px 24px -6px rgba(0, 0, 0, 0.85),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.06);
+}
+.dj-vinyl-disc::after {
+  background:
+    conic-gradient(
+      from 20deg,
+      transparent 0 8%,
+      rgba(255, 255, 255, 0.16) 13%,
+      transparent 20% 55%,
+      rgba(255, 255, 255, 0.11) 61%,
+      transparent 68%
+    ),
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.08), transparent 45%);
+  mix-blend-mode: screen;
+}
+.dj-vinyl-label {
+  inset: 32%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.dj-vinyl-label::after {
+  width: 10%;
+  height: 10%;
+  background: radial-gradient(circle at 35% 35%, #f3f4f6, #6b7280 70%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+.dj-vinyl-arm {
+  top: 6%;
+  right: 4%;
+  width: 22%;
+  height: 74%;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  transform-origin: 70% 9%;
+  transform: rotate(18deg);
+}
+.dj-vinyl-arm::before {
+  display: none;
+}
+.dj-vinyl-arm-base {
+  position: absolute;
+  top: 0;
+  right: 8%;
+  width: 46%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f9fafb, #9ca3af 55%, #4b5563);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+}
+.dj-vinyl-arm-rod {
+  position: absolute;
+  top: 9%;
+  right: 27%;
+  width: 7%;
+  height: 78%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6b7280, #f3f4f6 45%, #9ca3af);
+  box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.55);
+}
+.dj-vinyl-arm-head {
+  position: absolute;
+  bottom: 4%;
+  right: 18%;
+  width: 26%;
+  height: 14%;
+  border-radius: 3px 3px 6px 6px;
+  background: linear-gradient(180deg, #e5e7eb, #6b7280);
+  transform: rotate(-24deg);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* The set and My DJ finds: album-art posters. */
+.music-dj-posters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.music-dj-posters-small {
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 12px;
+}
+.music-dj-posters li[data-played="true"] {
+  opacity: 0.55;
+}
+.music-dj-poster {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: #0b0b10;
+  color: #fff;
+  text-align: start;
+  box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.9);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.music-dj-poster:not(:disabled):hover,
+.music-dj-poster:focus-visible {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 26px 50px -22px rgba(0, 0, 0, 0.95);
+}
+.music-dj-poster:disabled {
+  cursor: default;
+}
+.music-dj-poster img,
+.music-dj-poster-blank {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.music-dj-poster-blank {
+  display: block;
+  background:
+    radial-gradient(
+      circle at 30% 20%,
+      color-mix(in srgb, var(--dj-a) 70%, transparent),
+      transparent 60%
+    ),
+    linear-gradient(160deg, var(--dj-b), #05060a);
+}
+.music-dj-poster::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 38%, rgba(0, 0, 0, 0.88));
+}
+li[data-current="true"] > .music-dj-poster {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+.music-dj-poster-no {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 1;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+.music-dj-poster-text {
+  position: absolute;
+  inset: auto 12px 12px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.music-dj-poster-text strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.music-dj-posters-small .music-dj-poster-text strong {
+  font-size: 13.5px;
+}
+.music-dj-poster-text span {
+  overflow: hidden;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.82);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-dj-poster-text em {
+  overflow: hidden;
+  font-size: 11px;
+  font-style: normal;
+  color: rgba(255, 255, 255, 0.6);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Now playing: three little bars. */
+.music-dj-eq {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+}
+.music-dj-eq i {
+  width: 4px;
+  border-radius: 2px;
+  background: #fff;
+  animation: music-dj-eq 0.9s ease-in-out infinite alternate;
+}
+.music-dj-eq i:nth-child(2) {
+  animation-delay: 0.25s;
+}
+.music-dj-eq i:nth-child(3) {
+  animation-delay: 0.5s;
+}
+@keyframes music-dj-eq {
+  from {
+    height: 4px;
+  }
+  to {
+    height: 16px;
+  }
+}
+
+/* New artists for you: a big cover over its own blurred art. */
+.music-dj-new {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+.music-dj-new article {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  background: #0d0d14;
+  color: #fff;
+  isolation: isolate;
+}
+.music-dj-new-bg {
+  position: absolute;
+  inset: -30px;
+  z-index: -1;
+  background: center / cover no-repeat;
+  filter: blur(36px) saturate(1.4) brightness(0.45);
+}
+.music-dj-new-cover {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  width: 132px;
+  height: 132px;
+  border-radius: 12px;
+  box-shadow: 0 18px 36px -16px rgba(0, 0, 0, 0.9);
+}
+.music-dj-new-cover > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.music-dj-new-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.music-dj-new-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.music-dj-new h4 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-dj-new-song {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.music-dj-new-why {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.65);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.music-dj-new-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+.music-dj-new-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.music-dj-new-actions .music-dj-new-go {
+  background: #fff;
+  color: #000;
+}
+.music-dj-new-actions button[aria-pressed="true"] {
+  color: #f472b6;
+}
+@container (max-width: 640px) {
+  .music-dj-new {
+    grid-template-columns: 1fr;
+  }
+  .music-dj-new-cover {
+    width: 96px;
+    height: 96px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .music-dj-eq i {
+    animation: none;
+    height: 10px;
+  }
+  .music-dj-poster {
+    transition: none;
+  }
+}
+/* The old list rows' thumbnail and button styles must not reach the posters. */
+.music-dj-list li > .music-dj-poster {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: #0b0b10;
+}
+.music-dj-list .music-dj-poster img,
+.music-dj-list .music-dj-poster .music-dj-poster-blank {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  object-fit: cover;
+}
+.music-dj-list li[data-current="true"] > .music-dj-poster {
+  background: #0b0b10;
+}
+.music-dj-new-actions button {
+  white-space: nowrap;
+}
+/* A music poster: the whole square cover on top, melting into a blurred wash of itself. */
+.music-dj-list .music-dj-poster img.music-dj-poster-bg {
+  filter: blur(22px) saturate(1.4) brightness(0.55);
+  transform: scale(1.25);
+}
+.music-dj-list .music-dj-poster img.music-dj-poster-art {
+  height: auto;
+  aspect-ratio: 1;
+  inset: 0 0 auto;
+  -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent);
+  mask-image: linear-gradient(180deg, #000 72%, transparent);
+}
+.music-dj-poster:not(:disabled):hover img.music-dj-poster-art {
+  transform: scale(1.04);
+}
+.music-dj-poster img.music-dj-poster-art {
+  transition: transform 0.4s ease;
+}
