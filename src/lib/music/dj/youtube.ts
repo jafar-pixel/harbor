@@ -54,3 +54,26 @@ export function loadYouTube(): Promise<YtApi> {
 /** Player states from the IFrame API. */
 export const YT_ENDED = 0;
 export const YT_PLAYING = 1;
+
+/**
+ * The player's iframe, made here instead of by the IFrame API so it can carry its own referrer
+ * policy. The app sends no referrer anywhere (index.html, vercel.json), but YouTube now refuses
+ * to play an embed that doesn't say which site it's on (error 153, strict on iPhone Safari), so
+ * YouTube players alone send the site's origin, never the page address.
+ */
+export function youtubeFrame(
+  mount: HTMLElement,
+  vars: Record<string, string | number>,
+  options: { videoId?: string; host?: string } = {},
+): HTMLIFrameElement {
+  const frame = document.createElement("iframe");
+  const query = new URLSearchParams({ enablejsapi: "1", origin: location.origin });
+  for (const [key, value] of Object.entries(vars)) query.set(key, String(value));
+  frame.src = `${options.host ?? "https://www.youtube.com"}/embed/${options.videoId ?? ""}?${query}`;
+  frame.referrerPolicy = "strict-origin-when-cross-origin";
+  frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+  frame.setAttribute("allowfullscreen", "");
+  frame.style.cssText = "width:100%;height:100%;border:0";
+  mount.replaceChildren(frame);
+  return frame;
+}
