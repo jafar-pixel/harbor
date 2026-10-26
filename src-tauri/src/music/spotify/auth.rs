@@ -30,9 +30,9 @@ const SCOPES: &[&str] = &[
     "playlist-modify-public",
 ];
 const CALLBACK_HTML: &str = r#"<!doctype html>
-<html><head><meta charset="utf-8"><title>Harbor Music connected</title>
+<html><head><meta charset="utf-8"><title>Spotify connected · JL Media Vision</title>
 <style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#0b0d10;color:#f5f3ec;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center}h1{font-weight:500;margin:0 0 .5rem;font-size:1.25rem}p{opacity:.6;margin:0;font-size:.875rem}</style></head>
-<body><main><h1>Connected to Harbor Music</h1><p>You can close this tab.</p></main></body></html>"#;
+<body><main><h1>Spotify is connected to JL Media Vision</h1><p>You can close this tab and go back to the app.</p></main></body></html>"#;
 
 pub struct Authorization {
     pub access_token: String,
