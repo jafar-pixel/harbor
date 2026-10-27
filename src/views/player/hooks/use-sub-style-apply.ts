@@ -85,7 +85,7 @@ export function useSubStyleApply(params: {
       );
       return;
     }
-    void applyMotionInterp(settings.playerMotionInterp && !svpActive);
+    void applyMotionInterp(settings.playerMotionInterp && !svpActive, !svpActive);
     void applyRtxVideo(
       {
         hdr: settings.playerRtxHdr,
