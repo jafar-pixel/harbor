@@ -172,3 +172,117 @@ export function beatAt(grid: BeatGrid, seconds: number): number {
 export function timeOfBeat(grid: BeatGrid, beat: number): number {
   return grid.bpm ? grid.offset + (beat * 60) / grid.bpm : 0;
 }
+
+export type MusicalKey = { name: string; camelot: string };
+
+const NOTES = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+// Krumhansl-Kessler key profiles, from C.
+const MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+const MINOR = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+// Camelot numbers by tonic pitch class.
+const CAMELOT_MAJOR = [8, 3, 10, 5, 12, 7, 2, 9, 4, 11, 6, 1];
+const CAMELOT_MINOR = [5, 12, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10];
+
+/** In-place radix-2 FFT. */
+function fft(re: Float32Array, im: Float32Array) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      [re[i], re[j]] = [re[j], re[i]];
+      [im[i], im[j]] = [im[j], im[i]];
+    }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = (-2 * Math.PI) / len;
+    const wr = Math.cos(ang);
+    const wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1;
+      let ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const a = i + k;
+        const b = a + len / 2;
+        const tr = re[b] * cr - im[b] * ci;
+        const ti = re[b] * ci + im[b] * cr;
+        re[b] = re[a] - tr;
+        im[b] = im[a] - ti;
+        re[a] += tr;
+        im[a] += ti;
+        const nr = cr * wr - ci * wi;
+        ci = cr * wi + ci * wr;
+        cr = nr;
+      }
+    }
+  }
+}
+
+/**
+ * The song's key, from a chroma profile (energy per pitch class) of up to 90 seconds from the
+ * middle, matched against major and minor key profiles. Shown as a name (Dm) and Camelot (7A).
+ */
+export function musicalKey(buffer: AudioBuffer): MusicalKey | null {
+  const data = mono(buffer);
+  const step = Math.max(1, Math.floor(buffer.sampleRate / 11025));
+  const sr = buffer.sampleRate / step;
+  const size = 4096;
+  const total = Math.floor(data.length / step);
+  const span = Math.min(total, Math.floor(sr * 90));
+  const from = Math.max(0, Math.floor((total - span) / 2));
+  const chroma = new Float64Array(12);
+  const window = new Float32Array(size);
+  for (let i = 0; i < size; i++) window[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / size);
+  const re = new Float32Array(size);
+  const im = new Float32Array(size);
+  const binPc = new Int8Array(size / 2).fill(-1);
+  for (let k = 1; k < size / 2; k++) {
+    const f = (k * sr) / size;
+    if (f < 55 || f > 2000) continue;
+    binPc[k] = (((Math.round(12 * Math.log2(f / 440)) + 9) % 12) + 12) % 12;
+  }
+  for (let start = from; start + size <= from + span; start += size) {
+    for (let i = 0; i < size; i++) {
+      re[i] = data[(start + i) * step] * window[i];
+      im[i] = 0;
+    }
+    fft(re, im);
+    for (let k = 1; k < size / 2; k++) {
+      const pc = binPc[k];
+      if (pc >= 0) chroma[pc] += Math.log1p(Math.hypot(re[k], im[k]));
+    }
+  }
+  if (chroma.every((v) => v === 0)) return null;
+  const corr = (profile: number[], tonic: number) => {
+    let sx = 0;
+    let sy = 0;
+    for (let i = 0; i < 12; i++) {
+      sx += chroma[(i + tonic) % 12];
+      sy += profile[i];
+    }
+    const mx = sx / 12;
+    const my = sy / 12;
+    let num = 0;
+    let dx = 0;
+    let dy = 0;
+    for (let i = 0; i < 12; i++) {
+      const x = chroma[(i + tonic) % 12] - mx;
+      const y = profile[i] - my;
+      num += x * y;
+      dx += x * x;
+      dy += y * y;
+    }
+    return num / Math.sqrt(dx * dy || 1);
+  };
+  let best = { score: -2, tonic: 0, minor: false };
+  for (let tonic = 0; tonic < 12; tonic++) {
+    const major = corr(MAJOR, tonic);
+    const minor = corr(MINOR, tonic);
+    if (major > best.score) best = { score: major, tonic, minor: false };
+    if (minor > best.score) best = { score: minor, tonic, minor: true };
+  }
+  return best.minor
+    ? { name: `${NOTES[best.tonic]}m`, camelot: `${CAMELOT_MINOR[best.tonic]}A` }
+    : { name: NOTES[best.tonic], camelot: `${CAMELOT_MAJOR[best.tonic]}B` };
+}

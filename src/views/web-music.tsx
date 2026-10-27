@@ -61,7 +61,9 @@ export function MusicView({ active }: { active: boolean; shellBackAvailable?: bo
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-5 pb-10 pt-6 text-ink sm:px-8">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      <div
+        className={`mx-auto flex w-full flex-col gap-6 ${tab === "studio" ? "max-w-[1800px]" : "max-w-6xl"}`}
+      >
         <header className="flex items-center gap-3">
           <Headphones className="text-accent" size={28} />
           <h1 className="font-display text-3xl">{t("Music")}</h1>
