@@ -1,6 +1,6 @@
 import type { UiLanguage } from "./languages";
 
-export const PRODUCT_NAME = "JL Media Vision";
+export const PRODUCT_NAME = "JL Media Vision Pro";
 
 // Catalogs still carry the upstream product name in hundreds of strings across
 // every language. Rewriting it here, after a string is resolved and before

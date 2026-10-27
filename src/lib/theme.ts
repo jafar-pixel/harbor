@@ -5,7 +5,7 @@ import jlMark from "@/assets/brand/jl-mark.webp";
 import jlHero from "@/assets/brand/jl-hero.webp";
 import jlWordmark from "@/assets/brand/jl-wordmark-stacked.webp";
 import jlVisionBackdrop from "@/assets/brand/jl-vision-backdrop.webp";
-import { visionCss } from "./theme-vision";
+import { proCss, visionCss } from "./theme-vision";
 import { getCustomThemes } from "./custom-themes";
 import { t } from "./i18n";
 
@@ -95,6 +95,8 @@ export type ThemePreset = {
   cardStyle?: ThemeCardStyle;
   buttonStyle?: ThemeButtonStyle;
   bokeh?: boolean;
+  /** The backdrop is the viewer's chosen Environment (src/lib/environments.ts). */
+  environments?: boolean;
   chrome?: ChromeConfig;
   navCustomization?: {
     order: string[];
@@ -119,30 +121,28 @@ export type FontPair = {
 export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
   "cool-grey": {
     id: "cool-grey",
-    name: "JL Media Vision",
-    blurb:
-      "What ships out of the box: frosted glass over JL's particle-wave backdrop, fiery orange.",
+    name: "JL Media Vision Pro",
+    blurb: "What ships out of the box: navy glass over a real environment of your choice.",
     logo: { mark: jlMark, wordmark: jlWordmark },
     previewImage: jlHero,
-    swatch: ["#120d1a", "#ff6a1f", "#c13cff"],
+    swatch: ["#060d1f", "#2f86ff", "#ff7a1a"],
     tokens: {
-      "--color-canvas": "oklch(0.13 0.02 300)",
-      "--color-surface": "oklch(0.2 0.025 300)",
-      "--color-elevated": "oklch(0.25 0.028 300)",
-      "--color-raised": "oklch(0.31 0.03 300)",
-      "--color-ink": "oklch(0.97 0.004 300)",
-      "--color-ink-muted": "oklch(0.78 0.01 300)",
-      "--color-ink-subtle": "oklch(0.6 0.012 300)",
-      "--color-edge": "oklch(1 0 0 / 0.16)",
-      "--color-edge-soft": "oklch(1 0 0 / 0.09)",
-      // JL fiery orange, from the JL Media Vision mark; kept clear of the red used for LIVE.
-      "--color-accent": "#ff6a1f",
-      "--color-accent-soft": "rgba(255,106,31,0.18)",
-      "--color-danger": "oklch(0.55 0.18 25)",
+      "--color-canvas": "oklch(0.15 0.04 262)",
+      "--color-surface": "oklch(0.2 0.05 262)",
+      "--color-elevated": "oklch(0.25 0.055 262)",
+      "--color-raised": "oklch(0.31 0.06 262)",
+      "--color-ink": "oklch(0.97 0.01 255)",
+      "--color-ink-muted": "oklch(0.8 0.03 255)",
+      "--color-ink-subtle": "oklch(0.62 0.04 255)",
+      "--color-edge": "oklch(0.75 0.1 258 / 0.22)",
+      "--color-edge-soft": "oklch(0.75 0.1 258 / 0.12)",
+      "--color-accent": "#2f86ff",
+      "--color-accent-soft": "rgba(47,134,255,0.2)",
+      "--color-danger": "oklch(0.6 0.2 25)",
     },
-    background: { image: jlVisionBackdrop, dim: 0 },
+    environments: true,
     cardStyle: "glass",
-    css: visionCss,
+    css: proCss,
   },
   nord: {
     id: "nord",
@@ -1641,6 +1641,33 @@ html.tv :focus-visible {
 h1, h2, h3 { letter-spacing: 0.01em; }`;
 
 export const FEATURED_CUSTOM_THEMES: ThemePreset[] = [
+  {
+    id: "jl-glass" as ThemePresetId,
+    name: "JL Media Vision Glass",
+    blurb:
+      "What ships out of the box: frosted glass over JL's particle-wave backdrop, fiery orange.",
+    logo: { mark: jlMark, wordmark: jlWordmark },
+    previewImage: jlHero,
+    swatch: ["#120d1a", "#ff6a1f", "#c13cff"],
+    tokens: {
+      "--color-canvas": "oklch(0.13 0.02 300)",
+      "--color-surface": "oklch(0.2 0.025 300)",
+      "--color-elevated": "oklch(0.25 0.028 300)",
+      "--color-raised": "oklch(0.31 0.03 300)",
+      "--color-ink": "oklch(0.97 0.004 300)",
+      "--color-ink-muted": "oklch(0.78 0.01 300)",
+      "--color-ink-subtle": "oklch(0.6 0.012 300)",
+      "--color-edge": "oklch(1 0 0 / 0.16)",
+      "--color-edge-soft": "oklch(1 0 0 / 0.09)",
+      // JL fiery orange, from the JL Media Vision mark; kept clear of the red used for LIVE.
+      "--color-accent": "#ff6a1f",
+      "--color-accent-soft": "rgba(255,106,31,0.18)",
+      "--color-danger": "oklch(0.55 0.18 25)",
+    },
+    background: { image: jlVisionBackdrop, dim: 0 },
+    cardStyle: "glass",
+    css: visionCss,
+  },
   {
     id: "jl-stream" as ThemePresetId,
     name: "JL Stream",

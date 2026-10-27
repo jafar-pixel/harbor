@@ -193,6 +193,7 @@ import { moveMainToMonitor } from "@/lib/monitors";
 import { BpErrorBoundary } from "@/views/big-picture/bp-error-boundary";
 import { shouldAutoStartBigPicture, shouldOfferBigPicture } from "@/views/big-picture/bp-logic";
 import { BigPictureEntryButton } from "@/views/big-picture/bp-entry-button";
+import { EnvironmentsChrome } from "@/views/environments/environments-panel";
 import { releaseBigPictureFullscreen } from "@/views/big-picture/use-bp-fullscreen";
 import { getNavFocusTarget } from "@/lib/keyboard-navigation/geometry";
 import { SFX } from "@/lib/sfx";
@@ -456,6 +457,9 @@ function AppProviders({ onReady }: { onReady?: () => void }) {
                                                     <MalAvatarSync />
                                                     <MiddleClickScroll />
                                                     <ThemeBackdrop />
+                                                    {!isMobileWeb() && !isRemoteRoute() && (
+                                                      <EnvironmentsChrome />
+                                                    )}
                                                     <WatchlistSync />
                                                     <JlAccountSync />
                                                     {isMobileWeb() || isRemoteRoute() ? (

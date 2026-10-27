@@ -26,6 +26,39 @@
   font-display: swap;
 }
 
+/* JL Media Vision Pro brand face (Orbitron, SIL OFL; see assets/fonts/orbitron/OFL.txt). */
+@font-face {
+  font-family: "JL Orbitron";
+  src: url("./assets/fonts/orbitron/orbitron-light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JL Orbitron";
+  src: url("./assets/fonts/orbitron/orbitron-medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JL Orbitron";
+  src: url("./assets/fonts/orbitron/orbitron-bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JL Orbitron";
+  src: url("./assets/fonts/orbitron/orbitron-black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --color-canvas: oklch(0.18 0.004 260);
   --color-surface: oklch(0.22 0.004 260);
