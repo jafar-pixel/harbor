@@ -5,6 +5,7 @@ import {
   createFamily,
   createFamilyInvite,
   deleteFamily,
+  inviteFamilyByEmail,
   joinFamily,
   leaveFamily,
   normalizeInviteCode,
@@ -15,6 +16,7 @@ import { syncJlKeysNow } from "@/lib/jl/account/keys-sync";
 import { useT } from "@/lib/i18n";
 import { TextField } from "@/views/account/fields";
 import { SButton } from "../ui";
+import { FamilyMemberProviders } from "./family-member-providers";
 
 const NOTE = "text-[13px] leading-relaxed text-ink-muted";
 
@@ -30,6 +32,49 @@ export function FamilyCard() {
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteLink, setInviteLink] = useState<{ email: string; link: string } | null>(null);
+  const [openMember, setOpenMember] = useState<string | null>(null);
+
+  const sendInvite = async () => {
+    const email = inviteEmail.trim();
+    const who = inviteName.trim() || email.split("@")[0];
+    setBusy(true);
+    setNotice(null);
+    setInviteLink(null);
+    try {
+      const result = await inviteFamilyByEmail(email, who);
+      if (result.status === "link" && result.link) {
+        setInviteLink({ email, link: result.link });
+        setNotice({
+          text: t(
+            "{name}'s account is ready. Our email service couldn't send the invite, so send them this link yourself.",
+            { name: who },
+          ),
+          failed: false,
+        });
+      } else {
+        setNotice({
+          text:
+            result.status === "emailed"
+              ? t("Invite emailed to {email}. They choose a password and they're in.", { email })
+              : result.status === "added"
+                ? t("{name} already had an account and is now in your family.", { name: who })
+                : t("{name} is already in your family.", { name: who }),
+          failed: false,
+        });
+      }
+      setInviteEmail("");
+      setInviteName("");
+      setOpenMember(result.userId);
+      reload();
+    } catch (e) {
+      setNotice({ text: e instanceof Error ? e.message : String(e), failed: true });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const run = async (action: () => Promise<unknown>, done?: string, failed?: string) => {
     setBusy(true);
@@ -167,6 +212,64 @@ export function FamilyCard() {
           "Everyone in your family uses your Real-Debrid, TorBox and IPTV logins, and sees them in their settings. When you change a key, it changes for them too.",
         )}
       </p>
+      <div className="flex max-w-[480px] flex-col gap-3">
+        <span className="text-[15px] font-medium text-ink">{t("Add a family member")}</span>
+        <p className={NOTE}>
+          {t(
+            "We email them an invite to choose their password. If they already have a JL Media Vision account, they join right away.",
+          )}
+        </p>
+        <TextField
+          label={t("Their email")}
+          value={inviteEmail}
+          onChange={setInviteEmail}
+          inputMode="email"
+          placeholder="name@example.com"
+        />
+        <TextField
+          label={t("Their name")}
+          value={inviteName}
+          onChange={setInviteName}
+          maxLength={40}
+          onEnter={() => /.+@.+\..+/.test(inviteEmail) && void sendInvite()}
+        />
+        <div>
+          <SButton
+            variant="primary"
+            disabled={busy || !/.+@.+\..+/.test(inviteEmail)}
+            onClick={() => void sendInvite()}
+          >
+            {t("Send invite")}
+          </SButton>
+        </div>
+        {inviteLink && (
+          <div className="flex flex-wrap gap-3">
+            <a
+              className="inline-flex h-10 items-center rounded-lg border border-edge-soft bg-elevated px-4 text-[14px] text-ink hover:border-edge"
+              href={`mailto:${encodeURIComponent(inviteLink.email)}?subject=${encodeURIComponent(
+                t("Join my family on JL Media Vision"),
+              )}&body=${encodeURIComponent(
+                t(
+                  "Open this link to set up your JL Media Vision account and join my family:\n\n{link}",
+                  {
+                    link: inviteLink.link,
+                  },
+                ),
+              )}`}
+            >
+              {t("Email it from my email app")}
+            </a>
+            <SButton
+              onClick={() => {
+                void navigator.clipboard?.writeText(inviteLink.link).catch(() => {});
+                setNotice({ text: t("Link copied."), failed: false });
+              }}
+            >
+              {t("Copy link")}
+            </SButton>
+          </div>
+        )}
+      </div>
       <div className="flex flex-col gap-2">
         <span className="text-[15px] font-medium text-ink">
           {family.members.length
@@ -174,25 +277,34 @@ export function FamilyCard() {
             : t("No one has joined yet.")}
         </span>
         {family.members.map((m) => (
-          <div key={m.userId} className="flex flex-wrap items-center gap-3">
-            <span className="min-w-0 flex-1 truncate text-[15px] text-ink">{m.name}</span>
-            <SButton
-              variant="danger"
-              disabled={busy}
-              onClick={() =>
-                void run(
-                  () => removeFamilyMember(m.userId),
-                  t("{name} was removed and no longer uses your services.", { name: m.name }),
-                )
-              }
-            >
-              {t("Remove")}
-            </SButton>
+          <div key={m.userId} className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="min-w-0 flex-1 truncate text-[15px] text-ink">{m.name}</span>
+              <SButton
+                disabled={busy}
+                onClick={() => setOpenMember(openMember === m.userId ? null : m.userId)}
+              >
+                {openMember === m.userId ? t("Done") : t("Providers")}
+              </SButton>
+              <SButton
+                variant="danger"
+                disabled={busy}
+                onClick={() =>
+                  void run(
+                    () => removeFamilyMember(m.userId),
+                    t("{name} was removed and no longer uses your services.", { name: m.name }),
+                  )
+                }
+              >
+                {t("Remove")}
+              </SButton>
+            </div>
+            {openMember === m.userId && <FamilyMemberProviders userId={m.userId} name={m.name} />}
           </div>
         ))}
       </div>
       <div className="flex flex-col gap-2">
-        <span className="text-[15px] font-medium text-ink">{t("Invite codes")}</span>
+        <span className="text-[15px] font-medium text-ink">{t("Or use an invite code")}</span>
         <p className={NOTE}>
           {t(
             "Send a code to a family member. On their device: Settings, Account, JL account, Family, then Join family. Each code works once and lasts 7 days.",
