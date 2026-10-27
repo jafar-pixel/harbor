@@ -1,9 +1,21 @@
 import { useSyncExternalStore } from "react";
+import {
+  accountLinksOn,
+  accountMusicToken,
+  disconnectMusicLink,
+  exchangeMusicLink,
+  MusicLinkError,
+  musicLinkState,
+  subscribeMusicLinks,
+  useMusicLinks,
+} from "../account-link";
 
 /**
- * YouTube sign in for the web app with Google Identity Services (the token model: no secret, no
- * server). Access lasts about an hour; after that, Reconnect asks Google again, usually without a
- * prompt. Tokens stay in this browser only.
+ * YouTube sign in for the web app with Google Identity Services. Signed in to a JL account (and
+ * with Google's client secret set on the server), the code model hands the sign in to the account
+ * (see ../account-link): it renews itself and every device on that account stays connected.
+ * Otherwise the token model keeps an hour-long token in this browser; after that, Reconnect asks
+ * Google again, usually without a prompt.
  */
 
 /** JL Media Vision's Google OAuth client (public). The JL_GOOGLE_CLIENT_ID build variable swaps it. */
@@ -28,6 +40,7 @@ export type YouTubeWebState = {
 };
 
 type GoogleTokenClient = { requestAccessToken: (o?: { prompt?: string }) => void };
+type GoogleCodeClient = { requestCode: () => void };
 type GoogleWindow = Window & {
   google?: {
     accounts?: {
@@ -38,6 +51,14 @@ type GoogleWindow = Window & {
           callback: (r: { access_token?: string; expires_in?: number; error?: string }) => void;
           error_callback?: (e: { type?: string; message?: string }) => void;
         }) => GoogleTokenClient;
+        initCodeClient: (o: {
+          client_id: string;
+          scope: string;
+          ux_mode: "popup";
+          select_account?: boolean;
+          callback: (r: { code?: string; error?: string }) => void;
+          error_callback?: (e: { type?: string; message?: string }) => void;
+        }) => GoogleCodeClient;
         revoke: (token: string, done?: () => void) => void;
       };
     };
@@ -62,6 +83,11 @@ function readLinked(): boolean {
 }
 
 const listeners = new Set<() => void>();
+/** The account keeps this listener's YouTube sign in. */
+const accountLinked = () => accountLinksOn() && !!musicLinkState().links.youtube;
+/** New sign ins go to the account. */
+const accountMode = () => accountLinksOn() && musicLinkState().youtubeServer;
+
 let state: YouTubeWebState = { connected: !!readToken(), linked: readLinked(), error: null };
 
 function set(next: Partial<YouTubeWebState>) {
@@ -71,6 +97,7 @@ function set(next: Partial<YouTubeWebState>) {
 
 export const youtubeWebState = () => state;
 export function useYouTubeWeb(): YouTubeWebState {
+  useMusicLinks();
   return useSyncExternalStore(
     (fn) => {
       listeners.add(fn);
@@ -101,6 +128,8 @@ function loadGis(): Promise<void> {
 /** Whether the current sign in may change playlists. */
 export function youtubeCanEdit(): boolean {
   try {
+    if (accountLinked())
+      return /auth\/youtube(\s|$)/.test(musicLinkState().links.youtube?.scope ?? "");
     return localStorage.getItem(EDIT_KEY) === "1" && !!readToken();
   } catch {
     return false;
@@ -114,6 +143,41 @@ export async function connectYouTubeWeb(edit = false): Promise<void> {
     await loadGis();
     const oauth2 = (window as GoogleWindow).google?.accounts?.oauth2;
     if (!oauth2) throw new Error("Google sign in isn't available in this browser.");
+    const failed = (e: { type?: string; message?: string }) =>
+      new Error(
+        e.type === "popup_closed"
+          ? "Google sign in was closed."
+          : e.type === "popup_failed_to_open"
+            ? "Allow pop-ups for this site, then try again."
+            : e.message || "Google sign in failed.",
+      );
+    if (accountMode()) {
+      const code = await new Promise<string>((resolve, reject) => {
+        oauth2
+          .initCodeClient({
+            client_id: JL_GOOGLE_CLIENT_ID,
+            // Keep editing once it was granted, so a plain reconnect doesn't take it away.
+            scope: edit || youtubeCanEdit() ? EDIT_SCOPE : SCOPE,
+            ux_mode: "popup",
+            callback: (r) =>
+              r.code ? resolve(r.code) : reject(new Error(r.error || "Google sign in failed.")),
+            error_callback: (e) => reject(failed(e)),
+          })
+          .requestCode();
+      });
+      try {
+        await exchangeMusicLink("youtube", { code });
+      } catch (error) {
+        // Google gives a refresh token only on first consent; one stored before was removed.
+        if (error instanceof MusicLinkError && error.code === "relink")
+          throw new Error(
+            "Google didn't renew the sign in. Remove JL Media Vision at myaccount.google.com/permissions, then connect again.",
+          );
+        throw error;
+      }
+      set({ connected: true, linked: true, error: null });
+      return;
+    }
     await new Promise<void>((resolve, reject) => {
       const client = oauth2.initTokenClient({
         client_id: JL_GOOGLE_CLIENT_ID,
@@ -140,16 +204,7 @@ export async function connectYouTubeWeb(edit = false): Promise<void> {
           set({ connected: true, linked: true, error: null });
           resolve();
         },
-        error_callback: (e) =>
-          reject(
-            new Error(
-              e.type === "popup_closed"
-                ? "Google sign in was closed."
-                : e.type === "popup_failed_to_open"
-                  ? "Allow pop-ups for this site, then try again."
-                  : e.message || "Google sign in failed.",
-            ),
-          ),
+        error_callback: (e) => reject(failed(e)),
       });
       client.requestAccessToken({ prompt: readLinked() ? "" : "consent" });
     });
@@ -161,6 +216,7 @@ export async function connectYouTubeWeb(edit = false): Promise<void> {
 let memory: Token | null = null;
 
 export function disconnectYouTubeWeb(): void {
+  if (accountLinked()) void disconnectMusicLink("youtube");
   const token = memory ?? readToken();
   if (token) (window as GoogleWindow).google?.accounts?.oauth2?.revoke(token.access);
   memory = null;
@@ -174,7 +230,14 @@ export function disconnectYouTubeWeb(): void {
 }
 
 /** The access token, or an error asking to reconnect once it has run out. */
-export function youtubeWebToken(): string {
+export async function youtubeWebToken(): Promise<string> {
+  if (accountLinked())
+    return accountMusicToken("youtube").catch((error: unknown) => {
+      set({ connected: hasToken(), linked: hasToken() || readLinked() });
+      throw error instanceof MusicLinkError && error.code !== "failed"
+        ? new Error("YouTube signed you out. Connect again to keep your music here.")
+        : error;
+    });
   const token = (memory && memory.expiresAt > Date.now() + 60_000 ? memory : null) ?? readToken();
   if (!token) {
     if (state.connected) set({ connected: false });
@@ -182,3 +245,12 @@ export function youtubeWebToken(): string {
   }
   return token.access;
 }
+
+function hasToken(): boolean {
+  return accountLinked() || !!(memory && memory.expiresAt > Date.now()) || !!readToken();
+}
+
+subscribeMusicLinks(() => {
+  const connected = hasToken();
+  if (connected !== state.connected) set({ connected, linked: connected || readLinked() });
+});
