@@ -18,7 +18,7 @@ export type YouTubePlaylist = { id: string; name: string; count: number; image: 
 type Json = Record<string, unknown>;
 const API = "https://www.googleapis.com/youtube/v3";
 
-async function get(path: string): Promise<Json> {
+export async function get(path: string): Promise<Json> {
   const res = await fetch(`${API}${path}`, {
     headers: { Authorization: `Bearer ${youtubeWebToken()}` },
   });
@@ -81,6 +81,34 @@ export async function youtubePlaylistSongs(id: string): Promise<YouTubeSong[]> {
       return song(str((snippet.resourceId as Json | undefined)?.videoId), snippet);
     })
     .filter((s): s is YouTubeSong => !!s);
+}
+
+/** A playlist row with the id YouTube needs to move or remove it. */
+export type YouTubePlaylistRow = YouTubeSong & { itemId: string };
+
+/** Every row of a playlist in order, up to 500. */
+export async function youtubePlaylistRows(id: string): Promise<YouTubePlaylistRow[]> {
+  const rows: YouTubePlaylistRow[] = [];
+  let pageToken = "";
+  for (let i = 0; i < 10; i++) {
+    const page = await get(
+      `/playlistItems?part=snippet&maxResults=50&playlistId=${encodeURIComponent(id)}${pageToken ? `&pageToken=${pageToken}` : ""}`,
+    );
+    for (const item of arr(page.items)) {
+      const snippet = (item.snippet ?? {}) as Json;
+      const videoId = str((snippet.resourceId as Json | undefined)?.videoId);
+      const s = song(videoId, snippet) ?? {
+        videoId,
+        title: str(snippet.title) || "Unavailable video",
+        artist: "",
+        image: null,
+      };
+      rows.push({ ...s, itemId: str(item.id) });
+    }
+    pageToken = str(page.nextPageToken);
+    if (!pageToken) break;
+  }
+  return rows;
 }
 
 /** Artist channels the listener follows (for the AI DJ's seeds). */

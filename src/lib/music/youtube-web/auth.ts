@@ -12,6 +12,9 @@ export const JL_GOOGLE_CLIENT_ID =
   "920687425489-gkb74r1s7o7tg7ubl8fdpkq578jlu2dq.apps.googleusercontent.com";
 
 const SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
+// Full YouTube access, asked for only when someone chooses to edit their playlists.
+const EDIT_SCOPE = "https://www.googleapis.com/auth/youtube";
+const EDIT_KEY = "jl.youtube.web.edit.v1";
 const TOKEN_KEY = "jl.youtube.web.v1";
 const LINKED_KEY = "jl.youtube.web.linked.v1";
 
@@ -95,8 +98,17 @@ function loadGis(): Promise<void> {
   return loading;
 }
 
-/** Sign in with Google (a popup). Call from a click. */
-export async function connectYouTubeWeb(): Promise<void> {
+/** Whether the current sign in may change playlists. */
+export function youtubeCanEdit(): boolean {
+  try {
+    return localStorage.getItem(EDIT_KEY) === "1" && !!readToken();
+  } catch {
+    return false;
+  }
+}
+
+/** Sign in with Google (a popup). Call from a click. `edit` also asks to manage playlists. */
+export async function connectYouTubeWeb(edit = false): Promise<void> {
   set({ error: null });
   try {
     await loadGis();
@@ -105,7 +117,7 @@ export async function connectYouTubeWeb(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const client = oauth2.initTokenClient({
         client_id: JL_GOOGLE_CLIENT_ID,
-        scope: SCOPE,
+        scope: edit ? EDIT_SCOPE : SCOPE,
         callback: (r) => {
           if (!r.access_token) return reject(new Error(r.error || "Google sign in failed."));
           try {
@@ -117,6 +129,7 @@ export async function connectYouTubeWeb(): Promise<void> {
               }),
             );
             localStorage.setItem(LINKED_KEY, "1");
+            if (edit) localStorage.setItem(EDIT_KEY, "1");
           } catch {
             /* storage blocked: the sign in lasts this page */
           }

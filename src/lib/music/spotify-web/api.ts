@@ -5,6 +5,8 @@ import { spotifyWebToken } from "./auth";
 
 export type SpotifyWebTrack = {
   id: string;
+  /** spotify:track:… (what playlist edits take). */
+  uri: string;
   title: string;
   artist: string;
   album: string;
@@ -20,6 +22,8 @@ export type SpotifyWebArtist = {
 };
 export type SpotifyWebPlaylist = {
   id: string;
+  /** The owner's Spotify user id: only your own playlists can be changed. */
+  ownerId: string;
   name: string;
   owner: string;
   count: number;
@@ -27,6 +31,7 @@ export type SpotifyWebPlaylist = {
   url: string | null;
 };
 export type SpotifyWebProfile = {
+  id: string;
   name: string;
   product: string;
   image: string | null;
@@ -35,7 +40,7 @@ export type SpotifyWebProfile = {
 
 type Json = Record<string, unknown>;
 
-async function get(path: string): Promise<Json> {
+export async function get(path: string): Promise<Json> {
   const token = await spotifyWebToken();
   const res = await fetch(`https://api.spotify.com/v1${path}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -58,6 +63,7 @@ function track(t: Json | undefined): SpotifyWebTrack | null {
   const album = (t.album ?? {}) as Json;
   return {
     id: str(t.id),
+    uri: str(t.uri) || `spotify:track:${str(t.id)}`,
     title: str(t.name),
     artist: arr(t.artists)
       .map((a) => str(a.name))
@@ -72,6 +78,7 @@ function track(t: Json | undefined): SpotifyWebTrack | null {
 export async function spotifyProfile(): Promise<SpotifyWebProfile> {
   const me = await get("/me");
   return {
+    id: str(me.id),
     name: str(me.display_name) || str(me.id),
     product: str(me.product),
     image: firstImage(me.images),
@@ -114,6 +121,7 @@ export async function spotifyPlaylists(limit = 50): Promise<SpotifyWebPlaylist[]
         id: str(p.id),
         name: str(p.name),
         owner: str((p.owner as Json | undefined)?.display_name),
+        ownerId: str((p.owner as Json | undefined)?.id),
         count: typeof items.total === "number" ? items.total : 0,
         image: firstImage(p.images),
         url: external(p.external_urls),
@@ -128,6 +136,21 @@ export async function spotifyPlaylistTracks(id: string, limit = 100): Promise<Sp
   return arr(page.items)
     .map((item) => track((item.item ?? item.track) as Json))
     .filter((t): t is SpotifyWebTrack => !!t);
+}
+
+/** Every row of a playlist in order, up to 1000; edits address rows by position. */
+export async function spotifyPlaylistRows(id: string): Promise<(SpotifyWebTrack | null)[]> {
+  const rows: (SpotifyWebTrack | null)[] = [];
+  for (let offset = 0; offset < 1000; offset += 100) {
+    const page = await get(
+      `/playlists/${encodeURIComponent(id)}/items?limit=100&offset=${offset}`,
+    ).catch(() => get(`/playlists/${encodeURIComponent(id)}/tracks?limit=100&offset=${offset}`));
+    const items = arr(page.items);
+    // Local files and podcast episodes keep their place as empty rows, so positions stay true.
+    for (const item of items) rows.push(track((item.item ?? item.track) as Json));
+    if (items.length < 100) break;
+  }
+  return rows;
 }
 
 /** The album cover for a song, from the listener's own Spotify (no extra quota). */
