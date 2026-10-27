@@ -3,7 +3,6 @@ import { Headphones, Music2, Pause, Play, Plus, Trash2 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { MUSIC_TAB_EVENT, takeMusicTabRequest, useSongInbox } from "@/lib/music/social/inbox";
 import { MusicOtherDevices } from "@/components/music/music-other-devices";
-import { isTvApp } from "@/lib/platform";
 import { MusicDj } from "./music/music-dj";
 import { PlaylistEditor } from "./music/playlist-editor";
 import { DjStudio } from "./music/studio/studio-view";
@@ -77,7 +76,7 @@ export function MusicView({ active }: { active: boolean; shellBackAvailable?: bo
           aria-label={t("Music")}
           className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"
         >
-          {WEB_TABS.filter((w) => w.id !== "studio" || isTvApp()).map((w) => {
+          {WEB_TABS.map((w) => {
             const unread = w.id === "friends" ? inbox.unread : 0;
             return (
               <button
