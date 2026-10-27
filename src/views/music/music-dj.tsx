@@ -40,6 +40,7 @@ import { coverArt } from "@/lib/music/cover-art";
 import { videoAspects } from "@/lib/music/dj/api";
 import { useSongArt } from "@/lib/music/dj/art";
 import { onPauseDj, reportPlayhead } from "@/lib/music/dj/playhead";
+import { pausePlayer } from "@/lib/music/player/store";
 import { soundById } from "@/lib/music/sounds/catalog";
 import { loadMix } from "@/lib/music/sounds/engine";
 import { useSettings } from "@/lib/settings";
@@ -302,6 +303,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
     fade.current = null;
     loaded.current = [null, null];
     setPaused(false);
+    pausePlayer();
     await ensureDecks().catch(() => {});
     setStarted(true);
   };
@@ -310,6 +312,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
     fade.current = null;
     loaded.current = [null, null];
     setPaused(false);
+    pausePlayer();
     await ensureDecks().catch(() => {});
     setStarted(true);
     void startDj(vibe, styles);
@@ -323,8 +326,10 @@ export function MusicDj({ visible }: { visible: boolean }) {
   const togglePause = () => {
     const p = players.current[active.current];
     if (!p) return;
-    if (paused) p.playVideo();
-    else {
+    if (paused) {
+      pausePlayer();
+      p.playVideo();
+    } else {
       p.pauseVideo();
       if (fade.current) {
         players.current[1 - active.current]?.pauseVideo();
