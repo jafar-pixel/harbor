@@ -5,6 +5,7 @@ import { MUSIC_TAB_EVENT, takeMusicTabRequest, useSongInbox } from "@/lib/music/
 import { MusicOtherDevices } from "@/components/music/music-other-devices";
 import { isTvApp } from "@/lib/platform";
 import { MusicDj } from "./music/music-dj";
+import { PlaylistEditor } from "./music/playlist-editor";
 import { DjStudio } from "./music/studio/studio-view";
 import { MusicFriends } from "./music/music-friends";
 import { MusicLounge } from "./music/music-lounge";
@@ -22,6 +23,7 @@ type WebMusicTab =
   | "lounge"
   | "friends"
   | "spotify"
+  | "playlists"
   | "moods"
   | "styles"
   | "files";
@@ -33,6 +35,7 @@ const WEB_TABS: { id: WebMusicTab; label: string }[] = [
   { id: "lounge", label: "music.tab.lounge" },
   { id: "friends", label: "music.tab.friends" },
   { id: "spotify", label: "Spotify" },
+  { id: "playlists", label: "Playlists" },
   { id: "moods", label: "music.tab.moods" },
   { id: "styles", label: "Your styles" },
   { id: "files", label: "Your files" },
@@ -102,6 +105,7 @@ export function MusicView({ active }: { active: boolean; shellBackAvailable?: bo
         {tab === "forYou" && <MusicWebForYou active={active} />}
         <MusicDj visible={active && tab === "dj"} />
         {tab === "studio" && <DjStudio />}
+        {tab === "playlists" && <PlaylistEditor />}
         <MusicLounge visible={active && tab === "lounge"} />
         {tab === "friends" && <MusicFriends active={active} />}
         {tab === "spotify" && <MusicSpotify active={active} />}

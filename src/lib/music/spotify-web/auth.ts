@@ -16,9 +16,12 @@ const SCOPES = [
   "user-library-read",
   "playlist-read-private",
   "playlist-read-collaborative",
+  // Creating, editing and deleting the listener's playlists from the app.
+  "playlist-modify-public",
+  "playlist-modify-private",
 ];
 
-type Tokens = { access: string; refresh: string; expiresAt: number };
+type Tokens = { access: string; refresh: string; expiresAt: number; scope?: string };
 export type SpotifyWebState = {
   connected: boolean;
   error: string | null;
@@ -110,6 +113,7 @@ async function tokenRequest(body: Record<string, string>): Promise<Tokens> {
     access_token?: string;
     refresh_token?: string;
     expires_in?: number;
+    scope?: string;
     error?: string;
     error_description?: string;
   };
@@ -121,7 +125,13 @@ async function tokenRequest(body: Record<string, string>): Promise<Tokens> {
     access: json.access_token,
     refresh: json.refresh_token || body.refresh_token || "",
     expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000,
+    scope: json.scope ?? readTokens()?.scope,
   };
+}
+
+/** Whether this sign in may change playlists (a sign in from before editing must reconnect). */
+export function spotifyCanEdit(): boolean {
+  return /playlist-modify/.test(readTokens()?.scope ?? "");
 }
 
 let pendingCallback: { code: string | null; state: string | null; error: string | null } | null =
