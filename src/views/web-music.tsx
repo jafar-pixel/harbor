@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n";
 import { MUSIC_TAB_EVENT, takeMusicTabRequest, useSongInbox } from "@/lib/music/social/inbox";
 import { MusicOtherDevices } from "@/components/music/music-other-devices";
 import { MusicDj } from "./music/music-dj";
-import { PlaylistEditor } from "./music/playlist-editor";
+import { AutomixView } from "./music/automix/automix-view";
 import { DjStudio } from "./music/studio/studio-view";
 import { MusicFriends } from "./music/music-friends";
 import { MusicLounge } from "./music/music-lounge";
@@ -34,7 +34,7 @@ const WEB_TABS: { id: WebMusicTab; label: string }[] = [
   { id: "lounge", label: "music.tab.lounge" },
   { id: "friends", label: "music.tab.friends" },
   { id: "spotify", label: "Spotify" },
-  { id: "playlists", label: "Playlists" },
+  { id: "playlists", label: "Integrated Automix" },
   { id: "moods", label: "music.tab.moods" },
   { id: "styles", label: "Your styles" },
   { id: "files", label: "Your files" },
@@ -104,7 +104,7 @@ export function MusicView({ active }: { active: boolean; shellBackAvailable?: bo
         {tab === "forYou" && <MusicHub active={active} onStudio={() => setTab("studio")} />}
         <MusicDj visible={active && tab === "dj"} />
         {tab === "studio" && <DjStudio />}
-        {tab === "playlists" && <PlaylistEditor />}
+        {tab === "playlists" && <AutomixView active={active} />}
         <MusicLounge visible={active && tab === "lounge"} />
         {tab === "friends" && <MusicFriends active={active} />}
         {tab === "spotify" && <MusicSpotify active={active} />}

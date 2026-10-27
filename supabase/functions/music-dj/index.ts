@@ -59,6 +59,64 @@ Rules:
 - Mix like a club DJ. For every track give "bpm" (its tempo, a whole number), "key" (its musical key as a Camelot code, 1A-12B) and "energy" (1-10). Order the set for harmonic mixing: each next track in the same key, one step around the wheel (8A to 7A or 9A) or the relative key (8A to 8B), with bpm within about 8% of the last unless the vibe calls for a change; build energy in waves, not all at once.
 Reply with JSON only: {"intro":"","tracks":[{"artist":"","title":"","why":"","bpm":0,"key":"8A","energy":5}],"discover":[{"artist":"","title":"","why":""}],"scene":"","colors":["#000000","#000000"],"sounds":[]}`;
 
+const ANALYZE = `You know music deeply. For each song give its tempo in BPM (a whole number), its musical key as a Camelot code (1A-12B) and its energy (1-10), as published or as a DJ would measure it. Use your best estimate when unsure; never skip a song.
+Reply with JSON only: {"songs":[{"i":0,"bpm":0,"key":"8A","energy":5}]} where "i" is the song's number in the list.`;
+
+/** Tempo, key and energy for up to 50 songs (Automix orders and times a playlist with them). */
+async function analyze(items: unknown[]): Promise<Response> {
+  const songs = items
+    .slice(0, 50)
+    .map((v) => {
+      const o = (v ?? {}) as Record<string, unknown>;
+      return { artist: text(o.artist, 80), title: text(o.title, 120) };
+    })
+    .filter((s) => s.title);
+  if (!songs.length) return json({ songs: [] });
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: MODEL,
+      temperature: 0.1,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: ANALYZE },
+        {
+          role: "user",
+          content: songs.map((s, i) => `${i}. ${s.artist} - ${s.title}`).join("\n"),
+        },
+      ],
+    }),
+  });
+  if (!res.ok)
+    return json({ error: "The DJ couldn't read those songs." }, res.status === 429 ? 429 : 502);
+  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  let raw: { songs?: unknown };
+  try {
+    raw = JSON.parse(data.choices?.[0]?.message?.content ?? "{}");
+  } catch {
+    return json({ error: "The DJ's answer couldn't be read." }, 502);
+  }
+  const out = (Array.isArray(raw.songs) ? raw.songs : [])
+    .map((v) => {
+      const o = (v ?? {}) as Record<string, unknown>;
+      const i = Number(o.i);
+      const song = songs[i];
+      if (!song) return null;
+      const bpm = Math.round(Number(o.bpm));
+      const key = text(o.key, 3).toUpperCase();
+      const energy = Math.round(Number(o.energy));
+      return {
+        ...song,
+        ...(bpm >= 50 && bpm <= 220 ? { bpm } : {}),
+        ...(/^(1[0-2]|[1-9])[AB]$/.test(key) ? { key } : {}),
+        ...(energy >= 1 && energy <= 10 ? { energy } : {}),
+      };
+    })
+    .filter(Boolean);
+  return json({ songs: out });
+}
+
 /** The platform has verified the token's signature; only signed-in JL accounts may use quota. */
 function signedIn(req: Request): boolean {
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
@@ -82,6 +140,7 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: "Invalid JSON" }, 400);
   }
+  if (Array.isArray(body.analyze)) return analyze(body.analyze);
   const vibe = text(body.vibe, 200);
   const request = text(body.request, 200);
   const styles = list(body.styles, 20, 60);

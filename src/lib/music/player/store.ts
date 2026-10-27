@@ -26,6 +26,8 @@ export type PlayerState = {
   repeat: RepeatMode;
   /** Seconds of crossfade between songs (0: none). */
   crossfade: number;
+  /** Automix: each transition lasts a musical phrase (16 beats) at the song's tempo. */
+  automix: boolean;
   /** When the sleep timer stops the music (ms since epoch), or at the end of this song. */
   sleepAt: number | null;
   sleepAfterSong: boolean;
@@ -40,7 +42,7 @@ const STORE_KEY = "jl.music.player.v1";
 
 type Saved = Pick<
   PlayerState,
-  "queue" | "index" | "volume" | "shuffle" | "repeat" | "crossfade" | "context"
+  "queue" | "index" | "volume" | "shuffle" | "repeat" | "crossfade" | "automix" | "context"
 >;
 
 function readSaved(): Partial<Saved> {
@@ -66,6 +68,7 @@ let state: PlayerState = {
   shuffle: saved.shuffle ?? false,
   repeat: saved.repeat ?? "off",
   crossfade: saved.crossfade ?? 6,
+  automix: saved.automix ?? false,
   sleepAt: null,
   sleepAfterSong: false,
   view: "mini",
@@ -88,7 +91,8 @@ function set(next: Partial<PlayerState>) {
     "volume" in next ||
     "shuffle" in next ||
     "repeat" in next ||
-    "crossfade" in next
+    "crossfade" in next ||
+    "automix" in next
   ) {
     if (saveTimer) window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(save, 400);
@@ -110,6 +114,7 @@ function save() {
         shuffle: state.shuffle,
         repeat: state.repeat,
         crossfade: state.crossfade,
+        automix: state.automix,
         context: state.context,
       } satisfies Saved),
     );
@@ -210,8 +215,20 @@ function nextIndex(): number {
   return state.repeat === "all" ? 0 : -1;
 }
 
+/** A 16-beat phrase at this tempo, kept between 5 and 12 seconds. */
+export function phraseSeconds(bpm: number | undefined): number | null {
+  if (!bpm || bpm < 50) return null;
+  return Math.max(5, Math.min(12, Math.round(((16 * 60) / bpm) * 10) / 10));
+}
+
+function fadeFor(current: PlayerTrack | null, upcoming: PlayerTrack | null): number {
+  if (!state.automix) return state.crossfade;
+  return phraseSeconds(current?.bpm ?? upcoming?.bpm) ?? Math.max(state.crossfade, 8);
+}
+
 async function prepareNext() {
   const i = nextIndex();
+  engine?.setCrossfade(fadeFor(currentTrack(), i >= 0 ? (state.queue[i] ?? null) : null));
   const track = i >= 0 && i !== state.index ? state.queue[i] : null;
   if (!track) {
     engine?.setNext(state.repeat === "one" && currentTrack() ? await safe(currentTrack()!) : null);
@@ -328,6 +345,26 @@ export function playNext(tracks: Omit<PlayerTrack, "key">[]): void {
   queue.splice(state.index + 1, 0, ...added);
   if (unshuffled) unshuffled.push(...added);
   set({ queue });
+  void prepareNext();
+}
+
+/** Play this song now, keeping the rest of the queue (previews and requests). */
+export function playNow(track: Omit<PlayerTrack, "key">): void {
+  const added = { ...track, key: trackKey() };
+  if (state.index < 0) {
+    playTracks([track]);
+    return;
+  }
+  const queue = state.queue.slice();
+  queue.splice(state.index + 1, 0, added);
+  if (unshuffled) unshuffled.push(added);
+  set({ queue });
+  void startAt(state.index + 1);
+}
+
+/** Turn Automix on or off: phrase-long transitions timed to each song's tempo. */
+export function setAutomix(on: boolean): void {
+  set({ automix: on });
   void prepareNext();
 }
 
@@ -465,6 +502,7 @@ export function setCrossfade(seconds: number): void {
   const v = Math.max(0, Math.min(12, Math.round(seconds)));
   engine?.setCrossfade(v);
   set({ crossfade: v });
+  void prepareNext();
 }
 
 /** Stop after `minutes`, at the end of this song ("song"), or turn the timer off (null). */
