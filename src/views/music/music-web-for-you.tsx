@@ -6,7 +6,8 @@ import {
 } from "@/components/music/music-account-shelf";
 import { useT } from "@/lib/i18n";
 import { setAccountSeeds } from "@/lib/music/dj/account-seeds";
-import { startDj, startFromSong } from "@/lib/music/dj/session";
+import { startDj } from "@/lib/music/dj/session";
+import { playTracks } from "@/lib/music/player/store";
 import { requestMusicTab } from "@/lib/music/social/inbox";
 import {
   spotifyLikedTracks,
@@ -150,11 +151,18 @@ function SpotifyShelf({ active }: { active: boolean }) {
     };
   }, [active, loaded]);
 
-  const play = (track: SpotifyWebTrack | undefined) => {
-    if (!track) return;
-    void startFromSong({ artist: track.artist, title: track.title, why: "" }, styles, "Spotify");
-    requestMusicTab("dj");
-  };
+  const play = (tracks: SpotifyWebTrack[], start: number, context: string) =>
+    playTracks(
+      tracks.map((s) => ({
+        source: "spotify" as const,
+        title: s.title,
+        artist: s.artist,
+        album: s.album,
+        art: s.image,
+      })),
+      start,
+      context,
+    );
 
   return (
     <MusicAccountShelf
@@ -168,11 +176,11 @@ function SpotifyShelf({ active }: { active: boolean }) {
       onConnect={() => void connectSpotifyWeb()}
       onPlaylist={(p) =>
         void spotifyPlaylistTracks(p.id)
-          .then((tracks) => play(tracks[0]))
+          .then((tracks) => play(tracks, 0, `Spotify · ${p.name}`))
           .catch((e: unknown) => setError(message(e)))
       }
-      onLiked={() => play(liked[0])}
-      onTrack={(i) => play(liked[i])}
+      onLiked={() => play(liked, 0, "Spotify · Liked songs")}
+      onTrack={(i) => play(liked, i, "Spotify · Liked songs")}
       onArtist={(a) => {
         void startDj(
           {
@@ -192,7 +200,6 @@ function SpotifyShelf({ active }: { active: boolean }) {
 
 function YouTubeShelf({ active }: { active: boolean }) {
   const t = useT();
-  const styles = useStyles();
   const [playlists, setPlaylists] = useState<ShelfPlaylist[]>([]);
   const [liked, setLiked] = useState<YouTubeSong[]>([]);
   const [loading, setLoading] = useState(false);
@@ -227,15 +234,18 @@ function YouTubeShelf({ active }: { active: boolean }) {
     };
   }, [active, loaded]);
 
-  const play = (song: YouTubeSong | undefined) => {
-    if (!song) return;
-    void startFromSong(
-      { artist: song.artist, title: song.title, why: "", videoId: song.videoId },
-      styles,
-      "YouTube",
+  const play = (songs: YouTubeSong[], start: number, context: string) =>
+    playTracks(
+      songs.map((s) => ({
+        source: "youtube" as const,
+        title: s.title,
+        artist: s.artist,
+        art: s.image,
+        videoId: s.videoId,
+      })),
+      start,
+      context,
     );
-    requestMusicTab("dj");
-  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -254,11 +264,11 @@ function YouTubeShelf({ active }: { active: boolean }) {
         onConnect={() => void connectYouTubeWeb()}
         onPlaylist={(p) =>
           void youtubePlaylistSongs(p.id)
-            .then((songs) => play(songs[0]))
+            .then((songs) => play(songs, 0, `YouTube · ${p.name}`))
             .catch((e: unknown) => setError(message(e)))
         }
-        onLiked={() => play(liked[0])}
-        onTrack={(i) => play(liked[i])}
+        onLiked={() => play(liked, 0, "YouTube · Liked songs")}
+        onTrack={(i) => play(liked, i, "YouTube · Liked songs")}
       />
       <button
         type="button"
