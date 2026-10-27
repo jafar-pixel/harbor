@@ -1,4 +1,5 @@
 import { AddonBackupCard } from "./account/addon-backup-card";
+import { FamilyCard } from "./account/family-card";
 import { SettingGroup } from "./kit";
 import { useSettings } from "@/lib/settings";
 import { useState } from "react";
@@ -60,6 +61,12 @@ function JlAccountTab() {
         subtitle={t("Your local library remains available without an account.")}
       >
         <StremioCard />
+      </Section>
+      <Section
+        title={t("Family")}
+        subtitle={t("Share your Real-Debrid, TorBox and IPTV logins with family members.")}
+      >
+        <FamilyCard />
       </Section>
       <Section
         title={t("Installed addons")}

@@ -80,8 +80,9 @@ function toPatch(values: KeyValues): Partial<Settings> {
   return patch;
 }
 
-async function pullRemote(context: JlAccountContext): Promise<KeyValues> {
-  const rows = await jlRpc<Array<{ name: string; value: string }>>("get_secrets", {}, context);
+type SecretRow = { name: string; value: string };
+
+function keyValues(rows: SecretRow[] | null): KeyValues {
   if (
     !Array.isArray(rows) ||
     rows.some((row) => !row || typeof row.name !== "string" || typeof row.value !== "string")
@@ -89,10 +90,24 @@ async function pullRemote(context: JlAccountContext): Promise<KeyValues> {
     throw new Error("Invalid JL key response");
   }
   const out: KeyValues = {};
-  for (const row of rows ?? []) {
+  for (const row of rows) {
     const key = settingKeyFromSecret(row.name);
     if (key) out[key] = row.value ?? "";
   }
+  return out;
+}
+
+/**
+ * The account's own keys, over the family owner's for a family member: a member uses the
+ * family's Real-Debrid, TorBox and IPTV logins unless they set their own.
+ */
+async function pullRemote(context: JlAccountContext): Promise<KeyValues> {
+  const [own, family] = await Promise.all([
+    jlRpc<SecretRow[]>("get_secrets", {}, context).then(keyValues),
+    jlRpc<SecretRow[]>("get_family_secrets", {}, context).then(keyValues),
+  ]);
+  const out: KeyValues = { ...family };
+  for (const key of SYNCED_SETTING_KEYS) if (own[key]) out[key] = own[key];
   return out;
 }
 
@@ -132,6 +147,13 @@ export function syncJlKeys(
   return promise;
 }
 
+const syncNowListeners = new Set<() => void>();
+
+/** Pull keys now, e.g. right after joining or leaving a family. */
+export function syncJlKeysNow(): void {
+  for (const run of syncNowListeners) run();
+}
+
 /** Runs the key sync while signed in: on sign-in, on focus, every few minutes, and after each change. */
 export function useJlKeySync(): void {
   const session = useJlSession();
@@ -157,7 +179,9 @@ export function useJlKeySync(): void {
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", run);
+    syncNowListeners.add(run);
     return () => {
+      syncNowListeners.delete(run);
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", run);
