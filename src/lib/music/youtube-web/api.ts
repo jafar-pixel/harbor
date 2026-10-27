@@ -20,7 +20,7 @@ const API = "https://www.googleapis.com/youtube/v3";
 
 export async function get(path: string): Promise<Json> {
   const res = await fetch(`${API}${path}`, {
-    headers: { Authorization: `Bearer ${youtubeWebToken()}` },
+    headers: { Authorization: `Bearer ${await youtubeWebToken()}` },
   });
   if (res.status === 401)
     throw new Error("Your YouTube sign in ran out. Reconnect to keep your music here.");

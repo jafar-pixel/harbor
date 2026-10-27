@@ -1,11 +1,22 @@
 import { useSyncExternalStore } from "react";
 import { requestMusicTab } from "../social/inbox";
 import { JL_SPOTIFY_CLIENT_ID, SPOTIFY_WEB_CALLBACK_PATH } from "../spotify-setup";
+import {
+  accountLinksOn,
+  accountMusicToken,
+  disconnectMusicLink,
+  exchangeMusicLink,
+  musicLinkState,
+  storeMusicLink,
+  subscribeMusicLinks as musicLinkSubscribe,
+  useMusicLinks,
+} from "../account-link";
 
 /**
  * Spotify sign in for the web app: authorization code with PKCE straight from the browser (no
- * secret, no server). The desktop and TV apps sign in natively instead (src-tauri/src/music/spotify).
- * Tokens stay in this browser only.
+ * secret). Signed in to a JL account, the sign in finishes on the server and the account keeps it
+ * (see ../account-link), so every device on that account stays connected. Without an account the
+ * tokens stay in this browser. The desktop app signs in natively (src-tauri/src/music/spotify).
  */
 
 const TOKEN_KEY = "jl.spotify.web.v1";
@@ -30,6 +41,7 @@ export type SpotifyWebState = {
 };
 
 const listeners = new Set<() => void>();
+const accountLinked = () => accountLinksOn() && !!musicLinkState().links.spotify;
 let state: SpotifyWebState = { connected: !!readTokens(), error: null, finishing: false };
 
 function set(next: Partial<SpotifyWebState>) {
@@ -40,6 +52,7 @@ function set(next: Partial<SpotifyWebState>) {
 export const spotifyWebState = () => state;
 
 export function useSpotifyWeb(): SpotifyWebState {
+  useMusicLinks();
   return useSyncExternalStore(
     (fn) => {
       listeners.add(fn);
@@ -66,7 +79,7 @@ function writeTokens(tokens: Tokens | null) {
   } catch {
     /* storage blocked: the sign in lasts this session */
   }
-  set({ connected: !!tokens });
+  set({ connected: !!tokens || accountLinked() });
 }
 
 const redirectUri = () => `${window.location.origin}${SPOTIFY_WEB_CALLBACK_PATH}`;
@@ -99,6 +112,7 @@ export async function connectSpotifyWeb(): Promise<void> {
 }
 
 export function disconnectSpotifyWeb(): void {
+  if (accountLinked()) void disconnectMusicLink("spotify").then(() => writeTokens(null));
   writeTokens(null);
   set({ error: null });
 }
@@ -131,7 +145,9 @@ async function tokenRequest(body: Record<string, string>): Promise<Tokens> {
 
 /** Whether this sign in may change playlists (a sign in from before editing must reconnect). */
 export function spotifyCanEdit(): boolean {
-  return /playlist-modify/.test(readTokens()?.scope ?? "");
+  return /playlist-modify/.test(
+    (accountLinked() ? musicLinkState().links.spotify?.scope : readTokens()?.scope) ?? "",
+  );
 }
 
 let pendingCallback: { code: string | null; state: string | null; error: string | null } | null =
@@ -179,14 +195,22 @@ async function finishSpotifyWeb(): Promise<void> {
       );
     if (!answer.code || !pending || pending.state !== answer.state)
       throw new Error("That Spotify sign in expired. Try connecting again.");
-    writeTokens(
-      await tokenRequest({
-        grant_type: "authorization_code",
+    if (accountLinksOn()) {
+      await exchangeMusicLink("spotify", {
         code: answer.code,
-        redirect_uri: redirectUri(),
-        code_verifier: pending.verifier,
-      }),
-    );
+        verifier: pending.verifier,
+        redirectUri: redirectUri(),
+      });
+      writeTokens(null);
+    } else
+      writeTokens(
+        await tokenRequest({
+          grant_type: "authorization_code",
+          code: answer.code,
+          redirect_uri: redirectUri(),
+          code_verifier: pending.verifier,
+        }),
+      );
     set({ error: null });
   } catch (error) {
     set({ error: error instanceof Error ? error.message : String(error) });
@@ -199,6 +223,12 @@ let refreshing: Promise<Tokens> | null = null;
 
 /** A fresh access token, refreshed a minute before it expires. */
 export async function spotifyWebToken(): Promise<string> {
+  if (accountLinked())
+    return accountMusicToken("spotify").catch((error: unknown) => {
+      writeTokens(readTokens());
+      set({ error: "Spotify signed you out. Connect again to keep your music here." });
+      throw error;
+    });
   const tokens = readTokens();
   if (!tokens) throw new Error("Connect Spotify first.");
   if (tokens.expiresAt - Date.now() > 60_000) return tokens.access;
@@ -218,3 +248,20 @@ export async function spotifyWebToken(): Promise<string> {
     });
   return (await refreshing).access;
 }
+
+// A browser that signed in before accounts kept sign ins hands its Spotify to the account once,
+// so the listener's other devices connect too.
+let moving = false;
+musicLinkSubscribe(() => {
+  const links = musicLinkState();
+  set({ connected: !!readTokens() || accountLinked() });
+  const local = readTokens();
+  if (!links.ready || links.links.spotify || !local?.refresh || moving || !accountLinksOn()) return;
+  moving = true;
+  void storeMusicLink("spotify", local.refresh, local.scope ?? "")
+    .then(() => writeTokens(null))
+    .catch(() => undefined)
+    .finally(() => {
+      moving = false;
+    });
+});

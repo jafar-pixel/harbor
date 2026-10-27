@@ -13,7 +13,7 @@ async function send(method: string, path: string, body?: unknown): Promise<Json>
   const res = await fetch(`${API}${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${youtubeWebToken()}`,
+      Authorization: `Bearer ${await youtubeWebToken()}`,
       "Content-Type": "application/json",
     },
     body: body === undefined ? undefined : JSON.stringify(body),
