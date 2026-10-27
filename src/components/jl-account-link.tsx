@@ -67,9 +67,10 @@ export function JlAccountLink() {
       </LinkDialog>
     );
   }
-  if (pending !== "recovery") return null;
+  if (pending !== "recovery" && pending !== "invite") return null;
   return (
     <NewPasswordForm
+      welcome={pending === "invite"}
       onDone={() => {
         writePending(null);
         setPending(null);
@@ -78,7 +79,7 @@ export function JlAccountLink() {
   );
 }
 
-function NewPasswordForm({ onDone }: { onDone: () => void }) {
+function NewPasswordForm({ onDone, welcome }: { onDone: () => void; welcome?: boolean }) {
   const t = useT();
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -100,7 +101,14 @@ function NewPasswordForm({ onDone }: { onDone: () => void }) {
     }
   };
   return (
-    <LinkDialog title={t("Choose a new password")}>
+    <LinkDialog title={welcome ? t("Welcome to the family") : t("Choose a new password")}>
+      {welcome && (
+        <p className="text-[14px] leading-relaxed text-ink-muted">
+          {t(
+            "You were invited to a JL Media Vision family. Choose a password for your account; your family's services are already set up.",
+          )}
+        </p>
+      )}
       <input
         type="password"
         autoComplete="new-password"

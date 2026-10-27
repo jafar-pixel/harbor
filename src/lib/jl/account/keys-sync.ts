@@ -108,7 +108,33 @@ async function pullRemote(context: JlAccountContext): Promise<KeyValues> {
   ]);
   const out: KeyValues = { ...family };
   for (const key of SYNCED_SETTING_KEYS) if (own[key]) out[key] = own[key];
+  // IPTV: the member's own playlists sit beside the family's rather than replacing them.
+  const familyLists = parseLists(family.iptvPlaylists);
+  familyPlaylistIds = new Set(familyLists.map((p) => p.id));
+  const ownLists = parseLists(own.iptvPlaylists).filter((p) => !familyPlaylistIds.has(p.id));
+  const lists = [...familyLists, ...ownLists];
+  out.iptvPlaylists = lists.length ? JSON.stringify(lists) : "";
   return out;
+}
+
+/** Ids of the family's playlists, which are never saved as the member's own. */
+let familyPlaylistIds = new Set<string>();
+
+function parseLists(value: string | undefined): Array<{ id: string }> {
+  try {
+    const list = value ? (JSON.parse(value) as unknown) : [];
+    return Array.isArray(list)
+      ? list.filter((p): p is { id: string } => !!p && typeof p.id === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function ownValue(setting: SyncedSettingKey, value: string): string {
+  if (setting !== "iptvPlaylists" || !familyPlaylistIds.size) return value;
+  const lists = parseLists(value).filter((p) => !familyPlaylistIds.has(p.id));
+  return lists.length ? JSON.stringify(lists) : "";
 }
 
 const running = new Map<string, Promise<void>>();
@@ -131,7 +157,11 @@ export function syncJlKeys(
     writeBase: (base) => writeBase(context.userId, base),
     pull: () => pullRemote(context),
     push: (setting, value) =>
-      jlRpc("set_secret", { p_name: secretName(setting), p_value: value }, context),
+      jlRpc(
+        "set_secret",
+        { p_name: secretName(setting), p_value: ownValue(setting, value) },
+        context,
+      ),
     apply: (values) => {
       const patch = toPatch(values);
       if (Object.keys(patch).length) update(patch);

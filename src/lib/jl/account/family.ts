@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { jlRpc, useJlSession } from "./client";
+import { jlFunction, jlRpc, useJlSession } from "./client";
 
 /**
  * A JL family: the owner shares their service keys (Real-Debrid, TorBox, IPTV logins) with
@@ -66,3 +66,39 @@ export function useFamily(): {
   }, [userId, version]);
   return { family, loading, error, reload };
 }
+
+export type EmailInviteResult = {
+  status: "emailed" | "link" | "added" | "already";
+  userId: string;
+  link: string | null;
+};
+
+/** Invite by email: new people get an account and an invite email; existing accounts join now. */
+export async function inviteFamilyByEmail(email: string, name: string): Promise<EmailInviteResult> {
+  const res = await jlFunction("family-invite", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, name }),
+  });
+  const body = (await res.json().catch(() => ({}))) as Partial<EmailInviteResult> & {
+    error?: string;
+  };
+  if (!res.ok || !body.status) throw new Error(body.error || "The invite couldn't be sent.");
+  return body as EmailInviteResult;
+}
+
+/** Providers the owner can set up for a member: their own key wins over the family's. */
+export const MEMBER_PROVIDERS = [
+  { key: "rdKey", label: "Real-Debrid API key" },
+  { key: "tbKey", label: "TorBox API key" },
+  { key: "adKey", label: "AllDebrid API key" },
+  { key: "pmKey", label: "Premiumize API key" },
+] as const;
+
+export const memberProviderNames = (userId: string) =>
+  jlRpc<string[]>("member_secret_names", { p_user: userId }).then((rows) =>
+    (rows ?? []).map((name) => name.replace(/^setting:/, "")),
+  );
+
+export const setMemberProvider = (userId: string, key: string, value: string) =>
+  jlRpc<void>("set_member_secret", { p_user: userId, p_name: `setting:${key}`, p_value: value });
