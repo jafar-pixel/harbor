@@ -450,6 +450,7 @@ export const DEFAULT: Settings = {
   sportsHomeOrder: [],
   sportsHomeHidden: ["featured"],
   musicStyles: [],
+  pageBackdrops: {},
   sportsAlerts: true,
   sportsShowOdds: false,
   sportsWithoutProvider: false,

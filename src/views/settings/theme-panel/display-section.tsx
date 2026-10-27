@@ -26,6 +26,7 @@ import { Section, ToggleRow } from "../shared";
 import { ROW_ACTION, SettingGroup, SettingRow, Nested } from "../kit";
 import { previewScreensaver } from "@/lib/screensaver/media";
 import { PosterCardSection } from "./display/poster-card-section";
+import { PageBackdropsSection } from "./page-backdrops-section";
 import { ScreensaverMediaManager } from "./screensaver-media";
 import { SFX } from "@/lib/sfx";
 import { isAndroidTv } from "@/lib/platform";
@@ -198,6 +199,7 @@ export function DisplaySection() {
     : 25;
   return (
     <>
+      <PageBackdropsSection />
       {GAMES_SETTINGS_VISIBLE && (
         <Section title={t("Games")}>
           <SettingGroup>

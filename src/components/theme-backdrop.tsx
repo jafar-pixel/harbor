@@ -11,6 +11,7 @@ import {
   environmentImage,
   useEnvironments,
 } from "@/lib/environments";
+import { usePageBackdrop } from "@/lib/page-backdrops";
 
 export function ThemeBackdrop() {
   const { settings } = useSettings();
@@ -18,6 +19,9 @@ export function ThemeBackdrop() {
   const preview = useThemePreview();
   const dockMode = useActiveHeroDockMode();
   const env = useEnvironments();
+  // A backdrop chosen for this page (Settings › Appearance › Interface) wins over the theme's.
+  const pageChoice = settings.pageBackdrops?.[view] ?? null;
+  const pageImage = usePageBackdrop(pageChoice);
 
   if (player) return null;
   // A video pinned as the wallpaper replaces the theme background; a scrim keeps the page readable.
@@ -29,10 +33,12 @@ export function ThemeBackdrop() {
   const preset = settings.theme.preset !== "custom" ? getThemeById(settings.theme.preset) : null;
   const wantsBokeh = (preview ? preview.bokeh : !!preset?.bokeh) && view !== "addons";
   // Pro: the chosen Environment, unless someone set a background photo of their own.
-  const envImage = preset?.environments ? environmentImage(environmentById(env.applied)) : null;
-  const tint = preset?.environments
-    ? LIGHTS.find((l) => l.id === activeLight(env))?.tint
-    : undefined;
+  const envImage =
+    pageImage ?? (preset?.environments ? environmentImage(environmentById(env.applied)) : null);
+  const tint =
+    preset?.environments && !pageImage
+      ? LIGHTS.find((l) => l.id === activeLight(env))?.tint
+      : undefined;
   // The glass theme's own backdrop can linger in settings after switching themes; it isn't a photo
   // someone chose, so it doesn't hide the Environment.
   const ownPhoto =
@@ -41,6 +47,7 @@ export function ThemeBackdrop() {
       ? settings.theme.backgroundImage
       : null;
   const img =
+    pageImage ??
     (envImage ? ownPhoto : settings.theme.backgroundImage) ??
     envImage ??
     preset?.background?.image ??

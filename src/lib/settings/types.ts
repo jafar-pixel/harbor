@@ -559,6 +559,8 @@ export type Settings = {
   sportsHomeHidden: string[];
   /** Music styles the listener picked ("hip-hop/boom-bap"), from the Music Hub taste picker. */
   musicStyles: string[];
+  /** Backdrop per page ("env:<id>" or "art:<path>"); pages not listed use the theme's. */
+  pageBackdrops: Record<string, string>;
   /** Pop-up alerts for followed teams, athletes and Top 10 games. */
   sportsAlerts: boolean;
   sportsShowOdds: boolean;

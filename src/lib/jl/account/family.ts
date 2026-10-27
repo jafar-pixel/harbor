@@ -17,7 +17,19 @@ export type Family = {
   invites: FamilyInvite[];
 };
 
-export const myFamily = () => jlRpc<Family | null>("my_family");
+/** The caller's family, or null; a partial answer is filled in so the card never breaks. */
+export const myFamily = () =>
+  jlRpc<Partial<Family> | null>("my_family").then((f): Family | null =>
+    f && typeof f === "object" && !Array.isArray(f) && typeof f.id === "string"
+      ? {
+          id: f.id,
+          name: f.name ?? "",
+          role: f.role === "owner" ? "owner" : "member",
+          members: Array.isArray(f.members) ? f.members : [],
+          invites: Array.isArray(f.invites) ? f.invites : [],
+        }
+      : null,
+  );
 export const createFamily = (name: string) => jlRpc<string>("create_family", { p_name: name });
 export const createFamilyInvite = () => jlRpc<string>("create_family_invite");
 export const cancelFamilyInvite = (code: string) =>
