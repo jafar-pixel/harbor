@@ -276,7 +276,12 @@ export class PlayerEngine {
       this.next = null;
       const ms = Math.max(1000, (left - 0.3) * 1000);
       this.fade = { start: Date.now(), ms };
-      void this.loadInto(1 - this.live, incoming, 0, true, 0);
+      this.loadInto(1 - this.live, incoming, 0, true, 0).catch(() => {
+        // The next song can't load: finish this one and let the store move on.
+        this.fade = null;
+        this.setSlotVolume(this.live, this.volume);
+        this.show();
+      });
     }
   }
 

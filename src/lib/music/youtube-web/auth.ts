@@ -88,7 +88,12 @@ const accountLinked = () => accountLinksOn() && !!musicLinkState().links.youtube
 /** New sign ins go to the account. */
 const accountMode = () => accountLinksOn() && musicLinkState().youtubeServer;
 
-let state: YouTubeWebState = { connected: !!readToken(), linked: readLinked(), error: null };
+// The account may already hold the sign in when this loads (no change event follows).
+let state: YouTubeWebState = {
+  connected: !!readToken() || accountLinked(),
+  linked: readLinked() || accountLinked(),
+  error: null,
+};
 
 function set(next: Partial<YouTubeWebState>) {
   state = { ...state, ...next };
