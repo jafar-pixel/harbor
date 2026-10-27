@@ -1,4 +1,4 @@
-import { beatAt, timeOfBeat, type BeatGrid, type Waveform } from "./analysis";
+import { beatAt, timeOfBeat, type BeatGrid, type MusicalKey, type Waveform } from "./analysis";
 
 /** A track loaded on a deck: decoded audio plus its analysis. */
 export type StudioTrack = {
@@ -9,6 +9,7 @@ export type StudioTrack = {
   buffer: AudioBuffer;
   grid: BeatGrid;
   wave: Waveform;
+  key: MusicalKey | null;
 };
 
 export type XfadeSide = "A" | "B" | "thru";

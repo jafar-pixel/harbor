@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { beatGrid, waveform } from "./analysis";
+import { beatGrid, musicalKey, waveform, type MusicalKey } from "./analysis";
 import type { StudioTrack } from "./deck";
 import { readTags } from "./tags";
 
@@ -19,6 +19,7 @@ export type CrateItem = {
   duration?: number;
   /** Cover from the file's own tags (an object URL). */
   art?: string;
+  key?: MusicalKey | null;
 };
 
 const AUDIO_RE = /\.(mp3|m4a|aac|flac|wav|ogg|opus|aiff?|alac|wma)$/i;
@@ -157,12 +158,13 @@ export async function prepare(ctx: AudioContext, id: string): Promise<StudioTrac
       buffer,
       grid: beatGrid(buffer),
       wave: waveform(buffer),
+      key: musicalKey(buffer),
     };
     decoded.set(id, track);
     while (decoded.size > KEEP_DECODED) decoded.delete(decoded.keys().next().value!);
     set({
       crate: state.crate.map((c) =>
-        c.id === id ? { ...c, bpm: track.grid.bpm, duration: buffer.duration } : c,
+        c.id === id ? { ...c, bpm: track.grid.bpm, duration: buffer.duration, key: track.key } : c,
       ),
       history: [id, ...state.history.filter((h) => h !== id)].slice(0, 100),
       queue: state.queue.filter((q) => q !== id),

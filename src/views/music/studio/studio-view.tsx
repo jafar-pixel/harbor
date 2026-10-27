@@ -1,27 +1,42 @@
 import { useState } from "react";
 import type { StudioDeck } from "@/lib/music/studio/deck";
-import { studio, useStudio } from "@/lib/music/studio/engine";
+import { studio, useStudio, type XfadeCurve } from "@/lib/music/studio/engine";
 import { addFiles, prepare, useCrate, type CrateItem } from "@/lib/music/studio/library";
 import { useSongArt } from "@/lib/music/dj/art";
 import { coverArt } from "@/lib/music/cover-art";
 import { useT } from "@/lib/i18n";
-import { StudioDeckPanel } from "./studio-deck";
+import { Knob } from "./studio-controls";
+import {
+  ChannelStrip,
+  DeckHeader,
+  DeckJog,
+  DeckPitch,
+  DeckTransport,
+  type DeckLook,
+} from "./studio-deck";
 import { StudioLibrary } from "./studio-library";
-import { StudioMixer } from "./studio-mixer";
 import { StudioWaves } from "./studio-wave";
 import "./studio.css";
 
+const CURVES: { id: XfadeCurve; label: string }[] = [
+  { id: "smooth", label: "Smooth" },
+  { id: "linear", label: "Linear" },
+  { id: "cut", label: "Scratch" },
+];
+
 /**
- * DJ Studio: two or four decks of your own music with turntables, colour waveforms, beat sync,
- * cue points, hot cues, loops, pitch, a three-band EQ and filter mixer with crossfader curves,
- * and a limiter on the master. The audio is processed in the app (Web Audio), so it plays files
- * the app can read: music files on this device.
+ * DJ Studio, laid out like a two-deck DJ app: track headers with whole-track waveforms across
+ * the top; decks on the outside with their EQ and faders, and the scrolling waveforms between
+ * them; transport and the crossfader below; the library and queue at the bottom. Four decks
+ * stack two per side. Audio runs in the app (Web Audio) on the music files you add.
  */
 export function DjStudio() {
   const t = useT();
   const engine = useStudio();
   const decks = engine.all.slice(0, engine.deckCount);
   const [zoom, setZoom] = useState(1);
+  const [look, setLook] = useState<DeckLook>("turntable");
+  const [pads, setPads] = useState(true);
   const [busyDeck, setBusyDeck] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
@@ -40,8 +55,7 @@ export function DjStudio() {
     setBusyDeck(deck.index);
     setError(null);
     try {
-      const track = await prepare(studio.context, id);
-      deck.load(track);
+      deck.load(await prepare(studio.context, id));
     } catch (e) {
       setError(
         e instanceof Error && /decode|Decoding|EncodingError/i.test(`${e.name} ${e.message}`)
@@ -54,6 +68,20 @@ export function DjStudio() {
       setBusyDeck(null);
     }
   };
+
+  const left = decks.filter((d) => d.index % 2 === 0);
+  const right = decks.filter((d) => d.index % 2 === 1);
+  const side = (list: StudioDeck[], mirror: boolean) => (
+    <div className={`sd-side${mirror ? " is-mirror" : ""}`}>
+      {list.map((deck) => (
+        <div key={deck.index} className="sd-deck" data-deck={deck.index}>
+          <DeckPitch deck={deck} />
+          <DeckJog deck={deck} art={deckArt(deck)} look={engine.deckCount === 4 ? "jog" : look} />
+          <ChannelStrip deck={deck} />
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div
@@ -74,6 +102,24 @@ export function DjStudio() {
       <div className="studio-top">
         <strong className="studio-brand">{t("DJ Studio")}</strong>
         <div className="studio-top-controls">
+          <span className="studio-label">{t("View")}</span>
+          {(["turntable", "jog"] as const).map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={`studio-btn studio-mini${look === id ? " is-on" : ""}`}
+              onClick={() => setLook(id)}
+            >
+              {id === "turntable" ? t("Turntables") : t("Classic")}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`studio-btn studio-mini${pads ? " is-on" : ""}`}
+            onClick={() => setPads(!pads)}
+          >
+            {t("Pads")}
+          </button>
           <span className="studio-label">{t("Decks")}</span>
           {([2, 4] as const).map((n) => (
             <button
@@ -104,32 +150,88 @@ export function DjStudio() {
           </button>
         </div>
       </div>
-      <StudioWaves decks={decks} zoom={zoom} />
-      <div className="studio-console">
-        <div className="studio-deck-col">
-          {decks
-            .filter((d) => d.index % 2 === 0)
-            .map((d) => (
-              <StudioDeckPanel
-                key={d.index}
-                deck={d}
-                compact={engine.deckCount === 4}
-                art={deckArt(d)}
-              />
-            ))}
+      <div className="sd-heads">
+        <div className="sd-heads-col">
+          {left.map((d) => (
+            <DeckHeader key={d.index} deck={d} art={deckArt(d)} />
+          ))}
         </div>
-        <StudioMixer decks={decks} />
-        <div className="studio-deck-col">
-          {decks
-            .filter((d) => d.index % 2 === 1)
-            .map((d) => (
-              <StudioDeckPanel
-                key={d.index}
-                deck={d}
-                compact={engine.deckCount === 4}
-                art={deckArt(d)}
-              />
-            ))}
+        <div className="sd-heads-col">
+          {right.map((d) => (
+            <DeckHeader key={d.index} deck={d} art={deckArt(d)} />
+          ))}
+        </div>
+      </div>
+      <div className="sd-console">
+        {side(left, false)}
+        <StudioWaves decks={decks} zoom={zoom} />
+        {side(right, true)}
+      </div>
+      <div className="sd-lower">
+        <div className="sd-lower-col">
+          {left.map((d) => (
+            <DeckTransport key={d.index} deck={d} pads={pads} />
+          ))}
+        </div>
+        <div className="sd-mixer">
+          <div className="studio-xfade">
+            <div className="sd-assign">
+              {decks.map((deck) => (
+                <button
+                  key={deck.index}
+                  type="button"
+                  className="studio-btn studio-mini"
+                  data-deck={deck.index}
+                  onClick={() =>
+                    engine.setSide(
+                      deck,
+                      deck.side === "A" ? "thru" : deck.side === "thru" ? "B" : "A",
+                    )
+                  }
+                  title={t("Crossfader side for deck {name}", { name: "ABCD"[deck.index] })}
+                >
+                  {"ABCD"[deck.index]}→{deck.side === "thru" ? t("Thru") : deck.side}
+                </button>
+              ))}
+            </div>
+            <input
+              type="range"
+              min={-1}
+              max={1}
+              step={0.01}
+              value={engine.crossfader}
+              aria-label={t("Crossfader")}
+              onChange={(e) => engine.setCrossfader(Number(e.target.value))}
+              onDoubleClick={() => engine.setCrossfader(0)}
+            />
+          </div>
+          <div className="studio-master">
+            <div className="studio-curves" role="group" aria-label={t("Crossfader curve")}>
+              {CURVES.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`studio-btn studio-mini${engine.curve === c.id ? " is-on" : ""}`}
+                  onClick={() => engine.setCurve(c.id)}
+                >
+                  {t(c.label)}
+                </button>
+              ))}
+            </div>
+            <Knob
+              label={t("Master")}
+              value={engine.masterVolume}
+              min={0}
+              max={1.2}
+              center={0.9}
+              onChange={(v) => engine.setMasterVolume(v)}
+            />
+          </div>
+        </div>
+        <div className="sd-lower-col is-mirror">
+          {right.map((d) => (
+            <DeckTransport key={d.index} deck={d} pads={pads} />
+          ))}
         </div>
       </div>
       {error && (

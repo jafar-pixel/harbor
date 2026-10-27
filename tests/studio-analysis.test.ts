@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { beatGrid, waveform } from "../src/lib/music/studio/analysis.ts";
+import { beatGrid, musicalKey, waveform } from "../src/lib/music/studio/analysis.ts";
 import { xfadeGains } from "../src/lib/music/studio/engine.ts";
 
 /** A kick drum on every beat, with hats between, as a stand-in for an AudioBuffer. */
@@ -51,4 +51,27 @@ test("crossfader curves", () => {
   assert.ok(Math.abs(a - Math.SQRT1_2) < 1e-9 && Math.abs(b - Math.SQRT1_2) < 1e-9);
   assert.deepEqual(xfadeGains(0, "cut"), [1, 1]);
   assert.deepEqual(xfadeGains(1, "cut"), [0, 1]);
+});
+
+/** A held chord (root, third, fifth, octave) as a stand-in for an AudioBuffer. */
+function chord(freqs: number[], seconds = 20, sampleRate = 22050) {
+  const data = new Float32Array(seconds * sampleRate);
+  for (let i = 0; i < data.length; i++)
+    for (const f of freqs) data[i] += Math.sin((2 * Math.PI * f * i) / sampleRate) * 0.2;
+  return {
+    sampleRate,
+    numberOfChannels: 1,
+    duration: seconds,
+    length: data.length,
+    getChannelData: () => data,
+  } as unknown as AudioBuffer;
+}
+
+test("musical key and Camelot code", () => {
+  // A minor: A C E A.
+  assert.deepEqual(musicalKey(chord([220, 261.63, 329.63, 440])), { name: "Am", camelot: "8A" });
+  // C major: C E G C.
+  assert.deepEqual(musicalKey(chord([261.63, 329.63, 392, 523.25])), { name: "C", camelot: "8B" });
+  // D minor: D F A D.
+  assert.deepEqual(musicalKey(chord([146.83, 174.61, 220, 293.66])), { name: "Dm", camelot: "7A" });
 });
