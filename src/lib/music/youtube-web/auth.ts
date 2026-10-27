@@ -4,6 +4,7 @@ import {
   accountMusicToken,
   disconnectMusicLink,
   exchangeMusicLink,
+  markYouTubeServerOff,
   MusicLinkError,
   musicLinkState,
   subscribeMusicLinks,
@@ -84,7 +85,8 @@ function readLinked(): boolean {
 
 const listeners = new Set<() => void>();
 /** The account keeps this listener's YouTube sign in. */
-const accountLinked = () => accountLinksOn() && !!musicLinkState().links.youtube;
+const accountLinked = () =>
+  accountLinksOn() && !!musicLinkState().links.youtube && musicLinkState().youtubeServer;
 /** New sign ins go to the account. */
 const accountMode = () => accountLinksOn() && musicLinkState().youtubeServer;
 
@@ -174,6 +176,11 @@ export async function connectYouTubeWeb(edit = false): Promise<void> {
         await exchangeMusicLink("youtube", { code });
       } catch (error) {
         // Google gives a refresh token only on first consent; one stored before was removed.
+        // Google refused the server's client secret: keep this device's own sign in instead.
+        if (error instanceof MusicLinkError && error.code === "not_configured") {
+          markYouTubeServerOff();
+          throw new Error("Almost there. Press Connect once more to finish connecting YouTube.");
+        }
         if (error instanceof MusicLinkError && error.code === "relink")
           throw new Error(
             "Google didn't renew the sign in. Remove JL Media Vision at myaccount.google.com/permissions, then connect again.",
@@ -238,6 +245,8 @@ export function disconnectYouTubeWeb(): void {
 export async function youtubeWebToken(): Promise<string> {
   if (accountLinked())
     return accountMusicToken("youtube").catch((error: unknown) => {
+      if (error instanceof MusicLinkError && error.code === "not_configured")
+        markYouTubeServerOff();
       set({ connected: hasToken(), linked: hasToken() || readLinked() });
       throw error instanceof MusicLinkError && error.code !== "failed"
         ? new Error("YouTube signed you out. Connect again to keep your music here.")

@@ -18,11 +18,12 @@ export type MusicLinkState = {
   links: Links;
   /** The server can keep YouTube sign ins (Google's client secret is set there). */
   youtubeServer: boolean;
-  main: MainService;
+  /** The listener's chosen main service; null until they pick one. */
+  main: MainService | null;
 };
 
 const listeners = new Set<() => void>();
-let state: MusicLinkState = { ready: false, links: {}, youtubeServer: false, main: "youtube" };
+let state: MusicLinkState = { ready: false, links: {}, youtubeServer: false, main: null };
 
 function set(next: Partial<MusicLinkState>) {
   state = { ...state, ...next };
@@ -160,7 +161,7 @@ export function refreshMusicLinks(): Promise<void> {
         ready: true,
         links,
         youtubeServer: out.youtubeServer,
-        main: prefs[0]?.main_service ?? state.main,
+        main: prefs[0]?.main_service ?? null,
       });
     } catch {
       set({ ready: false });
@@ -169,6 +170,11 @@ export function refreshMusicLinks(): Promise<void> {
     }
   })();
   return loading;
+}
+
+/** The server can't keep YouTube sign ins after all (Google refused its client secret). */
+export function markYouTubeServerOff(): void {
+  set({ youtubeServer: false });
 }
 
 /** Choose which service leads the Music Hub and the Lounge. */

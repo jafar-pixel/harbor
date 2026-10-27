@@ -75,7 +75,7 @@ export function AutomixView({ active }: { active: boolean }) {
   const links = useMusicLinks();
   const youtube = useYouTubeWeb();
   const spotify = useSpotifyWeb();
-  const [service, setService] = useState<HubService>(links.main);
+  const [service, setService] = useState<HubService>(links.main ?? "youtube");
   const connected = service === "spotify" ? spotify.connected : youtube.connected;
   const canEdit = service === "spotify" ? spotifyCanEdit() : youtubeCanEdit();
   const pins = usePins(service);
@@ -92,7 +92,9 @@ export function AutomixView({ active }: { active: boolean }) {
   const [dragging, setDragging] = useState<number | null>(null);
   const editable = canEdit && !!open?.mine;
 
-  useEffect(() => setService(links.main), [links.main]);
+  useEffect(() => {
+    if (links.main) setService(links.main);
+  }, [links.main]);
 
   const loadLists = async (pick?: AutoList) => {
     setLists(null);

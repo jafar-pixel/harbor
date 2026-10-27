@@ -114,6 +114,11 @@
   font-size: clamp(28px, 3.4vw, 48px);
   line-height: 1.05;
 }
+.hub-choose {
+  margin: 0 0 -6px;
+  font-weight: 700;
+  color: #ffb27a;
+}
 .hub-services {
   display: flex;
   flex-wrap: wrap;
