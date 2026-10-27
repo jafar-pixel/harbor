@@ -4,6 +4,8 @@ import minuiDarkPreview from "@/assets/theme-previews/minui-dark.png";
 import jlMark from "@/assets/brand/jl-mark.webp";
 import jlHero from "@/assets/brand/jl-hero.webp";
 import jlWordmark from "@/assets/brand/jl-wordmark-stacked.webp";
+import jlVisionBackdrop from "@/assets/brand/jl-vision-backdrop.webp";
+import { visionCss } from "./theme-vision";
 import { getCustomThemes } from "./custom-themes";
 import { t } from "./i18n";
 
@@ -118,25 +120,29 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
   "cool-grey": {
     id: "cool-grey",
     name: "JL Media Vision",
-    blurb: "What ships out of the box: graphite with JL's fiery orange.",
+    blurb:
+      "What ships out of the box: frosted glass over JL's particle-wave backdrop, fiery orange.",
     logo: { mark: jlMark, wordmark: jlWordmark },
     previewImage: jlHero,
-    swatch: ["#2c2e36", "#3a3d47", "#dcdde4"],
+    swatch: ["#120d1a", "#ff6a1f", "#c13cff"],
     tokens: {
-      "--color-canvas": "oklch(0.18 0.004 260)",
-      "--color-surface": "oklch(0.22 0.004 260)",
-      "--color-elevated": "oklch(0.27 0.004 260)",
-      "--color-raised": "oklch(0.32 0.004 260)",
-      "--color-ink": "oklch(0.97 0.003 260)",
-      "--color-ink-muted": "oklch(0.72 0.003 260)",
-      "--color-ink-subtle": "oklch(0.50 0.003 260)",
-      "--color-edge": "oklch(0.36 0.004 260 / 0.55)",
-      "--color-edge-soft": "oklch(0.36 0.004 260 / 0.25)",
+      "--color-canvas": "oklch(0.13 0.02 300)",
+      "--color-surface": "oklch(0.2 0.025 300)",
+      "--color-elevated": "oklch(0.25 0.028 300)",
+      "--color-raised": "oklch(0.31 0.03 300)",
+      "--color-ink": "oklch(0.97 0.004 300)",
+      "--color-ink-muted": "oklch(0.78 0.01 300)",
+      "--color-ink-subtle": "oklch(0.6 0.012 300)",
+      "--color-edge": "oklch(1 0 0 / 0.16)",
+      "--color-edge-soft": "oklch(1 0 0 / 0.09)",
       // JL fiery orange, from the JL Media Vision mark; kept clear of the red used for LIVE.
       "--color-accent": "#ff6a1f",
       "--color-accent-soft": "rgba(255,106,31,0.18)",
       "--color-danger": "oklch(0.55 0.18 25)",
     },
+    background: { image: jlVisionBackdrop, dim: 0 },
+    cardStyle: "glass",
+    css: visionCss,
   },
   nord: {
     id: "nord",
@@ -1638,7 +1644,8 @@ export const FEATURED_CUSTOM_THEMES: ThemePreset[] = [
   {
     id: "jl-stream" as ThemePresetId,
     name: "JL Stream",
-    blurb: "The watch.jl-stream.com look: deep navy, electric-blue glow, orange accent, Orbitron headlines.",
+    blurb:
+      "The watch.jl-stream.com look: deep navy, electric-blue glow, orange accent, Orbitron headlines.",
     logo: { mark: jlMark, wordmark: jlWordmark },
     previewImage: jlHero,
     swatch: ["#0b1220", "#3b7bff", "#ff7a2e"],

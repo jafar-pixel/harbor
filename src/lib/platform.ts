@@ -30,6 +30,8 @@ export function osClass(): OsClass {
 export function applyOsDataset(): void {
   if (typeof document === "undefined") return;
   document.documentElement.dataset.os = osClass();
+  // Themes use this to skip effects the TV's graphics can't afford, such as backdrop blur.
+  if (isTvApp()) document.documentElement.dataset.tvApp = "";
 }
 
 export function isLinuxDesktop(): boolean {
@@ -87,7 +89,10 @@ export function isMobileDevice(): boolean {
   if (isTvApp()) return false;
   if (/Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|iPad/i.test(ua)) return true;
   if (/Macintosh/i.test(ua) && (navigator.maxTouchPoints ?? 0) > 1) return true;
-  if ((navigator.maxTouchPoints ?? 0) > 0 && Math.min(window.innerWidth, window.innerHeight) < 640) {
+  if (
+    (navigator.maxTouchPoints ?? 0) > 0 &&
+    Math.min(window.innerWidth, window.innerHeight) < 640
+  ) {
     return true;
   }
   return false;
