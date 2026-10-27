@@ -267,7 +267,18 @@ async function startAt(i: number, at = 0) {
     afterSong(true);
     return;
   }
-  await engine.start(p, at, true);
+  try {
+    await engine.start(p, at, true);
+  } catch (error) {
+    // The player itself didn't load (offline, or blocked by an extension).
+    if (mine === run)
+      set({
+        loading: false,
+        playing: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    return;
+  }
   if (mine !== run) return;
   set({ loading: false });
   void prepareNext();

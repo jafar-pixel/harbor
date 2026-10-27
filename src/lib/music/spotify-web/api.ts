@@ -12,6 +12,7 @@ export type SpotifyWebTrack = {
   album: string;
   image: string | null;
   url: string | null;
+  durationSec?: number;
 };
 export type SpotifyWebArtist = {
   id: string;
@@ -72,7 +73,16 @@ function track(t: Json | undefined): SpotifyWebTrack | null {
     album: str(album.name),
     image: firstImage(album.images),
     url: external(t.external_urls),
+    durationSec: typeof t.duration_ms === "number" ? Math.round(t.duration_ms / 1000) : undefined,
   };
+}
+
+/** Songs matching a search, from Spotify's catalog. */
+export async function spotifySearchTracks(q: string, limit = 20): Promise<SpotifyWebTrack[]> {
+  const page = await get(`/search?type=track&limit=${limit}&q=${encodeURIComponent(q)}`);
+  return arr((page.tracks as Json | undefined)?.items)
+    .map(track)
+    .filter((t): t is SpotifyWebTrack => !!t);
 }
 
 export async function spotifyProfile(): Promise<SpotifyWebProfile> {

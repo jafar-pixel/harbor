@@ -10,7 +10,7 @@ import { MusicFriends } from "./music/music-friends";
 import { MusicLounge } from "./music/music-lounge";
 import { MusicMoods } from "./music/music-moods";
 import { MusicSpotify } from "./music/music-spotify";
-import { MusicWebForYou } from "./music/music-web-for-you";
+import { MusicHub } from "./music/hub/music-hub";
 import { MusicStyles } from "./music/music-styles";
 
 type Track = { id: string; title: string; url: string; local: boolean };
@@ -28,7 +28,7 @@ type WebMusicTab =
   | "files";
 
 const WEB_TABS: { id: WebMusicTab; label: string }[] = [
-  { id: "forYou", label: "music.tab.forYou" },
+  { id: "forYou", label: "Music Hub" },
   { id: "dj", label: "music.tab.dj" },
   { id: "studio", label: "DJ Studio" },
   { id: "lounge", label: "music.tab.lounge" },
@@ -101,7 +101,7 @@ export function MusicView({ active }: { active: boolean; shellBackAvailable?: bo
             );
           })}
         </div>
-        {tab === "forYou" && <MusicWebForYou active={active} />}
+        {tab === "forYou" && <MusicHub active={active} onStudio={() => setTab("studio")} />}
         <MusicDj visible={active && tab === "dj"} />
         {tab === "studio" && <DjStudio />}
         {tab === "playlists" && <PlaylistEditor />}

@@ -42,7 +42,11 @@ export type SpotifyWebState = {
 
 const listeners = new Set<() => void>();
 const accountLinked = () => accountLinksOn() && !!musicLinkState().links.spotify;
-let state: SpotifyWebState = { connected: !!readTokens(), error: null, finishing: false };
+let state: SpotifyWebState = {
+  connected: !!readTokens() || accountLinked(),
+  error: null,
+  finishing: false,
+};
 
 function set(next: Partial<SpotifyWebState>) {
   state = { ...state, ...next };
