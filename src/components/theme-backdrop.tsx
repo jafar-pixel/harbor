@@ -13,20 +13,17 @@ export function ThemeBackdrop() {
 
   if (player) return null;
   // A video pinned as the wallpaper replaces the theme background; a scrim keeps the page readable.
-  if (dockMode === "wallpaper") return <div className="theme-backdrop-scrim pointer-events-none fixed inset-0 -z-10" />;
+  if (dockMode === "wallpaper")
+    return <div className="theme-backdrop-scrim pointer-events-none fixed inset-0 -z-10" />;
   // On the desktop the video plays behind the page, so the background must leave the hero box clear.
   const cut = dockMode === "hero" ? " theme-backdrop-hero" : "";
 
-  const preset =
-    settings.theme.preset !== "custom" ? getThemeById(settings.theme.preset) : null;
+  const preset = settings.theme.preset !== "custom" ? getThemeById(settings.theme.preset) : null;
   const wantsBokeh = (preview ? preview.bokeh : !!preset?.bokeh) && view !== "addons";
   const img = settings.theme.backgroundImage ?? preset?.background?.image ?? null;
   const dim = Math.max(
     0,
-    Math.min(
-      1,
-      settings.theme.backgroundDim ?? preset?.background?.dim ?? 0.65,
-    ),
+    Math.min(1, settings.theme.backgroundDim ?? preset?.background?.dim ?? 0.65),
   );
 
   if (!img) {
@@ -41,18 +38,16 @@ export function ThemeBackdrop() {
     img.startsWith("linear-gradient") ||
     img.startsWith("radial-gradient") ||
     img.startsWith("conic-gradient");
-  const presetGradient = !!preset?.background?.image && preset.background.image === img && isGradient;
+  const presetOwned = !!preset?.background?.image && preset.background.image === img;
+  const presetGradient = presetOwned && isGradient;
   return (
     <>
       <div
         className={`pointer-events-none fixed inset-0 -z-30 bg-cover bg-center${cut}`}
-        style={
-          isGradient
-            ? { background: img }
-            : { backgroundImage: `url(${img})` }
-        }
+        style={isGradient ? { background: img } : { backgroundImage: `url(${img})` }}
       />
-      {!presetGradient && (
+      {/* A theme's own artwork is made dark enough already; only someone's own photo is darkened. */}
+      {!presetOwned && (
         <div
           className={`pointer-events-none fixed inset-0 -z-20${cut}`}
           style={{ background: "black", opacity: 0.45 }}
