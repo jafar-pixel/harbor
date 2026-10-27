@@ -1,0 +1,670 @@
+/* DJ Studio: a dark console in the spirit of a DJ app. Deck colours: A blue, B pink, C amber, D green. */
+.studio {
+  --studio-bg: #0d0e12;
+  --studio-panel: #16181e;
+  --studio-raised: #20232b;
+  --studio-edge: rgb(255 255 255 / 0.08);
+  --studio-text: #e9ecf2;
+  --studio-muted: #8b91a0;
+  --deck-0: #2fb7ff;
+  --deck-1: #ff5a8a;
+  --deck-2: #ffb13b;
+  --deck-3: #7cf07a;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--studio-bg);
+  color: var(--studio-text);
+  font-variant-numeric: tabular-nums;
+}
+.studio.is-dropping {
+  outline: 2px dashed var(--deck-0);
+  outline-offset: -6px;
+}
+[data-deck="0"] {
+  --deck: var(--deck-0);
+}
+[data-deck="1"] {
+  --deck: var(--deck-1);
+}
+[data-deck="2"] {
+  --deck: var(--deck-2);
+}
+[data-deck="3"] {
+  --deck: var(--deck-3);
+}
+
+.studio-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.studio-brand {
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+.studio-top-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.studio-label {
+  margin-left: 8px;
+  color: var(--studio-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.studio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--studio-edge);
+  border-radius: 8px;
+  background: var(--studio-raised);
+  color: var(--studio-text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.studio-btn:hover:not(:disabled) {
+  border-color: rgb(255 255 255 / 0.22);
+}
+.studio-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.studio-btn.is-on {
+  border-color: var(--deck, #2fb7ff);
+  background: color-mix(in srgb, var(--deck, #2fb7ff) 28%, var(--studio-raised));
+}
+.studio-mini {
+  height: 28px;
+  min-width: 30px;
+  padding: 0 8px;
+  font-size: 0.75rem;
+}
+
+.studio-waves {
+  width: 100%;
+  height: 150px;
+  border-radius: 10px;
+  background: #07080b;
+}
+.studio-four .studio-waves {
+  height: 200px;
+}
+
+.studio-console {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
+}
+.studio-deck-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.studio-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--studio-edge);
+  border-top: 3px solid var(--deck);
+  border-radius: 12px;
+  background: var(--studio-panel);
+}
+.studio-deck-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+}
+.studio-deck-name {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--deck);
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 0 0 2px var(--deck);
+  color: #0b0b0f;
+  font-weight: 800;
+}
+.studio-deck-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.studio-deck-title strong,
+.studio-deck-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio-deck-title span,
+.studio-deck-tempo span,
+.studio-deck-time span {
+  color: var(--studio-muted);
+  font-size: 0.78rem;
+}
+.studio-deck-tempo,
+.studio-deck-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.studio-deck-tempo strong {
+  color: var(--deck);
+  font-size: 1.15rem;
+}
+
+.studio-overview {
+  width: 100%;
+  height: 34px;
+  border-radius: 6px;
+  background: #07080b;
+  cursor: pointer;
+}
+
+.studio-deck-body {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 12px;
+}
+/* Turntable */
+.tt {
+  position: relative;
+  flex: 0 0 auto;
+  align-self: center;
+  width: min(250px, 100%);
+  aspect-ratio: 1;
+  padding: 6px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #23262d, #121418 60%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 14px 30px rgb(0 0 0 / 0.45);
+}
+.tt-platter {
+  position: absolute;
+  inset: 10px 30px 30px 10px;
+  border-radius: 50%;
+  /* Machined aluminium rim. */
+  background: conic-gradient(
+    from 30deg,
+    #8d939c,
+    #e9edf2 12%,
+    #7b8089 25%,
+    #d5d9df 40%,
+    #6f747d 55%,
+    #eef1f5 70%,
+    #80858e 85%,
+    #8d939c
+  );
+  box-shadow:
+    0 0 0 1px #0b0c0f,
+    0 10px 22px rgb(0 0 0 / 0.6);
+  cursor: grab;
+  touch-action: none;
+}
+.tt-platter:active {
+  cursor: grabbing;
+}
+.tt-strobe {
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(#2a2c31 0 1.2deg, transparent 1.2deg 3.6deg);
+  mask: radial-gradient(circle, transparent 0 94%, #000 94.5% 98%, transparent 98.5%);
+  opacity: 0.7;
+}
+.tt-record {
+  position: absolute;
+  inset: 5%;
+  border-radius: 50%;
+  background: #0b0b0c;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.8),
+    0 4px 10px rgb(0 0 0 / 0.6);
+  will-change: transform;
+}
+.tt-grooves {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle,
+      transparent 0 34%,
+      rgb(255 255 255 / 0.05) 34.5% 35.5%,
+      transparent 36% 96%,
+      rgb(255 255 255 / 0.06) 96.5% 97%,
+      transparent 97.5%
+    ),
+    repeating-radial-gradient(circle, #0c0c0d 0 1px, #19191b 1px 1.6px, #0e0e10 1.6px 2.4px);
+  mask: radial-gradient(circle, transparent 0 33%, #000 33.5%);
+}
+.tt-label {
+  position: absolute;
+  inset: 33%;
+  border-radius: 50%;
+  background-color: var(--deck);
+  background-image:
+    radial-gradient(circle, rgb(255 255 255 / 0.25) 0 6%, transparent 6.5%),
+    linear-gradient(135deg, color-mix(in srgb, var(--deck) 80%, #fff), var(--deck));
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 2px rgb(0 0 0 / 0.35);
+}
+/* Light reflections stay still while the record turns, as on a real deck. */
+.tt-sheen {
+  position: absolute;
+  inset: 5%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 300deg,
+    transparent 0 18deg,
+    rgb(255 255 255 / 0.16) 34deg,
+    transparent 52deg 180deg,
+    rgb(255 255 255 / 0.1) 205deg,
+    transparent 230deg
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.tt-spindle {
+  position: absolute;
+  top: calc(50% - 5px);
+  left: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #9aa0a8 60%, #4a4e55);
+  pointer-events: none;
+}
+.tt-arm {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 64%;
+  height: 64%;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(4px 8px 6px rgb(0 0 0 / 0.55));
+}
+.tt.is-playing .tt-platter {
+  box-shadow:
+    0 0 0 1px #0b0c0f,
+    0 0 0 3px color-mix(in srgb, var(--deck) 70%, transparent),
+    0 10px 22px rgb(0 0 0 / 0.6);
+}
+
+.studio-pitch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.studio-sync {
+  color: var(--deck);
+}
+.studio-nudge {
+  display: flex;
+  gap: 4px;
+}
+
+.studio-fader {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 140px;
+}
+.studio-fader input {
+  width: 140px;
+  transform: rotate(-90deg);
+  accent-color: var(--deck, #fff);
+}
+.studio-pitch-fader {
+  height: 150px;
+}
+.studio-pitch-fader input {
+  width: 150px;
+}
+
+.studio-transport,
+.studio-pads,
+.studio-loops,
+.studio-jumps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.studio-cue,
+.studio-play {
+  height: 46px;
+  min-width: 64px;
+  font-size: 0.95rem;
+}
+.studio-play.is-on {
+  border-color: var(--deck);
+  color: var(--deck);
+}
+.studio-jumps {
+  margin-left: auto;
+}
+.studio-pad {
+  flex: 1 0 34px;
+  height: 36px;
+  border: 1px solid var(--studio-edge);
+  border-radius: 8px;
+  background: #1a1c22;
+  color: var(--studio-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.studio-pad.is-set {
+  border-color: #ffb13b;
+  background: color-mix(in srgb, #ffb13b 30%, #1a1c22);
+  color: #fff;
+}
+.studio-loop.is-on {
+  --deck: #7cf07a;
+}
+
+.studio-mixer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--studio-edge);
+  border-radius: 12px;
+  background: var(--studio-panel);
+}
+.studio-channels {
+  display: flex;
+  gap: 10px;
+}
+.studio-channel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  border-top: 3px solid var(--deck);
+}
+.studio-channel-fader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.studio-assign {
+  display: flex;
+  gap: 2px;
+}
+.studio-assign .studio-mini {
+  min-width: 0;
+  padding: 0 5px;
+}
+
+.studio-knob {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 52px;
+}
+.studio-knob-dial {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #3a3e48, #1b1d23 70%);
+  box-shadow:
+    0 0 0 2px #0a0b0e,
+    0 0 0 3px var(--studio-edge);
+  transform: rotate(var(--knob-angle));
+}
+.studio-knob-mark {
+  position: absolute;
+  top: 3px;
+  left: calc(50% - 1.5px);
+  width: 3px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--knob-tone, var(--deck, #fff));
+}
+.studio-knob input {
+  position: absolute;
+  inset: 0 0 16px;
+  width: 100%;
+  opacity: 0;
+  cursor: ew-resize;
+}
+.studio-knob:focus-within .studio-knob-dial {
+  box-shadow:
+    0 0 0 2px #0a0b0e,
+    0 0 0 4px #fff;
+}
+.studio-knob-label {
+  color: var(--studio-muted);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.studio-meter {
+  position: relative;
+  width: 6px;
+  height: 130px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #07080b;
+}
+.studio-meter span {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, #2bd46a 0 70%, #ffd23b 70% 88%, #ff3b3b 88%);
+  transform: scaleY(0);
+  transform-origin: bottom;
+}
+.studio-xfade {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--studio-muted);
+  font-weight: 700;
+}
+.studio-xfade input {
+  flex: 1;
+  accent-color: #fff;
+}
+.studio-master {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.studio-curves {
+  display: flex;
+  gap: 4px;
+}
+
+.studio-four .studio-deck {
+  padding: 10px;
+  gap: 8px;
+}
+.studio-four .studio-deck-body {
+  justify-content: flex-start;
+}
+.studio-four .studio-pitch {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.studio-four .studio-pitch-fader {
+  width: 150px;
+  height: 36px;
+}
+.studio-four .studio-pitch-fader input {
+  transform: none;
+  width: 150px;
+}
+
+.studio-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgb(255 59 59 / 0.15);
+  color: #ffb3b3;
+}
+
+.studio-library {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--studio-edge);
+  border-radius: 12px;
+  background: var(--studio-panel);
+}
+.studio-library-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.studio-tabs {
+  display: flex;
+  gap: 4px;
+}
+.studio-search {
+  flex: 1 1 160px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--studio-edge);
+  border-radius: 8px;
+  background: #0f1014;
+  color: var(--studio-text);
+  font: inherit;
+}
+.studio-empty {
+  margin: 8px 0;
+  color: var(--studio-muted);
+}
+.studio-rows {
+  display: flex;
+  flex-direction: column;
+  max-height: 340px;
+  overflow: auto;
+}
+.studio-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 52px 52px auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--studio-edge);
+}
+.studio-row-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.studio-row-title strong,
+.studio-row-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio-row-title span {
+  color: var(--studio-muted);
+  font-size: 0.8rem;
+}
+.studio-row-num {
+  color: var(--studio-muted);
+  text-align: right;
+  font-size: 0.82rem;
+}
+.studio-row-actions {
+  display: flex;
+  gap: 4px;
+}
+.studio-row-actions [data-deck] {
+  color: var(--deck);
+}
+
+@media (max-width: 1100px) {
+  .studio-console {
+    grid-template-columns: 1fr;
+  }
+  .studio-channels {
+    justify-content: center;
+  }
+}
+
+.studio-row-art {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  background: #23262d center / cover;
+}
+.studio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+  max-height: 420px;
+  overflow: auto;
+  padding: 2px;
+}
+.studio-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.studio-tile-art {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background: #23262d center / cover;
+  box-shadow: 0 8px 18px rgb(0 0 0 / 0.4);
+}
+.studio-tile-load {
+  position: absolute;
+  inset: auto 6px 6px;
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.studio-tile-load .studio-mini {
+  background: rgb(10 11 14 / 0.75);
+  backdrop-filter: blur(6px);
+}
+.studio-tile strong,
+.studio-tile span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio-tile span {
+  color: var(--studio-muted);
+  font-size: 0.8rem;
+}

@@ -1,5 +1,6 @@
 import { HoverTooltip } from "@/components/hover-tooltip";
 import { MusicDj } from "./music/music-dj";
+import { DjStudio } from "./music/studio/studio-view";
 import { MusicFriends } from "./music/music-friends";
 import { MusicForYouAccount } from "./music/music-for-you-account";
 import { MusicOtherDevices } from "@/components/music/music-other-devices";
@@ -1554,6 +1555,7 @@ function MusicViewContent({ active }: { active: boolean }) {
                     </>
                   )}
                   <MusicDj visible={tab === "dj"} />
+                  {tab === "studio" && <DjStudio />}
                   <MusicLounge visible={tab === "lounge"} />
                   {tab === "friends" && <MusicFriends active={active} />}
                   {tab === "moods" && <MusicMoods />}
@@ -1581,6 +1583,7 @@ function MusicViewContent({ active }: { active: boolean }) {
                   ) : tab === "explore" ||
                     tab === "moods" ||
                     tab === "dj" ||
+                    tab === "studio" ||
                     tab === "lounge" ||
                     tab === "friends" ? null : stalled ? (
                     <MusicStalled message={data.homeError} onRetry={retry} />

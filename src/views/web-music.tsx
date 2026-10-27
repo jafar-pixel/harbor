@@ -3,7 +3,9 @@ import { Headphones, Music2, Pause, Play, Plus, Trash2 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { MUSIC_TAB_EVENT, takeMusicTabRequest, useSongInbox } from "@/lib/music/social/inbox";
 import { MusicOtherDevices } from "@/components/music/music-other-devices";
+import { isTvApp } from "@/lib/platform";
 import { MusicDj } from "./music/music-dj";
+import { DjStudio } from "./music/studio/studio-view";
 import { MusicFriends } from "./music/music-friends";
 import { MusicLounge } from "./music/music-lounge";
 import { MusicMoods } from "./music/music-moods";
@@ -16,6 +18,7 @@ type Track = { id: string; title: string; url: string; local: boolean };
 type WebMusicTab =
   | "forYou"
   | "dj"
+  | "studio"
   | "lounge"
   | "friends"
   | "spotify"
@@ -26,6 +29,7 @@ type WebMusicTab =
 const WEB_TABS: { id: WebMusicTab; label: string }[] = [
   { id: "forYou", label: "music.tab.forYou" },
   { id: "dj", label: "music.tab.dj" },
+  { id: "studio", label: "DJ Studio" },
   { id: "lounge", label: "music.tab.lounge" },
   { id: "friends", label: "music.tab.friends" },
   { id: "spotify", label: "Spotify" },
@@ -68,7 +72,7 @@ export function MusicView({ active }: { active: boolean; shellBackAvailable?: bo
           aria-label={t("Music")}
           className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"
         >
-          {WEB_TABS.map((w) => {
+          {WEB_TABS.filter((w) => w.id !== "studio" || isTvApp()).map((w) => {
             const unread = w.id === "friends" ? inbox.unread : 0;
             return (
               <button
@@ -95,6 +99,7 @@ export function MusicView({ active }: { active: boolean; shellBackAvailable?: bo
         </div>
         {tab === "forYou" && <MusicWebForYou active={active} />}
         <MusicDj visible={active && tab === "dj"} />
+        {tab === "studio" && <DjStudio />}
         <MusicLounge visible={active && tab === "lounge"} />
         {tab === "friends" && <MusicFriends active={active} />}
         {tab === "spotify" && <MusicSpotify active={active} />}
