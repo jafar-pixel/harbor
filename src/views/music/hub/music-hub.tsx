@@ -34,7 +34,9 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
   const youtube = useYouTubeWeb();
   const spotify = useSpotifyWeb();
   const links = useMusicLinks();
-  const main: MainService = links.main;
+  // Until the listener picks, YouTube leads the lists, but nothing is marked as chosen.
+  const chosen: MainService | null = links.main;
+  const main: MainService = chosen ?? "youtube";
   const connected = useMemo(
     () => ({ youtube: youtube.connected, spotify: spotify.connected }),
     [youtube.connected, spotify.connected],
@@ -140,18 +142,19 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
         <div className="hub-hero-text">
           <p className="hub-eyebrow">{t("By JL Media Vision")}</p>
           <h3>{t("Sound powers your story")}</h3>
+          {!chosen && <p className="hub-choose">{t("Choose your main service:")}</p>}
           <div className="hub-services" role="group" aria-label={t("Your main service")}>
             {(["youtube", "spotify"] as const).map((s) => (
-              <div key={s} className="hub-service" data-main={main === s}>
+              <div key={s} className="hub-service" data-main={chosen === s}>
                 <button
                   type="button"
                   className="hub-service-pick"
-                  aria-pressed={main === s}
+                  aria-pressed={chosen === s}
                   onClick={() => void setMainService(s)}
                 >
                   <span className="hub-service-name">{SERVICE_LABEL[s]}</span>
                   <span className="hub-service-role">
-                    {main === s ? t("Main service") : t("Make main")}
+                    {chosen === s ? t("Main service") : t("Make main")}
                   </span>
                 </button>
                 {connected[s] ? (

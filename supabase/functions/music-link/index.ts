@@ -11,7 +11,7 @@ const GOOGLE_CLIENT_ID =
   "920687425489-gkb74r1s7o7tg7ubl8fdpkq578jlu2dq.apps.googleusercontent.com";
 // Google only issues refresh tokens to a confidential client; until this secret is set, YouTube
 // falls back to the hour-long browser sign in.
-const GOOGLE_CLIENT_SECRET = Deno.env.get("JL_GOOGLE_CLIENT_SECRET") || "";
+const GOOGLE_CLIENT_SECRET = (Deno.env.get("JL_GOOGLE_CLIENT_SECRET") || "").trim();
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -40,6 +40,7 @@ type Provider = "spotify" | "youtube";
 type Grant = { access: string; refresh: string; expiresIn: number; scope: string };
 
 class Relink extends Error {}
+class NotConfigured extends Error {}
 
 async function tokenCall(provider: Provider, body: Record<string, string>): Promise<Grant> {
   const url =
@@ -58,6 +59,12 @@ async function tokenCall(provider: Provider, body: Record<string, string>): Prom
   const out = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok || typeof out.access_token !== "string") {
     if (out.error === "invalid_grant") throw new Relink("The sign in was revoked.");
+    // A wrong client secret on the server: devices fall back to their own sign in.
+    if (
+      provider === "youtube" &&
+      (out.error === "invalid_client" || out.error === "unauthorized_client")
+    )
+      throw new NotConfigured(String(out.error_description || out.error));
     throw new Error(String(out.error_description || out.error || `Sign in failed (${res.status})`));
   }
   return {
@@ -192,6 +199,10 @@ Deno.serve(async (req) => {
     }
     return json({ error: "Unknown action." }, 400);
   } catch (error) {
+    if (error instanceof NotConfigured) {
+      console.error("music-link: Google refused the client secret:", error.message);
+      return json({ error: "not_configured" }, 501);
+    }
     if (error instanceof Relink && provider) {
       await save(provider, "", null, "").catch(() => undefined);
       return json({ error: "relink" }, 409);
