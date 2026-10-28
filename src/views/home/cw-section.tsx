@@ -7,6 +7,7 @@ import { Row } from "@/components/row";
 import { useT } from "@/lib/i18n";
 import { type LibraryItem } from "@/lib/stremio";
 import { isLibraryItemWatched } from "@/lib/trakt/library-key";
+import { mergeByTime, useAnywhereItems } from "@/views/continue/continue-anywhere";
 
 type Props = {
   signedIn: boolean;
@@ -18,6 +19,8 @@ type Props = {
 export function CWSection({ signedIn, items, watchedSet, onDismiss }: Props) {
   const t = useT();
   const [showAuth, setShowAuth] = useState(false);
+  // Live TV, games and music you were in the middle of share the row with films and shows.
+  const others = useAnywhereItems();
   const rowKey = useMemo(() => {
     const first = items[0];
     return first ? `home:cw:${first._id}` : "home:cw";
@@ -36,7 +39,18 @@ export function CWSection({ signedIn, items, watchedSet, onDismiss }: Props) {
 
   const authModal = showAuth ? <AuthModal onClose={() => setShowAuth(false)} /> : null;
 
-  if (items.length > 0) {
+  if (items.length > 0 || others.length > 0) {
+    const media = items.map((item) => ({
+      at: lastWatchedAt(item),
+      node: (
+        <ContinueCard
+          key={item._id}
+          item={item}
+          watched={watchedSet ? isLibraryItemWatched(item, watchedSet) : false}
+          onDismiss={onDismiss}
+        />
+      ),
+    }));
     return (
       <>
         <Row
@@ -47,14 +61,7 @@ export function CWSection({ signedIn, items, watchedSet, onDismiss }: Props) {
           scrollKey="home:cw"
           headerRight={signInButton}
         >
-          {items.map((item) => (
-            <ContinueCard
-              key={item._id}
-              item={item}
-              watched={watchedSet ? isLibraryItemWatched(item, watchedSet) : false}
-              onDismiss={onDismiss}
-            />
-          ))}
+          {mergeByTime(media, others)}
         </Row>
         {authModal}
       </>
@@ -91,4 +98,11 @@ export function CWSection({ signedIn, items, watchedSet, onDismiss }: Props) {
       {authModal}
     </div>
   );
+}
+
+function lastWatchedAt(item: LibraryItem): number {
+  const lw = Date.parse(item.state?.lastWatched ?? "");
+  if (Number.isFinite(lw)) return lw;
+  const mt = Date.parse(String(item._mtime ?? ""));
+  return Number.isFinite(mt) ? mt : 0;
 }

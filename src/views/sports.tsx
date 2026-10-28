@@ -65,6 +65,7 @@ import { useSportsPageWallpaper } from "./live/live-home/jl-sports/use-page-wall
 import { JlSportsHero } from "./live/live-home/jl-sports/sports-hero";
 import type { JlHubGame } from "./live/live-home/jl-sports/use-jl-sports";
 import { useJlSportsPage } from "./live/live-home/jl-sports/use-jl-sports-page";
+import { ContinueAnywhereRow } from "@/views/continue/continue-anywhere";
 
 const NO_CHANNELS: IptvChannel[] = [];
 
@@ -595,6 +596,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
         )}
         <div className="sh-body" ref={bodyRef}>
           <SportsNoProviderNote />
+          {tab === "home" && !browsing && <ContinueAnywhereRow scrollKey="sports:continue" />}
           {tab !== "explore" && !standalone && tab !== "live" && (
             <div
               ref={sportRail}

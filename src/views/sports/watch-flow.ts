@@ -5,6 +5,7 @@ import { recordChannelPlay } from "@/lib/iptv/channel-stats";
 import type { IptvChannel } from "@/lib/iptv/types";
 import type { SportsGame } from "@/lib/sports/espn";
 import { bestChannelForGame, type SportsChannelIndex } from "@/lib/sports/iptv-match";
+import { recordGameWatch } from "@/lib/continue/recent-games";
 import { useView } from "@/lib/view";
 import { useStreamPlayer } from "./add-stream-dialog";
 import { useAttachments } from "./source-store";
@@ -54,9 +55,18 @@ export function useWatchGame(index: SportsChannelIndex): (game: SportsGame) => b
   return useCallback(
     (game: SportsGame) => {
       const label = fixtureLabelOf(game);
+      const recent = {
+        gameId: game.id,
+        league: game.league,
+        label,
+        logos: [game.away.logo, game.home.logo].filter(Boolean),
+        art: game.artwork ?? game.poster ?? null,
+        startMs: game.startMs,
+      };
       const stream = attachments.streams[game.id];
       if (stream) {
         playStream(stream, label);
+        recordGameWatch({ ...recent, stream });
         return true;
       }
       const best = bestChannelForGame(game, index, {
@@ -64,6 +74,7 @@ export function useWatchGame(index: SportsChannelIndex): (game: SportsGame) => b
       });
       if (!best || best.tier !== "exact") return false;
       playChannel(best.channel, label);
+      recordGameWatch({ ...recent, channel: best.channel });
       return true;
     },
     [attachments, index, playChannel, playStream],
