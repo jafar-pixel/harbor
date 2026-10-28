@@ -84,9 +84,15 @@ fn ensure_recovery_marker(dest: &Path, version: &str) -> Result<bool, String> {
                 )
             });
     }
-    if !dest.join("harbor.exe").is_file() {
+    // The program is harbor.exe upstream and "JL Media Vision.exe" in JL builds.
+    let running = std::env::current_exe()
+        .ok()
+        .and_then(|path| path.file_name().map(|name| name.to_owned()));
+    let installed = dest.join("harbor.exe").is_file()
+        || running.is_some_and(|name| dest.join(name).is_file());
+    if !installed {
         return Err(format!(
-            "the {} installation is missing harbor.exe",
+            "the {} installation is missing its program file",
             crate::brand::PRODUCT_NAME
         ));
     }
