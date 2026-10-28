@@ -254,6 +254,46 @@ html [data-harbor-native-backdrop] {
     0 1px 2px rgb(0 0 0 / 0.75),
     0 0 10px rgb(0 0 0 / 0.45);
 }
+/* The room's shade map lies only under the glass window, softened like the glass itself. */
+html .glass-shade {
+  display: none;
+}
+html[data-glass-window] .glass-shade {
+  display: block;
+  clip-path: inset(var(--vision-window-gap) round 40px);
+  filter: blur(18px);
+}
+
+/*
+ * Over a bright room (measured by lib/glass-tone) text turns dark with a light halo, separately
+ * for the page and the sidebar. Dark surfaces inside (dialogs, menus, artwork overlays) keep white
+ * text.
+ */
+html[data-glass-main="light"] [data-harbor-native-backdrop] > :not(aside),
+html[data-glass-side="light"] aside[data-harbor-sidebar] {
+  --color-ink: oklch(0.2 0.03 262);
+  --color-ink-muted: oklch(0.3 0.03 262);
+  --color-ink-subtle: oklch(0.4 0.03 262);
+  color: var(--color-ink);
+  text-shadow:
+    0 0 1px rgb(255 255 255 / 0.85),
+    0 1px 2px rgb(255 255 255 / 0.6),
+    0 0 10px rgb(255 255 255 / 0.5);
+}
+html[data-glass-main="light"] [data-harbor-native-backdrop] > :not(aside) svg.lucide,
+html[data-glass-side="light"] aside[data-harbor-sidebar] svg.lucide {
+  filter: drop-shadow(0 1px 2px rgb(255 255 255 / 0.6));
+}
+html[data-glass-main="light"] [data-harbor-native-backdrop] :is([role="dialog"], [role="menu"], [role="listbox"], .modal-panel, [class*="bg-black"], [class*="from-black"], .bg-canvas.fixed) {
+  --color-ink: oklch(0.97 0.01 255);
+  --color-ink-muted: oklch(0.95 0.01 255);
+  --color-ink-subtle: oklch(0.9 0.015 255);
+  text-shadow:
+    0 0 1px rgb(0 0 0 / 0.85),
+    0 1px 2px rgb(0 0 0 / 0.75),
+    0 0 10px rgb(0 0 0 / 0.45);
+}
+
 /* Dark text on light chips and buttons would smear under a dark halo. */
 html [data-harbor-native-backdrop] :is(.bg-white, .bg-ink, [class*="bg-white/9"], .jl-cta),
 html [data-harbor-native-backdrop] :is(.bg-white, .bg-ink, [class*="bg-white/9"], .jl-cta) * {
