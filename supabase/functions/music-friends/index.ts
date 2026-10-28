@@ -199,17 +199,15 @@ Deno.serve(async (req) => {
       const { data: ok } = await db.rpc("are_music_friends", { a: me, b: lounge.host });
       if (!ok && lounge.host !== me)
         return json({ error: "Only friends of the host can join." }, 403);
-      const { error } = await db
-        .from("lounge_members")
-        .upsert(
-          {
-            lounge_id: lounge.id,
-            user_id: me,
-            display_name: name || "Guest",
-            last_seen: new Date().toISOString(),
-          },
-          { onConflict: "lounge_id,user_id" },
-        );
+      const { error } = await db.from("lounge_members").upsert(
+        {
+          lounge_id: lounge.id,
+          user_id: me,
+          display_name: name || "Guest",
+          last_seen: new Date().toISOString(),
+        },
+        { onConflict: "lounge_id,user_id" },
+      );
       if (error) throw new Error(error.message);
       return json({ loungeId: lounge.id });
     }
