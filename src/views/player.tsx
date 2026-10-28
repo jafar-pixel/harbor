@@ -768,12 +768,14 @@ function NativePlayerView({
   useEffect(() => {
     setNoAudioDismissed(false);
   }, [src.url]);
+  // On Auto the desktop app falls back to mpv by itself; a browser has no mpv to fall back to,
+  // so there the warning shows on Auto as well.
   const showNoAudioWarning =
     engine === "html5" &&
     snap.noAudio === true &&
     !noAudioDismissed &&
     !liveOverlay.isLive &&
-    settings.playerEngine !== "auto";
+    (settings.playerEngine !== "auto" || isWeb());
 
   const { inRoomRef, isHostRef, initialSyncDoneRef } = useRoomSync({
     inRoom,

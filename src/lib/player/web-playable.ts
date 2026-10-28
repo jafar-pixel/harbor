@@ -79,6 +79,25 @@ export function currentWebPlaybackEnv(): WebPlaybackEnv {
  * such a file moves up; anything else drops unless Real-Debrid or TorBox has it cached, since
  * only they hand over a transcoded stream. Zero everywhere else.
  */
+// Audio formats no desktop browser decodes: such a file plays with picture and no sound.
+const BROWSER_SILENT_AUDIO =
+  /(?:^|[^a-z0-9])(?:dts(?:-?hd|-?x)?|truehd|e-?ac-?3|ac-?3|ddp?\+?\d|dd\+|ddp|atmos)(?=[^a-z0-9]|$)/;
+
+/**
+ * Ranking nudge for Chrome, Edge and Firefox: a file whose release name says its audio is Dolby or
+ * DTS drops below browser-friendly ones unless a cached provider hands over a transcoded stream.
+ * Zero in the apps and in Safari (appleWebRankDelta covers it).
+ */
+export function browserAudioRankDelta(
+  fileName: string | null | undefined,
+  cachedOn: readonly string[],
+  env: WebPlaybackEnv,
+): number {
+  if (!env.web || env.webkit) return 0;
+  if (!BROWSER_SILENT_AUDIO.test(nameOf(fileName ?? ""))) return 0;
+  return cachedOn.some((slug) => canWebTranscode(slug, env)) ? 0 : -30;
+}
+
 export function appleWebRankDelta(
   fileName: string | null | undefined,
   cachedOn: readonly string[],
