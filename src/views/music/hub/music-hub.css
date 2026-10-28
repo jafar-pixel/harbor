@@ -554,3 +554,80 @@
     height: 45%;
   }
 }
+
+/* Found while watching: songs saved with song ID during a movie or show. */
+.hub-found {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hub-found-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 12px;
+}
+.hub-found-row:hover {
+  background: rgb(255 255 255 / 0.06);
+}
+.hub-found-song {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+}
+.hub-found-song img,
+.hub-found-song .hub-noart {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.hub-found-text {
+  display: grid;
+  min-width: 0;
+}
+.hub-found-text strong,
+.hub-found-text span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hub-found-text span,
+.hub-found-from {
+  color: var(--color-ink-muted);
+  font-size: 13px;
+}
+.hub-found-from {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.hub-found-from em {
+  font-style: normal;
+  color: #ff5a5a;
+}
+.hub-found-remove {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--color-ink-subtle);
+}
+.hub-found-remove:hover {
+  color: var(--color-ink);
+  background: rgb(255 255 255 / 0.08);
+}
