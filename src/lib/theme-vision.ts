@@ -125,18 +125,18 @@ const PRO_ROOM_CSS = `
   --radius-lg: 22px;
   --radius-xl: 30px;
   --radius-2xl: 40px;
-  --vision-glass: rgb(255 255 255 / 0.12);
+  --vision-glass: rgb(255 255 255 / 0.1);
   --vision-glass-strong: rgb(38 42 54 / 0.78);
   --vision-rim: rgb(255 255 255 / 0.22);
   --vision-rim-top: rgb(255 255 255 / 0.45);
   /* Clear glass: a light, barely tinted pane with a soft blur, so the room shines through. */
-  --vision-window: rgb(18 22 32 / 0.16);
-  --vision-blur: blur(10px) saturate(150%) brightness(1.04);
+  --vision-window: rgb(18 22 32 / 0.07);
+  --vision-blur: blur(9px) saturate(140%);
   --vision-panel-blur: blur(18px) saturate(160%);
   --vision-window-gap: 18px;
   /* Secondary text is brighter than on a dark canvas so it reads on glass over a bright room. */
-  --color-ink-muted: oklch(0.92 0.015 255) !important;
-  --color-ink-subtle: oklch(0.84 0.025 255) !important;
+  --color-ink-muted: oklch(0.95 0.01 255) !important;
+  --color-ink-subtle: oklch(0.9 0.015 255) !important;
 }
 
 /* The one floating window. */
@@ -165,7 +165,7 @@ html [data-harbor-native-backdrop]:is(:has(> aside[data-harbor-sidebar]), :has(m
 
 /* The sidebar is part of the window, not a window of its own. */
 html aside[data-harbor-sidebar] {
-  background: rgb(18 22 32 / 0.14) !important;
+  background: rgb(18 22 32 / 0.24) !important;
   border-color: rgb(255 255 255 / 0.12) !important;
   border-start-start-radius: 40px;
   border-end-start-radius: 40px;
@@ -243,11 +243,25 @@ html [data-media-card] {
   border-radius: 20px;
 }
 
-/* Text stays crisp over a bright room. */
+/*
+ * Text over clear glass: every label carries a tight dark halo plus a soft glow, so it stands
+ * apart from the room, including any words in the backdrop itself. text-shadow inherits, so this
+ * reaches poster titles, captions and controls alike.
+ */
 html [data-harbor-native-backdrop] {
   text-shadow:
-    0 0 1px rgb(0 0 0 / 0.35),
-    0 1px 8px rgb(0 0 0 / 0.5);
+    0 0 1px rgb(0 0 0 / 0.85),
+    0 1px 2px rgb(0 0 0 / 0.75),
+    0 0 10px rgb(0 0 0 / 0.45);
+}
+/* Dark text on light chips and buttons would smear under a dark halo. */
+html [data-harbor-native-backdrop] :is(.bg-white, .bg-ink, [class*="bg-white/9"], .jl-cta),
+html [data-harbor-native-backdrop] :is(.bg-white, .bg-ink, [class*="bg-white/9"], .jl-cta) * {
+  text-shadow: none;
+}
+/* Icons get the same separation as text. */
+html [data-harbor-native-backdrop] svg.lucide {
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.6));
 }
 
 /* Android TV: no blur (too costly on TV chips). */
@@ -258,7 +272,7 @@ html[data-tv-app] *::before {
 }
 html[data-tv-app] {
   /* No blur on TV chips: a light tint keeps the room clear, cards carry a little more. */
-  --vision-window: rgb(16 20 30 / 0.22);
+  --vision-window: rgb(16 20 30 / 0.12);
   --vision-glass: rgb(14 18 28 / 0.4);
 }
 `;
