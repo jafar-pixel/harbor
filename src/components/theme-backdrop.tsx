@@ -12,6 +12,7 @@ import {
   useEnvironments,
 } from "@/lib/environments";
 import { usePageBackdrop } from "@/lib/page-backdrops";
+import { useGlassTone } from "@/lib/glass-tone";
 
 export function ThemeBackdrop() {
   const { settings } = useSettings();
@@ -23,10 +24,6 @@ export function ThemeBackdrop() {
   const pageChoice = settings.pageBackdrops?.[view] ?? null;
   const pageImage = usePageBackdrop(pageChoice);
 
-  if (player) return null;
-  // A video pinned as the wallpaper replaces the theme background; a scrim keeps the page readable.
-  if (dockMode === "wallpaper")
-    return <div className="theme-backdrop-scrim pointer-events-none fixed inset-0 -z-10" />;
   // On the desktop the video plays behind the page, so the background must leave the hero box clear.
   const cut = dockMode === "hero" ? " theme-backdrop-hero" : "";
 
@@ -52,6 +49,16 @@ export function ThemeBackdrop() {
     envImage ??
     preset?.background?.image ??
     null;
+  // Pro's clear glass: text adapts to how bright the room is behind it.
+  // Only the room itself is measured; someone's own photo sits under a dark scrim.
+  const shade = useGlassTone(
+    preset?.environments && !player && dockMode !== "wallpaper" && img === envImage ? img : null,
+  );
+
+  if (player) return null;
+  // A video pinned as the wallpaper replaces the theme background; a scrim keeps the page readable.
+  if (dockMode === "wallpaper")
+    return <div className="theme-backdrop-scrim pointer-events-none fixed inset-0 -z-10" />;
   const dim = Math.max(
     0,
     Math.min(
@@ -95,6 +102,13 @@ export function ThemeBackdrop() {
         className={`pointer-events-none fixed inset-0 -z-10 bg-canvas${cut}`}
         style={{ opacity: presetGradient ? 0 : dim }}
       />
+      {shade && (
+        <div
+          aria-hidden
+          className={`glass-shade pointer-events-none fixed inset-0 -z-10 bg-cover bg-center${cut}`}
+          style={{ backgroundImage: `url(${shade})` }}
+        />
+      )}
       {tint && (
         <div
           className={`pointer-events-none fixed inset-0 -z-10${cut}`}
