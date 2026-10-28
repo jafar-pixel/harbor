@@ -555,9 +555,11 @@ function SportsHubView({ active = false }: { active?: boolean }) {
         <nav className="sh-view-tabs" aria-label={t("Sports navigation")}>
           {[
             ["home", "For you"],
-            ["live", "Live now"],
+            ["live", "Live"],
+            ["scores", "Scores"],
             ["schedule", "Schedule"],
-            ["explore", "Explore sports"],
+            ["teams", "Teams"],
+            ["explore", "Leagues"],
             ["hot", "Hot Events"],
             ["brackets", "Brackets"],
           ].map(([key, label]) => (
@@ -899,6 +901,46 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               loading={board.pending > 0}
               failed={board.failed > 0}
             />
+          )}
+          {tab === "scores" && group !== "esports" && (
+            <HubSchedule
+              key="scores"
+              title={t("Scores · {date}", { date: dateTitle })}
+              games={board.games.filter((g) => g.state !== "pre")}
+              onOpen={open}
+              stale={board.stale}
+              loading={board.pending > 0}
+              failed={board.failed > 0}
+            />
+          )}
+          {tab === "teams" && (
+            <section className="sh-teams" aria-label={t("Your teams")}>
+              <div className="sh-teams-head">
+                <p>
+                  {fav.teams.length || discoveryTeams.length
+                    ? t("Games for the teams you follow, live, today and coming up.")
+                    : t("Follow your teams to see their games here first.")}
+                </p>
+                <button type="button" className="sh-text-button" onClick={() => setSetup(true)}>
+                  {t("Choose your teams")}
+                </button>
+              </div>
+              <HubRow
+                title={t("Your teams")}
+                games={following.filter((g) => g.state !== "post")}
+                onOpen={open}
+                stale={board.stale || upcoming.stale}
+              />
+              <HubSchedule
+                key="teams"
+                title={t("Recent results")}
+                games={following.filter((g) => g.state === "post")}
+                onOpen={open}
+                stale={board.stale}
+                loading={board.pending > 0}
+                failed={board.failed > 0}
+              />
+            </section>
           )}
           {tab === "brackets" && (
             <Suspense fallback={null}>
