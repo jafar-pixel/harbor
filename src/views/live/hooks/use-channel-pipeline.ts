@@ -16,7 +16,7 @@ import { useGroupPrefs } from "@/lib/iptv/group-order";
 import { isLiveChannel } from "@/lib/iptv/vod-classify";
 
 type Favorites = ReturnType<typeof useFavorites>;
-type ViewMode = "home" | "grid" | "guide" | "multiview";
+type ViewMode = "home" | "grid" | "guide" | "channels" | "multiview";
 
 export function useChannelPipeline(params: {
   playlist: IptvPlaylist | null | undefined;
@@ -29,8 +29,17 @@ export function useChannelPipeline(params: {
   allPlaylists: Map<string, IptvPlaylist>;
   allSources: IptvPlaylistSource[];
 }) {
-  const { playlist, region, preferredLanguages, mode, group, query, favorites, allPlaylists, allSources } =
-    params;
+  const {
+    playlist,
+    region,
+    preferredLanguages,
+    mode,
+    group,
+    query,
+    favorites,
+    allPlaylists,
+    allSources,
+  } = params;
   const inFavorites = group === FAVORITES_GROUP_KEY;
   const langKey = preferredLanguages.join(",");
   const sourceId = playlist?.id ?? "";
@@ -148,5 +157,15 @@ export function useChannelPipeline(params: {
     return m;
   }, [shownChannels]);
 
-  return { sortedGroups: userGroups, topRows, showTopRows, regionChannels, shownChannels, mvChannels, visible, counts, groupLogos };
+  return {
+    sortedGroups: userGroups,
+    topRows,
+    showTopRows,
+    regionChannels,
+    shownChannels,
+    mvChannels,
+    visible,
+    counts,
+    groupLogos,
+  };
 }
