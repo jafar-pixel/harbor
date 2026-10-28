@@ -11,6 +11,8 @@ export type YtPlayer = {
   getCurrentTime(): number;
   getDuration(): number;
   getPlayerState(): number;
+  setPlaybackRate?(rate: number): void;
+  getAvailablePlaybackRates?(): number[];
   destroy(): void;
 };
 

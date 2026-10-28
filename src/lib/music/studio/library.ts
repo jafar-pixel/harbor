@@ -12,7 +12,7 @@ export type CrateItem = {
   id: string;
   title: string;
   artist: string;
-  /** A local file, or a URL the app can fetch with CORS (a debrid stream). */
+  /** A local file, or a URL the app can fetch with CORS (a debrid or Jellyfin stream). */
   file?: File;
   url?: string;
   bpm?: number;
@@ -113,10 +113,10 @@ async function tagAll(items: CrateItem[]) {
   }
 }
 
-export function addUrl(url: string, title: string, artist = ""): CrateItem {
+export function addUrl(url: string, title: string, artist = "", art?: string | null): CrateItem {
   const existing = state.crate.find((c) => c.url === url);
   if (existing) return existing;
-  const item: CrateItem = { id: `u${++seq}`, title, artist, url };
+  const item: CrateItem = { id: `u${++seq}`, title, artist, url, ...(art ? { art } : {}) };
   set({ crate: [...state.crate, item] });
   return item;
 }

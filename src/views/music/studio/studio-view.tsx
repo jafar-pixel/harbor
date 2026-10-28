@@ -15,6 +15,7 @@ import {
   type DeckLook,
 } from "./studio-deck";
 import { StudioLibrary } from "./studio-library";
+import { StudioVideo } from "./studio-video";
 import { StudioWaves } from "./studio-wave";
 import "./studio.css";
 
@@ -40,6 +41,13 @@ export function DjStudio() {
   const [busyDeck, setBusyDeck] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
+  const [mode, setMode] = useState<"audio" | "video">("audio");
+  // The video decks stay mounted once opened, so a mix keeps playing while you switch.
+  const [videoOpened, setVideoOpened] = useState(false);
+  const showVideo = () => {
+    setVideoOpened(true);
+    setMode("video");
+  };
   const crate = useCrate();
   // Covers: the file's own, else the online catalog by artist and title, else generated art.
   const online = useSongArt(crate.crate.filter((c) => !c.art && c.artist));
@@ -102,6 +110,21 @@ export function DjStudio() {
       <div className="studio-top">
         <strong className="studio-brand">{t("DJ Studio")}</strong>
         <div className="studio-top-controls">
+          <span className="studio-label">{t("Mode")}</span>
+          <button
+            type="button"
+            className={`studio-btn studio-mini${mode === "audio" ? " is-on" : ""}`}
+            onClick={() => setMode("audio")}
+          >
+            {t("Audio")}
+          </button>
+          <button
+            type="button"
+            className={`studio-btn studio-mini${mode === "video" ? " is-on" : ""}`}
+            onClick={showVideo}
+          >
+            {t("Video")}
+          </button>
           <span className="studio-label">{t("View")}</span>
           {(["turntable", "jog"] as const).map((id) => (
             <button
@@ -150,7 +173,12 @@ export function DjStudio() {
           </button>
         </div>
       </div>
-      <div className="sd-heads">
+      {videoOpened && (
+        <div hidden={mode !== "video"}>
+          <StudioVideo />
+        </div>
+      )}
+      <div className="sd-heads" hidden={mode !== "audio"}>
         <div className="sd-heads-col">
           {left.map((d) => (
             <DeckHeader key={d.index} deck={d} art={deckArt(d)} />
@@ -162,12 +190,12 @@ export function DjStudio() {
           ))}
         </div>
       </div>
-      <div className="sd-console">
+      <div className="sd-console" hidden={mode !== "audio"}>
         {side(left, false)}
         <StudioWaves decks={decks} zoom={zoom} />
         {side(right, true)}
       </div>
-      <div className="sd-lower">
+      <div className="sd-lower" hidden={mode !== "audio"}>
         <div className="sd-lower-col">
           {left.map((d) => (
             <DeckTransport key={d.index} deck={d} pads={pads} />
@@ -244,6 +272,7 @@ export function DjStudio() {
         onLoad={(d, id) => void load(d, id)}
         busyDeck={busyDeck}
         artOf={artOf}
+        onVideo={showVideo}
       />
     </div>
   );

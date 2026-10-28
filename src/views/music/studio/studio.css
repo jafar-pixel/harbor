@@ -881,3 +881,187 @@
     padding: 0;
   }
 }
+
+.studio [hidden] {
+  display: none !important;
+}
+
+/* ---- Video decks ---------------------------------------------------------------------------- */
+.sv {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sv-screen {
+  position: relative;
+  width: min(100%, 1100px);
+  margin: 0 auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
+}
+.sv-slot,
+.sv-slot iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  pointer-events: none;
+}
+.sv-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+}
+.sv-console {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.sv-deck,
+.sv-mixer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--studio-panel, rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.sv-deck[data-deck="0"] {
+  border-top: 3px solid #3aa0ff;
+}
+.sv-deck[data-deck="1"] {
+  border-top: 3px solid #ff4d8d;
+}
+.sv-deck-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.sv-deck-name {
+  font-weight: 800;
+  font-size: 20px;
+}
+.sv-deck-head img,
+.sv-noart {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.08);
+}
+.sv-deck-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sv-deck-text strong,
+.sv-deck-text span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sv-deck-text span {
+  font-size: 13px;
+  opacity: 0.7;
+}
+.sv-deck-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 13px;
+}
+.sv-deck-meta em {
+  font-style: normal;
+  color: #ff9a1f;
+}
+.sv-seek {
+  width: 100%;
+}
+.sv-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+.sv-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.sv-play {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px !important;
+}
+.sv-rate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.sv-volume {
+  flex: 1;
+  min-width: 100px;
+}
+.sv-volume input {
+  width: 100%;
+}
+.sv-mixer {
+  align-items: stretch;
+  justify-content: center;
+}
+.sv-mixer input[type="range"] {
+  width: 100%;
+}
+.sv-blend {
+  justify-content: center;
+}
+.sl-connect {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.sl-jellyfin {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+  padding: 12px;
+}
+.sl-jellyfin label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.sl-jellyfin input {
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  font: inherit;
+}
+@media (max-width: 900px) {
+  .sv-console {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

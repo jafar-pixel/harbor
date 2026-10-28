@@ -4,8 +4,9 @@ import { addFiles, dequeue, enqueue, useCrate, type CrateItem } from "@/lib/musi
 import { useT } from "@/lib/i18n";
 import { formatTime } from "./studio-controls";
 import { DECK_NAMES } from "./studio-deck";
+import { JellyfinSource, YouTubeSource } from "./studio-sources";
 
-type Source = "all" | "history";
+type Source = "all" | "history" | "youtube" | "jellyfin";
 
 /**
  * The library: sources on the left, the track table in the middle (cover, title, artist, BPM,
@@ -16,11 +17,14 @@ export function StudioLibrary({
   onLoad,
   busyDeck,
   artOf,
+  onVideo,
 }: {
   decks: StudioDeck[];
   onLoad: (deck: StudioDeck, id: string) => void;
   busyDeck: number | null;
   artOf: (item: CrateItem) => string;
+  /** A YouTube song went onto a video deck: show the video decks. */
+  onVideo: () => void;
 }) {
   const t = useT();
   const crate = useCrate();
@@ -74,6 +78,20 @@ export function StudioLibrary({
         >
           ⟲ {t("History")} <span>{crate.history.length}</span>
         </button>
+        <button
+          type="button"
+          className={`sl-source${source === "youtube" ? " is-on" : ""}`}
+          onClick={() => setSource("youtube")}
+        >
+          ▶ {t("YouTube Music")}
+        </button>
+        <button
+          type="button"
+          className={`sl-source${source === "jellyfin" ? " is-on" : ""}`}
+          onClick={() => setSource("jellyfin")}
+        >
+          ◈ {t("Jellyfin")}
+        </button>
         <div className="sl-add">
           <button type="button" className="studio-btn" onClick={() => files.current?.click()}>
             {t("Add music files")}
@@ -109,72 +127,80 @@ export function StudioLibrary({
         />
       </nav>
       <div className="sl-main">
-        <div className="sl-bar">
-          <strong>{source === "all" ? t("My music") : t("History")}</strong>
-          <span className="sl-count">{t("{n} songs", { n: list.length })}</span>
-          <input
-            className="studio-search"
-            type="search"
-            placeholder={t("Search your music")}
-            aria-label={t("Search the library")}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        {list.length === 0 ? (
-          <p className="studio-empty">
-            {source === "all"
-              ? t(
-                  "Add your MP3, FLAC, WAV or M4A files, or drop them anywhere on this screen. They stay on this computer.",
-                )
-              : t("Tracks you load on a deck show up here.")}
-          </p>
+        {source === "youtube" ? (
+          <YouTubeSource onVideo={onVideo} />
+        ) : source === "jellyfin" ? (
+          <JellyfinSource decks={decks} onLoad={onLoad} busyDeck={busyDeck} />
         ) : (
-          <div className="sl-table" role="table" aria-label={t("Tracks")}>
-            <div className="sl-tr sl-th" role="row">
-              <span role="columnheader" />
-              <span role="columnheader">{t("Title")}</span>
-              <span role="columnheader">{t("Artist")}</span>
-              <span role="columnheader">BPM</span>
-              <span role="columnheader">{t("Key")}</span>
-              <span role="columnheader">{t("Time")}</span>
-              <span role="columnheader" />
+          <>
+            <div className="sl-bar">
+              <strong>{source === "all" ? t("My music") : t("History")}</strong>
+              <span className="sl-count">{t("{n} songs", { n: list.length })}</span>
+              <input
+                className="studio-search"
+                type="search"
+                placeholder={t("Search your music")}
+                aria-label={t("Search the library")}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
             </div>
-            {list.map((item) => (
-              <div
-                key={item.id}
-                role="row"
-                tabIndex={0}
-                className={`sl-tr${selected === item.id ? " is-selected" : ""}`}
-                onClick={() => setSelected(item.id)}
-                onDoubleClick={() => {
-                  const free = decks.find((d) => !d.playing) ?? decks[0];
-                  onLoad(free, item.id);
-                }}
-              >
-                <span className="sl-art" style={{ backgroundImage: `url("${artOf(item)}")` }} />
-                <span className="sl-title">{item.title}</span>
-                <span className="sl-dim">{item.artist || "—"}</span>
-                <span className="sl-dim">{item.bpm ? item.bpm.toFixed(0) : ""}</span>
-                <span className="sl-key">{item.key?.camelot ?? ""}</span>
-                <span className="sl-dim">{item.duration ? formatTime(item.duration) : ""}</span>
-                <span className="sl-actions">
-                  {loadButtons(item)}
-                  <button
-                    type="button"
-                    className="studio-btn studio-mini"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      enqueue(item.id);
+            {list.length === 0 ? (
+              <p className="studio-empty">
+                {source === "all"
+                  ? t(
+                      "Add your MP3, FLAC, WAV or M4A files, or drop them anywhere on this screen. They stay on this computer.",
+                    )
+                  : t("Tracks you load on a deck show up here.")}
+              </p>
+            ) : (
+              <div className="sl-table" role="table" aria-label={t("Tracks")}>
+                <div className="sl-tr sl-th" role="row">
+                  <span role="columnheader" />
+                  <span role="columnheader">{t("Title")}</span>
+                  <span role="columnheader">{t("Artist")}</span>
+                  <span role="columnheader">BPM</span>
+                  <span role="columnheader">{t("Key")}</span>
+                  <span role="columnheader">{t("Time")}</span>
+                  <span role="columnheader" />
+                </div>
+                {list.map((item) => (
+                  <div
+                    key={item.id}
+                    role="row"
+                    tabIndex={0}
+                    className={`sl-tr${selected === item.id ? " is-selected" : ""}`}
+                    onClick={() => setSelected(item.id)}
+                    onDoubleClick={() => {
+                      const free = decks.find((d) => !d.playing) ?? decks[0];
+                      onLoad(free, item.id);
                     }}
-                    aria-label={t("Add to queue")}
                   >
-                    +
-                  </button>
-                </span>
+                    <span className="sl-art" style={{ backgroundImage: `url("${artOf(item)}")` }} />
+                    <span className="sl-title">{item.title}</span>
+                    <span className="sl-dim">{item.artist || "—"}</span>
+                    <span className="sl-dim">{item.bpm ? item.bpm.toFixed(0) : ""}</span>
+                    <span className="sl-key">{item.key?.camelot ?? ""}</span>
+                    <span className="sl-dim">{item.duration ? formatTime(item.duration) : ""}</span>
+                    <span className="sl-actions">
+                      {loadButtons(item)}
+                      <button
+                        type="button"
+                        className="studio-btn studio-mini"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          enqueue(item.id);
+                        }}
+                        aria-label={t("Add to queue")}
+                      >
+                        +
+                      </button>
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
       <aside className="sl-queue" aria-label={t("Queue")}>
