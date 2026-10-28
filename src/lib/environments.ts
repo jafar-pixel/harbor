@@ -100,9 +100,10 @@ export function environmentImage(env: Environment): string {
 }
 
 export const LIGHTS: { id: AmbientLight; label: string; tint: string }[] = [
-  { id: "neutral", label: "Neutral", tint: "rgb(10 14 24 / 0.38)" },
-  { id: "cinematic-blue", label: "Cinematic Blue", tint: "rgb(8 22 64 / 0.42)" },
-  { id: "warm-lounge", label: "Warm Lounge", tint: "rgb(48 22 6 / 0.36)" },
+  // Light washes over the room, kept faint so the Environment stays bright and clear.
+  { id: "neutral", label: "Neutral", tint: "transparent" },
+  { id: "cinematic-blue", label: "Cinematic Blue", tint: "rgb(40 90 210 / 0.12)" },
+  { id: "warm-lounge", label: "Warm Lounge", tint: "rgb(255 140 50 / 0.1)" },
 ];
 
 type State = {
@@ -113,7 +114,7 @@ type State = {
 };
 
 const KEY = "jl.environments.v1";
-const DEFAULT: State = { applied: "mountain-lake", light: null, favorites: [], recent: [] };
+const DEFAULT: State = { applied: "spatial-room", light: null, favorites: [], recent: [] };
 const listeners = new Set<() => void>();
 
 function read(): State {

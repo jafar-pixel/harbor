@@ -56,9 +56,9 @@ export function ThemeBackdrop() {
     0,
     Math.min(
       1,
-      // An Environment is meant to be seen: only a light veil over it (the saved dim is for
-      // people's own background photos, and defaults to 0.65).
-      img === envImage ? 0.12 : (settings.theme.backgroundDim ?? preset?.background?.dim ?? 0.65),
+      // An Environment is the room around the window and stays bright and clear (the saved dim
+      // is for people's own background photos, and defaults to 0.65).
+      img === envImage ? 0 : (settings.theme.backgroundDim ?? preset?.background?.dim ?? 0.65),
     ),
   );
 
