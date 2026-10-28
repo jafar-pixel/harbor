@@ -23,7 +23,9 @@ import { startTaskbarProgress } from "@/lib/download/taskbar-progress";
 import { completeBetaReturnPreferences } from "@/lib/updater/beta-return";
 import { captureSharedLink } from "@/lib/shared-link";
 import { captureSpotifyCallback } from "@/lib/music/spotify-web/auth";
+import { watchForStaleBuild } from "@/lib/stale-build";
 
+watchForStaleBuild();
 captureSharedLink();
 captureSpotifyCallback();
 
