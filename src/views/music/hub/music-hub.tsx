@@ -20,6 +20,7 @@ import {
 import { addToQueue, playNext, playTracks, usePlayer } from "@/lib/music/player/store";
 import { connectSpotifyWeb, useSpotifyWeb } from "@/lib/music/spotify-web/auth";
 import { connectYouTubeWeb, useYouTubeWeb } from "@/lib/music/youtube-web/auth";
+import { FoundWhileWatching } from "./found-while-watching";
 import "./music-hub.css";
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -243,6 +244,8 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
           )}
         </section>
       )}
+
+      <FoundWhileWatching />
 
       {nothingConnected ? (
         <section className="hub-connect">
