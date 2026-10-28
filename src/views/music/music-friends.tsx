@@ -1,24 +1,39 @@
-import { useCallback, useEffect, useState } from "react";
-import { Check, Inbox, Play, Trash2, UserPlus, Users, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Check,
+  Headphones,
+  Inbox,
+  Laptop,
+  Mail,
+  Monitor,
+  Play,
+  Smartphone,
+  Trash2,
+  Tv,
+  Users,
+  X,
+} from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useJlSession } from "@/lib/jl/account/client";
-import { startFromSong } from "@/lib/music/dj/session";
+import { pauseDj } from "@/lib/music/dj/playhead";
+import { enterAsGuest } from "@/lib/music/lounge/session";
+import { playNow } from "@/lib/music/player/store";
 import {
-  HANDLE,
   acceptFriend,
   deleteSharedSong,
   getMyHandle,
-  listFriends,
   markSongsRead,
   removeFriend,
-  requestFriend,
-  setMyHandle,
-  type MusicFriend,
-  type MusicHandle,
   type SharedSong,
 } from "@/lib/music/social/api";
+import {
+  inviteFriendByEmail,
+  joinFriendLounge,
+  useFriendsLive,
+  type FriendPlaying,
+  type LiveFriend,
+} from "@/lib/music/social/friends-live";
 import { refreshInbox, requestMusicTab, useSongInbox } from "@/lib/music/social/inbox";
-import { useSettings } from "@/lib/settings";
 import "./music-friends.css";
 
 function ago(iso: string): string {
@@ -30,37 +45,22 @@ function ago(iso: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
+const DEVICE_ICON = { desktop: Monitor, web: Laptop, android: Tv } as const;
+
 /**
- * Friends and family in the Music Hub: your handle, adding friends, requests, and the songs
- * friends have sent you (play one and the DJ carries on from it).
+ * Friends, simply: invite someone by email, then see what each friend is playing on which
+ * device and who's chilling in a Listening Lounge (join with one tap). Songs friends sent you
+ * play in the shared player.
  */
 export function MusicFriends({ active }: { active: boolean }) {
   const t = useT();
   const session = useJlSession();
-  const { settings } = useSettings();
   const inbox = useSongInbox();
-  const [handle, setHandle] = useState<MusicHandle | null | undefined>(undefined);
-  const [draft, setDraft] = useState({ handle: "", name: "" });
-  const [friends, setFriends] = useState<MusicFriend[]>([]);
-  const [add, setAdd] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
+  const { data, error, reload } = useFriendsLive(active && !!session);
+  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
-
-  const reload = useCallback(async () => {
-    try {
-      const [h, f] = await Promise.all([getMyHandle(), listFriends()]);
-      setHandle(h);
-      setFriends(f);
-      if (h) setDraft({ handle: h.handle, name: h.display_name });
-    } catch (error) {
-      setHandle(null);
-      setMessage(error instanceof Error ? error.message : String(error));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (active && session) void reload();
-  }, [active, session, reload]);
+  const [message, setMessage] = useState<string | null>(null);
+  const [link, setLink] = useState<string | null>(null);
 
   // Opening the tab reads what's waiting.
   useEffect(() => {
@@ -69,147 +69,137 @@ export function MusicFriends({ active }: { active: boolean }) {
     if (unread.length) void markSongsRead(unread).then(refreshInbox);
   }, [active, inbox.songs]);
 
-  const run = async (work: () => Promise<unknown>, done?: string) => {
+  if (!session)
+    return (
+      <section className="music-friends-signin">
+        <Users size={28} />
+        <p>{t("Sign in to your JL Media Vision account to add friends.")}</p>
+      </section>
+    );
+
+  const run = async (work: () => Promise<unknown>) => {
     setBusy(true);
     setMessage(null);
     try {
       await work();
-      if (done) setMessage(done);
       await reload();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
   };
 
-  const play = (s: SharedSong) => {
-    void startFromSong(
-      { artist: s.artist, title: s.title, why: s.note ?? "", videoId: s.video_id },
-      settings.musicStyles ?? [],
-      s.sender_name,
-    );
-    requestMusicTab("dj");
-  };
+  const invite = () =>
+    void run(async () => {
+      setLink(null);
+      const out = await inviteFriendByEmail(email.trim());
+      setEmail("");
+      if (out.status === "link" && out.link) {
+        setLink(out.link);
+        setMessage(t("Their account is ready. Send them this link to join:"));
+      } else
+        setMessage(
+          out.status === "emailed"
+            ? t("Invite sent. You're friends as soon as they join.")
+            : out.status === "accepted"
+              ? t("You're now friends.")
+              : out.status === "already"
+                ? t("You're already friends.")
+                : t("Friend request sent."),
+        );
+    });
 
-  if (!session) {
-    return (
-      <section className="music-friends-signin">
-        <Users size={28} />
-        <p>{t("Sign in to your JL Media Vision account to add friends and share songs.")}</p>
-      </section>
-    );
-  }
+  const join = (f: LiveFriend) =>
+    void run(async () => {
+      const name = (await getMyHandle().catch(() => null))?.display_name || "Guest";
+      const { loungeId } = await joinFriendLounge(f.lounge!.id, name);
+      await enterAsGuest(loungeId, name);
+      pauseDj();
+      requestMusicTab("lounge");
+    });
 
-  const requests = friends.filter((f) => f.status === "pending" && f.incoming);
-  const waiting = friends.filter((f) => f.status === "pending" && !f.incoming);
-  const mine = friends.filter((f) => f.status === "accepted");
+  const playShared = (s: SharedSong) =>
+    playNow({
+      source: "song",
+      title: s.title,
+      artist: s.artist,
+      art: s.video_id ? `https://i.ytimg.com/vi/${s.video_id}/hqdefault.jpg` : null,
+      videoId: s.video_id,
+    });
+
+  const friends = data?.friends ?? [];
+  const listening = friends.filter((f) => f.playing.length || f.lounge);
+  const quiet = friends.filter((f) => !f.playing.length && !f.lounge);
 
   return (
     <section className="music-friends">
-      {message && <p className="music-friends-message">{message}</p>}
-
-      <div className="music-friends-grid">
-        <section className="music-friends-card">
-          <h3>{handle ? t("You") : t("Pick your handle")}</h3>
+      <form
+        className="music-friends-invite"
+        onSubmit={(e) => {
+          e.preventDefault();
+          invite();
+        }}
+      >
+        <div>
+          <h2>
+            <Mail size={20} /> {t("Invite a friend")}
+          </h2>
           <p className="music-friends-muted">
-            {handle
-              ? t("Friends add you with @{handle}.", { handle: handle.handle })
-              : t("Friends and family add you by this handle.")}
+            {t("Enter their email. New people get an invite to join JL Media Vision.")}
           </p>
-          <form
-            className="music-friends-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void run(() => setMyHandle(draft.handle, draft.name), t("Saved."));
-            }}
-          >
-            <label>
-              <span>@</span>
-              <input
-                value={draft.handle}
-                maxLength={24}
-                placeholder="handle"
-                aria-label={t("Handle")}
-                onChange={(e) =>
-                  setDraft((d) => ({
-                    ...d,
-                    handle: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
-                  }))
-                }
-              />
-            </label>
-            <input
-              value={draft.name}
-              maxLength={40}
-              placeholder={t("Your name")}
-              aria-label={t("Your name")}
-              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-            />
-            <button
-              type="submit"
-              disabled={busy || !HANDLE.test(draft.handle) || !draft.name.trim()}
-            >
-              {t("Save")}
-            </button>
-          </form>
-        </section>
+        </div>
+        <label className="sr-only" htmlFor="friend-email">
+          {t("Friend's email")}
+        </label>
+        <input
+          id="friend-email"
+          type="email"
+          value={email}
+          placeholder="name@example.com"
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <button type="submit" disabled={busy || !email.includes("@")}>
+          {t("Send invite")}
+        </button>
+      </form>
+      {message && (
+        <p className="music-friends-message">
+          {message}
+          {link && (
+            <>
+              {" "}
+              <a href={link} target="_blank" rel="noreferrer">
+                {t("Invite link")}
+              </a>
+            </>
+          )}
+        </p>
+      )}
+      {error && <p className="music-friends-message">{error}</p>}
 
-        <section className="music-friends-card">
-          <h3>{t("Add a friend")}</h3>
-          <form
-            className="music-friends-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const who = add.trim().replace(/^@/, "");
-              setAdd("");
-              void run(async () => {
-                const result = await requestFriend(who);
-                setMessage(
-                  result === "accepted"
-                    ? t("You're now friends with @{handle}.", { handle: who })
-                    : t("Request sent to @{handle}.", { handle: who }),
-                );
-              });
-            }}
-          >
-            <label>
-              <span>@</span>
-              <input
-                value={add}
-                maxLength={25}
-                placeholder={t("their handle")}
-                aria-label={t("Friend's handle")}
-                onChange={(e) => setAdd(e.target.value.toLowerCase().replace(/[^a-z0-9_@]/g, ""))}
-              />
-            </label>
-            <button type="submit" disabled={busy || !handle || !HANDLE.test(add.replace(/^@/, ""))}>
-              <UserPlus size={15} /> {t("Add")}
-            </button>
-          </form>
-          {!handle && <p className="music-friends-muted">{t("Pick your handle first.")}</p>}
-        </section>
-      </div>
-
-      {requests.length > 0 && (
+      {(data?.requests.length ?? 0) > 0 && (
         <section>
           <h3 className="music-friends-h">{t("Friend requests")}</h3>
           <ul className="music-friends-list">
-            {requests.map((f) => (
-              <li key={f.user_id}>
-                <Person f={f} />
+            {data!.requests.map((r) => (
+              <li key={r.userId}>
+                <span className="music-friends-person">
+                  <span className="music-friends-avatar">{r.name.slice(0, 1).toUpperCase()}</span>
+                  <strong>{r.name}</strong>
+                </span>
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => void run(() => acceptFriend(f.user_id))}
+                  onClick={() => void run(() => acceptFriend(r.userId))}
                 >
-                  <Check size={15} /> {t("Accept")}
+                  <Check size={14} /> {t("Accept")}
                 </button>
                 <button
                   type="button"
                   aria-label={t("Decline")}
                   disabled={busy}
-                  onClick={() => void run(() => removeFriend(f.user_id))}
+                  onClick={() => void run(() => removeFriend(r.userId))}
                 >
                   <X size={15} />
                 </button>
@@ -220,85 +210,114 @@ export function MusicFriends({ active }: { active: boolean }) {
       )}
 
       <section>
+        <h3 className="music-friends-h">{t("Listening now")}</h3>
+        {!data ? (
+          <p className="music-friends-muted">{t("Loading…")}</p>
+        ) : listening.length === 0 ? (
+          <p className="music-friends-muted">
+            {friends.length
+              ? t("None of your friends are listening right now.")
+              : t("Invite friends by email and see what they're playing here.")}
+          </p>
+        ) : (
+          <div className="music-friends-live">
+            {listening.map((f) => (
+              <article key={f.userId} className="music-friends-live-card">
+                <header>
+                  <span className="music-friends-avatar">{f.name.slice(0, 1).toUpperCase()}</span>
+                  <strong>{f.name}</strong>
+                  {f.lounge && (
+                    <span className="music-friends-badge">
+                      <Headphones size={12} /> {f.lounge.hosting ? t("Hosting") : t("In a lounge")}
+                    </span>
+                  )}
+                </header>
+                {f.playing.map((p) => (
+                  <Playing key={`${p.device_name}-${p.updated_at}`} p={p} />
+                ))}
+                {f.lounge && (
+                  <button
+                    type="button"
+                    className="music-friends-join"
+                    disabled={busy}
+                    onClick={() => join(f)}
+                  >
+                    <Headphones size={15} /> {t("Join {name}", { name: f.lounge.name })}
+                  </button>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {quiet.length > 0 && (
+        <section>
+          <h3 className="music-friends-h">{t("Friends")}</h3>
+          <ul className="music-friends-list">
+            {quiet.map((f) => (
+              <li key={f.userId}>
+                <span className="music-friends-person">
+                  <span className="music-friends-avatar">{f.name.slice(0, 1).toUpperCase()}</span>
+                  <span>
+                    <strong>{f.name}</strong>
+                    <em>{t("Not listening")}</em>
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  aria-label={t("Remove {name}", { name: f.name })}
+                  disabled={busy}
+                  onClick={() => {
+                    if (window.confirm(t("Remove {name} from your friends?", { name: f.name })))
+                      void run(() => removeFriend(f.userId));
+                  }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {(data?.sent.length ?? 0) > 0 && (
+        <p className="music-friends-muted">
+          {t("Waiting for: {names}", { names: data!.sent.map((s) => s.name).join(", ") })}
+        </p>
+      )}
+
+      <section>
         <h3 className="music-friends-h">
-          <Inbox size={15} /> {t("Sent to you")}
+          <Inbox size={15} /> {t("Songs sent to you")}
         </h3>
         {inbox.songs.length === 0 ? (
-          <p className="music-friends-muted">{t("Songs friends send you show up here.")}</p>
+          <p className="music-friends-muted">{t("Nothing yet.")}</p>
         ) : (
           <ul className="music-friends-inbox">
             {inbox.songs.map((s) => (
-              <li key={s.id} data-unread={!s.read_at}>
+              <li key={s.id}>
                 {s.video_id ? (
-                  <img
-                    src={`https://i.ytimg.com/vi/${s.video_id}/mqdefault.jpg`}
-                    alt=""
-                    loading="lazy"
-                  />
+                  <img src={`https://i.ytimg.com/vi/${s.video_id}/mqdefault.jpg`} alt="" />
                 ) : (
-                  <span className="music-friends-thumb" />
+                  <span className="music-friends-avatar">♪</span>
                 )}
-                <div>
+                <span>
                   <strong>{s.title}</strong>
                   <span>
                     {s.artist} · {t("from {name}", { name: s.sender_name })} · {ago(s.created_at)}
                   </span>
                   {s.note && <em>“{s.note}”</em>}
-                </div>
-                <button type="button" onClick={() => play(s)}>
-                  <Play size={15} /> {t("Play")}
+                </span>
+                <button type="button" aria-label={t("Play")} onClick={() => playShared(s)}>
+                  <Play size={15} />
                 </button>
                 <button
                   type="button"
                   aria-label={t("Delete")}
                   onClick={() => void deleteSharedSong(s.id).then(refreshInbox)}
                 >
-                  <Trash2 size={15} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section>
-        <h3 className="music-friends-h">
-          <Users size={15} /> {t("Friends & family")}
-        </h3>
-        {mine.length === 0 && waiting.length === 0 ? (
-          <p className="music-friends-muted">{t("No friends yet. Add someone by their handle.")}</p>
-        ) : (
-          <ul className="music-friends-list">
-            {mine.map((f) => (
-              <li key={f.user_id}>
-                <Person f={f} />
-                <button
-                  type="button"
-                  className="music-friends-remove"
-                  disabled={busy}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        t("Remove {name} from your friends?", { name: f.display_name }),
-                      )
-                    )
-                      void run(() => removeFriend(f.user_id));
-                  }}
-                >
-                  {t("Remove")}
-                </button>
-              </li>
-            ))}
-            {waiting.map((f) => (
-              <li key={f.user_id}>
-                <Person f={f} />
-                <span className="music-friends-muted">{t("Request sent")}</span>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void run(() => removeFriend(f.user_id))}
-                >
-                  {t("Cancel")}
+                  <Trash2 size={14} />
                 </button>
               </li>
             ))}
@@ -309,14 +328,37 @@ export function MusicFriends({ active }: { active: boolean }) {
   );
 }
 
-function Person({ f }: { f: MusicFriend }) {
+function Playing({ p }: { p: FriendPlaying }) {
+  const t = useT();
+  const Icon = DEVICE_ICON[p.device_kind] ?? Smartphone;
   return (
-    <span className="music-friends-person">
-      <span className="music-friends-avatar">{f.display_name.slice(0, 1).toUpperCase()}</span>
+    <div className="music-friends-playing">
+      {p.art ? <img src={p.art} alt="" /> : <span className="music-friends-noart">♪</span>}
       <span>
-        <strong>{f.display_name}</strong>
-        <em>@{f.handle}</em>
+        <strong>{p.title}</strong>
+        <span>{p.artist}</span>
+        <em>
+          <Icon size={12} /> {p.device_name}
+          {p.paused ? ` · ${t("paused")}` : ""}
+        </em>
       </span>
-    </span>
+      {p.video_id && (
+        <button
+          type="button"
+          aria-label={t("Play this too")}
+          onClick={() =>
+            playNow({
+              source: "youtube",
+              title: p.title,
+              artist: p.artist,
+              art: p.art,
+              videoId: p.video_id,
+            })
+          }
+        >
+          <Play size={15} />
+        </button>
+      )}
+    </div>
   );
 }

@@ -16,6 +16,26 @@
     var(--color-elevated);
   color: var(--color-ink);
 }
+.music-lounge-art {
+  width: min(260px, 36vw);
+  aspect-ratio: 1;
+  flex: none;
+  border-radius: 22px;
+  object-fit: cover;
+  box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.9);
+}
+.music-lounge-hero:has(.music-lounge-art) {
+  gap: 28px;
+  padding: 28px;
+}
+.music-lounge-hero:has(.music-lounge-art) h2 {
+  font-size: clamp(26px, 3vw, 38px);
+}
+.music-lounge-request-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .music-lounge-hero h2,
 .music-lounge-bar h2 {
   margin: 0;
@@ -147,7 +167,7 @@
 .music-lounge-now-empty {
   display: grid;
   place-items: center;
-  width: min(280px, 42vw);
+  width: min(420px, 46vw);
   aspect-ratio: 16 / 9;
   border-radius: 14px;
   object-fit: cover;

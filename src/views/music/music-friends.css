@@ -379,3 +379,131 @@
 .lounge-invite-toasts {
   bottom: calc(96px + var(--harbor-viewport-bottom, 0px));
 }
+
+/* Friends, simply: invite by email and who's listening now. */
+.music-friends-invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--color-elevated);
+  border: 1px solid var(--color-edge-soft);
+}
+.music-friends-invite > div {
+  flex: 1 1 260px;
+}
+.music-friends-invite h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+.music-friends-invite input {
+  flex: 1 1 240px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--color-edge-soft);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font: inherit;
+}
+.music-friends-invite button,
+.music-friends-join {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.music-friends-invite button:disabled {
+  opacity: 0.5;
+}
+.music-friends-live {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.music-friends-live-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--color-elevated);
+  border: 1px solid var(--color-edge-soft);
+}
+.music-friends-live-card header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.music-friends-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+.music-friends-playing {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.music-friends-playing img,
+.music-friends-noart {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 12px;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: var(--color-raised);
+}
+.music-friends-playing > span {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.music-friends-playing strong,
+.music-friends-playing > span > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.music-friends-playing > span > span {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+.music-friends-playing em {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+.music-friends-playing button {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--color-edge-soft);
+  background: transparent;
+  color: var(--color-ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}

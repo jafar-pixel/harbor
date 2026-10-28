@@ -4,6 +4,7 @@ import {
   Copy,
   Headphones,
   LogOut,
+  Play,
   Radio,
   Send,
   Sparkles,
@@ -14,8 +15,13 @@ import {
 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useJlSession } from "@/lib/jl/account/client";
-import { pauseDj, readPlayhead } from "@/lib/music/dj/playhead";
-import { requestDj, useDj } from "@/lib/music/dj/session";
+import { pauseDj } from "@/lib/music/dj/playhead";
+import { useMusicLinks } from "@/lib/music/account-link";
+import { loadHubLibrary } from "@/lib/music/hub/library";
+import { playNext, usePlayer } from "@/lib/music/player/store";
+import { useSpotifyWeb } from "@/lib/music/spotify-web/auth";
+import { useYouTubeWeb } from "@/lib/music/youtube-web/auth";
+import { djState, requestDj } from "@/lib/music/dj/session";
 import { YT_PLAYING, loadYouTube, youtubeFrame, type YtPlayer } from "@/lib/music/dj/youtube";
 import { inviteToLounge, myOpenLounges, type Lounge } from "@/lib/music/lounge/api";
 import {
@@ -26,6 +32,7 @@ import {
 } from "@/lib/music/lounge/invites";
 import {
   hostLounge,
+  hostPlayhead,
   joinAsGuest,
   leaveCurrentLounge,
   resumeLounge,
@@ -43,8 +50,9 @@ const SYNC_MS = 1000;
 const HERE_MS = 90_000;
 
 /**
- * The Listening Lounge: a host plays their AI DJ set and friends and family hear the same song
- * at the same moment, react and request songs. Stays mounted while the Music Hub is open so a
+ * The Listening Lounge: a host plays their music (Music Hub, Automix or the AI DJ) and friends
+ * and family hear the same song at the same moment, react and request songs. Anyone in the
+ * lounge can request; the host plays a request next with one tap. Stays mounted while the Music Hub is open so a
  * guest keeps listening on other tabs.
  */
 export function MusicLounge({ visible }: { visible: boolean }) {
@@ -128,7 +136,6 @@ function LoungeLobby({
   visible: boolean;
 }) {
   const t = useT();
-  const dj = useDj();
   const invites = useLoungeInvites();
   const [title, setTitle] = useState("");
   const [code, setCode] = useState("");
@@ -142,12 +149,12 @@ function LoungeLobby({
   }, [visible]);
 
   const who = name.trim();
-  const djOn = !!dj.vibe && dj.tracks.length > 0;
+  const art = useLoungeArt();
 
   return (
     <>
       <header className="music-lounge-hero">
-        <Headphones size={30} />
+        {art ? <img className="music-lounge-art" src={art} alt="" /> : <Headphones size={30} />}
         <div>
           <h2>{t("Listening Lounge")}</h2>
           <p>
@@ -216,9 +223,9 @@ function LoungeLobby({
             <Radio size={15} /> {t("Host a lounge")}
           </h3>
           <p className="music-friends-muted">
-            {djOn
-              ? t("Your lounge plays your AI DJ set: {vibe}.", { vibe: dj.vibe?.name ?? "" })
-              : t("Your lounge plays whatever your AI DJ plays. Pick a vibe there first.")}
+            {t(
+              "Your lounge plays what you play: the Music Hub, Integrated Automix or Ask JL. Everyone can request songs.",
+            )}
           </p>
           <form
             className="music-friends-form"
@@ -227,7 +234,7 @@ function LoungeLobby({
               void run(() =>
                 hostLounge(
                   title.trim() || t("{name}'s Lounge", { name: who }),
-                  dj.vibe?.name ?? null,
+                  djState().vibe?.name ?? null,
                   who,
                 ),
               );
@@ -244,15 +251,6 @@ function LoungeLobby({
               {t("Open lounge")}
             </button>
           </form>
-          {!djOn && (
-            <button
-              type="button"
-              className="music-lounge-link"
-              onClick={() => requestMusicTab("dj")}
-            >
-              <Sparkles size={14} /> {t("Go to AI DJ")}
-            </button>
-          )}
         </section>
 
         <section className="music-friends-card">
@@ -401,7 +399,7 @@ function LoungeRoom() {
           <h3>{host ? t("Requests") : t("Request a song")}</h3>
           {!host && (
             <p className="music-friends-muted">
-              {t("Name a song, an artist or a vibe. The host's DJ picks it up.")}
+              {t("Type Artist - Song (or a vibe). The host can play it next.")}
             </p>
           )}
           {requests.length === 0 ? (
@@ -415,20 +413,32 @@ function LoungeRoom() {
                     <em>{r.display_name}</em>
                   </span>
                   {host && (
-                    <button
-                      type="button"
-                      disabled={asked.includes(r.id)}
-                      onClick={() => {
-                        setAsked((a) => [...a, r.id]);
-                        void requestDj(
-                          `A listener asked for: ${r.body}`,
-                          settings.musicStyles ?? [],
-                        );
-                      }}
-                    >
-                      {asked.includes(r.id) ? <Check size={14} /> : <Sparkles size={14} />}
-                      {asked.includes(r.id) ? t("Asked") : t("Ask the DJ")}
-                    </button>
+                    <span className="music-lounge-request-actions">
+                      <button
+                        type="button"
+                        disabled={asked.includes(r.id)}
+                        onClick={() => {
+                          setAsked((a) => [...a, r.id]);
+                          playNext([requestTrack(r.body)]);
+                        }}
+                      >
+                        {asked.includes(r.id) ? <Check size={14} /> : <Play size={14} />}
+                        {asked.includes(r.id) ? t("Queued") : t("Play next")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={asked.includes(-r.id)}
+                        onClick={() => {
+                          setAsked((a) => [...a, -r.id]);
+                          void requestDj(
+                            `A listener asked for: ${r.body}`,
+                            settings.musicStyles ?? [],
+                          );
+                        }}
+                      >
+                        <Sparkles size={14} /> {t("Ask the DJ")}
+                      </button>
+                    </span>
                   )}
                 </li>
               ))}
@@ -518,7 +528,8 @@ function NowCard({ lounge, note }: { lounge: Lounge; note: string }) {
 /** The host hears the DJ decks; this shows what guests are hearing. */
 function HostStage({ lounge }: { lounge: Lounge }) {
   const t = useT();
-  const playing = !!readPlayhead();
+  usePlayer();
+  const playing = !!hostPlayhead();
   return (
     <>
       <NowCard
@@ -527,13 +538,17 @@ function HostStage({ lounge }: { lounge: Lounge }) {
           playing
             ? lounge.paused_at
               ? t("Paused for everyone")
-              : t("Everyone hears this from your AI DJ")
-            : t("Start your AI DJ and the lounge hears it too.")
+              : t("Everyone hears what you're playing")
+            : t("Play something in the Music Hub, Automix or Ask JL and the lounge hears it too.")
         }
       />
       {!playing && (
-        <button type="button" className="music-lounge-tune" onClick={() => requestMusicTab("dj")}>
-          <Sparkles size={16} /> {t("Go to AI DJ")}
+        <button
+          type="button"
+          className="music-lounge-tune"
+          onClick={() => requestMusicTab("forYou")}
+        >
+          <Play size={16} /> {t("Go to the Music Hub")}
         </button>
       )}
     </>
@@ -789,4 +804,40 @@ function InviteDialog({ lounge, onClose }: { lounge: Lounge; onClose: () => void
       </div>
     </div>
   );
+}
+
+/** A request ("Artist - Song", or anything else) as a song for the shared player to find. */
+function requestTrack(body: string) {
+  const [artist, ...rest] = body.split(/\s+[-–—]\s+/);
+  const title = rest.join(" - ").trim();
+  return title
+    ? { source: "song" as const, artist: artist.trim(), title, art: null }
+    : { source: "song" as const, artist: "", title: body.trim(), art: null };
+}
+
+/**
+ * Big art for the lounge: what's playing now, else the first playlist of the main service
+ * (YouTube Music or Spotify, whichever the listener chose).
+ */
+function useLoungeArt(): string | null {
+  const player = usePlayer();
+  const links = useMusicLinks();
+  const youtube = useYouTubeWeb();
+  const spotify = useSpotifyWeb();
+  const [fallback, setFallback] = useState<string | null>(null);
+  const playing = player.queue[player.index]?.art ?? null;
+  const main = links.main ?? "youtube";
+  useEffect(() => {
+    if (playing) return;
+    const connected = { youtube: youtube.connected, spotify: spotify.connected };
+    if (!connected[main]) return;
+    let live = true;
+    void loadHubLibrary({ ...connected, [main === "youtube" ? "spotify" : "youtube"]: false }, main)
+      .then((lib) => live && setFallback(lib.playlists.find((p) => p.image)?.image ?? null))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [playing, main, youtube.connected, spotify.connected]);
+  return playing ?? fallback;
 }

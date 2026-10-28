@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { readPlayhead } from "../dj/playhead";
+import { pausePlayer, playerPlayhead } from "../player/store";
 import {
   createLounge,
   endLounge,
@@ -21,8 +22,8 @@ import { clockOffset } from "./sync";
 
 /**
  * The lounge you're in. Every couple of seconds it reads the lounge (what's on), new events
- * (reactions, requests, chat) and, now and then, who's here. A host also writes what the DJ
- * decks are playing so guests can line up.
+ * (reactions, requests, chat) and, now and then, who's here. A host also writes what they're
+ * playing (the shared player, or the AI DJ's decks) so guests can line up.
  */
 
 export type LoungeState = {
@@ -92,9 +93,12 @@ async function measureOffset(): Promise<number> {
   }
 }
 
-/** The host's decks → the lounge row, when the song, pause or position changed. */
+/** What the host plays now: the shared player's song, else the AI DJ's. */
+export const hostPlayhead = () => playerPlayhead() ?? readPlayhead();
+
+/** The host's player → the lounge row, when the song, pause or position changed. */
 async function publish(lounge: Lounge): Promise<void> {
-  const head = readPlayhead();
+  const head = hostPlayhead();
   const now = Date.now() + state.offset;
   const startedAt = head ? Math.round(now - head.position * 1000) : null;
   const pausedAt = head?.paused ? now : null;
@@ -212,7 +216,16 @@ export async function resumeLounge(lounge: Lounge, name: string): Promise<void> 
 export async function joinAsGuest(codeOrId: string, name: string): Promise<void> {
   const id = await joinLounge(codeOrId, name);
   const lounge = await getLounge(id);
-  await enter(id, name, lounge?.host === me() ? "host" : "guest");
+  const host = lounge?.host === me();
+  // A guest hears the host's song; their own music pauses.
+  if (!host) pausePlayer();
+  await enter(id, name, host ? "host" : "guest");
+}
+
+/** Enter a lounge already joined on the server (from a friend's card in Friends). */
+export async function enterAsGuest(loungeId: string, name: string): Promise<void> {
+  pausePlayer();
+  await enter(loungeId, name, "guest");
 }
 
 /** A host closes the lounge for everyone; a guest just leaves. */

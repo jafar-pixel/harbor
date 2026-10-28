@@ -136,6 +136,25 @@ export function usePlayer(): PlayerState {
 
 export const currentTrack = (): PlayerTrack | null => state.queue[state.index] ?? null;
 
+/** What the shared player plays as a YouTube video (what a Lounge can share), or null. */
+export function playerPlayhead(): {
+  videoId: string;
+  artist: string;
+  title: string;
+  position: number;
+  paused: boolean;
+} | null {
+  const track = currentTrack();
+  if (!track?.videoId || state.loading || state.duration === 0) return null;
+  return {
+    videoId: track.videoId,
+    artist: track.artist,
+    title: track.title,
+    position: state.position,
+    paused: !state.playing,
+  };
+}
+
 // ---- Finding something playable --------------------------------------------------------------
 
 const matched = new Map<string, string | null>();
