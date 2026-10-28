@@ -1,11 +1,7 @@
 {
   "name": "JL Neon City",
   "blurb": "Electric pink and blue city lights.",
-  "swatch": [
-    "#0d0618",
-    "#1f1033",
-    "#ff3fa4"
-  ],
+  "swatch": ["#0d0618", "#1f1033", "#ff3fa4"],
   "tokens": {
     "--color-canvas": "#0d0618",
     "--color-surface": "#160b26",

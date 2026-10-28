@@ -1,11 +1,7 @@
 {
   "name": "JL Ocean Deep",
   "blurb": "Cool teal and navy, calm for long nights.",
-  "swatch": [
-    "#06141f",
-    "#10293b",
-    "#2fd0ff"
-  ],
+  "swatch": ["#06141f", "#10293b", "#2fd0ff"],
   "tokens": {
     "--color-canvas": "#06141f",
     "--color-surface": "#0b1e2c",

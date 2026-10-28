@@ -1,11 +1,7 @@
 {
   "name": "JL Arctic Clear",
   "blurb": "Bright icy blues, the clearest of the set.",
-  "swatch": [
-    "#0c1724",
-    "#18293b",
-    "#7cc4ff"
-  ],
+  "swatch": ["#0c1724", "#18293b", "#7cc4ff"],
   "tokens": {
     "--color-canvas": "#0c1724",
     "--color-surface": "#12202f",

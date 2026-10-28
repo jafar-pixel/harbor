@@ -1,11 +1,7 @@
 {
   "name": "JL Forest Glass",
   "blurb": "Deep greens under soft frosted light.",
-  "swatch": [
-    "#08130d",
-    "#14281b",
-    "#4fd18b"
-  ],
+  "swatch": ["#08130d", "#14281b", "#4fd18b"],
   "tokens": {
     "--color-canvas": "#08130d",
     "--color-surface": "#0e1d14",

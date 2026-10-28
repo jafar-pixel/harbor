@@ -1,11 +1,7 @@
 {
   "name": "JL Sunset Glass",
   "blurb": "Warm orange and violet dusk behind frosted panels.",
-  "swatch": [
-    "#1a0f1f",
-    "#2f1c35",
-    "#ff7a1a"
-  ],
+  "swatch": ["#1a0f1f", "#2f1c35", "#ff7a1a"],
   "tokens": {
     "--color-canvas": "#1a0f1f",
     "--color-surface": "#241529",

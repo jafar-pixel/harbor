@@ -1,11 +1,7 @@
 {
   "name": "JL Midnight Gold",
   "blurb": "Black and gold, a private screening room.",
-  "swatch": [
-    "#0b0a08",
-    "#1f1b15",
-    "#e8b84a"
-  ],
+  "swatch": ["#0b0a08", "#1f1b15", "#e8b84a"],
   "tokens": {
     "--color-canvas": "#0b0a08",
     "--color-surface": "#15130f",
