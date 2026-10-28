@@ -125,12 +125,14 @@ const PRO_ROOM_CSS = `
   --radius-lg: 22px;
   --radius-xl: 30px;
   --radius-2xl: 40px;
-  --vision-glass: rgb(255 255 255 / 0.09);
+  --vision-glass: rgb(255 255 255 / 0.12);
   --vision-glass-strong: rgb(38 42 54 / 0.78);
   --vision-rim: rgb(255 255 255 / 0.22);
   --vision-rim-top: rgb(255 255 255 / 0.45);
-  --vision-window: rgb(40 44 58 / 0.48);
-  --vision-blur: blur(48px) saturate(185%);
+  /* Clear glass: a light, barely tinted pane with a soft blur, so the room shines through. */
+  --vision-window: rgb(18 22 32 / 0.16);
+  --vision-blur: blur(10px) saturate(150%) brightness(1.04);
+  --vision-panel-blur: blur(18px) saturate(160%);
   --vision-window-gap: 18px;
   /* Secondary text is brighter than on a dark canvas so it reads on glass over a bright room. */
   --color-ink-muted: oklch(0.92 0.015 255) !important;
@@ -154,7 +156,7 @@ html [data-harbor-native-backdrop]:is(:has(> aside[data-harbor-sidebar]), :has(m
   z-index: -1;
   border-radius: inherit;
   background:
-    linear-gradient(160deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0) 45%),
+    linear-gradient(160deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0) 40%),
     var(--vision-window);
   backdrop-filter: var(--vision-blur);
   -webkit-backdrop-filter: var(--vision-blur);
@@ -163,7 +165,7 @@ html [data-harbor-native-backdrop]:is(:has(> aside[data-harbor-sidebar]), :has(m
 
 /* The sidebar is part of the window, not a window of its own. */
 html aside[data-harbor-sidebar] {
-  background: transparent !important;
+  background: rgb(18 22 32 / 0.14) !important;
   border-color: rgb(255 255 255 / 0.12) !important;
   border-start-start-radius: 40px;
   border-end-start-radius: 40px;
@@ -193,6 +195,12 @@ html .bg-elevated:not(button):not(.no-glass) {
   background-color: var(--vision-glass) !important;
   border-color: var(--vision-rim);
   box-shadow: inset 0 1px 0 var(--vision-rim-top);
+}
+
+/* Big panels inside the clear window get their own light frost so text reads over the room. */
+html [data-harbor-native-backdrop] :is(.rounded-2xl, .rounded-3xl):is(.bg-surface, .bg-elevated):not(button) {
+  backdrop-filter: var(--vision-panel-blur);
+  -webkit-backdrop-filter: var(--vision-panel-blur);
 }
 
 /* Dialogs, menus and lists float above the window as their own denser glass. */
@@ -237,18 +245,21 @@ html [data-media-card] {
 
 /* Text stays crisp over a bright room. */
 html [data-harbor-native-backdrop] {
-  text-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
+  text-shadow:
+    0 0 1px rgb(0 0 0 / 0.35),
+    0 1px 8px rgb(0 0 0 / 0.5);
 }
 
-/* Android TV: no blur (too costly on TV chips); the window is a denser tint instead. */
+/* Android TV: no blur (too costly on TV chips). */
 html[data-tv-app] *,
 html[data-tv-app] *::before {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 html[data-tv-app] {
-  --vision-window: rgb(40 44 58 / 0.78);
-  --vision-glass: rgb(255 255 255 / 0.1);
+  /* No blur on TV chips: a light tint keeps the room clear, cards carry a little more. */
+  --vision-window: rgb(16 20 30 / 0.22);
+  --vision-glass: rgb(14 18 28 / 0.4);
 }
 `;
 
