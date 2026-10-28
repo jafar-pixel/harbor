@@ -5,6 +5,7 @@ import { BUG_REPORTS_ENABLED, submitErrorReport } from "@/lib/bug-report";
 import { loadStartupCrashReport, startupCrashToHarborError } from "@/lib/startup-crash";
 import { isStaleTauriListenerError } from "@/lib/tauri-unlisten";
 import { t as translate, useT } from "@/lib/i18n";
+import { isStaleBuildError, reloadForNewBuild } from "@/lib/stale-build";
 
 export type HarborError = {
   code: string;
@@ -55,6 +56,13 @@ export function ErrorView() {
     let cancelled = false;
     const onError = (e: Event) => {
       const ce = e as CustomEvent<HarborError>;
+      // A tab left open across a web deploy: reload into the new build instead of erroring.
+      if (
+        !("__TAURI_INTERNALS__" in window) &&
+        isStaleBuildError(`${ce.detail?.message ?? ""} ${ce.detail?.detail ?? ""}`) &&
+        reloadForNewBuild()
+      )
+        return;
       setError(ce.detail);
     };
     const onWindowError = (e: ErrorEvent) => {
@@ -266,7 +274,9 @@ export function ErrorView() {
                 {t("Could not send: {message}", { message: report.message })}
               </span>
             ) : (
-              t("Sends the context above straight to the JL Media Vision team. No keys or library data.")
+              t(
+                "Sends the context above straight to the JL Media Vision team. No keys or library data.",
+              )
             )}
           </p>
         )}
