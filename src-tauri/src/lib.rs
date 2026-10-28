@@ -129,6 +129,7 @@ mod thumbs;
 mod trailer;
 #[cfg(desktop)]
 mod tray;
+mod web_cache;
 #[cfg(desktop)]
 mod webview_helpers;
 #[cfg(windows)]
@@ -728,6 +729,11 @@ pub fn run() {
     mpv_render_linux::configure_linux_graphics();
     #[cfg(windows)]
     win_graphics::configure_windows_graphics();
+    let context = tauri::generate_context!();
+    web_cache::clear_after_update(
+        &context.config().identifier,
+        context.config().version.as_deref().unwrap_or(env!("CARGO_PKG_VERSION")),
+    );
     let _ = rustls::crypto::ring::default_provider().install_default();
     trailer::sweep_cache();
     std::thread::spawn(trailer::sweep_ytdlp_extractions);
@@ -1522,7 +1528,7 @@ pub fn run() {
             deeplink_is_stremio_registered,
             harbor_take_pending_file,
         ])
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             if matches!(event, tauri::RunEvent::Exit) {

@@ -91,7 +91,15 @@ export async function browseThemes(sort = "top", q = ""): Promise<StoreTheme[]> 
     throw new Error(
       "The community theme library isn't reachable right now. You can still install themes from GitHub.",
     );
-  const d = await r.json();
+  // The library's server can answer with a web page instead of its theme list.
+  let d: { themes?: Record<string, unknown>[] };
+  try {
+    d = (await r.json()) as { themes?: Record<string, unknown>[] };
+  } catch {
+    throw new Error(
+      "The community theme library isn't available right now. You can still install themes from GitHub.",
+    );
+  }
   return (d.themes || []).map(normalize);
 }
 
