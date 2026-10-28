@@ -1,3 +1,4 @@
+import { currentTrack, playerState } from "./player/store";
 import { useEffect, useSyncExternalStore } from "react";
 import { jlAccountContext, jlRest, subscribeJlSession } from "@/lib/jl/account/client";
 import { osClass } from "@/lib/platform";
@@ -82,7 +83,8 @@ type Snapshot = Omit<
   "device_id" | "device_name" | "device_kind" | "updated_at"
 > | null;
 
-/** What this device plays right now: the AI DJ when it's on, otherwise the music player. */
+/** What this device plays right now: the AI DJ when it's on, else the shared web player, else
+ * the desktop music player. */
 function snapshot(): Snapshot {
   const head = readPlayhead();
   if (head)
@@ -96,6 +98,28 @@ function snapshot(): Snapshot {
       duration_s: null,
       paused: head.paused,
     };
+  // The shared web player (Music Hub, Automix, Lounge requests).
+  const shared = currentTrack();
+  const player = playerState();
+  if (shared && player.index >= 0 && (player.playing || player.position > 0)) {
+    const sharedArt =
+      shared.art && /^https?:/.test(shared.art)
+        ? shared.art
+        : shared.videoId
+          ? `https://i.ytimg.com/vi/${shared.videoId}/hqdefault.jpg`
+          : null;
+    return {
+      title: shared.title.slice(0, 160) || "Untitled",
+      artist: shared.artist.slice(0, 120),
+      art: sharedArt && sharedArt.length <= 600 ? sharedArt : null,
+      video_id:
+        shared.videoId && /^[A-Za-z0-9_-]{11}$/.test(shared.videoId) ? shared.videoId : null,
+      source: "music",
+      position_s: Math.max(0, player.position),
+      duration_s: player.duration || null,
+      paused: !player.playing,
+    };
+  }
   const music = getMusicState();
   const track = music.current;
   if (!track || (music.phase !== "playing" && music.phase !== "paused")) return null;
