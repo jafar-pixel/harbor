@@ -3591,3 +3591,17 @@
 .sports-hub .sh-lead-experiences:empty {
   display: none;
 }
+
+/* Teams tab: the games of the teams you follow. */
+.sh-teams {
+  display: grid;
+  gap: 24px;
+}
+.sh-teams-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-ink-muted);
+}
