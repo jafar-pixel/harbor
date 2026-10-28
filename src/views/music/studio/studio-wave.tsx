@@ -120,6 +120,8 @@ export function DeckOverview({ deck }: { deck: StudioDeck }) {
       const dpr = window.devicePixelRatio || 1;
       const w = el.clientWidth;
       const h = el.clientHeight;
+      // Hidden (the video decks are showing): nothing to draw until it's back.
+      if (!w || !h) return;
       const g = el.getContext("2d");
       if (!g) return;
       if (
