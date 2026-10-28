@@ -46,6 +46,9 @@ const MACHINE_ONLY = new Set<string>([
   "traktAccessToken",
   "traktRefreshToken",
   "traktExpiresAt",
+  // The look stays with the device: an account's older saved theme must not replace the one this
+  // device shows (it turned the Windows app back to an old theme at every sign in).
+  "theme",
 ]);
 
 /** Synced elsewhere: service keys and IPTV logins (every device), and the profile preferences. */

@@ -3,6 +3,7 @@ import { Check, FolderGit2, Plus, Trash2 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import {
   installGitHubTheme,
+  isJlSource,
   listGitHubThemes,
   parseGitHubSource,
   readGitHubSources,
@@ -131,19 +132,21 @@ export function GitHubThemes() {
                 aria-selected={i === active}
                 onClick={() => setActive(i)}
               >
-                {sourceLabel(s)}
+                {isJlSource(s) ? t("JL Media Vision themes") : sourceLabel(s)}
               </button>
-              <button
-                type="button"
-                aria-label={t("Remove {name}", { name: sourceLabel(s) })}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-ink-subtle hover:text-ink"
-                onClick={() => {
-                  save(sources.filter((_, j) => j !== i));
-                  setActive(0);
-                }}
-              >
-                <Trash2 size={13} />
-              </button>
+              {!isJlSource(s) && (
+                <button
+                  type="button"
+                  aria-label={t("Remove {name}", { name: sourceLabel(s) })}
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-ink-subtle hover:text-ink"
+                  onClick={() => {
+                    save(sources.filter((_, j) => j !== i));
+                    setActive(0);
+                  }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
             </span>
           ))}
         </div>

@@ -1,0 +1,28 @@
+{
+  "name": "JL Ocean Deep",
+  "blurb": "Cool teal and navy, calm for long nights.",
+  "swatch": [
+    "#06141f",
+    "#10293b",
+    "#2fd0ff"
+  ],
+  "tokens": {
+    "--color-canvas": "#06141f",
+    "--color-surface": "#0b1e2c",
+    "--color-elevated": "#10293b",
+    "--color-raised": "#16354b",
+    "--color-ink": "#f6f7fb",
+    "--color-ink-muted": "#d5d9e4",
+    "--color-ink-subtle": "#a3aabb",
+    "--color-edge": "rgba(255,255,255,0.18)",
+    "--color-edge-soft": "rgba(255,255,255,0.1)",
+    "--color-accent": "#2fd0ff",
+    "--color-accent-soft": "rgba(47,208,255,0.22)",
+    "--color-danger": "#ef4c4c"
+  },
+  "cardStyle": "glass",
+  "background": {
+    "image": "linear-gradient(160deg,#0f4c75 0%,#0b2b40 50%,#04121c 100%)",
+    "dim": 0
+  }
+}

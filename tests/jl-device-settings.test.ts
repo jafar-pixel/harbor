@@ -36,17 +36,17 @@ test("machine paths, keys and profile preferences stay out of the device snapsho
     },
     { sidebarCollapsed: false, homeMode: "classic", theme: { preset: "default" } },
   );
-  assert.deepEqual(Object.keys(values).sort(), ["sidebarCollapsed", "theme"]);
-  assert.equal(values.theme.includes("backgroundImage"), false);
+  assert.deepEqual(Object.keys(values).sort(), ["sidebarCollapsed"]);
 });
 
-test("the theme keeps this device's background image when applied", () => {
+test("the theme stays with the device: an account's saved theme is never applied", () => {
+  assert.equal(isDeviceSetting("theme"), false);
   const patch = devicePatch(
     { theme: JSON.stringify({ preset: "jl" }), sidebarCollapsed: "" },
     { theme: { preset: "old", backgroundImage: "local.png" }, sidebarCollapsed: true },
     { sidebarCollapsed: false },
   );
-  assert.deepEqual(patch.theme, { preset: "jl", backgroundImage: "local.png" });
+  assert.equal(patch.theme, undefined);
   assert.equal(patch.sidebarCollapsed, false);
 });
 
@@ -79,18 +79,18 @@ test("a new kind of device starts from another kind's setup, minus player and in
   assert.equal(carriesAcrossDevices("playerEngine"), false);
   assert.equal(carriesAcrossDevices("tvNavigation"), false);
   assert.equal(carriesAcrossDevices("playerTitleScale"), true);
-  assert.equal(carriesAcrossDevices("theme"), true);
+  assert.equal(carriesAcrossDevices("homeMode"), true);
   assert.equal(carriesAcrossDevices("sportsLeagues"), true);
   const seed = seedDeviceValues("web", {
-    desktop: { theme: '{"preset":"jl"}', playerEngine: '"mpv"', sidebarCollapsed: "true" },
+    desktop: { homeMode: '"hero"', playerEngine: '"mpv"', sidebarCollapsed: "true" },
   });
-  assert.deepEqual(seed, { theme: '{"preset":"jl"}' });
+  assert.deepEqual(seed, { homeMode: '"hero"' });
   assert.deepEqual(seedDeviceValues("android", {}), {});
 });
 
 test("snapshots round-trip and ignore damaged or foreign entries", () => {
-  const raw = encodeDeviceSnapshot({ theme: "{}", downloadDir: '"x"' });
-  assert.deepEqual(decodeDeviceSnapshot(raw), { theme: "{}" });
+  const raw = encodeDeviceSnapshot({ homeMode: '"hero"', downloadDir: '"x"' });
+  assert.deepEqual(decodeDeviceSnapshot(raw), { homeMode: '"hero"' });
   assert.deepEqual(decodeDeviceSnapshot("not json"), {});
   assert.deepEqual(decodeDeviceSnapshot(undefined), {});
 });

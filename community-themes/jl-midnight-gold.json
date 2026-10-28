@@ -1,0 +1,28 @@
+{
+  "name": "JL Midnight Gold",
+  "blurb": "Black and gold, a private screening room.",
+  "swatch": [
+    "#0b0a08",
+    "#1f1b15",
+    "#e8b84a"
+  ],
+  "tokens": {
+    "--color-canvas": "#0b0a08",
+    "--color-surface": "#15130f",
+    "--color-elevated": "#1f1b15",
+    "--color-raised": "#2a251c",
+    "--color-ink": "#f6f7fb",
+    "--color-ink-muted": "#d5d9e4",
+    "--color-ink-subtle": "#a3aabb",
+    "--color-edge": "rgba(255,255,255,0.18)",
+    "--color-edge-soft": "rgba(255,255,255,0.1)",
+    "--color-accent": "#e8b84a",
+    "--color-accent-soft": "rgba(232,184,74,0.22)",
+    "--color-danger": "#ef4c4c"
+  },
+  "cardStyle": "glass",
+  "background": {
+    "image": "linear-gradient(150deg,#2a2112 0%,#0e0c09 60%,#000000 100%)",
+    "dim": 0
+  }
+}

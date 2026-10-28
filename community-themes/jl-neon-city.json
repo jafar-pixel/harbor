@@ -1,0 +1,28 @@
+{
+  "name": "JL Neon City",
+  "blurb": "Electric pink and blue city lights.",
+  "swatch": [
+    "#0d0618",
+    "#1f1033",
+    "#ff3fa4"
+  ],
+  "tokens": {
+    "--color-canvas": "#0d0618",
+    "--color-surface": "#160b26",
+    "--color-elevated": "#1f1033",
+    "--color-raised": "#291642",
+    "--color-ink": "#f6f7fb",
+    "--color-ink-muted": "#d5d9e4",
+    "--color-ink-subtle": "#a3aabb",
+    "--color-edge": "rgba(255,255,255,0.18)",
+    "--color-edge-soft": "rgba(255,255,255,0.1)",
+    "--color-accent": "#ff3fa4",
+    "--color-accent-soft": "rgba(255,63,164,0.22)",
+    "--color-danger": "#ef4c4c"
+  },
+  "cardStyle": "glass",
+  "background": {
+    "image": "linear-gradient(135deg,#ff3fa4 0%,#5b2bd8 50%,#0a1a5c 100%)",
+    "dim": 0
+  }
+}

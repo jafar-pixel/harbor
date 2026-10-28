@@ -1,0 +1,28 @@
+{
+  "name": "JL Forest Glass",
+  "blurb": "Deep greens under soft frosted light.",
+  "swatch": [
+    "#08130d",
+    "#14281b",
+    "#4fd18b"
+  ],
+  "tokens": {
+    "--color-canvas": "#08130d",
+    "--color-surface": "#0e1d14",
+    "--color-elevated": "#14281b",
+    "--color-raised": "#1a3423",
+    "--color-ink": "#f6f7fb",
+    "--color-ink-muted": "#d5d9e4",
+    "--color-ink-subtle": "#a3aabb",
+    "--color-edge": "rgba(255,255,255,0.18)",
+    "--color-edge-soft": "rgba(255,255,255,0.1)",
+    "--color-accent": "#4fd18b",
+    "--color-accent-soft": "rgba(79,209,139,0.22)",
+    "--color-danger": "#ef4c4c"
+  },
+  "cardStyle": "glass",
+  "background": {
+    "image": "linear-gradient(160deg,#1f5132 0%,#0c2416 55%,#040d07 100%)",
+    "dim": 0
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "JL Sunset Glass",
+  "blurb": "Warm orange and violet dusk behind frosted panels.",
+  "swatch": [
+    "#1a0f1f",
+    "#2f1c35",
+    "#ff7a1a"
+  ],
+  "tokens": {
+    "--color-canvas": "#1a0f1f",
+    "--color-surface": "#241529",
+    "--color-elevated": "#2f1c35",
+    "--color-raised": "#3b2442",
+    "--color-ink": "#f6f7fb",
+    "--color-ink-muted": "#d5d9e4",
+    "--color-ink-subtle": "#a3aabb",
+    "--color-edge": "rgba(255,255,255,0.18)",
+    "--color-edge-soft": "rgba(255,255,255,0.1)",
+    "--color-accent": "#ff7a1a",
+    "--color-accent-soft": "rgba(255,122,26,0.22)",
+    "--color-danger": "#ef4c4c"
+  },
+  "cardStyle": "glass",
+  "background": {
+    "image": "linear-gradient(135deg,#ff7a1a 0%,#a83279 45%,#2b1055 100%)",
+    "dim": 0
+  }
+}
