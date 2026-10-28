@@ -14,6 +14,8 @@ export type ChannelStat = {
   sourceId: string;
   count: number;
   lastAt: number;
+  /** The channel's own request headers (user agent, referrer), to play it again from here. */
+  attrs?: Record<string, string>;
 };
 
 let cache: Record<string, ChannelStat> | null = null;
@@ -63,6 +65,7 @@ export function recordChannelPlay(ch: IptvChannel): void {
     sourceId: ch.id.split("::")[0] ?? "",
     count: (prev?.count ?? 0) + 1,
     lastAt: Date.now(),
+    attrs: ch.attrs,
   };
   persist(prune(map));
 }
@@ -116,4 +119,19 @@ export function useChannelStatsVersion(): number {
     () => version,
     () => version,
   );
+}
+
+/** A channel to play again from its saved stats. */
+export function channelFromStat(s: ChannelStat): IptvChannel {
+  return {
+    id: s.id,
+    tvgId: null,
+    name: s.name,
+    logo: s.logo,
+    group: s.group,
+    url: s.url,
+    catchupSource: null,
+    durationSec: null,
+    attrs: s.attrs ?? {},
+  };
 }

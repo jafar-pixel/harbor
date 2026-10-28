@@ -4,6 +4,7 @@ import { pauseDj } from "../dj/playhead";
 import { pickVideo } from "../dj/vibes";
 import { PlayerEngine } from "./engine";
 import { trackKey, type Playable, type PlayerTrack, type RepeatMode } from "./types";
+import { recordRecentSong } from "./recent";
 
 /**
  * The shared web player: one queue for the whole Music Hub (playlists, search, Automix, the
@@ -552,6 +553,7 @@ export function closePlayer(): void {
 
 function announce() {
   const track = currentTrack();
+  if (track) recordRecentSong(track);
   claimMediaKeys();
   const session = typeof navigator !== "undefined" ? navigator.mediaSession : undefined;
   if (!session || !track || typeof MediaMetadata === "undefined") return;
