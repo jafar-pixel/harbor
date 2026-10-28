@@ -122,7 +122,7 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
   "cool-grey": {
     id: "cool-grey",
     name: "JL Media Vision Pro",
-    blurb: "What ships out of the box: navy glass over a real environment of your choice.",
+    blurb: "What ships out of the box: one frosted-glass window in a bright, real environment.",
     logo: { mark: jlMark, wordmark: jlWordmark },
     previewImage: jlHero,
     swatch: ["#060d1f", "#2f86ff", "#ff7a1a"],
