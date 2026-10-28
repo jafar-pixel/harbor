@@ -20,9 +20,12 @@ import "./music-styles.css";
 export function MusicStyles({
   onBack,
   initialGenre,
+  embedded = false,
 }: {
   onBack: () => void;
   initialGenre?: string;
+  /** Shown inside Settings: no Back button. */
+  embedded?: boolean;
 }) {
   const t = useT();
   const { settings, update } = useSettings();
@@ -58,10 +61,12 @@ export function MusicStyles({
 
   return (
     <section className="music-styles">
-      <button type="button" className="music-styles-back" data-music-inner-back onClick={onBack}>
-        <ChevronLeft className="dir-icon" size={18} />
-        {t("Back")}
-      </button>
+      {!embedded && (
+        <button type="button" className="music-styles-back" data-music-inner-back onClick={onBack}>
+          <ChevronLeft className="dir-icon" size={18} />
+          {t("Back")}
+        </button>
+      )}
 
       <nav className="music-styles-genres" aria-label={t("Genres")}>
         {STYLE_GENRES.map((g) => {
