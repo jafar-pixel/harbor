@@ -138,7 +138,7 @@ const PRO_ROOM_CSS = `
 }
 
 /* The one floating window. */
-html [data-harbor-native-backdrop]:has(> aside[data-harbor-sidebar]) {
+html [data-harbor-native-backdrop]:is(:has(> aside[data-harbor-sidebar]), :has(main[data-live-page])) {
   margin: var(--vision-window-gap);
   height: calc(100% - var(--vision-window-gap) * 2);
   border-radius: 40px;
@@ -147,7 +147,7 @@ html [data-harbor-native-backdrop]:has(> aside[data-harbor-sidebar]) {
     inset 0 0 0 1px var(--vision-rim),
     0 40px 120px rgb(0 0 0 / 0.35);
 }
-html [data-harbor-native-backdrop]:has(> aside[data-harbor-sidebar])::before {
+html [data-harbor-native-backdrop]:is(:has(> aside[data-harbor-sidebar]), :has(main[data-live-page]))::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -175,11 +175,11 @@ html aside[data-harbor-sidebar] [data-active="true"] {
 }
 
 /* Pages inside the window show the glass, not a solid canvas; fields stay readable. */
-html [data-harbor-native-backdrop]:has(> aside[data-harbor-sidebar]) .bg-canvas:not(.fixed),
-html [data-harbor-native-backdrop]:has(> aside[data-harbor-sidebar]) main {
+html [data-harbor-native-backdrop]:is(:has(> aside[data-harbor-sidebar]), :has(main[data-live-page])) .bg-canvas:not(.fixed),
+html [data-harbor-native-backdrop]:is(:has(> aside[data-harbor-sidebar]), :has(main[data-live-page])) main {
   background-color: transparent !important;
 }
-html [data-harbor-native-backdrop]:has(> aside[data-harbor-sidebar]) :is(input, textarea, select).bg-canvas {
+html [data-harbor-native-backdrop]:is(:has(> aside[data-harbor-sidebar]), :has(main[data-live-page])) :is(input, textarea, select).bg-canvas {
   background-color: rgb(255 255 255 / 0.1) !important;
 }
 /* The sidebar's scroll fades were painted in the canvas colour; the glass needs none. */
@@ -211,10 +211,10 @@ html .glass-card {
     0 30px 80px rgb(0 0 0 / 0.4);
 }
 
-/* Buttons and chips: round glass capsules. */
-html button.rounded-lg,
-html button.rounded-md,
-html a.rounded-lg {
+/* Buttons and chips: round glass capsules. Cards (artwork tiles) keep their corners. */
+html button.rounded-lg:not([class*="aspect-"]),
+html button.rounded-md:not([class*="aspect-"]),
+html a.rounded-lg:not([class*="aspect-"]) {
   border-radius: 999px;
 }
 html button.bg-elevated,
