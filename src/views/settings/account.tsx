@@ -14,15 +14,17 @@ import { SettingsScopeCard } from "./account/settings-scope-card";
 import { StremioCard } from "./account/stremio-card";
 import { SyncedAddonsCard } from "./account/synced-addons-card";
 import { HarborAccountPanel } from "@/views/account/harbor-account-panel";
+import { MusicStyles } from "@/views/music/music-styles";
 
 // Keep persisted tab IDs and deep links compatible with earlier releases.
-type Tab = "you" | "profiles" | "harbor" | "stremio";
+type Tab = "you" | "profiles" | "music" | "harbor" | "stremio";
 export function AccountStub() {
   const t = useT();
   const [tab, setTab] = useState<Tab>("stremio");
   const tabs = [
     { id: "you", label: t("Your profile") },
     { id: "profiles", label: t("Profiles") },
+    { id: "music", label: t("Music") },
     { id: "stremio", label: t("JL account") },
     { id: "harbor", label: t("Community account") },
   ];
@@ -31,6 +33,16 @@ export function AccountStub() {
     <div key={tab} className="harbor-cascade flex flex-col gap-10">
       {tab === "you" && <IdentityTab />}
       {tab === "profiles" && <ProfilesTab />}
+      {tab === "music" && (
+        <Section
+          title={t("Your music style")}
+          subtitle={t(
+            "The styles you love steer the Music Hub, Ask JL and Automix suggestions for this profile.",
+          )}
+        >
+          <MusicStyles embedded onBack={() => {}} />
+        </Section>
+      )}
       {tab === "harbor" && <HarborAccountPanel />}
       {tab === "stremio" && <JlAccountTab />}
     </div>

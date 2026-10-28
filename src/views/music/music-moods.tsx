@@ -23,6 +23,7 @@ import {
   toggleSounds,
   useSounds,
 } from "@/lib/music/sounds/engine";
+import { MoodVisualStage } from "./mood-visual";
 import "./music-moods.css";
 
 const SLEEP_OPTIONS = [0, 15, 30, 60, 90];
@@ -105,6 +106,8 @@ export function MusicMoods() {
           </p>
         </div>
       </header>
+
+      <MoodVisualStage />
 
       <div className="music-moods-presets" role="list" aria-label={t("Quick moods")}>
         {MOOD_PRESETS.map((preset) => (
