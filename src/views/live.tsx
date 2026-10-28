@@ -27,6 +27,7 @@ import { useEpg, useNowTick } from "./live/hooks/use-epg";
 import { useXtreamEpgFallback } from "./live/hooks/use-xtream-epg-fallback";
 import { useIptvPlaylist } from "./live/hooks/use-iptv-playlist";
 import { MultiviewView } from "./multiview";
+import { ChannelsView } from "./live/channels-view";
 import { GuideGamesToggle, ViewModeToggle, type ViewMode } from "./live/view-mode-toggle";
 import { isWindowsDesktop } from "@/lib/platform";
 
@@ -39,6 +40,7 @@ function readMode(): ViewMode {
     const v = localStorage.getItem(MODE_KEY);
     if (v === "grid") return "grid";
     if (v === "guide") return "guide";
+    if (v === "channels") return "channels";
     if (v === "multiview" && isWindowsDesktop()) return "multiview";
     return "home";
   } catch {
@@ -107,7 +109,11 @@ export function LiveView({ active }: { active: boolean }) {
     () => sources.filter((s) => s.kind === "epg").map((s) => s.epgUrl || s.url),
     [sources],
   );
-  const { index: baseEpg, loading: epgLoading, error: epgError } = useEpg(active ? activeSource : null, epgOnlyUrls);
+  const {
+    index: baseEpg,
+    loading: epgLoading,
+    error: epgError,
+  } = useEpg(active ? activeSource : null, epgOnlyUrls);
   const [epgErrorHidden, setEpgErrorHidden] = useState<string | null>(null);
   const epgErrorShown = epgError && epgError !== epgErrorHidden ? epgError : null;
   const epg = useXtreamEpgFallback(activeSource, playlist?.channels ?? EMPTY_CHANNELS, baseEpg);
@@ -328,7 +334,7 @@ export function LiveView({ active }: { active: boolean }) {
                   value={query}
                   onChange={(e) => {
                     setQuery(e.target.value);
-                    if (e.target.value && mode === "home") setMode("grid");
+                    if (e.target.value && mode === "home") setMode("channels");
                   }}
                   placeholder={
                     playlist
@@ -356,13 +362,27 @@ export function LiveView({ active }: { active: boolean }) {
                 }}
               />
             )}
-            <ViewModeToggle mode={mode} onChange={setMode} />
+            <ViewModeToggle
+              mode={mode}
+              favoritesOn={inFavorites}
+              onChange={(m) => {
+                // Channels shows every channel; Favorites is the same view over favourites.
+                if (m === "channels" && inFavorites) setGroup(null);
+                setMode(m);
+              }}
+              onFavorites={() => {
+                setGroup(FAVORITES_GROUP_KEY);
+                setMode("channels");
+              }}
+            />
           </header>
         )}
         {epgErrorShown && !epg && (
           <div className="mx-6 mt-2 flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 py-2 pe-2 ps-4 text-[12.5px] text-ink-muted">
             <span className="font-semibold text-danger">{t("EPG failed:")}</span>
-            <span className="min-w-0 flex-1 truncate" title={epgErrorShown}>{epgErrorShown}</span>
+            <span className="min-w-0 flex-1 truncate" title={epgErrorShown}>
+              {epgErrorShown}
+            </span>
             <button
               type="button"
               onClick={() => setEpgErrorHidden(epgErrorShown)}
@@ -457,6 +477,17 @@ export function LiveView({ active }: { active: boolean }) {
                       resetKey={`${activeId}|${group ?? ""}|${query}`}
                     />
                   </div>
+                )}
+                {visible.length > 0 && mode === "channels" && (
+                  <ChannelsView
+                    channels={visible}
+                    epg={epg}
+                    nowMs={nowMs}
+                    active={active}
+                    favorites={favorites}
+                    onPlay={handlePlay}
+                    resetKey={`${activeId}|${group ?? ""}|${query}`}
+                  />
                 )}
                 {visible.length > 0 && mode === "guide" && !showGames && (
                   <GuideView

@@ -1,10 +1,24 @@
-import { Grid2x2, Home, LayoutGrid, ListTree, Trophy } from "lucide-react";
+import { Grid2x2, Heart, Home, LayoutGrid, ListTree, Rows3, Trophy } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { isWindowsDesktop } from "@/lib/platform";
 
-export type ViewMode = "home" | "grid" | "guide" | "multiview";
+export type ViewMode = "home" | "grid" | "guide" | "channels" | "multiview";
 
-export function ViewModeToggle({ mode, onChange }: { mode: ViewMode; onChange: (m: ViewMode) => void }) {
+/**
+ * Live TV's tabs: Home, Guide, Channels (list with a live preview), Favorites (the Channels view
+ * over your favourites), the poster Grid, and Multiview on Windows.
+ */
+export function ViewModeToggle({
+  mode,
+  onChange,
+  favoritesOn,
+  onFavorites,
+}: {
+  mode: ViewMode;
+  onChange: (m: ViewMode) => void;
+  favoritesOn: boolean;
+  onFavorites: () => void;
+}) {
   const t = useT();
   return (
     <div className="flex h-11 shrink-0 items-center gap-0.5 rounded-xl border border-edge-soft/55 bg-elevated p-1">
@@ -15,16 +29,28 @@ export function ViewModeToggle({ mode, onChange }: { mode: ViewMode; onChange: (
         label={t("Home")}
       />
       <ToggleButton
-        active={mode === "grid"}
-        onClick={() => onChange("grid")}
-        icon={<LayoutGrid size={14} strokeWidth={2} />}
-        label={t("Grid")}
-      />
-      <ToggleButton
         active={mode === "guide"}
         onClick={() => onChange("guide")}
         icon={<ListTree size={14} strokeWidth={2} />}
         label={t("Guide")}
+      />
+      <ToggleButton
+        active={mode === "channels" && !favoritesOn}
+        onClick={() => onChange("channels")}
+        icon={<Rows3 size={14} strokeWidth={2} />}
+        label={t("Channels")}
+      />
+      <ToggleButton
+        active={mode === "channels" && favoritesOn}
+        onClick={onFavorites}
+        icon={<Heart size={14} strokeWidth={2} />}
+        label={t("Favorites")}
+      />
+      <ToggleButton
+        active={mode === "grid"}
+        onClick={() => onChange("grid")}
+        icon={<LayoutGrid size={14} strokeWidth={2} />}
+        label={t("Grid")}
       />
       {isWindowsDesktop() && (
         <ToggleButton
