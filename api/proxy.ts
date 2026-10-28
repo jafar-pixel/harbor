@@ -20,6 +20,8 @@ const HOSTS = new Set([
   "api.the-odds-api.com",
   "api.collegefootballdata.com",
   "prod.api.market",
+  // Community theme library.
+  "harbor.site",
 ]);
 
 const SUFFIXES = [
