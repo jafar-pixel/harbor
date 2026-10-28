@@ -13,7 +13,7 @@ import {
   undersizedNewReleasePenalty,
 } from "./scoring-size";
 import type { CorpusStats, ScoreOptions } from "./scoring-types";
-import { appleWebRankDelta } from "@/lib/player/web-playable";
+import { appleWebRankDelta, browserAudioRankDelta } from "@/lib/player/web-playable";
 
 export function scoreStream(
   s: ParsedStream,
@@ -41,6 +41,11 @@ export function scoreStream(
     if (appleDelta) {
       score += appleDelta;
       reasons.push({ signal: "apple web playable", delta: appleDelta });
+    }
+    const audioDelta = browserAudioRankDelta(name, cachedOn, opts.webPlayback);
+    if (audioDelta) {
+      score += audioDelta;
+      reasons.push({ signal: "browser can't play audio", delta: audioDelta });
     }
   }
 
