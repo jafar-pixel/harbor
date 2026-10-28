@@ -46,7 +46,7 @@ import {
 import { synchronizeMediaServer } from "@/lib/media-server/sync";
 import { setNativeMemoryActive } from "@/lib/native-memory";
 import { useOverlayPinned } from "@/lib/overlay-pin";
-import { isWeb, isMobileWeb, isRemoteRoute } from "@/lib/platform";
+import { isMobileWeb, isRemoteRoute } from "@/lib/platform";
 import { makeSafeTauriUnlisten } from "@/lib/tauri-unlisten";
 import { activeLayout } from "@/lib/theme";
 import { useThemePreview } from "@/lib/theme-preview";
@@ -228,7 +228,6 @@ const importQueue = () => import("@/views/queue");
 const importService = () => import("@/views/service");
 const importSettings = () => import("@/views/settings");
 const importShows = () => import("@/views/shows");
-const importMusic = () => import("@/views/music");
 const importGames = () => import("@/views/games");
 const importLibrary = () => import("@/views/library");
 const importCommunityCollections = () => import("@/views/collections/community-hub");
@@ -296,7 +295,8 @@ const Settings = lazy(() => importSettings().then((m) => ({ default: m.Settings 
 const Shows = lazy(() => importShows().then((m) => ({ default: m.Shows })));
 const LibraryView = lazy(() => importLibrary().then((m) => ({ default: m.LibraryView })));
 const MusicView = lazy(() =>
-  (isWeb() ? import("@/views/web-music") : importMusic()).then((m) => ({ default: m.MusicView })),
+  // One Music section everywhere: the Windows app uses the same Music Hub as the web and TV.
+  import("@/views/web-music").then((m) => ({ default: m.MusicView })),
 );
 const GamesView = lazy(() => importGames().then((m) => ({ default: m.GamesView })));
 const LiveView = lazy(() => importLive().then((m) => ({ default: m.LiveView })));
@@ -461,7 +461,7 @@ function AppProviders({ onReady }: { onReady?: () => void }) {
                                                     {!isMobileWeb() && !isRemoteRoute() && (
                                                       <EnvironmentsChrome />
                                                     )}
-                                                    {isWeb() && !isRemoteRoute() && <WebPlayer />}
+                                                    {!isRemoteRoute() && <WebPlayer />}
                                                     <WatchlistSync />
                                                     <JlAccountSync />
                                                     {isMobileWeb() || isRemoteRoute() ? (

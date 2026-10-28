@@ -200,6 +200,9 @@ export async function createAndLinkJlProfile(
   linkJlProfile(profile, pending);
 }
 
+/** The names a device gives itself before you name it (see lib/profiles). */
+const isStandInName = (name: string) => /^(?:Guest \d+|Me|You|Profile)$/.test(name.trim());
+
 /** Reuse an unambiguous sole profile; multiple profiles require an explicit selection. */
 export async function autoLinkJlProfile(
   name: string,
@@ -225,9 +228,15 @@ export async function autoLinkJlProfile(
   } else if (
     profiles.length &&
     localStorage.getItem(`jl.account.profile-created.v1.${context.localId}`) !== "1"
-  )
+  ) {
+    // A device that only has a stand-in name ("Guest 1234") joins the account's one named
+    // profile, so it signs in as you instead of a new guest each time.
+    const named = profiles.filter((p) => !isStandInName(p.name));
+    if (isStandInName(name) && named.length === 1) linkJlProfile(named[0], context);
     return;
-  if (!name.trim()) return;
+  }
+  // Never add a stand-in guest profile to the account.
+  if (!name.trim() || (isStandInName(name) && profiles.length)) return;
   await createAndLinkJlProfile(name, avatar, context);
 }
 

@@ -19,6 +19,15 @@ export type GitHubTheme = {
 };
 
 const SOURCES_KEY = "jl.theme.github-sources.v1";
+
+/** JL Media Vision's own theme library, always listed first. */
+export const JL_THEMES_SOURCE: GitHubSource = {
+  owner: "jafar-pixel",
+  repo: "harbor",
+  branch: "claude/determined-planck-b1p158",
+  path: "community-themes",
+};
+export const isJlSource = (s: GitHubSource) => sourceLabel(s) === sourceLabel(JL_THEMES_SOURCE);
 /** The most theme files read from one repository, so a huge repo can't stall the page. */
 const MAX_FILES = 60;
 
@@ -41,17 +50,19 @@ export function parseGitHubSource(input: string): GitHubSource | null {
 export const sourceLabel = (s: GitHubSource) => `${s.owner}/${s.repo}${s.path ? `/${s.path}` : ""}`;
 
 export function readGitHubSources(): GitHubSource[] {
+  let saved: GitHubSource[] = [];
   try {
     const v = JSON.parse(localStorage.getItem(SOURCES_KEY) ?? "[]") as unknown;
-    return Array.isArray(v) ? (v as GitHubSource[]).filter((s) => s?.owner && s?.repo) : [];
+    saved = Array.isArray(v) ? (v as GitHubSource[]).filter((s) => s?.owner && s?.repo) : [];
   } catch {
-    return [];
+    /* nothing saved */
   }
+  return [JL_THEMES_SOURCE, ...saved.filter((s) => !isJlSource(s))];
 }
 
 export function writeGitHubSources(list: GitHubSource[]): void {
   try {
-    localStorage.setItem(SOURCES_KEY, JSON.stringify(list));
+    localStorage.setItem(SOURCES_KEY, JSON.stringify(list.filter((s) => !isJlSource(s))));
   } catch {
     /* storage blocked: kept for this visit */
   }

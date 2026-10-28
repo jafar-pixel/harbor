@@ -14,7 +14,6 @@ import {
 import { liveChannelSource } from "@/lib/iptv/playback-source";
 import { playNow } from "@/lib/music/player/store";
 import { useRecentSongs } from "@/lib/music/player/recent";
-import { isWeb } from "@/lib/platform";
 import { useView } from "@/lib/view";
 import { useStreamPlayer } from "@/views/sports/add-stream-dialog";
 import { useChannelPlayer } from "@/views/sports/watch-flow";
@@ -89,22 +88,19 @@ export function useAnywhereItems(): AnywhereItem[] {
         },
         dismiss: () => removeRecentGame(g.gameId),
       }));
-    // The shared music player lives in the browser and TV app.
-    const music: AnywhereItem[] = isWeb()
-      ? songs.slice(0, 6).map((s) => ({
-          key: `music:${s.artist}:${s.title}`,
-          kind: "music",
-          title: s.title,
-          subtitle: s.artist,
-          art: s.art,
-          logos: [],
-          at: s.at,
-          open: () => {
-            const { at: _at, ...track } = s;
-            playNow(track);
-          },
-        }))
-      : [];
+    const music: AnywhereItem[] = songs.slice(0, 6).map((s) => ({
+      key: `music:${s.artist}:${s.title}`,
+      kind: "music",
+      title: s.title,
+      subtitle: s.artist,
+      art: s.art,
+      logos: [],
+      at: s.at,
+      open: () => {
+        const { at: _at, ...track } = s;
+        playNow(track);
+      },
+    }));
     return [...live, ...sports, ...music].sort((a, b) => b.at - a.at);
   }, [statsVersion, games, songs, t, openPlayer, playChannel, playStream]);
 }

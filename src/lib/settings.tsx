@@ -73,6 +73,30 @@ function readActiveSource(): SettingsSource {
 
 const Ctx = createContext<SettingsValue | null>(null);
 
+/**
+ * The Windows app kept the theme from its earlier versions, so it never showed the clear Pro
+ * glass the website and TV use. Its first launch with this change moves it to Pro once, without
+ * a background photo of its own (which would cover the Environment). Later choices stand.
+ */
+const DESKTOP_PRO_KEY = "jl.desktop.pro-glass.v1";
+/** Profiles moved this session, whose saved background photo must not come back. */
+const desktopMovedToPro = new Set<string>();
+
+function moveDesktopToProOnce(s: Settings, profileId: string): Settings {
+  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) return s;
+  try {
+    // Each profile keeps its own settings, so each is moved once.
+    const key = `${DESKTOP_PRO_KEY}.${profileId}`;
+    if (localStorage.getItem(key)) return s;
+    localStorage.setItem(key, "1");
+  } catch {
+    return s;
+  }
+  desktopMovedToPro.add(profileId);
+  void saveBgImage(null, profileId);
+  return { ...s, theme: { ...s.theme, preset: "cool-grey", backgroundImage: null } };
+}
+
 export function SettingsProvider({
   children,
   syncTorrentEnginePolicy = false,
@@ -85,7 +109,7 @@ export function SettingsProvider({
     seedSharedFromLegacy();
     const src = readActiveSource();
     sourceRef.current = src;
-    const s = loadEffective(src.profileId, src.linked);
+    const s = moveDesktopToProOnce(loadEffective(src.profileId, src.linked), src.profileId);
     setUiLanguage(s.uiLanguage, s.region);
     return s;
   });
@@ -116,7 +140,7 @@ export function SettingsProvider({
     let cancelled = false;
     const activeId = sourceRef.current.profileId;
     void loadBgImage(activeId).then((img) => {
-      if (cancelled || !img) return;
+      if (cancelled || !img || desktopMovedToPro.has(activeId)) return;
       lastSavedImageRef.current = { profileId: activeId, image: img };
       setSettings((s) =>
         s.theme.backgroundImage ? s : { ...s, theme: { ...s.theme, backgroundImage: img } },
@@ -525,7 +549,7 @@ export function SettingsProvider({
     } else {
       if (settingsReadyRef.current)
         persistEffective(settingsRef.current, cur.profileId, cur.linked);
-      const next = loadEffective(profileId, linked);
+      const next = moveDesktopToProOnce(loadEffective(profileId, linked), profileId);
       setUiLanguage(next.uiLanguage, next.region);
       setTmdbLanguage(next.tmdbLanguage);
       tmdbLangRef.current = effectiveTmdbLanguage();
@@ -544,7 +568,7 @@ export function SettingsProvider({
     setSettings((s) => ({ ...s, theme: { ...s.theme, backgroundImage: null } }));
 
     void loadBgImage(profileId).then((img) => {
-      if (sourceRef.current.profileId !== profileId) return;
+      if (sourceRef.current.profileId !== profileId || desktopMovedToPro.has(profileId)) return;
       lastSavedImageRef.current = { profileId, image: img };
       settingsRef.current = {
         ...settingsRef.current,
