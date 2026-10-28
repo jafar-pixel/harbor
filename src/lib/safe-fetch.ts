@@ -95,6 +95,8 @@ const PROXY_HOSTS = new Set([
   "kick.com",
   "prosettings.net",
   "cdn.cloudflare.steamstatic.com",
+  // The community theme library sends no CORS header for the JL web app.
+  "harbor.site",
   // Sports data APIs the viewer brings a key for (Settings → Sports plugins & keys).
   "www.thesportsdb.com",
   "api.the-odds-api.com",

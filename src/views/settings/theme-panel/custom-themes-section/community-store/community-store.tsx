@@ -14,6 +14,7 @@ import { StoreBrowse } from "./store-browse";
 import { StoreSkeleton } from "./store-skeleton";
 import { BundleBrowse } from "./bundle-browse";
 import { BundleUploadFlow } from "./bundle-upload-flow";
+import { GitHubThemes } from "./github-themes";
 import type { BundleKind } from "@/lib/bundle-store";
 
 export function CommunityStore({ initialTab = "discover" }: { initialTab?: StoreTab } = {}) {
@@ -112,12 +113,14 @@ export function CommunityStore({ initialTab = "discover" }: { initialTab?: Store
         )}
       </div>
 
-      {bundleKind ? (
+      {tab === "github" ? (
+        <GitHubThemes />
+      ) : bundleKind ? (
         <BundleBrowse kind={bundleKind} onShare={() => setBundleUpload(bundleKind)} />
       ) : loading ? (
         <StoreSkeleton />
       ) : error ? (
-        <ErrorState message={error} onRetry={reload} />
+        <ErrorState message={error} onRetry={reload} onGitHub={() => onTab("github")} />
       ) : !data || data.all.length === 0 ? (
         <EmptyState onShare={() => setUploadOpen(true)} />
       ) : tab === "discover" ? (
@@ -148,7 +151,15 @@ export function CommunityStore({ initialTab = "discover" }: { initialTab?: Store
   );
 }
 
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState({
+  message,
+  onRetry,
+  onGitHub,
+}: {
+  message: string;
+  onRetry: () => void;
+  onGitHub: () => void;
+}) {
   const t = useT();
   return (
     <div className="mx-auto flex max-w-sm flex-col items-center gap-4 rounded-md bg-surface px-6 py-14 text-center">
@@ -162,6 +173,13 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         className="flex h-11 items-center gap-2 rounded-full bg-ink px-5 text-[15.5px] font-semibold text-canvas transition-[opacity,transform] hover:opacity-90 active:scale-[0.97] motion-reduce:active:scale-100"
       >
         <RefreshCw size={16} strokeWidth={2.2} /> {t("Try again")}
+      </button>
+      <button
+        type="button"
+        onClick={onGitHub}
+        className="text-[14px] font-medium text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+      >
+        {t("Browse themes on GitHub instead")}
       </button>
     </div>
   );

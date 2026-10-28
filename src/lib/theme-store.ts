@@ -79,8 +79,18 @@ function authHeaders(): Record<string, string> {
 
 export async function browseThemes(sort = "top", q = ""): Promise<StoreTheme[]> {
   const url = `${API}/themes?sort=${encodeURIComponent(sort)}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
-  const r = await safeFetch(url);
-  if (!r.ok) throw new Error("Could not reach the theme library.");
+  let r: Response;
+  try {
+    r = await safeFetch(url);
+  } catch {
+    throw new Error(
+      "The community theme library isn't reachable right now. You can still install themes from GitHub.",
+    );
+  }
+  if (!r.ok)
+    throw new Error(
+      "The community theme library isn't reachable right now. You can still install themes from GitHub.",
+    );
   const d = await r.json();
   return (d.themes || []).map(normalize);
 }
