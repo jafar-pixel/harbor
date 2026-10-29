@@ -7,7 +7,6 @@ import {
   disconnectMusicLink,
   exchangeMusicLink,
   musicLinkState,
-  storeMusicLink,
   subscribeMusicLinks as musicLinkSubscribe,
   useMusicLinks,
 } from "../account-link";
@@ -253,19 +252,8 @@ export async function spotifyWebToken(): Promise<string> {
   return (await refreshing).access;
 }
 
-// A browser that signed in before accounts kept sign ins hands its Spotify to the account once,
-// so the listener's other devices connect too.
-let moving = false;
+// Only a sign in made with Connect goes to the account: an old sign in left on a device is not
+// copied there by itself (it connected Spotify on every device without being asked).
 musicLinkSubscribe(() => {
-  const links = musicLinkState();
   set({ connected: !!readTokens() || accountLinked() });
-  const local = readTokens();
-  if (!links.ready || links.links.spotify || !local?.refresh || moving || !accountLinksOn()) return;
-  moving = true;
-  void storeMusicLink("spotify", local.refresh, local.scope ?? "")
-    .then(() => writeTokens(null))
-    .catch(() => undefined)
-    .finally(() => {
-      moving = false;
-    });
 });
