@@ -156,7 +156,13 @@ export function readProfileData(
   metadata: Record<string, unknown> = {},
 ): SyncValues {
   const result: SyncValues = {};
-  if (typeof metadata.name === "string" && metadata.name.trim() && metadata.name.length <= 40)
+  // A device's stand-in name ("Guest 1234") never replaces the profile's real name.
+  if (
+    typeof metadata.name === "string" &&
+    metadata.name.trim() &&
+    metadata.name.length <= 40 &&
+    !/^(?:Guest \d+|Me|You|Profile)$/.test(metadata.name.trim())
+  )
     result["profile:name"] = metadata.name;
   if (typeof metadata.color === "string" && /^#[a-f\d]{6}$/i.test(metadata.color))
     result["profile:color"] = metadata.color;
