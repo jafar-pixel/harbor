@@ -78,6 +78,7 @@ import { useFrameGrab } from "./player/hooks/use-frame-grab";
 import { useClipRecorder } from "./player/hooks/use-clip-recorder";
 import { useGifRecorder } from "./player/hooks/use-gif-recorder";
 import { HomeServerQualityControl } from "./player/home-server-quality-control";
+import { StreamQualityControl } from "./player/stream-quality-control";
 import { useSleepTimer } from "./player/hooks/use-sleep-timer";
 import { useAutoEndExit } from "./player/hooks/use-auto-end-exit";
 import { useQueueAdvance } from "./player/hooks/use-queue-advance";
@@ -1413,13 +1414,20 @@ function NativePlayerView({
     snap,
     engine,
     src,
-    homeServerQualityControl: (
+    homeServerQualityControl: src.homeServer ? (
       <HomeServerQualityControl
         src={src}
         positionMs={Math.max(0, snap.positionSec * 1000)}
         playing={playing}
         theme={resolveChromeTheme(settings.theme, settings.playerChromeTheme)}
         replace={replacePlayerSrc}
+      />
+    ) : (
+      <StreamQualityControl
+        bridgeRef={bridgeRef}
+        levels={snap.qualityLevels ?? []}
+        cap={snap.qualityCap ?? null}
+        theme={resolveChromeTheme(settings.theme, settings.playerChromeTheme)}
       />
     ),
     adStreamRef: playStreamRef,

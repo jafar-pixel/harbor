@@ -83,6 +83,10 @@ export type PlayerSnapshot = {
   errorMessage: string | null;
   errorCode: "decode" | "codec" | "network" | "source" | "unknown" | null;
   noAudio?: boolean;
+  /** Heights an adaptive (HLS) stream offers, highest first; empty for a single rendition. */
+  qualityLevels?: number[];
+  /** The height the viewer held the stream to, or null for Auto. */
+  qualityCap?: number | null;
 };
 
 export type PlayerSource = {
@@ -137,6 +141,8 @@ export type PlayerBridge = {
   setVideoZoom: (log2: number) => void;
   setAspectOverride: (ratio: string) => void;
   setStretch: (on: boolean) => void;
+  /** Hold an adaptive stream at or under this height; null returns it to Auto. */
+  setQualityCap?: (maxHeight: number | null) => void;
   setVideoEq: (name: string, value: number) => void;
   setAnime4kShaders: (shaders: string[]) => void;
   setShaderProps?: (props: Record<string, string>) => void;

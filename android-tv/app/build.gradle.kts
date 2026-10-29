@@ -17,7 +17,7 @@ android {
         minSdk = 24
         targetSdk = 35
         versionCode = runNumber.toInt()
-        versionName = "0.9.56"
+        versionName = "0.9.57"
         // Use the same production app address as phones, tablets and desktop browsers.
         buildConfigField("String", "APP_URL", "\"https://watch.jl-stream.com/\"")
     }

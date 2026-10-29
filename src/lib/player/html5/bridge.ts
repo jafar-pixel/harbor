@@ -28,6 +28,13 @@ import { isSafeProviderSubtitleUrl } from "@/lib/subtitles/provider-url";
 import { browserBlocksProviderUrl } from "@/lib/native-fetch";
 import { html5Transport } from "./transport";
 import { currentWebPlaybackEnv } from "@/lib/player/web-playable";
+import {
+  autoFloorBitrate,
+  levelForHeight,
+  readStreamQualityPref,
+  renditionHeights,
+  type HlsRendition,
+} from "./hls-quality";
 
 let DOCUMENT_PIP_KNOWN_BROKEN = false;
 
@@ -44,6 +51,8 @@ export function createHtml5Bridge(): PlayerBridge {
   let mediaSessionBound = false;
   let pendingVolume = 1;
   let hls: Hls | null = null;
+  let qualityLevels: number[] = [];
+  let qualityCap: number | null = null;
   let tsPlayer: ReturnType<typeof mpegts.createPlayer> | null = null;
   let isLiveSrc = false;
   let audioProbeDone = false;
@@ -114,6 +123,8 @@ export function createHtml5Bridge(): PlayerBridge {
     snap.subDelaySec = subDelaySec;
     snap.videoWidth = video.videoWidth || 0;
     snap.videoHeight = video.videoHeight || 0;
+    snap.qualityLevels = qualityLevels;
+    snap.qualityCap = qualityCap;
     if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && snap.videoWidth > 0) {
       snap.firstFrameReady = true;
     }
@@ -139,6 +150,14 @@ export function createHtml5Bridge(): PlayerBridge {
       snap.status = "loading";
     }
     emit();
+  };
+
+  const hlsRenditions = (): HlsRendition[] =>
+    hls ? hls.levels.map((l) => ({ height: l.height, bitrate: l.maxBitrate })) : [];
+
+  const holdHlsQuality = () => {
+    if (!hls || qualityLevels.length < 2) return;
+    hls.nextLevel = qualityCap == null ? -1 : levelForHeight(hlsRenditions(), qualityCap);
   };
 
   const readHlsAudioTracks = (): TrackInfo[] | null => {
@@ -507,6 +526,7 @@ export function createHtml5Bridge(): PlayerBridge {
           hls.destroy();
         } catch {}
         hls = null;
+        qualityLevels = [];
       }
       teardownTs();
       if (video) {
@@ -539,6 +559,7 @@ export function createHtml5Bridge(): PlayerBridge {
           hls.destroy();
         } catch {}
         hls = null;
+        qualityLevels = [];
       }
       teardownTs();
       try {
@@ -585,6 +606,18 @@ export function createHtml5Bridge(): PlayerBridge {
               }
             : { enableWorker: true },
         );
+        qualityCap = readStreamQualityPref();
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (!hls) return;
+          const renditions = hlsRenditions();
+          qualityLevels = renditionHeights(renditions);
+          hls.config.minAutoBitrate = autoFloorBitrate(renditions);
+          if (qualityCap != null && qualityLevels.length > 1) {
+            hls.startLevel = levelForHeight(renditions, qualityCap);
+            holdHlsQuality();
+          }
+          refreshSnapshot();
+        });
         hls.loadSource(url);
         hls.attachMedia(video);
         hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, refreshSnapshot);
@@ -874,6 +907,11 @@ export function createHtml5Bridge(): PlayerBridge {
     setAspectOverride() {},
     setStretch(on) {
       if (video && on) video.style.objectFit = "fill";
+    },
+    setQualityCap(maxHeight) {
+      qualityCap = maxHeight;
+      holdHlsQuality();
+      refreshSnapshot();
     },
     setVideoEq() {},
     setAnime4kShaders() {},
@@ -1170,6 +1208,7 @@ export function createHtml5Bridge(): PlayerBridge {
           hls.destroy();
         } catch {}
         hls = null;
+        qualityLevels = [];
       }
       teardownTs();
       if (pipWindow) {

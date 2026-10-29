@@ -17,7 +17,7 @@ import {
 import type { PlayerSrc } from "@/lib/view";
 import type { Settings } from "@/lib/settings";
 import { setPlaybackClock, setPlaybackStatus } from "@/lib/player/playback-clock";
-import { isLinuxDesktop, isMacDesktop, isWindowsDesktop } from "@/lib/platform";
+import { isLinuxDesktop, isMacDesktop, isWeb, isWindowsDesktop } from "@/lib/platform";
 import { isLivePlaybackSrc } from "@/lib/player/live-src";
 import { readEmbedRect } from "@/lib/player/embed-rect";
 import { svpEnsureRunning, svpStatus } from "@/lib/svp";
@@ -48,7 +48,9 @@ function snapChangedIgnoringClock(a: PlayerSnapshot, b: PlayerSnapshot): boolean
     a.videoHeight !== b.videoHeight ||
     a.hdrGamma !== b.hdrGamma ||
     a.errorMessage !== b.errorMessage ||
-    a.errorCode !== b.errorCode
+    a.errorCode !== b.errorCode ||
+    a.qualityLevels !== b.qualityLevels ||
+    a.qualityCap !== b.qualityCap
   );
 }
 
@@ -98,8 +100,14 @@ export function usePlayerBridge(params: {
     if (svpOn) void svpEnsureRunning().catch(() => {});
   }, [svpOn]);
   const isLiveLike = isLivePlaybackSrc(src);
+  // The browser player drops live sports to its lowest rendition after a stall and has no HDR
+  // or RTX. The desktop app has mpv, so a live stream follows the chosen engine there too.
   const chosenEngine =
-    isLiveLike && !src.notWebReady ? "html5" : autoFallbackTried ? "mpv" : settings.playerEngine;
+    isLiveLike && !src.notWebReady && isWeb()
+      ? "html5"
+      : autoFallbackTried
+        ? "mpv"
+        : settings.playerEngine;
   const bridgeKey = `${chosenEngine}|${anime4kOn}|${embedActive}|${anime4kOn ? settings.playerAnime4kShaders.join(",") : ""}|${generalShaderKey(settings)}|${svpOn}|${svpOn ? settings.svpVpyPath : ""}`;
   const [bridgeReady, setBridgeReady] = useState(false);
   const settingsRef = useRef(settings);
