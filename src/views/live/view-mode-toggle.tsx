@@ -1,4 +1,13 @@
-import { Grid2x2, Heart, Home, LayoutGrid, ListTree, Rows3, Trophy } from "lucide-react";
+import {
+  Clapperboard,
+  Grid2x2,
+  Heart,
+  Home,
+  LayoutGrid,
+  ListTree,
+  Rows3,
+  Trophy,
+} from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { isWindowsDesktop } from "@/lib/platform";
 
@@ -6,18 +15,21 @@ export type ViewMode = "home" | "grid" | "guide" | "channels" | "multiview";
 
 /**
  * Live TV's tabs: Home, Guide, Channels (list with a live preview), Favorites (the Channels view
- * over your favourites), the poster Grid, and Multiview on Windows.
+ * over your favourites), the poster Grid, Multiview on Windows, and Movies & Shows, which opens
+ * the provider's own films and series.
  */
 export function ViewModeToggle({
   mode,
   onChange,
   favoritesOn,
   onFavorites,
+  onMoviesShows,
 }: {
   mode: ViewMode;
   onChange: (m: ViewMode) => void;
   favoritesOn: boolean;
   onFavorites: () => void;
+  onMoviesShows: () => void;
 }) {
   const t = useT();
   return (
@@ -60,6 +72,12 @@ export function ViewModeToggle({
           label={t("Multiview")}
         />
       )}
+      <ToggleButton
+        active={false}
+        onClick={onMoviesShows}
+        icon={<Clapperboard size={14} strokeWidth={2} />}
+        label={t("Movies & Shows")}
+      />
     </div>
   );
 }

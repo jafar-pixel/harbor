@@ -16,6 +16,8 @@ import { CatalogShelf } from "./catalogs/catalog-shelf";
 import { CatalogManageList } from "./catalogs/catalog-manage-list";
 import { AddonFilterSelect } from "./catalogs/addon-filter-select";
 import { useCatalogList } from "./catalogs/use-catalog-list";
+import { useCatalogHero } from "./catalogs/use-catalog-hero";
+import { CinemaHero } from "@/components/cinema-hero";
 import { useContentDrag } from "@/lib/window-drag";
 
 export function Catalogs({ active = true }: { active?: boolean }) {
@@ -85,14 +87,26 @@ export function Catalogs({ active = true }: { active?: boolean }) {
     update({ catalogsPinned: arr });
   };
 
+  const heroSlides = useCatalogHero(
+    useMemo(
+      () => [
+        ...pinnedCats,
+        ...filtered.filter((c) => !pinnedSet.has(c.key) && !hiddenSet.has(c.key)),
+      ],
+      [pinnedCats, filtered, pinnedSet, hiddenSet],
+    ),
+  );
+  const showHero = !customize && !query && heroSlides.length > 0;
+
   const hiddenCount = useMemo(
     () => (customize ? 0 : catalogs.filter((c) => hiddenSet.has(c.key)).length),
     [customize, catalogs, hiddenSet],
   );
 
   return (
-    <main className="flex-1 overflow-y-auto px-12 pb-24 pt-28">
-      <div {...contentDrag} className="flex flex-col gap-8">
+    <main className="flex-1 overflow-y-auto overflow-x-hidden pb-24">
+      {showHero && <CinemaHero slides={heroSlides} eyebrow={t("From your catalogs")} />}
+      <div {...contentDrag} className={`flex flex-col gap-8 px-12 ${showHero ? "pt-12" : "pt-28"}`}>
         <header className="flex flex-col gap-5">
           <div className="flex items-end justify-between gap-4">
             <div className="flex flex-col gap-1.5">

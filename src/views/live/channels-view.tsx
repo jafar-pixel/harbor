@@ -8,6 +8,7 @@ import { useView } from "@/lib/view";
 import { usePageVisible } from "@/lib/visibility";
 import { MultiPlayer } from "@/views/multiview/multi-player";
 import { channelNumber, fmtClock, fmtLeft } from "./live-home/now-format";
+import { TvVolumeControls, useTvVolume } from "./tv-volume";
 
 /** Wait this long on a channel before its preview starts, so scrolling past doesn't open streams. */
 const PREVIEW_DWELL_MS = 1200;
@@ -17,7 +18,7 @@ const FAILED = new Set<string>();
 
 /**
  * Live TV's Channels view: the channel list on one side (logo, number, what's on and when) and a
- * big live preview of the selected channel on the other, muted, with what's on now and next.
+ * big live preview of the selected channel on the other, with what's on now and next.
  * Watch opens the full player. Favorites uses the same view over your favourite channels.
  */
 export function ChannelsView({
@@ -182,6 +183,7 @@ function Preview({
   const t = useT();
   const { player } = useView();
   const pageVisible = usePageVisible();
+  const sound = useTvVolume();
   const [armed, setArmed] = useState("");
   const [playing, setPlaying] = useState(false);
   const [, setFailures] = useState(0);
@@ -226,7 +228,8 @@ function Preview({
             <MultiPlayer
               key={channel.id}
               url={channel.url}
-              muted
+              muted={sound.muted}
+              volume={sound.volume}
               exclusive
               cover
               onPlaying={() => setPlaying(true)}
@@ -259,6 +262,7 @@ function Preview({
                 </p>
               )}
             </div>
+            <TvVolumeControls />
             <button
               type="button"
               onClick={onFavorite}

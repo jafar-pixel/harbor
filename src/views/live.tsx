@@ -365,6 +365,7 @@ export function LiveView({ active }: { active: boolean }) {
             <ViewModeToggle
               mode={mode}
               favoritesOn={inFavorites}
+              onMoviesShows={() => setView("vod")}
               onChange={(m) => {
                 // Channels shows every channel; Favorites is the same view over favourites.
                 if (m === "channels" && inFavorites) setGroup(null);
@@ -436,6 +437,7 @@ export function LiveView({ active }: { active: boolean }) {
                     sourceId={activeId ?? ""}
                     region={region}
                     favorites={favorites}
+                    active={active}
                     onPlay={handlePlay}
                     onOpenCategory={(g) => {
                       setGroup(g);

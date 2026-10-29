@@ -39,6 +39,7 @@ export function LiveHome({
   sourceId,
   region,
   favorites,
+  active,
   onPlay,
   onOpenCategory,
 }: {
@@ -48,6 +49,8 @@ export function LiveHome({
   sourceId: string;
   region: string;
   favorites: ReturnType<typeof useFavorites>;
+  /** Live TV is on screen; the Your TV preview stops while it isn't. */
+  active: boolean;
   onPlay: (ch: IptvChannel) => void;
   onOpenCategory: (group: string) => void;
 }) {
@@ -97,18 +100,58 @@ export function LiveHome({
     onOpenGame: openMatchDetail,
   });
 
+  // A click puts a channel on the Your TV screen; clicking the channel already on it (so a
+  // double click, or a second OK on a remote) opens it in the full player.
+  const [tunedId, setTunedId] = useState<string | null>(null);
+  const tuned = useMemo(() => {
+    const ch = tunedId ? channels.find((c) => c.id === tunedId) : undefined;
+    return ch ? buildNowItem(ch, epg, tvgCounts, nowMs) : null;
+  }, [tunedId, channels, epg, tvgCounts, nowMs]);
+  const tune = (ch: IptvChannel) => {
+    if (tuned?.channel.id === ch.id) onPlay(ch);
+    else setTunedId(ch.id);
+  };
+  const heroItems = useMemo(() => (tuned ? [tuned] : spotlight), [tuned, spotlight]);
+
   const heroHydrations = useChannelHydration(
     useMemo(() => {
       const set = new Set<string>();
-      for (const it of spotlight) if (isHydratableChannel(it.channel)) set.add(hydrationKey(it));
+      for (const it of [...heroItems, ...spotlight])
+        if (isHydratableChannel(it.channel)) set.add(hydrationKey(it));
       return [...set];
-    }, [spotlight]),
+    }, [heroItems, spotlight]),
   );
 
-  const railProps = { sourceId, epg, nowMs, tvgCounts, onPlay, onOpenCategory };
+  const railProps = { sourceId, epg, nowMs, tvgCounts, onPlay: tune, onOpenCategory };
 
   return (
     <div className="flex flex-col gap-8 pb-12">
+      {/* The TV stays put while everything under it scrolls. */}
+      <div className="sticky top-0 z-20 -mx-6 -mt-5 flex flex-col gap-4 bg-canvas/80 px-6 pb-5 pt-5 backdrop-blur-xl">
+        <div className="flex items-baseline gap-2.5 ps-[9px]">
+          <h1 className="font-display text-[30px] font-medium leading-none tracking-tight text-ink">
+            {t("Your TV")}
+          </h1>
+          <span className="text-[16px] text-ink-subtle">
+            {t("at {time}", { time: fmtClock(nowMs) })}
+          </span>
+          <span className="ms-auto hidden text-[13px] text-ink-subtle md:inline">
+            {t("Click a channel to put it on. Double-click to watch full screen.")}
+          </span>
+        </div>
+        {heroItems.length > 0 && (
+          <div className="flex gap-5">
+            <LiveHero
+              items={heroItems}
+              nowMs={nowMs}
+              hydrations={heroHydrations}
+              active={active}
+              onPlay={onPlay}
+            />
+            <MoreOnNow items={spotlight} hydrations={heroHydrations} onPlay={tune} />
+          </div>
+        )}
+      </div>
       <ContinueAnywhereRow scrollKey="live-home:continue" />
       {(jlSports.top.length > 0 ||
         jlSports.teamSlides.length > 0 ||
@@ -121,22 +164,6 @@ export function LiveHome({
           onOpenGame={openMatchDetail}
         />
       )}
-      <div className="flex flex-col gap-5">
-        <div className="flex items-baseline gap-2.5 ps-[9px]">
-          <h1 className="font-display text-[30px] font-medium leading-none tracking-tight text-ink">
-            {t("Your TV")}
-          </h1>
-          <span className="text-[16px] text-ink-subtle">
-            {t("at {time}", { time: fmtClock(nowMs) })}
-          </span>
-        </div>
-        {spotlight.length > 0 && (
-          <div className="flex gap-5">
-            <LiveHero items={spotlight} nowMs={nowMs} hydrations={heroHydrations} onPlay={onPlay} />
-            <MoreOnNow items={spotlight} hydrations={heroHydrations} onPlay={onPlay} />
-          </div>
-        )}
-      </div>
       <JlSportsHub
         top={jlSports.top}
         ticker={jlSports.ticker}
@@ -163,7 +190,7 @@ export function LiveHome({
           scrollKey={`live-home:${sourceId}:guide`}
         >
           {guide.map((it) => (
-            <GuideCard key={it.channel.id} item={it} onPlay={onPlay} />
+            <GuideCard key={it.channel.id} item={it} onPlay={tune} />
           ))}
         </Row>
       )}

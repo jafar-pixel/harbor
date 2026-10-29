@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { usePageVisible } from "@/lib/visibility";
-import { RotateCcw, Tv } from "lucide-react";
+import { Play, RotateCcw, Tv } from "lucide-react";
 import type { Meta } from "@/lib/cinemeta";
 import { useT } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
+import { useView } from "@/lib/view";
 import { MultiPlayer } from "@/views/multiview/multi-player";
+import { TvVolumeControls, useTvVolume } from "../tv-volume";
 import { fmtLeft } from "./now-format";
 import { hydrationKey, type NowItem } from "./use-live-home";
 
@@ -12,16 +14,21 @@ export function LiveHero({
   items,
   nowMs,
   hydrations,
+  active: pageActive = true,
   onAmbient,
   onPlay,
 }: {
   items: NowItem[];
   nowMs: number;
   hydrations: Map<string, Meta | null>;
+  /** Live TV is on screen; the preview stops while it isn't. */
+  active?: boolean;
   onAmbient?: (art: string | null) => void;
   onPlay: (ch: IptvChannel) => void;
 }) {
   const t = useT();
+  const { player } = useView();
+  const sound = useTvVolume();
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -34,7 +41,7 @@ export function LiveHero({
 
   const activeIdx = Math.min(idx, items.length - 1);
   const active = items[activeIdx];
-  const hydrated = active ? hydrations.get(hydrationKey(active)) ?? null : null;
+  const hydrated = active ? (hydrations.get(hydrationKey(active)) ?? null) : null;
   const heroArt = active
     ? hydrated?.background || active.current?.iconUrl || active.channel.logo || null
     : null;
@@ -56,14 +63,18 @@ export function LiveHero({
 
   if (!active) return null;
   const { channel, current, progress } = active;
+  // Many IPTV accounts allow one stream at a time, so the preview stops while the full player is
+  // open, the page is hidden or Live TV isn't on screen.
+  const showVideo = !!channel.url && pageVisible && pageActive && !player;
   const left = current ? fmtLeft(current.endMs, nowMs, t) : null;
   const title = current?.title || hydrated?.name || channel.name;
   const meta = [channel.name, channel.group].filter(Boolean).join(" · ");
 
   return (
     <section
-      onClick={() => onPlay(channel)}
-      className="group relative h-[420px] min-w-0 flex-1 cursor-pointer overflow-hidden rounded-lg bg-canvas"
+      onDoubleClick={() => onPlay(channel)}
+      aria-label={t("Your TV: {name}", { name: channel.name })}
+      className="group relative h-[clamp(420px,54vh,660px)] min-w-0 flex-1 cursor-pointer overflow-hidden rounded-lg bg-canvas"
       style={{ isolation: "isolate" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -76,7 +87,7 @@ export function LiveHero({
           visible={i === activeIdx}
         />
       ))}
-      {channel.url && (
+      {showVideo && (
         <div
           className="absolute inset-0 transition-opacity duration-500"
           style={{ opacity: playing ? 1 : 0 }}
@@ -84,7 +95,9 @@ export function LiveHero({
           <MultiPlayer
             key={channel.id}
             url={channel.url}
-            muted
+            muted={sound.muted}
+            volume={sound.volume}
+            exclusive
             cover
             onPlaying={() => setPlaying(true)}
             onError={() => setPlaying(false)}
@@ -115,7 +128,23 @@ export function LiveHero({
         <h2 className="max-w-[88%] font-display text-[40px] font-semibold leading-[1.04] tracking-tight text-ink line-clamp-2">
           {title}
         </h2>
-        {meta && <div className="text-[14px] font-medium text-ink-muted">{meta}</div>}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {meta && <div className="text-[14px] font-medium text-ink-muted">{meta}</div>}
+          <div className="ms-auto flex items-center gap-3">
+            <TvVolumeControls />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPlay(channel);
+              }}
+              onDoubleClick={(e) => e.stopPropagation()}
+              className="jl-cta flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-black"
+            >
+              <Play size={16} fill="currentColor" /> {t("Watch")}
+            </button>
+          </div>
+        </div>
       </div>
 
       {progress != null && (
@@ -133,6 +162,7 @@ export function LiveHero({
                 e.stopPropagation();
                 setIdx(i);
               }}
+              onDoubleClick={(e) => e.stopPropagation()}
               aria-label={t("Spotlight {n}", { n: i + 1 })}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 i === activeIdx ? "w-8 bg-ink" : "w-4 bg-ink-muted/60 hover:bg-ink-muted"
@@ -176,7 +206,10 @@ function HeroBackdrop({
   const art = backdrop && !artErr ? backdrop : null;
   const logo = item.channel.logo && !logoErr ? item.channel.logo : null;
   return (
-    <div className="absolute inset-0 transition-opacity duration-700" style={{ opacity: visible ? 1 : 0 }}>
+    <div
+      className="absolute inset-0 transition-opacity duration-700"
+      style={{ opacity: visible ? 1 : 0 }}
+    >
       {art ? (
         <img
           src={art}
