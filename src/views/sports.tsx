@@ -63,6 +63,7 @@ import {
 } from "./live/live-home/jl-sports/jl-sports-top";
 import { useSportsPageWallpaper } from "./live/live-home/jl-sports/use-page-wallpaper";
 import { JlSportsHero } from "./live/live-home/jl-sports/sports-hero";
+import { SportsTv } from "./sports/sports-tv";
 import type { JlHubGame } from "./live/live-home/jl-sports/use-jl-sports";
 import { useJlSportsPage } from "./live/live-home/jl-sports/use-jl-sports-page";
 import { ContinueAnywhereRow } from "@/views/continue/continue-anywhere";
@@ -178,6 +179,10 @@ function SportsHubView({ active = false }: { active?: boolean }) {
     return () => cancelAnimationFrame(frame);
   }, [active]);
   const [showTop, setShowTop] = useState(false);
+  // The hero and its TV stay at the top; scrolling down to explore tucks them away and
+  // scrolling back up brings them back.
+  const [heroTucked, setHeroTucked] = useState(false);
+  const lastScrollRef = useRef(0);
   const [leagueFilter, setLeagueFilter] = useState("");
   useEffect(() => {
     if (!active) return;
@@ -413,8 +418,11 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   const jlHome = tab === "home" && group !== "esports";
   // JL's pieces follow the viewer's own sports, not a single sport or league picked below.
   const jlAll = jlHome && group === "all" && !scope.leagueFilter;
+  // Every Sports tab opens on the hero, not only For you; Hot Events, Brackets and esports have
+  // their own headers.
+  const heroBand = group !== "esports" && !standalone;
   const jlHero =
-    jlHome &&
+    heroBand &&
     jl.sports.top.length +
       jl.sports.teamSlides.length +
       jl.sports.playerSlides.length +
@@ -430,9 +438,11 @@ function SportsHubView({ active = false }: { active?: boolean }) {
     (g) => selectedTags.has(g.league) && !scheduleTags.has(g.league),
   );
   // The viewer's sports channels, classified once for the photo cards and the full browser.
+  // The hero's TV needs them on every tab that shows the hero.
+  const channelsOn = jlAll || heroBand;
   const jlChannels = useLiveSportsChannels({
-    active: active && jlAll,
-    channels: jlAll ? jl.channels : NO_CHANNELS,
+    active: active && channelsOn,
+    channels: channelsOn ? jl.channels : NO_CHANNELS,
     activeSourceId: jl.activeSourceId,
     epg: jl.epg,
     nowMs: jl.nowMs,
@@ -494,15 +504,28 @@ function SportsHubView({ active = false }: { active?: boolean }) {
         ref={scrollRef}
         className="sports-hub"
         onScroll={(e) => {
-          const past = e.currentTarget.scrollTop > 700;
+          const top = e.currentTarget.scrollTop;
+          const past = top > 700;
           if (past !== showTop) setShowTop(past);
+          const delta = top - lastScrollRef.current;
+          if (Math.abs(delta) > 6) {
+            const tuck = delta > 0 && top > 160;
+            if (tuck !== heroTucked) setHeroTucked(tuck);
+            lastScrollRef.current = top;
+          }
         }}
         aria-label={t("Sports")}
       >
-        {lead && (
-          <>
-            {!homeHidden.includes("hero") && jlHero && (
-              <div data-sports-shelf="hero">
+        {!homeHidden.includes("hero") &&
+          (jlHero || (heroBand && jlChannels.entries.length > 0)) && (
+            <div
+              data-sports-shelf="hero"
+              className={`sticky top-0 z-30 grid bg-canvas transition-transform duration-300 ease-out ${
+                jlHero ? "lg:grid-cols-[minmax(0,1fr)_clamp(380px,34%,580px)]" : ""
+              }`}
+              style={{ transform: heroTucked ? "translateY(-100%)" : undefined }}
+            >
+              {jlHero && (
                 <JlSportsHero
                   top={pageTop}
                   teamSlides={jl.sports.teamSlides.filter((s) =>
@@ -517,8 +540,21 @@ function SportsHubView({ active = false }: { active?: boolean }) {
                   bleed
                   flush
                 />
+              )}
+              {/* Without games to feature, the TV takes the hero's place. */}
+              <div
+                className={
+                  jlHero
+                    ? "hidden lg:block"
+                    : "mx-auto h-[clamp(440px,58vh,720px)] w-full max-w-[1200px]"
+                }
+              >
+                <SportsTv data={jlChannels} active={active} />
               </div>
-            )}
+            </div>
+          )}
+        {lead && (
+          <>
             {!homeHidden.includes("top10") && jlAll && (
               <div className="sh-body sh-lead-top10" data-sports-shelf="top10">
                 <JlSportsHub
