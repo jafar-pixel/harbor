@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Heart, Play, Tv } from "lucide-react";
+import { Heart, Maximize, Tv } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { recentChannels, useChannelStatsVersion } from "@/lib/iptv/channel-stats";
 import type { useFavorites } from "@/lib/iptv/favorites";
 import type { EpgIndex, EpgProgram, IptvChannel } from "@/lib/iptv/types";
 import { findCurrent } from "@/lib/iptv/xmltv";
@@ -17,9 +18,10 @@ const PAGE = 200;
 const FAILED = new Set<string>();
 
 /**
- * Live TV's Channels view: the channel list on one side (logo, number, what's on and when) and a
- * big live preview of the selected channel on the other, with what's on now and next.
- * Watch opens the full player. Favorites uses the same view over your favourite channels.
+ * Live TV's Channels view, beside the group list: the channels you watched last on top, the
+ * group's channels as tiles under them, and the selected channel playing on the right with what's
+ * on and a Full Screen button. A click selects; a double click or Full Screen opens the player.
+ * Favorites uses the same view over your favourite channels.
  */
 export function ChannelsView({
   channels,
@@ -29,6 +31,7 @@ export function ChannelsView({
   favorites,
   onPlay,
   resetKey,
+  sourceId,
 }: {
   channels: IptvChannel[];
   epg: EpgIndex | null;
@@ -37,8 +40,10 @@ export function ChannelsView({
   favorites: ReturnType<typeof useFavorites>;
   onPlay: (ch: IptvChannel) => void;
   resetKey: string;
+  sourceId: string;
 }) {
   const t = useT();
+  const statsVersion = useChannelStatsVersion();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const listRef = useRef<HTMLDivElement>(null);
@@ -51,79 +56,122 @@ export function ChannelsView({
   const selected = channels.find((c) => c.id === selectedId) ?? channels[0] ?? null;
   const shown = channels.slice(0, limit);
   const programsOf = (ch: IptvChannel) => (ch.tvgId ? epg?.byChannel.get(ch.tvgId) : undefined);
+  const recent = useMemo(() => {
+    void statsVersion;
+    const byId = new Map(channels.map((c) => [c.id, c]));
+    return recentChannels(12, sourceId)
+      .map((s) => byId.get(s.id))
+      .filter((c): c is IptvChannel => !!c);
+  }, [channels, sourceId, statsVersion]);
+  const select = (ch: IptvChannel) => setSelectedId(ch.id);
 
   return (
-    <div className="grid min-h-0 flex-1 gap-5 pb-6 lg:grid-cols-[minmax(320px,0.9fr)_1.4fr]">
+    <div className="grid min-h-0 flex-1 gap-5 pb-6 lg:grid-cols-[minmax(320px,1fr)_minmax(420px,1.15fr)]">
       <div
         ref={listRef}
-        role="listbox"
         aria-label={t("Channels")}
-        className="flex max-h-[calc(100dvh-220px)] min-h-0 flex-col gap-1.5 overflow-y-auto pe-1 lg:order-none order-2"
+        className="order-2 flex max-h-[calc(100dvh-220px)] min-h-0 flex-col gap-5 overflow-y-auto pe-1 lg:order-none"
         onScroll={(e) => {
           const el = e.currentTarget;
           if (el.scrollTop + el.clientHeight > el.scrollHeight - 400 && limit < channels.length)
             setLimit((n) => n + PAGE);
         }}
       >
-        {shown.map((ch) => {
-          const { current } = findCurrent(programsOf(ch), nowMs);
-          const on = selected?.id === ch.id;
-          const progress = current
-            ? Math.min(
-                1,
-                Math.max(0, (nowMs - current.startMs) / (current.endMs - current.startMs)),
-              )
-            : null;
-          return (
-            <button
-              key={ch.id}
-              type="button"
-              role="option"
-              aria-selected={on}
-              onClick={() => setSelectedId(ch.id)}
-              onDoubleClick={() => onPlay(ch)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && on) {
-                  e.preventDefault();
-                  onPlay(ch);
-                }
-              }}
-              className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-start transition-colors ${
-                on
-                  ? "border-edge bg-raised"
-                  : "border-transparent hover:border-edge-soft hover:bg-elevated"
-              }`}
-            >
-              <ChannelLogo channel={ch} />
-              <span className="w-9 shrink-0 text-center text-[12px] tabular-nums text-ink-subtle">
-                {channelNumber(ch.attrs) ?? ""}
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span dir="auto" className="truncate text-[14px] font-semibold text-ink">
-                  {ch.name}
-                </span>
-                <span dir="auto" className="truncate text-[12.5px] text-ink-muted">
-                  {current ? current.title : (ch.group ?? t("Live channel"))}
-                </span>
-                {progress != null && (
-                  <span className="mt-1 h-[3px] overflow-hidden rounded-full bg-ink/15">
-                    <span
-                      className="block h-full rounded-full bg-accent"
-                      style={{ width: `${Math.round(progress * 100)}%` }}
-                    />
+        {recent.length > 0 && (
+          <section className="flex flex-col gap-2.5">
+            <h2 className="text-[15px] font-semibold text-accent">{t("Continue watching")}</h2>
+            <div className="-mx-1 flex gap-2.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {recent.map((ch) => (
+                <button
+                  key={ch.id}
+                  type="button"
+                  onClick={() => select(ch)}
+                  onDoubleClick={() => onPlay(ch)}
+                  title={ch.name}
+                  aria-current={selected?.id === ch.id || undefined}
+                  className={`flex w-[104px] shrink-0 flex-col items-center gap-1.5 rounded-xl border p-2 transition-colors ${
+                    selected?.id === ch.id
+                      ? "border-accent bg-raised"
+                      : "border-edge-soft/50 bg-elevated hover:border-edge"
+                  }`}
+                >
+                  <ChannelLogo channel={ch} />
+                  <span
+                    dir="auto"
+                    className="w-full truncate text-center text-[11.5px] text-ink-muted"
+                  >
+                    {ch.name}
                   </span>
-                )}
-              </span>
-              {current && (
-                <span className="shrink-0 text-end text-[11.5px] tabular-nums text-ink-subtle">
-                  {fmtClock(current.startMs)}
-                  <br />
-                  {fmtClock(current.endMs)}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+        <div
+          role="listbox"
+          aria-label={t("Channels")}
+          className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5"
+        >
+          {shown.map((ch) => {
+            const { current } = findCurrent(programsOf(ch), nowMs);
+            const on = selected?.id === ch.id;
+            const progress = current
+              ? Math.min(
+                  1,
+                  Math.max(0, (nowMs - current.startMs) / (current.endMs - current.startMs)),
+                )
+              : null;
+            return (
+              <button
+                key={ch.id}
+                type="button"
+                role="option"
+                aria-selected={on}
+                onClick={() => select(ch)}
+                onDoubleClick={() => onPlay(ch)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && on) {
+                    e.preventDefault();
+                    onPlay(ch);
+                  }
+                }}
+                className={`flex flex-col overflow-hidden rounded-xl border text-start transition-colors ${
+                  on
+                    ? "border-accent bg-raised"
+                    : "border-edge-soft/50 bg-elevated hover:border-edge"
+                }`}
+              >
+                <span className="relative flex aspect-video items-center justify-center bg-white/[0.05] p-4">
+                  <TileLogo channel={ch} />
+                  <span className="absolute start-2 top-2 rounded bg-danger px-1.5 py-px text-[9.5px] font-bold uppercase tracking-[0.14em] text-white">
+                    {t("Live")}
+                  </span>
+                  {channelNumber(ch.attrs) && (
+                    <span className="absolute end-2 top-2 text-[11px] tabular-nums text-ink-subtle">
+                      {channelNumber(ch.attrs)}
+                    </span>
+                  )}
+                  {progress != null && (
+                    <span className="absolute inset-x-0 bottom-0 h-[3px] bg-ink/15">
+                      <span
+                        className="block h-full bg-accent"
+                        style={{ width: `${Math.round(progress * 100)}%` }}
+                      />
+                    </span>
+                  )}
                 </span>
-              )}
-            </button>
-          );
-        })}
+                <span className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2">
+                  <span dir="auto" className="truncate text-[13px] font-semibold text-ink">
+                    {ch.name}
+                  </span>
+                  <span dir="auto" className="truncate text-[11.5px] text-ink-muted">
+                    {current ? current.title : (ch.group ?? t("Live channel"))}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
       {selected && (
         <Preview
@@ -137,6 +185,22 @@ export function ChannelsView({
         />
       )}
     </div>
+  );
+}
+
+function TileLogo({ channel }: { channel: IptvChannel }) {
+  const [err, setErr] = useState(false);
+  return channel.logo && !err ? (
+    <img
+      src={channel.logo}
+      alt=""
+      draggable={false}
+      loading="lazy"
+      onError={() => setErr(true)}
+      className="max-h-full max-w-full object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]"
+    />
+  ) : (
+    <Tv size={26} className="text-ink-subtle" />
   );
 }
 
@@ -245,42 +309,47 @@ function Preview({
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
           {t("Live")}
         </span>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-5 pt-16">
-          <div className="flex items-end gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium text-white/80">{channel.name}</p>
-              <h2
-                dir="auto"
-                className="truncate text-[22px] font-semibold leading-tight text-white"
-              >
-                {current?.title ?? channel.group ?? t("Live channel")}
-              </h2>
-              {current && (
-                <p className="mt-1 text-[12.5px] tabular-nums text-white/75">
-                  {fmtClock(current.startMs)} – {fmtClock(current.endMs)}
-                  {left ? ` · ${left}` : ""}
-                </p>
-              )}
-            </div>
-            <TvVolumeControls />
-            <button
-              type="button"
-              onClick={onFavorite}
-              aria-pressed={favorite}
-              aria-label={favorite ? t("Remove from favorites") : t("Add to favorites")}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition-colors hover:bg-white/25"
-            >
-              <Heart size={18} fill={favorite ? "currentColor" : "none"} />
-            </button>
-            <button
-              type="button"
-              onClick={onPlay}
-              className="jl-cta flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-black"
-            >
-              <Play size={16} fill="currentColor" /> {t("Watch")}
-            </button>
-          </div>
+        <div className="absolute end-3 bottom-3">
+          <TvVolumeControls />
         </div>
+      </div>
+      <div className="flex flex-col gap-1">
+        <p dir="auto" className="truncate text-[13px] font-medium text-ink-muted">
+          {channel.name}
+        </p>
+        <h2 dir="auto" className="truncate text-[24px] font-bold uppercase leading-tight text-ink">
+          {current?.title ?? channel.name}
+        </h2>
+        <p
+          dir="auto"
+          className="truncate text-[14px] font-semibold uppercase tracking-wide text-accent"
+        >
+          {channel.group ?? t("Live channel")}
+          {current && (
+            <span className="ms-2 font-medium normal-case tracking-normal tabular-nums text-ink-subtle">
+              {fmtClock(current.startMs)} – {fmtClock(current.endMs)}
+              {left ? ` · ${left}` : ""}
+            </span>
+          )}
+        </p>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onPlay}
+          className="flex h-14 flex-1 items-center justify-center gap-3 rounded-2xl bg-[#f5c518] text-[17px] font-bold uppercase tracking-wide text-black shadow-[0_10px_30px_-12px_rgba(245,197,24,0.7)] transition-[filter] hover:brightness-105"
+        >
+          <Maximize size={20} strokeWidth={2.4} /> {t("Full screen")}
+        </button>
+        <button
+          type="button"
+          onClick={onFavorite}
+          aria-pressed={favorite}
+          aria-label={favorite ? t("Remove from favorites") : t("Add to favorites")}
+          className="flex h-14 w-14 items-center justify-center rounded-2xl bg-elevated text-ink ring-1 ring-edge-soft transition-colors hover:bg-raised"
+        >
+          <Heart size={20} fill={favorite ? "currentColor" : "none"} />
+        </button>
       </div>
       {(current?.description || next) && (
         <div className="flex flex-col gap-3 rounded-2xl border border-edge-soft bg-elevated p-4">
