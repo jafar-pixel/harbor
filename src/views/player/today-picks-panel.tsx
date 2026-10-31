@@ -3,6 +3,7 @@ import { Star, Tv, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
 import { isPicked, toggleTodayPick, useTodayPicks } from "@/lib/iptv/today-picks";
+import { useLiveToday } from "@/lib/jl/sports/live-today-store";
 import type { PlayerSrc } from "@/lib/view";
 
 /**
@@ -22,6 +23,8 @@ export function TodayPicksPanel({
 }) {
   const t = useT();
   const picks = useTodayPicks();
+  // Today's games from the Sports Hub, with scores; only the ones a provider carries can switch.
+  const liveToday = useLiveToday().filter((r) => r.channel);
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -87,7 +90,43 @@ export function TodayPicksPanel({
         {starred ? t("Remove this channel from today") : t("Add this channel to today")}
       </button>
       <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3">
-        {picks.length === 0 && (
+        {liveToday.length > 0 && (
+          <>
+            <h3 className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
+              {t("Live Today")}
+            </h3>
+            {liveToday.map((r) => {
+              const playing = r.channel!.id === channelId;
+              return (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={() => !playing && onSwitch(r.channel!, r.title)}
+                  aria-current={playing || undefined}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-start transition-colors ${
+                    playing ? "bg-white/15" : "hover:bg-white/10"
+                  }`}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span dir="auto" className="block truncate text-[13.5px] font-semibold">
+                      {r.title}
+                    </span>
+                    <span className="block truncate text-[12px] text-white/60">
+                      {r.live && <span className="me-1 text-danger">●</span>}
+                      {[r.score, r.detail].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+            {picks.length > 0 && (
+              <h3 className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                {t("Starred")}
+              </h3>
+            )}
+          </>
+        )}
+        {picks.length === 0 && liveToday.length === 0 && (
           <p className="px-2 py-6 text-center text-[13px] leading-relaxed text-white/65">
             {t(
               "Star games in Sports or here while you watch. They stay until midnight, since game channels change every day.",

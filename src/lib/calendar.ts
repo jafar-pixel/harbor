@@ -32,6 +32,8 @@ export type CalendarItem = {
   isAnime: boolean;
   overview: string;
   voteAverage: number;
+  /** A game from Sports › Remind me; it opens Sports rather than a title page. */
+  sportsReminder?: boolean;
 };
 
 export type CalendarFilter = "all" | "movie" | "tv" | "anime";
@@ -538,8 +540,11 @@ export async function ensureDesktopNotifyPermission(): Promise<boolean> {
 
 /** Read permission for automatic events without prompting the user. */
 export async function hasDesktopNotifyPermission(): Promise<boolean> {
-  return automaticNotificationPermission(isDesktopTauri(), "Notification" in window ? Notification.permission : undefined,
-    () => invoke<boolean | null>("plugin:notification|is_permission_granted"));
+  return automaticNotificationPermission(
+    isDesktopTauri(),
+    "Notification" in window ? Notification.permission : undefined,
+    () => invoke<boolean | null>("plugin:notification|is_permission_granted"),
+  );
 }
 
 function detailDeepLink(item: CalendarItem): string | undefined {

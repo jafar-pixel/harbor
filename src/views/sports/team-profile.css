@@ -29,6 +29,10 @@
   height: min(780px, 86vh);
   max-height: 86vh;
   color: var(--color-ink);
+  /* The glass themes make dialogs see-through; a team's history is long reading, so it gets a
+     near-solid backing instead of the room behind it. */
+  background: color-mix(in srgb, var(--color-canvas) 94%, transparent);
+  border-radius: inherit;
 }
 .sh-team-profile-header {
   flex-shrink: 0;
@@ -154,8 +158,9 @@
 .sh-team-profile-description {
   white-space: pre-line;
   line-height: 1.75;
-  font-size: 14px;
-  color: var(--color-ink-muted);
+  font-size: 15px;
+  color: var(--color-ink);
+  max-width: 72ch;
 }
 .sh-team-profile-search {
   display: flex;
