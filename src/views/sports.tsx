@@ -47,7 +47,6 @@ import { effectiveTeams, useJlFavoritePlayers } from "@/lib/jl/sports/favorites"
 import { useHubTeams } from "./live/live-home/jl-sports/use-jl-sports";
 import { useSportPrefs } from "./live/live-home/jl-sports/use-jl-sports";
 import { leaguesForToday } from "@/lib/jl/sports/sport-priorities";
-import { heroFeatured } from "@/lib/jl/sports/hub-sections";
 import type { IptvChannel } from "@/lib/iptv/types";
 import { GameStoriesRow } from "./live/live-home/jl-sports/game-stories";
 import { AlsoToday, JlSportsHub } from "./live/live-home/jl-sports/jl-sports-hub";
@@ -62,9 +61,10 @@ import {
   stripGames,
 } from "./live/live-home/jl-sports/jl-sports-top";
 import { useSportsPageWallpaper } from "./live/live-home/jl-sports/use-page-wallpaper";
-import { JlSportsHero } from "./live/live-home/jl-sports/sports-hero";
-import { SportsTv } from "./sports/sports-tv";
-import type { JlHubGame } from "./live/live-home/jl-sports/use-jl-sports";
+import { SportsHubHome } from "./sports/hub-home";
+import { SportsTvBand, type BandItem } from "./sports/sports-tv-band";
+import { replayChannels } from "@/lib/jl/sports/replays";
+import { TV_LEAGUE_LABELS } from "@/lib/jl/sports/tv-leagues";
 import { useJlSportsPage } from "./live/live-home/jl-sports/use-jl-sports-page";
 import { ContinueAnywhereRow } from "@/views/continue/continue-anywhere";
 
@@ -128,13 +128,15 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   const jlTeams = useHubTeams();
   const jlPlayers = useJlFavoritePlayers();
   const discoveryTeams = useMemo(() => effectiveTeams(jlTeams, jlPlayers), [jlTeams, jlPlayers]);
-  const { openMatchDetail } = useView();
+  const { openMatchDetail, setView } = useView();
   const scrollRef = useRef<HTMLElement>(null);
   useScrollMemory("sports", scrollRef, active);
   const { ref: sportRail, handlers: sportHandlers } = useDragScroll<HTMLDivElement>();
-  const [tab, setTab] = useState("home");
+  // Hub · Schedules · Replays · Teams & Players · Bracketology. Hub replaced For you.
+  const [tab, setTab] = useState("hub");
+  const [scoresView, setScoresView] = useState(false);
   // Tabs that replace the schedule widgets with their own page.
-  const standalone = tab === "hot" || tab === "brackets";
+  const standalone = tab === "hub" || tab === "replays" || tab === "hot" || tab === "brackets";
   const [requestedGroup, setGroup] = useState("all");
   const [browsing, setBrowsing] = useState(false);
   const [esportsHeroTarget, setEsportsHeroTarget] = useState<HTMLDivElement | null>(null);
@@ -181,8 +183,6 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   const [showTop, setShowTop] = useState(false);
   // The hero and its TV stay at the top; scrolling down to explore tucks them away and
   // scrolling back up brings them back.
-  const [heroTucked, setHeroTucked] = useState(false);
-  const lastScrollRef = useRef(0);
   const [leagueFilter, setLeagueFilter] = useState("");
   useEffect(() => {
     if (!active) return;
@@ -407,27 +407,11 @@ function SportsHubView({ active = false }: { active?: boolean }) {
       ]),
     ];
   }, [selected]);
-  const jlTopKeys = new Set(pageTop.map((r) => `${r.game.league}:${r.game.id}`));
-  const jlFeatured: JlHubGame[] = heroFeatured(personalHeroes, jlTopKeys).map((game) => ({
-    game,
-    score: 0,
-    reasons: [],
-    mine: false,
-    channels: jl.sports.channelsFor(game),
-  }));
   const jlHome = tab === "home" && group !== "esports";
   // JL's pieces follow the viewer's own sports, not a single sport or league picked below.
   const jlAll = jlHome && group === "all" && !scope.leagueFilter;
-  // Every Sports tab opens on the hero, not only For you; Hot Events, Brackets and esports have
-  // their own headers.
-  const heroBand = group !== "esports" && !standalone;
-  const jlHero =
-    heroBand &&
-    jl.sports.top.length +
-      jl.sports.teamSlides.length +
-      jl.sports.playerSlides.length +
-      jlFeatured.length >
-      0;
+  // The fixed Sports TV sits on Hub, Schedules and Replays.
+  const tvTab = tab === "hub" || tab === "schedule" || tab === "replays";
   // Harbor's schedule already lists every game of the leagues it shows, so "Also today" only
   // keeps the leagues it doesn't.
   const scheduleTags = new Set([
@@ -439,7 +423,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   );
   // The viewer's sports channels, classified once for the photo cards and the full browser.
   // The hero's TV needs them on every tab that shows the hero.
-  const channelsOn = jlAll || heroBand;
+  const channelsOn = jlAll || tvTab;
   const jlChannels = useLiveSportsChannels({
     active: active && channelsOn,
     channels: channelsOn ? jl.channels : NO_CHANNELS,
@@ -450,6 +434,30 @@ function SportsHubView({ active = false }: { active?: boolean }) {
     allowedSports: allowedChannelSports,
     onPlay: jl.play,
   });
+  const scheduleBandItems = useMemo<BandItem[]>(
+    () =>
+      jlChannels.entries.map((e) => ({
+        key: `ch:${e.key}`,
+        title: e.title,
+        subtitle: e.channels[0]?.name ?? "",
+        live: e.liveNow,
+        channels: e.channels,
+      })),
+    [jlChannels.entries],
+  );
+  const replayBandItems = useMemo<BandItem[]>(
+    () =>
+      tab === "replays"
+        ? replayChannels(jl.channels).map((r) => ({
+            key: `replay:${r.channel.id}`,
+            title: r.channel.name,
+            subtitle: [t(TV_LEAGUE_LABELS[r.league]), r.channel.group].filter(Boolean).join(" · "),
+            live: false,
+            channels: [r.channel],
+          }))
+        : [],
+    [tab, jl.channels, t],
+  );
   const jlScores = stripGames(jl.sports.games.filter(allowsGame));
   const jlLeagues = () => {
     setTab("explore");
@@ -507,52 +515,9 @@ function SportsHubView({ active = false }: { active?: boolean }) {
           const top = e.currentTarget.scrollTop;
           const past = top > 700;
           if (past !== showTop) setShowTop(past);
-          const delta = top - lastScrollRef.current;
-          if (Math.abs(delta) > 6) {
-            const tuck = delta > 0 && top > 160;
-            if (tuck !== heroTucked) setHeroTucked(tuck);
-            lastScrollRef.current = top;
-          }
         }}
         aria-label={t("Sports")}
       >
-        {!homeHidden.includes("hero") &&
-          (jlHero || (heroBand && jlChannels.entries.length > 0)) && (
-            <div
-              data-sports-shelf="hero"
-              className={`sticky top-0 z-30 grid bg-canvas transition-transform duration-300 ease-out ${
-                jlHero ? "lg:grid-cols-[minmax(0,1fr)_clamp(380px,34%,580px)]" : ""
-              }`}
-              style={{ transform: heroTucked ? "translateY(-100%)" : undefined }}
-            >
-              {jlHero && (
-                <JlSportsHero
-                  top={pageTop}
-                  teamSlides={jl.sports.teamSlides.filter((s) =>
-                    scopeTags.has(s.team.league === "NCAAB" ? "NCAA" : s.team.league),
-                  )}
-                  playerSlides={jl.sports.playerSlides.filter((s) =>
-                    scopeTags.has(s.player.league === "NCAAB" ? "NCAA" : s.player.league),
-                  )}
-                  featured={jlFeatured}
-                  actions={jl.actions}
-                  onOpenGame={open}
-                  bleed
-                  flush
-                />
-              )}
-              {/* Without games to feature, the TV takes the hero's place. */}
-              <div
-                className={
-                  jlHero
-                    ? "hidden lg:block"
-                    : "mx-auto h-[clamp(440px,58vh,720px)] w-full max-w-[1200px]"
-                }
-              >
-                <SportsTv data={jlChannels} active={active} />
-              </div>
-            </div>
-          )}
         {lead && (
           <>
             {!homeHidden.includes("top10") && jlAll && (
@@ -590,21 +555,18 @@ function SportsHubView({ active = false }: { active?: boolean }) {
         </header>
         <nav className="sh-view-tabs" aria-label={t("Sports navigation")}>
           {[
-            ["home", "For you"],
-            ["live", "Live"],
-            ["scores", "Scores"],
-            ["schedule", "Schedule"],
-            ["teams", "Teams"],
-            ["explore", "Leagues"],
-            ["hot", "Hot Events"],
-            ["brackets", "Brackets"],
+            ["hub", "Hub"],
+            ["schedule", "Schedules"],
+            ["replays", "Replays"],
+            ["teams", "Teams & Players"],
+            ["brackets", "Bracketology"],
           ].map(([key, label]) => (
             <button
               key={key}
-              aria-pressed={tab === key}
+              aria-pressed={tab === key || (key === "teams" && tab === "explore")}
               onClick={() => {
                 setTab(key);
-                if (key === "home" || key === "live") {
+                if (key === "hub" || key === "schedule") {
                   setLeagueFilter("");
                   setGroup("all");
                   setBrowsing(false);
@@ -629,6 +591,28 @@ function SportsHubView({ active = false }: { active?: boolean }) {
           )}
           <SportsRefreshButton busy={busy} onRefresh={() => setRefresh((n) => n + 1)} />
         </nav>
+        {tab === "schedule" && (
+          <SportsTvBand
+            heading={t("Sports channels")}
+            items={scheduleBandItems}
+            emptyList={t("Add an IPTV provider in Live TV to watch your sports channels here.")}
+            active={active && !setup}
+            sourceNames={jlChannels.sourceNames}
+            onWatch={jlChannels.play}
+          />
+        )}
+        {tab === "replays" && (
+          <SportsTvBand
+            heading={t("Replays")}
+            items={replayBandItems}
+            emptyList={t(
+              'Your providers\' replay channels show up here (groups like "NFL Replay" or "Full Games").',
+            )}
+            active={active && !setup}
+            sourceNames={jlChannels.sourceNames}
+            onWatch={jlChannels.play}
+          />
+        )}
         {tab === "home" && group === "esports" && !browsing && (
           <div className="sh-carousel" ref={setEsportsHeroTarget} />
         )}
@@ -917,7 +901,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
                     active={active && !setup}
                     refresh={refresh}
                     onExplore={() => {
-                      setTab("home");
+                      setTab("schedule");
                       setBrowsing(true);
                       setGroup("esports");
                       setLeagueFilter("");
@@ -929,6 +913,18 @@ function SportsHubView({ active = false }: { active?: boolean }) {
             </>
           )}
           {tab === "schedule" && group !== "esports" && (
+            <div className="hot-filters">
+              <div role="group" aria-label={t("Show")}>
+                <button aria-pressed={!scoresView} onClick={() => setScoresView(false)}>
+                  {t("Schedule")}
+                </button>
+                <button aria-pressed={scoresView} onClick={() => setScoresView(true)}>
+                  {t("Scores")}
+                </button>
+              </div>
+            </div>
+          )}
+          {tab === "schedule" && group !== "esports" && !scoresView && (
             <HubSchedule
               title={dateTitle}
               games={board.games}
@@ -938,7 +934,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               failed={board.failed > 0}
             />
           )}
-          {tab === "scores" && group !== "esports" && (
+          {tab === "schedule" && scoresView && group !== "esports" && (
             <HubSchedule
               key="scores"
               title={t("Scores · {date}", { date: dateTitle })}
@@ -959,6 +955,9 @@ function SportsHubView({ active = false }: { active?: boolean }) {
                 </p>
                 <button type="button" className="sh-text-button" onClick={() => setSetup(true)}>
                   {t("Choose your teams")}
+                </button>
+                <button type="button" className="sh-text-button" onClick={() => setTab("explore")}>
+                  {t("Browse every league and team")}
                 </button>
               </div>
               <HubRow
@@ -983,6 +982,19 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               <Brackets active={active && !setup} />
             </Suspense>
           )}
+          {tab === "hub" && (
+            <SportsHubHome
+              seed={[...all, ...jl.sports.games]}
+              selected={selected}
+              active={active && !setup}
+              refresh={refresh}
+              channels={jlChannels}
+              channelsFor={jl.sports.channelsFor}
+              onWatch={jlChannels.play}
+              onOpen={open}
+              onCalendar={() => setView("calendar")}
+            />
+          )}
           {tab === "hot" && (
             <Suspense fallback={<SportsHotEventsSkeleton />}>
               <HotEvents
@@ -1002,7 +1014,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
                 setBrowsing(true);
                 setGroup(key);
                 setLeagueFilter("");
-                setTab("home");
+                setTab("schedule");
                 scrollRef.current?.scrollTo({ top: 0 });
               }}
             />

@@ -17,7 +17,7 @@ import { getGroupLabel, getLeagueLabel, type SportsGame } from "@/lib/sports/esp
 
 import { involvesTeam, type FavouriteTeam } from "@/lib/sports/favourites";
 
-import { hotEventCalendarParts, hotEvents, type HotEvent } from "@/lib/sports/hot-events";
+import { hotEventCalendarParts, hotEvents } from "@/lib/sports/hot-events";
 
 import { dayStamp, HUB_GROUPS, HUB_LEAGUES, hubLeague } from "@/lib/sports/hub-data";
 
@@ -159,7 +159,7 @@ export function hotEventTitle(game: SportsGame) {
   return game.context?.name || `${game.away.name} · ${game.home.name}`;
 }
 
-function HotTeamTitle({ game }: { game: SportsGame }) {
+export function HotTeamTitle({ game }: { game: SportsGame }) {
   return (
     game.context?.name || (
       <>
@@ -170,14 +170,14 @@ function HotTeamTitle({ game }: { game: SportsGame }) {
   );
 }
 
-function HotPoster({
-  item,
+export function HotPoster({
+  game,
 
   lead = false,
 
   onOpen,
 }: {
-  item: HotEvent;
+  game: SportsGame;
 
   lead?: boolean;
 
@@ -186,8 +186,6 @@ function HotPoster({
   const t = useT();
 
   const date = useEventDate();
-
-  const game = item.game;
 
   const league = hubLeague(game.league);
 
@@ -267,7 +265,7 @@ function HotPoster({
   );
 }
 
-function WeekLogos({ game }: { game: SportsGame }) {
+export function WeekLogos({ game }: { game: SportsGame }) {
   const league = hubLeague(game.league);
 
   const event = ["combat", "boxing", "motorsport", "esports", "golf"].includes(league?.group || "");
@@ -451,7 +449,7 @@ export function HotEventsContent({
             <HotPoster
               key={gameKey(lead.game)}
 
-              item={lead}
+              game={lead.game}
 
               lead
 
@@ -516,7 +514,7 @@ export function HotEventsContent({
                   <HotPoster
                     key={gameKey(item.game)}
 
-                    item={item}
+                    game={item.game}
 
                     onOpen={onOpen}
                   />
@@ -576,6 +574,38 @@ export function HotEventsContent({
       </details>
     </section>
   );
+}
+
+/** The games the Hub and Hot Events show: the saved seed merged with the upcoming feed. */
+export function useHotFeed(
+  seed: SportsGame[],
+  leagueKeys: string[],
+  active: boolean,
+  refresh: number,
+) {
+  const pageVisible = usePageVisible();
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!active || !pageVisible) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, [active, pageVisible]);
+  const feed = useSportsHub(leagueKeys, dayStamp(new Date(now)), active, refresh, "upcoming");
+  const games = useMemo(
+    () =>
+      mergeSlices([
+        {
+          at: 1,
+          games: seed.filter((game) =>
+            HUB_LEAGUES.some((l) => leagueKeys.includes(l.key) && l.tag === game.league),
+          ),
+        },
+        { at: 2, games: feed.games },
+      ]),
+    [seed, feed.games, leagueKeys],
+  );
+  return { games, now, loading: feed.pending > 0, stale: feed.stale || feed.failed > 0 };
 }
 
 export function HotEvents({
