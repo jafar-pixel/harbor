@@ -149,7 +149,7 @@ const QUALITY_SUFFIX =
   "( (HD|FHD|UHD|SD|EAST|4K|1080P?|720P?|HEVC|H265|HFR|(50|60) ?FPS))*( ?\\*)?";
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const RES_4K = /\b(4K|UHD|2160P?)\b/;
+const RES_4K = /\b(8K|4K|UHD|2160P?)\b/;
 const RES_1080 = /\b(FHD|1080[PI]?(50|60)?)\b/;
 const RES_720 = /\b(HD|720P?(50|60)?)\b/;
 const RES_SD = /\b(SD|480P?)\b/;
@@ -161,7 +161,8 @@ const HIGH_FRAME_RATE = /\b(50|60) ?FPS\b|\bHFR\b|\b(1080|720)P?(50|60)\b/;
  * backup feeds drop below their main feed.
  */
 export function channelQuality(name: string): number {
-  const n = name.toUpperCase();
+  // NFKC turns styled tags ("ᴴᴰ", "⁸ᴷ") into plain letters before matching.
+  const n = name.normalize("NFKC").toUpperCase();
   let q = RES_4K.test(n)
     ? 40
     : RES_1080.test(n)
@@ -195,8 +196,34 @@ export function sportsBroadcasterPriority(name: string): number {
   return 5;
 }
 
-const byQuality = (a: IptvChannel, b: IptvChannel) =>
-  channelQuality(b.name) - channelQuality(a.name);
+/**
+ * A channel's quality from its name, raised to 4K when its group is a 4K/8K one ("US| NBA PASS
+ * PPV ⁸ᴷ"): event slots rarely tag themselves, their group does.
+ */
+export function channelQualityOf(channel: IptvChannel): number {
+  const own = channelQuality(channel.name);
+  const group = (channel.group ?? "").normalize("NFKC").toUpperCase();
+  return RES_4K.test(group) ? Math.max(own, 40 + (own % 10)) : own;
+}
+
+const byQuality = (a: IptvChannel, b: IptvChannel) => channelQualityOf(b) - channelQualityOf(a);
+
+/** A standard-definition feed (SD/480p in the name). */
+export function isSdChannel(name: string): boolean {
+  return RES_SD.test(name.toUpperCase());
+}
+
+// Another country's feed of the game ("UK: Sky Sports Main Event", a "CA Sports" group): its
+// own commentary and ad breaks, and providers often carry it at a lower quality.
+const FOREIGN =
+  /^(?:UK|GB|CA|CAN|AU|IE|FR|DE|ES|IT|NL|PT|BR|MX|AR|LATAM|NZ|ARAB|AFR)\b|\bSKY ?SPORTS?\b|\bTSN\b|\bSPORTSNET\b|\bBT SPORT\b|\bTNT SPORTS UK\b/i;
+
+/** 1 for another country's feed, 0 for a US or unprefixed one. */
+export function foreignFeed(channel: IptvChannel): number {
+  const name = channel.name.trim();
+  if (/^(?:US|USA)\b/i.test(name)) return 0;
+  return FOREIGN.test(name) || FOREIGN.test((channel.group ?? "").trim()) ? 1 : 0;
+}
 
 /** A streaming-only service (ESPN+, Peacock, Prime Video…): watched in its own app, not on a channel. */
 export function isStreamingOnly(network: string): boolean {
@@ -331,6 +358,9 @@ function matchGameChannels(game: SportsGame, index: SportsChannelIndex, now: Dat
     ...new Set([game.network, ...(game.broadcasts ?? [])].filter((name): name is string => !!name)),
   ];
   const network = networks.flatMap((name) => networkChannels(name, index));
+  // The game's own feeds (event channels and the network it airs on) lead; a guide match is
+  // often another country's broadcast of it.
+  const onAir = new Set([...events.map((c) => c.channel.id), ...network.map((c) => c.id)]);
   const ordered: GameChannel[] = [
     ...events.filter((c) => !c.alternate),
     ...network.map((channel) => ({ channel, via: "network" as const, alternate: false })),
@@ -340,13 +370,17 @@ function matchGameChannels(game: SportsGame, index: SportsChannelIndex, now: Dat
   ordered.sort(
     (a, b) =>
       Number(a.alternate) - Number(b.alternate) ||
-      sportsBroadcasterPriority(a.channel.name) - sportsBroadcasterPriority(b.channel.name) ||
-      byQuality(a.channel, b.channel),
+      Number(!onAir.has(a.channel.id)) - Number(!onAir.has(b.channel.id)) ||
+      foreignFeed(a.channel) - foreignFeed(b.channel) ||
+      byQuality(a.channel, b.channel) ||
+      sportsBroadcasterPriority(a.channel.name) - sportsBroadcasterPriority(b.channel.name),
   );
+  // SD feeds are only offered when the game has nothing better.
+  const anyBetter = ordered.some((c) => !isSdChannel(c.channel.name));
   const seen = new Set<string>();
   const out: GameChannel[] = [];
   for (const c of ordered) {
-    if (seen.has(c.channel.id)) continue;
+    if (seen.has(c.channel.id) || (anyBetter && isSdChannel(c.channel.name))) continue;
     seen.add(c.channel.id);
     out.push(c);
     if (out.length >= MAX_CHANNELS) break;

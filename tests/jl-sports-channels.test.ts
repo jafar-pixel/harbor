@@ -9,6 +9,9 @@ import {
   channelsForGame,
   networkChannel,
   networkChannels,
+  foreignFeed,
+  isSdChannel,
+  channelQualityOf,
 } from "../src/lib/jl/sports/channels.ts";
 
 function ch(id: string, name: string, group = "", tvgId: string | null = null): IptvChannel {
@@ -236,7 +239,7 @@ test("a game's event feeds lead with the best picture", () => {
   } as SportsGame;
   assert.deepEqual(
     channelsForGame(game, index, NOW).map((c) => c.channel.id),
-    ["abc", "fhd", "sd"],
+    ["fhd", "abc", "sd"],
   );
 });
 
@@ -283,4 +286,63 @@ test("preferred broadcasters and best quality lead only among matching game broa
     ),
     ["nbc"],
   );
+});
+
+test("a game's own US network leads, foreign feeds follow, and SD drops when better exists", () => {
+  const ch = (id: string, name: string, group = "USA Sports"): IptvChannel => ({
+    id,
+    tvgId: null,
+    name,
+    logo: null,
+    group,
+    url: `https://x/${id}`,
+    catchupSource: null,
+    durationSec: null,
+    attrs: {},
+  });
+  assert.equal(foreignFeed(ch("a", "UK: Sky Sports Main Event UHD", "UK Sports")), 1);
+  assert.equal(foreignFeed(ch("b", "Sky Sports NBA", "UK| Sports")), 1);
+  assert.equal(foreignFeed(ch("c", "USA ESPN UHD")), 0);
+  assert.equal(foreignFeed(ch("d", "ESPN 4K")), 0);
+  assert.equal(isSdChannel("USA ESPN SD"), true);
+  assert.equal(isSdChannel("USA ESPN HD"), false);
+});
+
+test("an NBA TV game plays on NBA TV, not on another country's sports channel", () => {
+  const start = "2026-09-26T16:00:00Z";
+  const index = buildSportsChannelIndex(
+    [
+      ch("sky", "UK: Sky Sports NBA UHD", "UK Sports", "sky.uk"),
+      ch("nbatv-sd", "USA NBA TV SD", "USA Sports", "nbatv.us"),
+      ch("nbatv", "USA NBA TV HD", "USA Sports", "nbatv.us"),
+    ],
+    epgOf([program("sky.uk", "NBA: Knicks at Celtics", start, 3)]),
+    NOW,
+  );
+  const game = {
+    id: "n",
+    league: "NBA",
+    state: "in",
+    detail: "",
+    startMs: Date.parse(start),
+    away: side("New York Knicks", { nickname: "Knicks", location: "New York" }),
+    home: side("Boston Celtics", { nickname: "Celtics", location: "Boston" }),
+    network: "NBA TV",
+  } as SportsGame;
+  assert.deepEqual(
+    channelsForGame(game, index, NOW).map((c) => c.channel.id),
+    ["nbatv", "sky"],
+  );
+});
+
+test("a 4K/8K group lifts its untagged event slots above another provider's plain slot", () => {
+  const pass = ch(
+    "pass",
+    "LIVE | ATL - HAWKS VS MIA - HEAT | Wed 28 Oct",
+    "US| NBA PASS PPV \u2078\u1d37",
+  );
+  const plain = ch("plain", "USA NBA 10: Lakers vs Warriors", "USA NBA");
+  assert.equal(channelQualityOf(pass), 40);
+  assert.equal(channelQualityOf(plain), 10);
+  assert.equal(channelQualityOf(ch("q", "US: FOX FHD 60FPS", "US| 8K Sports")), 45);
 });

@@ -432,12 +432,15 @@ fn apply_pre_init(
     }
     set("input-default-bindings", "no");
     set("input-media-keys", "no");
-    set("input-cursor", "no");
+    // The separate window covers the app, so it takes its own keys and clicks (bound in
+    // `bind_separate_window_keys`); the embedded player leaves input to the app.
+    let separate_window = !args.embed.unwrap_or(false);
+    set("input-cursor", if separate_window { "yes" } else { "no" });
     // `osc` is provided by mpv's optional on-screen-controller script. Some
     // libmpv builds, including the Flatpak build, do not ship that script, so
     // its option is unavailable. Harbor supplies its own controls either way.
     let _ = set("osc", "no");
-    set("osd-level", "0");
+    set("osd-level", if separate_window { "1" } else { "0" });
     set("cursor-autohide", "200");
     set("volume-max", "600");
     set("sub-codepage", "utf-8");
@@ -783,6 +786,11 @@ pub async fn mpv_start(
             }
         })
     };
+    #[cfg(windows)]
+    let separate_rect = match (separate_screen_size_for_init, separate_screen_pos_for_init) {
+        (Some((w, h)), Some((x, y))) => Some((x, y, w as i32, h as i32)),
+        _ => None,
+    };
     #[cfg(not(windows))]
     let separate_screen_for_init = None;
     #[cfg(not(windows))]
@@ -947,6 +955,7 @@ pub async fn mpv_start(
                 None => eprintln!("[harbor::mpv] separate window VO not found yet; relying on mpv geometry"),
             }
         }
+        bind_separate_window_keys(&mpv);
     }
 
     #[cfg(target_os = "macos")]
@@ -1165,6 +1174,8 @@ pub async fn mpv_start(
         args.mac_edr.unwrap_or(false),
         #[cfg(windows)]
         hdr_monitor,
+        #[cfg(windows)]
+        separate_rect,
     );
 
     eprintln!(
@@ -1314,8 +1325,11 @@ fn spawn_event_loop(
     embedded: bool,
     mac_edr: bool,
     #[cfg(windows)] hdr_monitor: Option<isize>,
+    #[cfg(windows)] separate_rect: Option<(i32, i32, i32, i32)>,
 ) {
     std::thread::spawn(move || {
+        #[cfg(windows)]
+        let mut separate_pip = false;
         let mut last_timepos: Option<std::time::Instant> = None;
         #[cfg(windows)]
         let reassert_gen = Arc::new(std::sync::atomic::AtomicU64::new(0));
@@ -1423,6 +1437,22 @@ fn spawn_event_loop(
                                 _ => String::new(),
                             };
                             let _ = app.emit_to("harbor-captions", "captions://text", text);
+                        }
+                    }
+                    #[cfg(windows)]
+                    if let (Event::ClientMessage(args), Some(rect)) = (&event, separate_rect) {
+                        if args.first() == Some(&"jl-window") {
+                            separate_pip = match args.get(1).copied() {
+                                Some("pip") => true,
+                                Some("full") => false,
+                                _ => !separate_pip,
+                            };
+                            let (x, y, w, h) = if separate_pip { pip_rect(rect) } else { rect };
+                            let _ = size_separate_mpv_window(x, y, w, h);
+                            let _ = app.emit(
+                                "mpv://window-mode",
+                                if separate_pip { "pip" } else { "full" },
+                            );
                         }
                     }
                     let payload = event_to_payload(event);
@@ -1858,6 +1888,42 @@ pub async fn display_hdr_active(_app: AppHandle) -> Result<bool, String> {
 /// Find mpv's top-level VO window (class `mpv`, owned by this process) and set
 /// its rect to the given pixel bounds. Returns None when the window is not up
 /// yet, so the caller can fall back to mpv's own geometry.
+#[cfg(windows)]
+/// Keys and clicks for the separate HDR window, which sits over the app and so cannot use
+/// its controls. Esc shrinks it to a picture-in-picture window in the corner (and back),
+/// a double click or F toggles full screen, and the usual keys play, seek and set volume.
+fn bind_separate_window_keys(mpv: &Mpv) {
+    const BINDINGS: &[(&str, &str)] = &[
+        ("SPACE", "cycle pause"),
+        ("MBTN_RIGHT", "cycle pause"),
+        ("LEFT", "seek -10"),
+        ("RIGHT", "seek 10"),
+        ("UP", "add volume 5"),
+        ("DOWN", "add volume -5"),
+        ("WHEEL_UP", "add volume 5"),
+        ("WHEEL_DOWN", "add volume -5"),
+        ("m", "cycle mute"),
+        ("ESC", "script-message jl-window toggle"),
+        ("f", "script-message jl-window toggle"),
+        ("MBTN_LEFT_DBL", "script-message jl-window toggle"),
+    ];
+    for (key, command) in BINDINGS {
+        if let Err(e) = mpv.command("keybind", &[*key, *command]) {
+            eprintln!("[harbor::mpv] keybind {} failed: {:?}", key, e);
+        }
+    }
+}
+
+/// The picture-in-picture rect: a third of the monitor's width at 16:9, in the bottom-right
+/// corner with a small margin, above where the taskbar usually sits.
+#[cfg(windows)]
+fn pip_rect((x, y, w, h): (i32, i32, i32, i32)) -> (i32, i32, i32, i32) {
+    let pw = w / 3;
+    let ph = pw * 9 / 16;
+    let margin = w / 60;
+    (x + w - pw - margin, y + h - ph - margin - h / 18, pw, ph)
+}
+
 #[cfg(windows)]
 fn size_separate_mpv_window(x: i32, y: i32, w: i32, h: i32) -> Option<()> {
     use windows::Win32::Foundation::{HWND, LPARAM};
