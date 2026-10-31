@@ -606,6 +606,9 @@ export function createHtml5Bridge(): PlayerBridge {
                 // provider's hiccups instead of stalling and dropping to a low rendition.
                 maxBufferLength: 30,
                 maxMaxBufferLength: 60,
+                // hls.js assumes a slow line until it has measured one, which picks a low
+                // rendition first; sports feeds and home broadband are far faster.
+                abrEwmaDefaultEstimate: 20_000_000,
                 manifestLoadingMaxRetry: 3,
                 manifestLoadingRetryDelay: 1000,
                 levelLoadingMaxRetry: 3,
@@ -625,6 +628,10 @@ export function createHtml5Bridge(): PlayerBridge {
           if (qualityCap != null && qualityLevels.length > 1) {
             hls.startLevel = levelForHeight(renditions, qualityCap);
             holdHlsQuality();
+          } else if (src.isLive === true && renditions.length > 1) {
+            // Live starts on the sharpest rendition instead of the lowest; Auto then adapts
+            // from there, never below the 720p floor while 720p exists.
+            hls.startLevel = levelForHeight(renditions, Number.MAX_SAFE_INTEGER);
           }
           refreshSnapshot();
         });
