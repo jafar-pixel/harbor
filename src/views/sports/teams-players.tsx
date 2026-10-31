@@ -15,9 +15,10 @@ import { getLeagueLabel } from "@/lib/sports/espn";
 import { useView } from "@/lib/view";
 import { openUrl } from "@/lib/window";
 import { LeagueLogo } from "./league-logo";
+import { VISION_LEAGUES, VisionTeams } from "./vision-teams";
 
-/** Team sports with full team lists, leaders and standings. */
-const LEAGUE_KEYS = ["NFL", "NBA", "NCAAF", "NCAAB", "MLB", "NHL", "MLS", "EPL", "LALIGA"];
+/** Team sports with full team lists, leaders and standings; the first five come from the JL team database. */
+const LEAGUE_KEYS = ["NFL", "NCAAF", "NBA", "MLB", "NHL", "NCAAB", "MLS", "EPL", "LALIGA"];
 const LEAGUE_KEY = "jl.sports.teams.league.v1";
 
 function storedLeague(): string {
@@ -30,9 +31,10 @@ function storedLeague(): string {
 }
 
 /**
- * Teams & Players: an exploring and research page. Pick a sport, see its top players in a
- * slider, every team as a poster, the standings, and its Hall of Fame legends with their
- * stories; or search any team or player. Team and player pages open from here.
+ * Teams & Players: where fans come to learn about their team. Pick a sport and every team is
+ * there, from the JL team database where it covers the league (NFL, College Football, NBA, MLB,
+ * NHL), each opening its team page. Then player search, top players, standings and the Hall of
+ * Fame with its stories.
  */
 export function TeamsAndPlayers({ active }: { active: boolean }) {
   const t = useT();
@@ -79,7 +81,7 @@ export function TeamsAndPlayers({ active }: { active: boolean }) {
         <div
           role="group"
           aria-label={t("Sport")}
-          className="harbor-scroll flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1"
+          className="harbor-scroll flex min-w-0 !flex-nowrap flex-1 gap-2 overflow-x-auto pb-1"
         >
           {LEAGUE_KEYS.map((key) => {
             const l = findLeague(key);
@@ -98,6 +100,60 @@ export function TeamsAndPlayers({ active }: { active: boolean }) {
         </div>
       </div>
 
+      {VISION_LEAGUES[league] ? (
+        <VisionTeams leagueKey={league} label={def ? getLeagueLabel(def) : league} />
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <h2 className="text-[22px] font-semibold text-ink">
+              {def ? t("{league} teams", { league: getLeagueLabel(def) }) : t("Teams")}
+            </h2>
+            {(teams?.length ?? 0) > 24 && (
+              <input
+                value={teamFilter}
+                onChange={(e) => setTeamFilter(e.target.value)}
+                placeholder={t("Filter teams")}
+                aria-label={t("Filter teams")}
+                className="h-10 w-full max-w-[280px] rounded-full border border-edge-soft bg-elevated/40 px-4 text-[14px] text-ink outline-none placeholder:text-ink-subtle focus:border-edge"
+              />
+            )}
+          </div>
+          {teams === null ? (
+            <p className="text-[14px] text-ink-muted">{t("Loading teams…")}</p>
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
+              {shownTeams.slice(0, 200).map((team) => (
+                <button
+                  key={team.id}
+                  type="button"
+                  onClick={() =>
+                    openSportsPage({ kind: "team", league, teamId: team.id, name: team.name })
+                  }
+                  className="flex aspect-[3/4] flex-col items-center justify-between gap-2 rounded-2xl border border-edge-soft bg-elevated/70 p-4 text-center transition-colors hover:border-edge hover:bg-elevated"
+                >
+                  <span className="flex flex-1 items-center justify-center">
+                    {team.logo ? (
+                      <img
+                        src={team.logo}
+                        alt=""
+                        loading="lazy"
+                        draggable={false}
+                        className="max-h-[90px] max-w-[90px] object-contain"
+                      />
+                    ) : (
+                      <Users size={40} className="text-ink-subtle" />
+                    )}
+                  </span>
+                  <span className="line-clamp-2 text-[13.5px] font-semibold text-ink">
+                    {team.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <PlayerSearch
         onOpen={(hit) =>
           openSportsPage(
@@ -112,56 +168,6 @@ export function TeamsAndPlayers({ active }: { active: boolean }) {
         leaders={leaders}
         onOpen={(athleteId, name) => openSportsPage({ kind: "athlete", league, athleteId, name })}
       />
-
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-[22px] font-semibold text-ink">
-            {def ? t("{league} teams", { league: getLeagueLabel(def) }) : t("Teams")}
-          </h2>
-          {(teams?.length ?? 0) > 24 && (
-            <input
-              value={teamFilter}
-              onChange={(e) => setTeamFilter(e.target.value)}
-              placeholder={t("Filter teams")}
-              aria-label={t("Filter teams")}
-              className="h-10 w-full max-w-[280px] rounded-full border border-edge-soft bg-elevated/40 px-4 text-[14px] text-ink outline-none placeholder:text-ink-subtle focus:border-edge"
-            />
-          )}
-        </div>
-        {teams === null ? (
-          <p className="text-[14px] text-ink-muted">{t("Loading teams…")}</p>
-        ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
-            {shownTeams.slice(0, 200).map((team) => (
-              <button
-                key={team.id}
-                type="button"
-                onClick={() =>
-                  openSportsPage({ kind: "team", league, teamId: team.id, name: team.name })
-                }
-                className="flex aspect-[3/4] flex-col items-center justify-between gap-2 rounded-2xl border border-edge-soft bg-elevated/70 p-4 text-center transition-colors hover:border-edge hover:bg-elevated"
-              >
-                <span className="flex flex-1 items-center justify-center">
-                  {team.logo ? (
-                    <img
-                      src={team.logo}
-                      alt=""
-                      loading="lazy"
-                      draggable={false}
-                      className="max-h-[90px] max-w-[90px] object-contain"
-                    />
-                  ) : (
-                    <Users size={40} className="text-ink-subtle" />
-                  )}
-                </span>
-                <span className="line-clamp-2 text-[13.5px] font-semibold text-ink">
-                  {team.name}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
 
       {standings.length > 0 && <Standings groups={standings} />}
 
