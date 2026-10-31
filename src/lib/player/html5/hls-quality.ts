@@ -43,6 +43,23 @@ export function autoFloorBitrate(levels: readonly HlsRendition[]): number {
   return floor;
 }
 
+/**
+ * The rendition a live stream steps down to after repeated stalls: the next smaller height, but
+ * never below the 720p floor while a 720p or sharper rendition exists. The same index when there
+ * is nowhere to go.
+ */
+export function stepDownLevel(levels: readonly HlsRendition[], current: number): number {
+  const now = levels[current];
+  if (!now) return current;
+  const floor = levels.some((l) => l.height >= AUTO_FLOOR_HEIGHT) ? AUTO_FLOOR_HEIGHT : 0;
+  let best = current;
+  levels.forEach((l, i) => {
+    if (l.height >= now.height || l.height < floor) return;
+    if (best === current || l.height > levels[best].height) best = i;
+  });
+  return best;
+}
+
 export function qualityLabel(height: number): string {
   if (height >= 2000) return "4K";
   return `${height}p`;

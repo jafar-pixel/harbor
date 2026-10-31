@@ -30,6 +30,7 @@ import { html5Transport } from "./transport";
 import { currentWebPlaybackEnv } from "@/lib/player/web-playable";
 import {
   autoFloorBitrate,
+  stepDownLevel,
   levelForHeight,
   readStreamQualityPref,
   renditionHeights,
@@ -606,6 +607,9 @@ export function createHtml5Bridge(): PlayerBridge {
                 // provider's hiccups instead of stalling and dropping to a low rendition.
                 maxBufferLength: 30,
                 maxMaxBufferLength: 60,
+                // hls.js assumes a slow line until it has measured one, which picks a low
+                // rendition first; sports feeds and home broadband are far faster.
+                abrEwmaDefaultEstimate: 20_000_000,
                 manifestLoadingMaxRetry: 3,
                 manifestLoadingRetryDelay: 1000,
                 levelLoadingMaxRetry: 3,
@@ -625,6 +629,26 @@ export function createHtml5Bridge(): PlayerBridge {
           if (qualityCap != null && qualityLevels.length > 1) {
             hls.startLevel = levelForHeight(renditions, qualityCap);
             holdHlsQuality();
+          } else if (src.isLive === true && renditions.length > 1) {
+            // Live holds the sharpest rendition from the first second. hls.js's automatic
+            // picker measured each new stream by dropping to 480p and climbing back, which
+            // stuttered on every channel change. A stream that keeps stalling steps down one
+            // rendition at a time instead (below), never under 720p while 720p exists.
+            const top = levelForHeight(renditions, Number.MAX_SAFE_INTEGER);
+            hls.startLevel = top;
+            hls.nextLevel = top;
+            const stalls: number[] = [];
+            hls.on(Hls.Events.ERROR, (_event, data) => {
+              if (!hls || data.details !== Hls.ErrorDetails.BUFFER_STALLED_ERROR) return;
+              if (qualityCap != null) return;
+              const now = Date.now();
+              stalls.push(now);
+              while (stalls.length && now - stalls[0] > 60_000) stalls.shift();
+              if (stalls.length < 3) return;
+              stalls.length = 0;
+              const lower = stepDownLevel(hlsRenditions(), hls.currentLevel);
+              if (lower !== hls.currentLevel) hls.nextLevel = lower;
+            });
           }
           refreshSnapshot();
         });

@@ -17,8 +17,8 @@ import {
 import type { PlayerSrc } from "@/lib/view";
 import type { Settings } from "@/lib/settings";
 import { setPlaybackClock, setPlaybackStatus } from "@/lib/player/playback-clock";
-import { isLinuxDesktop, isMacDesktop, isWindowsDesktop } from "@/lib/platform";
-import { isLivePlaybackSrc } from "@/lib/player/live-src";
+import { isLinuxDesktop, isMacDesktop, isWeb, isWindowsDesktop } from "@/lib/platform";
+import { chooseEngine, isLivePlaybackSrc } from "@/lib/player/live-src";
 import { readEmbedRect } from "@/lib/player/embed-rect";
 import { svpEnsureRunning, svpStatus } from "@/lib/svp";
 import { isSvpActiveForMedia } from "@/lib/player/svp-policy";
@@ -66,9 +66,13 @@ export function usePlayerBridge(params: {
   const prevSnapRef = useRef<PlayerSnapshot>(emptySnapshot);
   const [engine, setEngine] = useState<"html5" | "mpv">("html5");
   const [autoFallbackTried, setAutoFallbackTried] = useState(false);
+  // A live channel the browser plays without sound moves to mpv, embedded in the app window.
+  const [liveAudioFallback, setLiveAudioFallback] = useState(false);
+  useEffect(() => setLiveAudioFallback(false), [src.url]);
 
   const hdrOpaqueWindow = isWindowsDesktop() && settings.playerHdrOpaqueWindow;
-  const embedActive = settings.playerMpvEmbed && !hdrOpaqueWindow;
+  const embedActive =
+    (settings.playerMpvEmbed && !hdrOpaqueWindow) || (liveAudioFallback && isLivePlaybackSrc(src));
   const isAnimeSrc = metaIsAnime(src.meta) || !!src.isAnime;
   const anime4kOn = settings.playerAnime4k && (!settings.playerAnime4kAnimeOnly || isAnimeSrc);
   const svpRequested = isSvpActiveForMedia(settings, src.meta);
@@ -100,11 +104,12 @@ export function usePlayerBridge(params: {
     if (svpOn) void svpEnsureRunning().catch(() => {});
   }, [svpOn]);
   const isLiveLike = isLivePlaybackSrc(src);
-  // Live channels play in the browser player on every platform: the same player as the Live TV
-  // preview, inside the app window, with the app's own controls. Sending them to mpv on the
-  // desktop (0.9.57) opened a separate window and dropped streams the preview played fine.
-  const chosenEngine =
-    isLiveLike && !src.notWebReady ? "html5" : autoFallbackTried ? "mpv" : settings.playerEngine;
+  const chosenEngine = chooseEngine(
+    src,
+    settings.playerEngine,
+    autoFallbackTried,
+    liveAudioFallback,
+  );
   const bridgeKey = `${chosenEngine}|${isLiveLike}|${anime4kOn}|${embedActive}|${anime4kOn ? settings.playerAnime4kShaders.join(",") : ""}|${generalShaderKey(settings)}|${svpOn}|${svpOn ? settings.svpVpyPath : ""}`;
   const [bridgeReady, setBridgeReady] = useState(false);
   const settingsRef = useRef(settings);
@@ -177,6 +182,18 @@ export function usePlayerBridge(params: {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bridgeKey, svpPending]);
+
+  useEffect(() => {
+    if (engine !== "html5" || liveAudioFallback || !snap.noAudio) return;
+    if (!isLivePlaybackSrc(src) || isWeb()) return;
+    let off = false;
+    void probeMpv().then((probe) => {
+      if (!off && probe.available) setLiveAudioFallback(true);
+    });
+    return () => {
+      off = true;
+    };
+  }, [engine, liveAudioFallback, snap.noAudio, src]);
 
   useEffect(() => {
     if (engine !== "html5") return;
