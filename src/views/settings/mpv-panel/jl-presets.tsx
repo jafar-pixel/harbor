@@ -38,9 +38,7 @@ export function JlPresetsSection() {
       <SettingRow
         wide
         label={t("Preset")}
-        desc={
-          current ? t(current.sub) : t("No preset. Playback uses only the settings below.")
-        }
+        desc={current ? t(current.sub) : t("No preset. Playback uses only the settings below.")}
       >
         <div className="flex flex-wrap items-center gap-2.5">
           <button

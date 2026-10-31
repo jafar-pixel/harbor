@@ -148,10 +148,7 @@ export function usePlayerBridge(params: {
             : null,
         separateCoverTaskbar: settings.playerSeparateCoverTaskbar,
         cacheDir: settings.playbackCacheDir,
-        extraOptions: [
-          mergeMpvOptions(settings, svpOn),
-          shaderCompanionOptions(settings),
-        ]
+        extraOptions: [mergeMpvOptions(settings, svpOn), shaderCompanionOptions(settings)]
           .filter(Boolean)
           .join("\n"),
         getEmbedRect,

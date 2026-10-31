@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  activeJlPreset,
-  applyJlPreset,
-  JL_PRESETS,
-} from "../src/lib/player/jl-presets.ts";
+import { activeJlPreset, applyJlPreset, JL_PRESETS } from "../src/lib/player/jl-presets.ts";
 
 const byId = (id: string) => JL_PRESETS.find((p) => p.id === id)!;
 
