@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { hideSdDuplicates } from "@/lib/iptv/sd-duplicates";
 import { sortChannelsByGroupRelevance, sortGroupsByRelevance } from "@/lib/iptv/group-relevance";
 import { arabicAwareMatch } from "@/lib/iptv/rtl";
 import { FAVORITES_GROUP_KEY, useFavorites } from "@/lib/iptv/favorites";
@@ -45,8 +46,9 @@ export function useChannelPipeline(params: {
   const sourceId = playlist?.id ?? "";
   const groupPrefs = useGroupPrefs(sourceId);
 
+  // A channel's SD copy only shows when the provider has nothing better for it.
   const liveChannels = useMemo(
-    () => (playlist?.channels ?? []).filter(isLiveChannel),
+    () => hideSdDuplicates((playlist?.channels ?? []).filter(isLiveChannel)),
     [playlist?.channels],
   );
   const sortedChannels = useMemo(

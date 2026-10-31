@@ -1,5 +1,6 @@
 import type { IptvChannel } from "../../iptv/types.ts";
 import { parseEventChannel, takeTime } from "./event-parse.ts";
+import { channelQualityOf, isSdChannel } from "./channels.ts";
 
 /**
  * Live Sports Channels: which of the viewer's own IPTV channels carry sport, what sport, and
@@ -364,9 +365,13 @@ export function collectSportsChannels(
   });
   for (const e of out) {
     if (e.channels.length < 2) continue;
+    // Best picture first (4K, then 1080, then HD), the preferred provider within a quality,
+    // and SD only when the channel has no better copy.
+    const better = e.channels.some((c) => !isSdChannel(c.name));
     e.channels = e.channels
-      .map((c, i) => ({ c, i, r: rank.get(c.id) ?? 0 }))
-      .sort((a, b) => a.r - b.r || a.i - b.i)
+      .filter((c) => !better || !isSdChannel(c.name))
+      .map((c, i) => ({ c, i, r: rank.get(c.id) ?? 0, q: channelQualityOf(c) }))
+      .sort((a, b) => b.q - a.q || a.r - b.r || a.i - b.i)
       .map((x) => x.c);
   }
   return out;
