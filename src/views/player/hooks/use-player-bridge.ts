@@ -18,7 +18,7 @@ import type { PlayerSrc } from "@/lib/view";
 import type { Settings } from "@/lib/settings";
 import { setPlaybackClock, setPlaybackStatus } from "@/lib/player/playback-clock";
 import { isLinuxDesktop, isMacDesktop, isWindowsDesktop } from "@/lib/platform";
-import { isLivePlaybackSrc } from "@/lib/player/live-src";
+import { chooseEngine, isLivePlaybackSrc } from "@/lib/player/live-src";
 import { readEmbedRect } from "@/lib/player/embed-rect";
 import { svpEnsureRunning, svpStatus } from "@/lib/svp";
 import { isSvpActiveForMedia } from "@/lib/player/svp-policy";
@@ -100,11 +100,7 @@ export function usePlayerBridge(params: {
     if (svpOn) void svpEnsureRunning().catch(() => {});
   }, [svpOn]);
   const isLiveLike = isLivePlaybackSrc(src);
-  // Live channels play in the browser player on every platform: the same player as the Live TV
-  // preview, inside the app window, with the app's own controls. Sending them to mpv on the
-  // desktop (0.9.57) opened a separate window and dropped streams the preview played fine.
-  const chosenEngine =
-    isLiveLike && !src.notWebReady ? "html5" : autoFallbackTried ? "mpv" : settings.playerEngine;
+  const chosenEngine = chooseEngine(src, settings.playerEngine, autoFallbackTried);
   const bridgeKey = `${chosenEngine}|${isLiveLike}|${anime4kOn}|${embedActive}|${anime4kOn ? settings.playerAnime4kShaders.join(",") : ""}|${generalShaderKey(settings)}|${svpOn}|${svpOn ? settings.svpVpyPath : ""}`;
   const [bridgeReady, setBridgeReady] = useState(false);
   const settingsRef = useRef(settings);
