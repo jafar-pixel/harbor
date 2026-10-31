@@ -602,7 +602,17 @@ export function createHtml5Bridge(): PlayerBridge {
                 lowLatencyMode: false,
                 liveDurationInfinity: true,
                 backBufferLength: 30,
-                ...(relayed ? { liveSyncDurationCount: 4, maxBufferLength: 30 } : {}),
+                // The Live TV preview's buffer and retries (multi-player.tsx), which ride out a
+                // provider's hiccups instead of stalling and dropping to a low rendition.
+                maxBufferLength: 30,
+                maxMaxBufferLength: 60,
+                manifestLoadingMaxRetry: 3,
+                manifestLoadingRetryDelay: 1000,
+                levelLoadingMaxRetry: 3,
+                levelLoadingRetryDelay: 1000,
+                fragLoadingMaxRetry: 4,
+                fragLoadingRetryDelay: 1000,
+                ...(relayed ? { liveSyncDurationCount: 4 } : {}),
               }
             : { enableWorker: true },
         );
@@ -1148,6 +1158,9 @@ export function createHtml5Bridge(): PlayerBridge {
           console.warn("[html5] native PiP failed", e);
         }
       }
+    },
+    pipActive() {
+      return !!pipWindow || (!!video && document.pictureInPictureElement === video);
     },
     async exitPiP() {
       if (pipWindow) {

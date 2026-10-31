@@ -621,6 +621,17 @@ function NativePlayerView({
   });
   closePlayerRef.current = () => void closePlayer();
   const backFromPlayer = useCallback(async () => {
+    // A live channel keeps playing in a picture-in-picture window while the viewer browses;
+    // the player stays mounted behind the page and ends when that window is closed.
+    if (isLivePlaybackSrc(src) && engine === "html5" && !src.pipDocked && bridgeRef.current) {
+      const bridge = bridgeRef.current;
+      await bridge.requestPiP();
+      if (bridge.pipActive?.()) {
+        setPipDocked(true);
+        await exitAnyFullscreen();
+        return;
+      }
+    }
     if (src.sportsDocked === false) {
       // Keep the mounted playback engine and current source; only change its surface.
       setDockMinimized(false);
@@ -635,7 +646,15 @@ function NativePlayerView({
       return;
     }
     await closePlayer();
-  }, [src, replacePlayerSrc, closePlayer, dockPlayer]);
+  }, [src, engine, bridgeRef, setPipDocked, replacePlayerSrc, closePlayer, dockPlayer]);
+  // Closing the picture-in-picture window of a live channel ends it.
+  useEffect(() => {
+    if (!src.pipDocked || engine !== "html5") return;
+    const timer = window.setInterval(() => {
+      if (!bridgeRef.current?.pipActive?.()) void closePlayer();
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [src.pipDocked, engine, bridgeRef, closePlayer]);
   useEffect(() => {
     const onLocalBack = (e: Event) => {
       // In the hero, Back belongs to the page being browsed.
