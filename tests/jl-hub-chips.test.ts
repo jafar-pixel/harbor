@@ -83,3 +83,14 @@ test("each chip shows its own league's channels", async () => {
   assert.equal(chipTvLeague(byKey("UFC")), "Fights");
   assert.equal(chipTvLeague(byKey("esports")), null);
 });
+
+test("the Hub row holds at most seven sports", () => {
+  const many = Array.from({ length: 12 }, (_, i) => ({ key: `L${i}`, tag: `L${i}`, group: "x" }));
+  assert.equal(
+    hubChips(
+      many.map((l) => l.key),
+      many,
+    ).length,
+    7,
+  );
+});

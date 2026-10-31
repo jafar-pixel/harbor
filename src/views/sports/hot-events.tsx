@@ -202,6 +202,8 @@ export function HotPoster({
           <HotArtwork key={gameKey(game)} game={game} lead={lead} />
 
           {game.state === "in" && <span className="hot-reason is-live">{t("Live now")}</span>}
+          {/* Not broadcast yet: a bell in the corner adds it to the watch list and the Calendar. */}
+          <SportsReminderButton game={game} icon />
 
           <span className="hot-poster-copy">
             <span className="hot-league">
@@ -256,10 +258,6 @@ export function HotPoster({
 
           title={hotEventTitle(game)}
         />
-      </div>
-
-      <div className="hot-poster-footer">
-        <SportsReminderButton game={game} />
       </div>
     </article>
   );

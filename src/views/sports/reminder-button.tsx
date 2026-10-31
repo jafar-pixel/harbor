@@ -13,7 +13,14 @@ const LEAD_MINUTES = 5;
  * the app notifies 5 minutes before it starts. Discord or Telegram get it too when connected.
  * A second tap cancels.
  */
-export function SportsReminderButton({ game }: { game: SportsGame }) {
+export function SportsReminderButton({
+  game,
+  icon = false,
+}: {
+  game: SportsGame;
+  /** A round bell for a poster's corner instead of the labelled button. */
+  icon?: boolean;
+}) {
   const t = useT();
   const locale = useUiLanguage();
   const { settings } = useSettings();
@@ -48,6 +55,25 @@ export function SportsReminderButton({ game }: { game: SportsGame }) {
     });
     void ensureDesktopNotifyPermission();
   };
+  if (icon)
+    return (
+      <button
+        type="button"
+        aria-pressed={!!existing}
+        aria-label={t(existing ? "Reminder set" : "Remind me")}
+        title={t(existing ? "Reminder set" : "Remind me")}
+        onClick={(e) => {
+          e.stopPropagation();
+          toggle();
+        }}
+        onDoubleClick={(e) => e.stopPropagation()}
+        className={`absolute end-3 top-3 z-[2] flex h-10 w-10 items-center justify-center rounded-full backdrop-blur transition-colors ${
+          existing ? "bg-accent text-white" : "bg-black/55 text-white hover:bg-black/75"
+        }`}
+      >
+        {existing ? <BellRing size={18} /> : <Bell size={18} />}
+      </button>
+    );
   return (
     <div className="sh-reminder">
       <button
