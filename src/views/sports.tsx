@@ -1003,6 +1003,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               onWatch={jlChannels.play}
               onOpen={open}
               onCalendar={() => setView("calendar")}
+              onPersonalize={() => setSetup(true)}
             />
           )}
           {tab === "hot" && (

@@ -22,14 +22,19 @@ const side = { name: "", abbr: "", logo: "", score: "" } as unknown as SportsGam
 const game = (id: string, league: string, startMs: number, state: SportsGame["state"] = "pre") =>
   ({ id, league, startMs, state, detail: "", home: side, away: side }) as SportsGame;
 
-test("chips follow Personalize, then add Formula 1, MMA and one Esports chip", () => {
+test("chips are only the leagues picked in Personalize, picked esports as one chip", () => {
   const chips = hubChips(["NBA", "NFL", "LCK"], leagues);
   assert.deepEqual(
     chips.map((c) => c.key),
-    ["NBA", "NFL", "F1", "UFC", "esports"],
+    ["NBA", "NFL", "esports"],
   );
-  assert.deepEqual(chips.at(-1)?.tags, ["LCK", "CS2"]);
-  assert.deepEqual(hubFeedLeagues(chips, leagues), ["NFL", "NBA", "F1", "UFC", "LCK", "CS2"]);
+  assert.deepEqual(chips.at(-1)?.tags, ["LCK"]);
+  assert.deepEqual(hubFeedLeagues(chips, leagues), ["NFL", "NBA", "LCK"]);
+  assert.deepEqual(
+    hubChips(["NCAAF"], leagues).map((c) => c.key),
+    ["NCAAF"],
+  );
+  assert.deepEqual(hubChips([], leagues), []);
 });
 
 test("a chip shows only its own league, never the rest of its sport", () => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useSettings } from "@/lib/settings";
-import { fireWebhook } from "@/lib/calendar";
+import { fireWebhook, sendDesktopNotification } from "@/lib/calendar";
 import { getUiLanguage } from "@/lib/i18n/store";
 import { readSportsReminders, saveSportsReminder } from "@/lib/sports/reminders";
 import { dueReminderChannels, reminderMessage } from "@/lib/sports/reminder-state";
@@ -33,6 +33,24 @@ export function SportsReminderLoop() {
           if (stopped) return;
           const latest = readSportsReminders().find((item) => item.id === reminder.id);
           if (!latest || !dueReminderChannels(latest, Date.now()).includes(channel)) continue;
+          if (channel === "app") {
+            const minutes = Math.max(0, Math.ceil((latest.startMs - Date.now()) / 60_000));
+            const ok = await sendDesktopNotification(
+              minutes
+                ? `Starts in ${minutes} min · ${latest.league}`
+                : `Starting now · ${latest.league}`,
+              latest.name,
+            );
+            if (stopped) return;
+            const after = readSportsReminders().find((item) => item.id === reminder.id);
+            if (after && after.startMs === latest.startMs)
+              saveSportsReminder({
+                ...after,
+                sent: ok ? { ...after.sent, app: Date.now() } : after.sent,
+                attempted: { ...after.attempted, app: Date.now() },
+              });
+            continue;
+          }
           const url =
             channel === "discord" ? current.current.discordUrl : current.current.telegramUrl;
           if (!url) continue;

@@ -31,3 +31,14 @@ test("replay groups and replay-named channels, by league", () => {
     ],
   );
 });
+
+test("movie and catch-up channels are not sports replays", () => {
+  const out = replayChannels([
+    ch("e", "Starz Encore HD", "US | Movies"),
+    ch("f", "BBC One Catch Up", "UK | Catch Up"),
+    ch("g", "Love Island Replay", "UK | Entertainment Replay"),
+    ch("h", "UFC 310 Replay", "PPV | Replays"),
+    ch("i", "Ohio State vs Michigan", "US | College Football Replay"),
+  ]);
+  assert.deepEqual(out.map((r) => r.channel.id).sort(), ["h", "i"]);
+});

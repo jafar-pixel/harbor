@@ -17,7 +17,9 @@ function read(): SportsReminder[] {
               Number.isFinite(entry.startMs) &&
               Number.isFinite(entry.leadMinutes) &&
               Array.isArray(entry.channels) &&
-              entry.channels.every((c: unknown) => c === "discord" || c === "telegram") &&
+              entry.channels.every(
+                (c: unknown) => c === "app" || c === "discord" || c === "telegram",
+              ) &&
               entry.sent &&
               entry.attempted &&
               Array.isArray(entry.failed) &&

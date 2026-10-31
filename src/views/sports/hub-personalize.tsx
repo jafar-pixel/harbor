@@ -115,7 +115,13 @@ export function HubPersonalize({ selected, onClose }: { selected: string[]; onCl
     setError(false);
   };
   return (
-    <ModalShell closing={false} onDismiss={onClose} width={800} labelledBy="sports-setup-title">
+    <ModalShell
+      closing={false}
+      onDismiss={onClose}
+      width={800}
+      labelledBy="sports-setup-title"
+      backdropClassName="bg-black/75 backdrop-blur-md"
+    >
       <div className="sh-setup-head">
         <div>
           <span className="sh-eyebrow">
@@ -157,7 +163,10 @@ export function HubPersonalize({ selected, onClose }: { selected: string[]; onCl
           </label>
         )}
         {step === 0 && (
-          <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex justify-end gap-2">
+            <button type="button" className="sh-button" onClick={() => setLeagues([])}>
+              {t("Clear all")}
+            </button>
             <button
               type="button"
               className="sh-button"
