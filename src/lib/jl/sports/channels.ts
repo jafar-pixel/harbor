@@ -206,8 +206,7 @@ export function channelQualityOf(channel: IptvChannel): number {
   return RES_4K.test(group) ? Math.max(own, 40 + (own % 10)) : own;
 }
 
-const byQuality = (a: IptvChannel, b: IptvChannel) =>
-  channelQualityOf(b) - channelQualityOf(a);
+const byQuality = (a: IptvChannel, b: IptvChannel) => channelQualityOf(b) - channelQualityOf(a);
 
 /** A standard-definition feed (SD/480p in the name). */
 export function isSdChannel(name: string): boolean {

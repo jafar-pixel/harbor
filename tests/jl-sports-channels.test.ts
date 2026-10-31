@@ -336,7 +336,11 @@ test("an NBA TV game plays on NBA TV, not on another country's sports channel", 
 });
 
 test("a 4K/8K group lifts its untagged event slots above another provider's plain slot", () => {
-  const pass = ch("pass", "LIVE | ATL - HAWKS VS MIA - HEAT | Wed 28 Oct", "US| NBA PASS PPV \u2078\u1d37");
+  const pass = ch(
+    "pass",
+    "LIVE | ATL - HAWKS VS MIA - HEAT | Wed 28 Oct",
+    "US| NBA PASS PPV \u2078\u1d37",
+  );
   const plain = ch("plain", "USA NBA 10: Lakers vs Warriors", "USA NBA");
   assert.equal(channelQualityOf(pass), 40);
   assert.equal(channelQualityOf(plain), 10);
