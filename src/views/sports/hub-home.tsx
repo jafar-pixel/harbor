@@ -28,7 +28,7 @@ import { HotPoster, HotTeamTitle, hotEventTitle, useHotFeed, WeekLogos } from ".
 import { LeagueLogo } from "./league-logo";
 import { SportIcon } from "./sport-icon";
 import { SportsTvScreen } from "./sports-tv-screen";
-import { tuneOrWatch, useSportsTvTuned, type SportsTvTuned } from "./sports-tv-tuner";
+import { tuneSportsTv, useSportsTvTuned, type SportsTvTuned } from "./sports-tv-tuner";
 
 type Mode = "tv" | "today" | "week";
 
@@ -143,18 +143,23 @@ export function SportsHubHome({
     channels: channelsFor(g).map((c) => c.channel),
   });
 
-  // Today's games, with the channel each is on, for the full player's side panel. Games with a
-  // reminder come first.
+  // The watch list beside the TV: games on now, then today's games with a reminder, soonest
+  // first. Games that haven't started are posters underneath, each with Remind me; a reminder
+  // adds the game here. The full player's side panel lists the same games.
   const reminders = useSportsReminders();
+  const reminded = useMemo(() => new Set(reminders.map((r) => r.id)), [reminders]);
+  const watchList = useMemo(
+    () => [
+      ...today.filter((g) => g.state === "in"),
+      ...today.filter((g) => g.state === "pre" && reminded.has(reminderId(g))),
+    ],
+    [today, reminded],
+  );
+  const upcomingToday = useMemo(() => today.filter((g) => g.state === "pre"), [today]);
   useEffect(() => {
     if (!active) return;
-    const reminded = new Set(reminders.map((r) => r.id));
-    const ordered = [
-      ...today.filter((g) => reminded.has(reminderId(g))),
-      ...today.filter((g) => !reminded.has(reminderId(g))),
-    ];
     publishLiveToday(
-      ordered.map((g) => ({
+      watchList.map((g) => ({
         key: gameKey(g),
         title: hotEventTitle(g),
         score: scoreLine(g),
@@ -164,19 +169,35 @@ export function SportsHubHome({
         reminded: reminded.has(reminderId(g)),
       })),
     );
-  }, [active, today, channelsFor, reminders]);
+  }, [active, watchList, channelsFor, reminded]);
 
   const tuned = useSportsTvTuned();
   const tunedGame = useMemo(
     () => [...today, ...week].find((g) => tuned?.key === `game:${gameKey(g)}`) ?? null,
     [today, week, tuned?.key],
   );
-  const posters = mode === "week" ? week : today;
+  const posters = mode === "week" ? week : upcomingToday;
+  const sideGames = mode === "today" ? watchList : week;
+  // One click puts a game on the Sports TV; a double click opens it full screen.
+  const watchNow = (channels: IptvChannel[]) => {
+    if (channels[0]) onWatch(channels[0]);
+  };
 
   return (
     <section className="hot-events" aria-label={t("Hub")}>
       <div className="hot-filters">
         <div role="group" aria-label={t("Show")}>
+          {(
+            [
+              ["tv", "Sport TV"],
+              ["today", "Live Today"],
+              ["week", "Next 7 days"],
+            ] as const
+          ).map(([key, label]) => (
+            <button key={key} aria-pressed={mode === key} onClick={() => pickMode(key)}>
+              {t(label)}
+            </button>
+          ))}
           <button
             className="inline-flex items-center gap-2 whitespace-nowrap"
             aria-pressed={sportsOpen}
@@ -194,17 +215,6 @@ export function SportsHubHome({
               className={`transition-transform ${sportsOpen ? "rotate-180" : ""}`}
             />
           </button>
-          {(
-            [
-              ["tv", "Sport TV"],
-              ["today", "Live Today"],
-              ["week", "Next 7 days"],
-            ] as const
-          ).map(([key, label]) => (
-            <button key={key} aria-pressed={mode === key} onClick={() => pickMode(key)}>
-              {t(label)}
-            </button>
-          ))}
         </div>
         <button
           type="button"
@@ -277,8 +287,8 @@ export function SportsHubHome({
                 ? t("Sports channels")
                 : mode === "today"
                   ? topList
-                    ? t("Top 25 today")
-                    : t("Live Today")
+                    ? t("Top 25 · watch list")
+                    : t("Watch list")
                   : t("This week")}
             </h3>
           </div>
@@ -295,16 +305,14 @@ export function SportsHubHome({
                     <button
                       className="sh-event-open"
                       onClick={() =>
-                        tuneOrWatch(
-                          {
-                            key: `ch:${e.key}`,
-                            title: e.title,
-                            live: e.liveNow,
-                            channels: e.channels,
-                          },
-                          onWatch,
-                        )
+                        tuneSportsTv({
+                          key: `ch:${e.key}`,
+                          title: e.title,
+                          live: e.liveNow,
+                          channels: e.channels,
+                        })
                       }
+                      onDoubleClick={() => watchNow(e.channels)}
                       aria-label={e.title}
                     />
                     <span className="hot-week-logos is-event">
@@ -330,7 +338,7 @@ export function SportsHubHome({
                   </article>
                 );
               })
-            : (mode === "today" ? today : week).map((g) => {
+            : sideGames.map((g) => {
                 const cal = hotEventCalendarParts(g, locale);
                 const league = hubLeague(g.league);
                 const score = scoreLine(g);
@@ -342,7 +350,8 @@ export function SportsHubHome({
                   >
                     <button
                       className="sh-event-open"
-                      onClick={() => tuneOrWatch(gameTuned(g), onWatch)}
+                      onClick={() => tuneSportsTv(gameTuned(g))}
+                      onDoubleClick={() => watchNow(channelsFor(g).map((c) => c.channel))}
                       aria-label={hotEventTitle(g)}
                     />
                     <time dateTime={cal.dateTime}>
@@ -353,6 +362,9 @@ export function SportsHubHome({
                     <span className="hot-week-copy">
                       <small>
                         {g.state === "in" ? `● ${t("Live")} · ` : ""}
+                        {g.state === "pre" && mode === "today"
+                          ? `${new Date(g.startMs).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })} · `
+                          : ""}
                         {league ? getLeagueLabel(league) : g.league}
                         {score ? ` · ${score}` : ""}
                         {g.state !== "pre" && g.detail ? ` · ${g.detail}` : ""}
@@ -367,8 +379,14 @@ export function SportsHubHome({
           {mode === "tv" && !entries.length && (
             <p>{t("None of your providers has channels for this sport.")}</p>
           )}
-          {mode !== "tv" && !(mode === "today" ? today : week).length && (
-            <p>{loading ? t("Loading games…") : t("No games scheduled.")}</p>
+          {mode !== "tv" && !sideGames.length && (
+            <p>
+              {loading
+                ? t("Loading games…")
+                : mode === "today"
+                  ? t("No games on right now. Tap Remind me on a game below to add it here.")
+                  : t("No games scheduled.")}
+            </p>
           )}
         </aside>
       </div>

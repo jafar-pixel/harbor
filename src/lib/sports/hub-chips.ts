@@ -6,6 +6,9 @@ export type ChipLeague = { key: string; tag: string; group: string };
 /** One chip in the Hub's sports row: a single league, or Esports (every esports title). */
 export type HubChip = { key: string; tags: string[]; league: ChipLeague | null };
 
+/** The most sports the Hub shows, so they fit on one row. */
+export const MAX_HUB_SPORTS = 7;
+
 export const ESPORTS_CHIP = "esports";
 
 const DAY_MS = 86_400_000;
@@ -28,7 +31,7 @@ export function hubChips(selected: string[], leagues: ChipLeague[]): HubChip[] {
     .filter((l) => l.group === "esports" && selected.includes(l.key))
     .map((l) => l.tag);
   if (esports.length) out.push({ key: ESPORTS_CHIP, tags: esports, league: null });
-  return out;
+  return out.slice(0, MAX_HUB_SPORTS);
 }
 
 /** Every league the Hub feed has to load for its chips. */

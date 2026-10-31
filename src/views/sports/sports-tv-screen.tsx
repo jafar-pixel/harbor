@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play, Star, Tv } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
@@ -9,6 +9,9 @@ import { usePageVisible } from "@/lib/visibility";
 import { MultiPlayer } from "@/views/multiview/multi-player";
 import { TvVolumeControls, useTvVolume } from "@/views/live/tv-volume";
 import type { SportsTvTuned } from "./sports-tv-tuner";
+
+/** How long the overlay stays up after the mouse last moved over a playing screen. */
+const OVERLAY_IDLE_MS = 2500;
 
 /**
  * The Sports TV screen: the tuned feed playing live with sound controls, a provider switch when
@@ -42,11 +45,27 @@ export function SportsTvScreen({
   const showVideo = !!channel?.url && active && pageVisible && !player;
   const picked = !!channel && isPicked(picks, channel.id);
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+  // The overlay hides while the game plays and the mouse is still, and comes back on movement.
+  const [idle, setIdle] = useState(false);
+  const idleTimer = useRef<number | undefined>(undefined);
+  const wake = () => {
+    setIdle(false);
+    window.clearTimeout(idleTimer.current);
+    idleTimer.current = window.setTimeout(() => setIdle(true), OVERLAY_IDLE_MS);
+  };
+  useEffect(() => {
+    wake();
+    return () => window.clearTimeout(idleTimer.current);
+  }, [channel?.id]);
+  const overlayHidden = idle && playing;
 
   return (
     <div
       onDoubleClick={() => channel && onWatch(channel)}
-      className="relative h-full min-h-0 w-full cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]"
+      onMouseMove={wake}
+      onMouseLeave={() => setIdle(true)}
+      onFocus={wake}
+      className={`relative h-full min-h-0 w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] ${overlayHidden ? "cursor-none" : "cursor-pointer"}`}
     >
       {channel?.logo ? (
         <img
@@ -90,7 +109,9 @@ export function SportsTvScreen({
         </p>
       )}
       {tuned && (
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-14">
+        <div
+          className={`absolute inset-x-0 bottom-0 flex flex-col gap-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-14 transition-opacity duration-300 ${overlayHidden ? "pointer-events-none opacity-0" : "opacity-100"}`}
+        >
           <div className="min-w-0">
             <p className="truncate text-[12.5px] font-medium text-white/75">
               {tuned.live && (

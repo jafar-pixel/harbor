@@ -4,6 +4,7 @@ import { ModalShell } from "@/components/modal-shell";
 import { useT } from "@/lib/i18n";
 import { getGroupLabel, getLeagueLabel } from "@/lib/sports/espn";
 import { HUB_DEFAULTS, HUB_GROUPS, HUB_LEAGUES } from "@/lib/sports/hub-data";
+import { MAX_HUB_SPORTS } from "@/lib/sports/hub-chips";
 import {
   cachedLeagueTeams,
   teamCatalogStatus,
@@ -74,8 +75,20 @@ export function HubPersonalize({ selected, onClose }: { selected: string[]; onCl
       alive = false;
     };
   }, [step, league, retry]);
+  // The Hub shows the sports on one row, so at most MAX_HUB_SPORTS can be picked.
+  const [full, setFull] = useState(false);
   function toggle(key: string) {
-    setLeagues((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+    setLeagues((prev) => {
+      if (prev.includes(key)) {
+        setFull(false);
+        return prev.filter((k) => k !== key);
+      }
+      if (prev.length >= MAX_HUB_SPORTS) {
+        setFull(true);
+        return prev;
+      }
+      return [...prev, key];
+    });
   }
   function toggleGroup(group: string) {
     const items = HUB_LEAGUES.filter((l) => l.group === group);
@@ -83,7 +96,7 @@ export function HubPersonalize({ selected, onClose }: { selected: string[]; onCl
     setLeagues((prev) =>
       on
         ? prev.filter((k) => !items.some((l) => l.key === k))
-        : [...new Set([...prev, ...items.slice(0, 3).map((l) => l.key)])],
+        : [...new Set([...prev, ...items.slice(0, 3).map((l) => l.key)])].slice(0, MAX_HUB_SPORTS),
     );
   }
   function save() {
@@ -170,7 +183,7 @@ export function HubPersonalize({ selected, onClose }: { selected: string[]; onCl
             <button
               type="button"
               className="sh-button"
-              onClick={() => setLeagues([...HUB_DEFAULTS])}
+              onClick={() => setLeagues(HUB_DEFAULTS.slice(0, MAX_HUB_SPORTS))}
             >
               {t("Use popular leagues")}
             </button>
@@ -345,7 +358,13 @@ export function HubPersonalize({ selected, onClose }: { selected: string[]; onCl
         >
           {step > 0 && <ChevronLeft size={16} />} {t(step > 0 ? "Back" : "Cancel")}
         </button>
-        <span>{t("{n} leagues selected", { n: leagues.length })}</span>
+        <span>
+          {full
+            ? t("Up to {max} sports fit on the Hub. Remove one to add another.", {
+                max: MAX_HUB_SPORTS,
+              })
+            : t("{n} of {max} sports selected", { n: leagues.length, max: MAX_HUB_SPORTS })}
+        </span>
         <button className="sh-button primary" onClick={step === 2 || !leagues.length ? save : next}>
           {t(step === 2 || !leagues.length ? "Save preferences" : "Continue")}{" "}
           {step < 2 && leagues.length > 0 && <ChevronRight size={16} />}
