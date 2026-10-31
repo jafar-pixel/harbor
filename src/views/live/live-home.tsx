@@ -126,8 +126,7 @@ export function LiveHome({
 
   return (
     <div className="flex flex-col gap-8 pb-12">
-      {/* The TV stays put while everything under it scrolls. */}
-      <div className="sticky top-0 z-20 -mx-6 -mt-5 flex flex-col gap-4 bg-canvas/80 px-6 pb-5 pt-5 backdrop-blur-xl">
+      <div className="flex flex-col gap-4">
         <div className="flex items-baseline gap-2.5 ps-[9px]">
           <h1 className="font-display text-[30px] font-medium leading-none tracking-tight text-ink">
             {t("Your TV")}

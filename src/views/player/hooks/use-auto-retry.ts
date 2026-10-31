@@ -46,6 +46,9 @@ function hostOf(url: string): string {
   }
 }
 
+/** How long a live channel must play after a reconnect before its reconnect attempts start over. */
+const LIVE_RETRY_RESET_MS = 60_000;
+
 export function useAutoRetry(params: {
   bridgeRef: RefObject<PlayerBridge | null>;
   src: PlayerSrc;
@@ -119,6 +122,7 @@ export function useAutoRetry(params: {
   const p2pCompleteReloadedRef = useRef(false);
   const p2pCompleteReloadedAtRef = useRef(0);
   const liveRetryCountRef = useRef(0);
+  const liveRetryAtRef = useRef(0);
   const livePlayedRef = useRef(false);
   const truncatedReloadedRef = useRef(false);
   const resumedAfterTruncatedRef = useRef(false);
@@ -136,6 +140,7 @@ export function useAutoRetry(params: {
     p2pCompleteReloadedRef.current = false;
     p2pCompleteReloadedAtRef.current = 0;
     liveRetryCountRef.current = 0;
+    liveRetryAtRef.current = 0;
     livePlayedRef.current = false;
     truncatedReloadedRef.current = false;
     resumedAfterTruncatedRef.current = false;
@@ -150,7 +155,11 @@ export function useAutoRetry(params: {
   useEffect(() => {
     if (!isLive) return;
     if (snap.errorCode == null) return;
-    const maxAttempts = livePlayedRef.current ? 2 : 1;
+    // A channel that played for a while after its last reconnect gets a fresh set of attempts,
+    // so a long game survives more than two dropouts instead of going black for good.
+    if (livePlayedRef.current && Date.now() - liveRetryAtRef.current > LIVE_RETRY_RESET_MS)
+      liveRetryCountRef.current = 0;
+    const maxAttempts = livePlayedRef.current ? 3 : 1;
     if (liveRetryCountRef.current >= maxAttempts) return;
     const b = bridgeRef.current;
     if (!b) return;
@@ -158,6 +167,7 @@ export function useAutoRetry(params: {
     const timer = window.setTimeout(
       () => {
         liveRetryCountRef.current = attempt;
+        liveRetryAtRef.current = Date.now();
         console.warn(`[player] live auto-reconnect attempt ${attempt}/${maxAttempts}`);
         void b.load({
           url: src.url,
@@ -167,7 +177,7 @@ export function useAutoRetry(params: {
           headers: src.headers,
         });
       },
-      livePlayedRef.current ? 4000 : 1500,
+      livePlayedRef.current ? 4000 * attempt : 1500,
     );
     return () => window.clearTimeout(timer);
   }, [isLive, snap.errorCode, src.url, src.subtitles, src.notWebReady, bridgeRef]);

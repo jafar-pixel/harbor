@@ -7,7 +7,6 @@ import {
 } from "@/lib/player/bridge";
 import { probeMpv } from "@/lib/player/mpv";
 import { mergeMpvOptions } from "@/lib/player/mpv-tuning";
-import { jlAutoLines, jlAutoUsesMpvHdr } from "@/lib/player/jl-presets";
 import { metaIsAnime } from "@/lib/player/anime-src";
 import { anime4kShadersFor, type Anime4kChoice } from "./use-anime4k";
 import {
@@ -109,14 +108,6 @@ export function usePlayerBridge(params: {
       : autoFallbackTried
         ? "mpv"
         : settings.playerEngine;
-  // JL's automatic setup: Sports HDR for live channels when the picture goes out as HDR,
-  // Cinema 4K for the rest, unless the viewer picked a preset themselves.
-  const jlAuto = {
-    live: isLiveLike,
-    hdrOutput: !settings.playerHdrToSdr,
-    tweaks: settings.mpvTweaks ?? {},
-  };
-  const jlMpvHdr = jlAutoUsesMpvHdr(jlAuto);
   const bridgeKey = `${chosenEngine}|${isLiveLike}|${anime4kOn}|${embedActive}|${anime4kOn ? settings.playerAnime4kShaders.join(",") : ""}|${generalShaderKey(settings)}|${svpOn}|${svpOn ? settings.svpVpyPath : ""}`;
   const [bridgeReady, setBridgeReady] = useState(false);
   const settingsRef = useRef(settings);
@@ -135,7 +126,7 @@ export function usePlayerBridge(params: {
       const { bridge: choose, engine: chosen } = await pickBridge(want, src.notWebReady === true, {
         anime4k: anime4kOn,
         hdrToSdr: settings.playerHdrToSdr,
-        rtxHdr: settings.playerRtxHdr && !settings.playerHdrToSdr && !svpOn && !jlMpvHdr,
+        rtxHdr: settings.playerRtxHdr && !settings.playerHdrToSdr && !svpOn,
         rtxVsr: settings.playerRtxVsr && !svpOn,
         embed: embedActive,
         d3d11Flip: settings.playerD3d11Flip,
@@ -158,7 +149,6 @@ export function usePlayerBridge(params: {
         separateCoverTaskbar: settings.playerSeparateCoverTaskbar,
         cacheDir: settings.playbackCacheDir,
         extraOptions: [
-          jlAutoLines(jlAuto),
           mergeMpvOptions(settings, svpOn),
           shaderCompanionOptions(settings),
         ]

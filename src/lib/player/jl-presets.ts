@@ -34,16 +34,13 @@ export const JL_PRESETS: JlPreset[] = [
   {
     id: "sports-hdr",
     label: "Sports HDR",
-    sub: "HDR color for live games without the washed-out or blown-out look: mpv expands standard video to HDR at a brightness you set, RTX Super Resolution sharpens it to 4K, and motion is smoothed to your screen's refresh rate.",
+    sub: "HDR color for live games without the washed-out or blown-out look: mpv expands standard video to HDR at a brightness you set, and RTX Super Resolution sharpens it to 4K.",
     tweaks: {
       "inverse-tone-mapping": "yes",
       "target-peak": String(SPORTS_HDR_PEAK.def),
       "tone-mapping": "spline",
       saturation: "6",
       deband: "yes",
-      interpolation: "yes",
-      tscale: "oversample",
-      "video-sync": "display-resample",
     },
     player: { playerHdrToSdr: false, playerRtxHdr: false, playerRtxVsr: true },
   },
@@ -103,49 +100,4 @@ export function activeJlPreset(
     if (keysMatch && playerMatch) return p.id;
   }
   return null;
-}
-
-/** No JL preset keys are set: the player picks Sports HDR or Cinema 4K by what is playing. */
-export function jlAutoActive(tweaks: Record<string, string>): boolean {
-  return AUTO_GUARD_KEYS.every((k) => tweaks[k] == null || tweaks[k] === "");
-}
-
-// Keys only a preset sets. Picture adjustments (sharpen, saturation), the tone-mapping curve
-// and the Sports HDR brightness are the viewer's own and tune the automatic setup instead.
-const AUTO_GUARD_KEYS = [
-  "inverse-tone-mapping",
-  "deband",
-  "interpolation",
-  "tscale",
-  "video-sync",
-  "scale",
-  "cscale",
-];
-
-/**
- * The automatic setup for one stream, as mpv.conf lines: Sports HDR for live channels when the
- * player outputs HDR, Cinema 4K for everything else. Nothing when the viewer has picked a
- * preset or set any of its keys themselves, or when the picture is tonemapped to SDR.
- */
-export function jlAutoLines(opts: {
-  live: boolean;
-  hdrOutput: boolean;
-  tweaks: Record<string, string>;
-}): string {
-  if (!jlAutoActive(opts.tweaks)) return "";
-  const preset = JL_PRESETS.find(
-    (p) => p.id === (opts.live && opts.hdrOutput ? "sports-hdr" : "cinema"),
-  )!;
-  return Object.entries(preset.tweaks)
-    .map(([k, v]) => `${k}=${v}`)
-    .join("\n");
-}
-
-/** Automatic Sports HDR does the SDR-to-HDR conversion itself, so RTX Video HDR stays out of it. */
-export function jlAutoUsesMpvHdr(opts: {
-  live: boolean;
-  hdrOutput: boolean;
-  tweaks: Record<string, string>;
-}): boolean {
-  return jlAutoActive(opts.tweaks) && opts.live && opts.hdrOutput;
 }
