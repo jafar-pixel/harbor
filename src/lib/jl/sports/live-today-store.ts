@@ -9,6 +9,8 @@ export type LiveTodayRow = {
   detail: string;
   live: boolean;
   channel: IptvChannel | null;
+  /** The viewer asked to be reminded about this game. */
+  reminded?: boolean;
 };
 
 let rows: LiveTodayRow[] = [];

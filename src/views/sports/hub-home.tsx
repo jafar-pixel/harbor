@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Radio } from "lucide-react";
+import { CalendarDays, ChevronDown, Radio, SlidersHorizontal } from "lucide-react";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
 import type { GameChannel } from "@/lib/jl/sports/channels";
@@ -15,11 +15,15 @@ import {
   hubFeedLeagues,
   liveTodayGames,
   nextSevenDays,
+  topRankedGames,
+  type HubChip,
 } from "@/lib/sports/hub-chips";
 import { HUB_LEAGUES, hubLeague } from "@/lib/sports/hub-data";
 import { hotEventCalendarParts } from "@/lib/sports/hot-events";
 import { gameKey } from "@/lib/sports/hub-cache";
+import { reminderId, useSportsReminders } from "@/lib/sports/reminders";
 import type { LiveSportsChannelsData } from "@/views/live/live-home/jl-sports/live-sports-channels";
+import { HubGameDetails } from "./hub-game-details";
 import { HotPoster, HotTeamTitle, hotEventTitle, useHotFeed, WeekLogos } from "./hot-events";
 import { LeagueLogo } from "./league-logo";
 import { SportIcon } from "./sport-icon";
@@ -66,6 +70,7 @@ export function SportsHubHome({
   onWatch,
   onOpen,
   onCalendar,
+  onPersonalize,
 }: {
   seed: SportsGame[];
   /** League keys from Personalize. */
@@ -77,6 +82,8 @@ export function SportsHubHome({
   onWatch: (channel: IptvChannel) => void;
   onOpen: (game: SportsGame) => void;
   onCalendar: () => void;
+  /** Opens Personalize to choose the sports shown here. */
+  onPersonalize: () => void;
 }) {
   const t = useT();
   const locale = useUiLanguage();
@@ -87,10 +94,15 @@ export function SportsHubHome({
   const [chip, setChip] = useState<string>(() => readStored<string>(CHIP_KEY, "all"));
   const chipKeys = chips.map((c) => c.key);
   const current = chipKeys.includes(chip) ? chip : "all";
+  const [sportsOpen, setSportsOpen] = useState(false);
   const pickChip = (key: string) => {
     setChip(key);
     store(CHIP_KEY, key);
+    setSportsOpen(false);
   };
+  const currentChip = chips.find((c) => c.key === current) ?? null;
+  const chipLabel = (c: HubChip | null) =>
+    !c ? t("All sports") : c.league ? getLeagueLabel(hubLeague(c.league.tag)!) : t("Esports");
   const [mode, setMode] = useState<Mode>(() =>
     readStored<Mode>(MODE_KEY, "today", ["tv", "today", "week"]),
   );
@@ -100,7 +112,12 @@ export function SportsHubHome({
   };
 
   const inChip = useMemo(() => gamesForChip(games, chips, current), [games, chips, current]);
-  const today = useMemo(() => liveTodayGames(inChip, now), [inChip, now]);
+  const chipLeague = chips.find((c) => c.key === current)?.league?.key ?? null;
+  const today = useMemo(
+    () => topRankedGames(liveTodayGames(inChip, now), chipLeague),
+    [inChip, now, chipLeague],
+  );
+  const topList = today.some((g) => (g.home.rank ?? 99) <= 25 || (g.away.rank ?? 99) <= 25);
   const week = useMemo(() => nextSevenDays(inChip, now), [inChip, now]);
 
   const tvLeague = chipTvLeague(chips.find((c) => c.key === current));
@@ -126,52 +143,66 @@ export function SportsHubHome({
     channels: channelsFor(g).map((c) => c.channel),
   });
 
-  // Today's games, with the channel each is on, for the full player's side panel.
+  // Today's games, with the channel each is on, for the full player's side panel. Games with a
+  // reminder come first.
+  const reminders = useSportsReminders();
   useEffect(() => {
     if (!active) return;
+    const reminded = new Set(reminders.map((r) => r.id));
+    const ordered = [
+      ...today.filter((g) => reminded.has(reminderId(g))),
+      ...today.filter((g) => !reminded.has(reminderId(g))),
+    ];
     publishLiveToday(
-      today.map((g) => ({
+      ordered.map((g) => ({
         key: gameKey(g),
         title: hotEventTitle(g),
         score: scoreLine(g),
         detail: g.detail,
         live: g.state === "in",
         channel: channelsFor(g)[0]?.channel ?? null,
+        reminded: reminded.has(reminderId(g)),
       })),
     );
-  }, [active, today, channelsFor]);
+  }, [active, today, channelsFor, reminders]);
 
   const tuned = useSportsTvTuned();
+  const tunedGame = useMemo(
+    () => [...today, ...week].find((g) => tuned?.key === `game:${gameKey(g)}`) ?? null,
+    [today, week, tuned?.key],
+  );
   const posters = mode === "week" ? week : today;
 
   return (
     <section className="hot-events" aria-label={t("Hub")}>
       <div className="hot-filters">
-        <div
-          role="group"
-          aria-label={t("Filter by sport")}
-          className="harbor-scroll flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1"
-        >
+        <div role="group" aria-label={t("Show")}>
           <button
-            className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap"
-            aria-pressed={current === "all"}
-            onClick={() => pickChip("all")}
+            className="inline-flex items-center gap-2 whitespace-nowrap"
+            aria-pressed={sportsOpen}
+            aria-expanded={sportsOpen}
+            onClick={() => setSportsOpen((v) => !v)}
           >
-            <SportIcon name="trophy" size={18} /> {t("All sports")}
+            {currentChip?.league ? (
+              <LeagueLogo league={hubLeague(currentChip.league.tag)!} size={18} />
+            ) : (
+              <SportIcon name={current === ESPORTS_CHIP ? "esports" : "trophy"} size={16} />
+            )}
+            {chipLabel(currentChip)}
+            <ChevronDown
+              size={15}
+              className={`transition-transform ${sportsOpen ? "rotate-180" : ""}`}
+            />
           </button>
-          {chips.map((c) => (
-            <button
-              key={c.key}
-              className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap"
-              aria-pressed={current === c.key}
-              onClick={() => pickChip(c.key)}
-            >
-              {c.league ? (
-                <LeagueLogo league={hubLeague(c.league.tag)!} size={20} />
-              ) : (
-                <SportIcon name="esports" size={18} />
-              )}{" "}
-              {c.league ? getLeagueLabel(hubLeague(c.league.tag)!) : t("Esports")}
+          {(
+            [
+              ["tv", "Sport TV"],
+              ["today", "Live Today"],
+              ["week", "Next 7 days"],
+            ] as const
+          ).map(([key, label]) => (
+            <button key={key} aria-pressed={mode === key} onClick={() => pickMode(key)}>
+              {t(label)}
             </button>
           ))}
         </div>
@@ -186,42 +217,68 @@ export function SportsHubHome({
         </button>
       </div>
 
-      <div className="hot-filters">
-        <div role="group" aria-label={t("Show")}>
-          {(
-            [
-              ["tv", "Sport TV"],
-              ["today", "Live Today"],
-              ["week", "Next 7 days"],
-            ] as const
-          ).map(([key, label]) => (
-            <button key={key} aria-pressed={mode === key} onClick={() => pickMode(key)}>
-              {t(label)}
+      {sportsOpen && (
+        <div
+          role="group"
+          aria-label={t("Your sports")}
+          className="hot-sport-strip harbor-scroll -mt-3 mb-5 flex gap-2 overflow-x-auto pb-1"
+        >
+          <button
+            className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap"
+            aria-pressed={current === "all"}
+            onClick={() => pickChip("all")}
+          >
+            <SportIcon name="trophy" size={16} /> {t("All sports")}
+          </button>
+          {chips.map((c) => (
+            <button
+              key={c.key}
+              className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap"
+              aria-pressed={current === c.key}
+              onClick={() => pickChip(c.key)}
+            >
+              {c.league ? (
+                <LeagueLogo league={hubLeague(c.league.tag)!} size={18} />
+              ) : (
+                <SportIcon name="esports" size={16} />
+              )}
+              {chipLabel(c)}
             </button>
           ))}
+          <button
+            className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap"
+            aria-pressed={false}
+            onClick={onPersonalize}
+          >
+            <SlidersHorizontal size={15} /> {t("Choose sports")}
+          </button>
         </div>
-      </div>
+      )}
 
-      {/* The TV stays put while the posters scroll underneath. */}
-      <div className="sticky top-0 z-30 -mx-2 grid gap-4 bg-canvas/85 px-2 py-3 backdrop-blur-xl lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">
-        <div className="h-[clamp(300px,46vh,560px)]">
-          <SportsTvScreen
-            tuned={tuned}
-            active={active}
-            sourceNames={channels.sourceNames}
-            onWatch={onWatch}
-            emptyText={t(
-              "Pick a game or a channel to put it on. Click it again to watch full screen.",
-            )}
-          />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="h-[clamp(300px,46vh,560px)]">
+            <SportsTvScreen
+              tuned={tuned}
+              active={active}
+              sourceNames={channels.sourceNames}
+              onWatch={onWatch}
+              emptyText={t(
+                "Pick a game or a channel to put it on. Click it again to watch full screen.",
+              )}
+            />
+          </div>
+          {tunedGame && <HubGameDetails game={tunedGame} onOpen={onOpen} />}
         </div>
-        <aside className="hot-week harbor-scroll h-[clamp(300px,46vh,560px)] overflow-y-auto">
+        <aside className="hot-week harbor-scroll max-h-[calc(clamp(300px,46vh,560px)+260px)] self-start overflow-y-auto">
           <div>
             <h3>
               {mode === "tv"
                 ? t("Sports channels")
                 : mode === "today"
-                  ? t("Live Today")
+                  ? topList
+                    ? t("Top 25 today")
+                    : t("Live Today")
                   : t("This week")}
             </h3>
           </div>

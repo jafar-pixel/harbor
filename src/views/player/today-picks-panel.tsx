@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Star, Tv, X } from "lucide-react";
+import { BellRing, Star, Tv, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
 import { isPicked, toggleTodayPick, useTodayPicks } from "@/lib/iptv/today-picks";
@@ -112,6 +112,7 @@ export function TodayPicksPanel({
                       {r.title}
                     </span>
                     <span className="block truncate text-[12px] text-white/60">
+                      {r.reminded && <BellRing size={11} className="me-1 inline align-[-1px]" />}
                       {r.live && <span className="me-1 text-danger">●</span>}
                       {[r.score, r.detail].filter(Boolean).join(" · ")}
                     </span>

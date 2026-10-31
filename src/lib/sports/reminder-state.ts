@@ -1,4 +1,5 @@
-export type SportsReminderChannel = "discord" | "telegram";
+/** "app" is the app's own notification; Discord and Telegram are optional extras. */
+export type SportsReminderChannel = "app" | "discord" | "telegram";
 export type SportsReminder = {
   id: string;
   name: string;
