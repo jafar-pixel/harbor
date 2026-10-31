@@ -21,7 +21,7 @@ import { JlSportsHero } from "./live-home/jl-sports/sports-hero";
 import { useJlSports } from "./live-home/jl-sports/use-jl-sports";
 import { useJlSportsDialogs } from "./live-home/jl-sports/use-jl-sports-dialogs";
 import { LiveHero } from "./live-home/live-hero";
-import { MoreOnNow } from "./live-home/more-on-now";
+import { ChannelLogoRow } from "./live-home/channel-logo-row";
 import { NowCard } from "./live-home/now-card";
 import { fmtClock } from "./live-home/now-format";
 import {
@@ -122,12 +122,21 @@ export function LiveHome({
     }, [heroItems, spotlight]),
   );
 
+  // The logo strip under Your TV: the viewer's favorites, else what they watched last, else
+  // the channels Your TV cycles through.
+  const logoStrip = useMemo(() => {
+    const fav = rails.find((r) => r.key === "fav")?.channels;
+    if (fav?.length) return { title: t("Your favorites"), channels: fav };
+    const recent = rails.find((r) => r.key === "recent")?.channels;
+    if (recent?.length) return { title: t("Recently watched"), channels: recent };
+    return { title: t("Channels"), channels: spotlight.map((it) => it.channel) };
+  }, [rails, spotlight, t]);
+
   const railProps = { sourceId, epg, nowMs, tvgCounts, onPlay: tune, onOpenCategory };
 
   return (
     <div className="flex flex-col gap-8 pb-12">
-      {/* The TV stays put while everything under it scrolls. */}
-      <div className="sticky top-0 z-20 -mx-6 -mt-5 flex flex-col gap-4 bg-canvas/80 px-6 pb-5 pt-5 backdrop-blur-xl">
+      <div className="flex flex-col gap-4">
         <div className="flex items-baseline gap-2.5 ps-[9px]">
           <h1 className="font-display text-[30px] font-medium leading-none tracking-tight text-ink">
             {t("Your TV")}
@@ -140,18 +149,33 @@ export function LiveHome({
           </span>
         </div>
         {heroItems.length > 0 && (
-          <div className="flex gap-5">
-            <LiveHero
-              items={heroItems}
-              nowMs={nowMs}
-              hydrations={heroHydrations}
-              active={active}
-              onPlay={onPlay}
-            />
-            <MoreOnNow items={spotlight} hydrations={heroHydrations} onPlay={tune} />
-          </div>
+          <LiveHero
+            items={heroItems}
+            nowMs={nowMs}
+            hydrations={heroHydrations}
+            active={active}
+            onPlay={onPlay}
+          />
         )}
       </div>
+      <ChannelLogoRow
+        title={logoStrip.title}
+        channels={logoStrip.channels.slice(0, 24)}
+        tunedId={tuned?.channel.id ?? null}
+        onTune={tune}
+      />
+      {guide.length > 0 && (
+        <Row
+          title={t("On now")}
+          shape="landscape"
+          min={300}
+          scrollKey={`live-home:${sourceId}:guide`}
+        >
+          {guide.map((it) => (
+            <GuideCard key={it.channel.id} item={it} onPlay={tune} />
+          ))}
+        </Row>
+      )}
       <ContinueAnywhereRow scrollKey="live-home:continue" />
       {(jlSports.top.length > 0 ||
         jlSports.teamSlides.length > 0 ||
@@ -181,18 +205,6 @@ export function LiveHome({
           onLeaguesChange={saveSportsLeagues}
           onSelect={openMatchDetail}
         />
-      )}
-      {guide.length > 0 && (
-        <Row
-          title={t("On now")}
-          shape="landscape"
-          min={300}
-          scrollKey={`live-home:${sourceId}:guide`}
-        >
-          {guide.map((it) => (
-            <GuideCard key={it.channel.id} item={it} onPlay={tune} />
-          ))}
-        </Row>
       )}
       {rails.map((rail) => (
         <RailRow key={rail.key} rail={rail} {...railProps} />

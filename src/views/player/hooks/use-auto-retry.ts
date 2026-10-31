@@ -46,6 +46,9 @@ function hostOf(url: string): string {
   }
 }
 
+/** How long a live channel must play after a reconnect before its reconnect attempts start over. */
+const LIVE_RETRY_RESET_MS = 60_000;
+
 export function useAutoRetry(params: {
   bridgeRef: RefObject<PlayerBridge | null>;
   src: PlayerSrc;
@@ -119,6 +122,7 @@ export function useAutoRetry(params: {
   const p2pCompleteReloadedRef = useRef(false);
   const p2pCompleteReloadedAtRef = useRef(0);
   const liveRetryCountRef = useRef(0);
+  const liveRetryAtRef = useRef(0);
   const livePlayedRef = useRef(false);
   const truncatedReloadedRef = useRef(false);
   const resumedAfterTruncatedRef = useRef(false);
@@ -136,6 +140,7 @@ export function useAutoRetry(params: {
     p2pCompleteReloadedRef.current = false;
     p2pCompleteReloadedAtRef.current = 0;
     liveRetryCountRef.current = 0;
+    liveRetryAtRef.current = 0;
     livePlayedRef.current = false;
     truncatedReloadedRef.current = false;
     resumedAfterTruncatedRef.current = false;
@@ -150,7 +155,11 @@ export function useAutoRetry(params: {
   useEffect(() => {
     if (!isLive) return;
     if (snap.errorCode == null) return;
-    const maxAttempts = livePlayedRef.current ? 2 : 1;
+    // A channel that played for a while after its last reconnect gets a fresh set of attempts,
+    // so a long game survives more than two dropouts instead of going black for good.
+    if (livePlayedRef.current && Date.now() - liveRetryAtRef.current > LIVE_RETRY_RESET_MS)
+      liveRetryCountRef.current = 0;
+    const maxAttempts = livePlayedRef.current ? 3 : 1;
     if (liveRetryCountRef.current >= maxAttempts) return;
     const b = bridgeRef.current;
     if (!b) return;
@@ -158,6 +167,7 @@ export function useAutoRetry(params: {
     const timer = window.setTimeout(
       () => {
         liveRetryCountRef.current = attempt;
+        liveRetryAtRef.current = Date.now();
         console.warn(`[player] live auto-reconnect attempt ${attempt}/${maxAttempts}`);
         void b.load({
           url: src.url,
@@ -167,7 +177,7 @@ export function useAutoRetry(params: {
           headers: src.headers,
         });
       },
-      livePlayedRef.current ? 4000 : 1500,
+      livePlayedRef.current ? 4000 * attempt : 1500,
     );
     return () => window.clearTimeout(timer);
   }, [isLive, snap.errorCode, src.url, src.subtitles, src.notWebReady, bridgeRef]);
@@ -288,28 +298,30 @@ export function useAutoRetry(params: {
         false,
         {},
         hint,
-      ).then(async (r) => {
-        if (!current()) return;
-        if (r.ok) {
-          let url = r.data.webStreamUrl ?? r.data.url;
-          if (r.data.headers && Object.keys(r.data.headers).length > 0) {
-            try {
-              url = (await registerStreamProxy(r.data.url, r.data.headers)).url;
-            } catch {
-              /* fall back to the raw debrid url */
-            }
-          }
+      )
+        .then(async (r) => {
           if (!current()) return;
-          console.warn(`[player] debrid failover via ${r.via}`);
-          void recoveryBridge.load({
-            url,
-            subtitles: src.subtitles,
-            notWebReady: r.data.notWebReady ?? src.notWebReady,
-          });
-        } else {
-          retry();
-        }
-      }).catch(retry);
+          if (r.ok) {
+            let url = r.data.webStreamUrl ?? r.data.url;
+            if (r.data.headers && Object.keys(r.data.headers).length > 0) {
+              try {
+                url = (await registerStreamProxy(r.data.url, r.data.headers)).url;
+              } catch {
+                /* fall back to the raw debrid url */
+              }
+            }
+            if (!current()) return;
+            console.warn(`[player] debrid failover via ${r.via}`);
+            void recoveryBridge.load({
+              url,
+              subtitles: src.subtitles,
+              notWebReady: r.data.notWebReady ?? src.notWebReady,
+            });
+          } else {
+            retry();
+          }
+        })
+        .catch(retry);
       return cancel;
     }
     // The browser can't decode this file, and the reload, local proxy and ffmpeg rescues
@@ -348,7 +360,11 @@ export function useAutoRetry(params: {
         void registerStreamProxy(src.url, src.headers)
           .then((p) => {
             if (current())
-              void recoveryBridge.load({ url: p.url, subtitles: src.subtitles, notWebReady: src.notWebReady });
+              void recoveryBridge.load({
+                url: p.url,
+                subtitles: src.subtitles,
+                notWebReady: src.notWebReady,
+              });
           })
           .catch(retry);
         return cancel;
@@ -382,17 +398,19 @@ export function useAutoRetry(params: {
       transcodedUrl == null
     ) {
       transcodedTriedRef.current = true;
-      void probeStremioServer().then((ok) => {
-        if (!current()) return;
-        if (ok) {
-          console.warn("[player] decode error — retrying via p2p transcoding");
-          recoveryBridge.destroy();
-          bridgeRef.current = null;
-          setTranscodedUrl(buildTranscodedUrl(src.url));
-        } else {
-          retry();
-        }
-      }).catch(retry);
+      void probeStremioServer()
+        .then((ok) => {
+          if (!current()) return;
+          if (ok) {
+            console.warn("[player] decode error — retrying via p2p transcoding");
+            recoveryBridge.destroy();
+            bridgeRef.current = null;
+            setTranscodedUrl(buildTranscodedUrl(src.url));
+          } else {
+            retry();
+          }
+        })
+        .catch(retry);
       return cancel;
     }
     triggerAutoRetry(`playback error "${snap.errorCode}"`);

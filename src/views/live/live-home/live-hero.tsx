@@ -74,7 +74,7 @@ export function LiveHero({
     <section
       onDoubleClick={() => onPlay(channel)}
       aria-label={t("Your TV: {name}", { name: channel.name })}
-      className="group relative h-[clamp(420px,54vh,660px)] min-w-0 flex-1 cursor-pointer overflow-hidden rounded-lg bg-canvas"
+      className="group relative h-[clamp(300px,44vh,500px)] w-full min-w-0 cursor-pointer overflow-hidden rounded-lg bg-canvas"
       style={{ isolation: "isolate" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}

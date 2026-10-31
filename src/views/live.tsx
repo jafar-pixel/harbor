@@ -489,6 +489,7 @@ export function LiveView({ active }: { active: boolean }) {
                     favorites={favorites}
                     onPlay={handlePlay}
                     resetKey={`${activeId}|${group ?? ""}|${query}`}
+                    sourceId={activeId ?? ""}
                   />
                 )}
                 {visible.length > 0 && mode === "guide" && !showGames && (

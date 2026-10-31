@@ -5,7 +5,6 @@ import {
   applyJlPreset,
   JL_PRESETS,
   JL_PRESET_KEYS,
-  jlAutoActive,
   SPORTS_HDR_PEAK,
 } from "@/lib/player/jl-presets";
 import { ROW_ACTION, ROW_ACTION_PRIMARY, SettingRow } from "../kit";
@@ -22,14 +21,11 @@ export function JlPresetsSection() {
     playerRtxHdr: settings.playerRtxHdr,
     playerRtxVsr: settings.playerRtxVsr,
   };
-  const auto = jlAutoActive(tweaks);
-  const active = auto ? null : activeJlPreset(tweaks, player);
+  const active = activeJlPreset(tweaks, player);
   const current = JL_PRESETS.find((p) => p.id === active);
-  const useAuto = () => {
+  const clearPreset = () => {
     const next = { ...tweaks };
-    for (const k of JL_PRESET_KEYS)
-      if (k !== "target-peak" && k !== "sharpen" && k !== "saturation" && k !== "tone-mapping")
-        delete next[k];
+    for (const k of JL_PRESET_KEYS) delete next[k];
     update({ mpvTweaks: next });
   };
   return (
@@ -42,24 +38,16 @@ export function JlPresetsSection() {
       <SettingRow
         wide
         label={t("Preset")}
-        desc={
-          auto
-            ? t(
-                "Picked for you by what's playing: Sports HDR for live channels when the picture goes out in HDR, Cinema 4K for movies and shows.",
-              )
-            : current
-              ? t(current.sub)
-              : t("Custom setup")
-        }
+        desc={current ? t(current.sub) : t("No preset. Playback uses only the settings below.")}
       >
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
-            aria-pressed={auto}
-            onClick={useAuto}
-            className={auto ? ROW_ACTION_PRIMARY : ROW_ACTION}
+            aria-pressed={active === null}
+            onClick={clearPreset}
+            className={active === null ? ROW_ACTION_PRIMARY : ROW_ACTION}
           >
-            {t("Automatic")}
+            {t("None")}
           </button>
           {JL_PRESETS.map((p) => (
             <button
@@ -75,7 +63,7 @@ export function JlPresetsSection() {
           ))}
         </div>
       </SettingRow>
-      {(auto || tweaks["inverse-tone-mapping"] === "yes") && (
+      {tweaks["inverse-tone-mapping"] === "yes" && (
         <SettingRow
           wide
           label={t("HDR brightness for standard video")}

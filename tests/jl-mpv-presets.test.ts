@@ -1,12 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  activeJlPreset,
-  applyJlPreset,
-  JL_PRESETS,
-  jlAutoLines,
-  jlAutoUsesMpvHdr,
-} from "../src/lib/player/jl-presets.ts";
+import { activeJlPreset, applyJlPreset, JL_PRESETS } from "../src/lib/player/jl-presets.ts";
 
 const byId = (id: string) => JL_PRESETS.find((p) => p.id === id)!;
 
@@ -33,22 +27,9 @@ test("the active preset is recognised, including a moved brightness slider", () 
   assert.equal(activeJlPreset({ ...tweaks, deband: "no" }, p.player), null);
 });
 
-test("automatic: Sports HDR for live channels in HDR, Cinema otherwise, nothing once the viewer chooses", () => {
-  const live = jlAutoLines({ live: true, hdrOutput: true, tweaks: {} });
-  assert.match(live, /inverse-tone-mapping=yes/);
-  assert.match(live, /interpolation=yes/);
-  assert.equal(jlAutoUsesMpvHdr({ live: true, hdrOutput: true, tweaks: {} }), true);
-  const sdr = jlAutoLines({ live: true, hdrOutput: false, tweaks: {} });
-  assert.doesNotMatch(sdr, /inverse-tone-mapping/);
-  assert.match(sdr, /scale=ewa_lanczossharp/);
-  assert.equal(jlAutoLines({ live: true, hdrOutput: true, tweaks: { deband: "no" } }), "");
-  assert.equal(
-    jlAutoLines({ live: false, hdrOutput: true, tweaks: { brightness: "4" } }).length > 0,
-    true,
-  );
-});
-
-test("the viewer's own picture tweaks keep the automatic setup on", () => {
-  const tweaks = { sharpen: "0.6", "tone-mapping": "spline", "target-peak": "500" };
-  assert.match(jlAutoLines({ live: true, hdrOutput: true, tweaks }), /inverse-tone-mapping=yes/);
+test("Sports HDR adds HDR color only, no motion smoothing or display retiming", () => {
+  const p = byId("sports-hdr");
+  assert.equal(p.tweaks.interpolation, undefined);
+  assert.equal(p.tweaks.tscale, undefined);
+  assert.equal(p.tweaks["video-sync"], undefined);
 });
