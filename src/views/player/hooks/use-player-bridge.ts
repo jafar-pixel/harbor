@@ -17,7 +17,7 @@ import {
 import type { PlayerSrc } from "@/lib/view";
 import type { Settings } from "@/lib/settings";
 import { setPlaybackClock, setPlaybackStatus } from "@/lib/player/playback-clock";
-import { isLinuxDesktop, isMacDesktop, isWeb, isWindowsDesktop } from "@/lib/platform";
+import { isLinuxDesktop, isMacDesktop, isWindowsDesktop } from "@/lib/platform";
 import { isLivePlaybackSrc } from "@/lib/player/live-src";
 import { readEmbedRect } from "@/lib/player/embed-rect";
 import { svpEnsureRunning, svpStatus } from "@/lib/svp";
@@ -100,14 +100,11 @@ export function usePlayerBridge(params: {
     if (svpOn) void svpEnsureRunning().catch(() => {});
   }, [svpOn]);
   const isLiveLike = isLivePlaybackSrc(src);
-  // The browser player drops live sports to its lowest rendition after a stall and has no HDR
-  // or RTX. The desktop app has mpv, so a live stream follows the chosen engine there too.
+  // Live channels play in the browser player on every platform: the same player as the Live TV
+  // preview, inside the app window, with the app's own controls. Sending them to mpv on the
+  // desktop (0.9.57) opened a separate window and dropped streams the preview played fine.
   const chosenEngine =
-    isLiveLike && !src.notWebReady && isWeb()
-      ? "html5"
-      : autoFallbackTried
-        ? "mpv"
-        : settings.playerEngine;
+    isLiveLike && !src.notWebReady ? "html5" : autoFallbackTried ? "mpv" : settings.playerEngine;
   const bridgeKey = `${chosenEngine}|${isLiveLike}|${anime4kOn}|${embedActive}|${anime4kOn ? settings.playerAnime4kShaders.join(",") : ""}|${generalShaderKey(settings)}|${svpOn}|${svpOn ? settings.svpVpyPath : ""}`;
   const [bridgeReady, setBridgeReady] = useState(false);
   const settingsRef = useRef(settings);

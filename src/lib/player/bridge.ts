@@ -164,6 +164,8 @@ export type PlayerBridge = {
   screenshot: (path: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
   setAbLoop: (a: number | null, b: number | null) => void;
   requestPiP: () => Promise<void>;
+  /** The video is in a picture-in-picture window right now (browser player only). */
+  pipActive?: () => boolean;
   exitPiP: () => Promise<void>;
   requestFullscreen: () => Promise<void>;
   exitFullscreen: () => Promise<void>;
