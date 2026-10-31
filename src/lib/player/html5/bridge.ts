@@ -30,6 +30,7 @@ import { html5Transport } from "./transport";
 import { currentWebPlaybackEnv } from "@/lib/player/web-playable";
 import {
   autoFloorBitrate,
+  stepDownLevel,
   levelForHeight,
   readStreamQualityPref,
   renditionHeights,
@@ -629,9 +630,25 @@ export function createHtml5Bridge(): PlayerBridge {
             hls.startLevel = levelForHeight(renditions, qualityCap);
             holdHlsQuality();
           } else if (src.isLive === true && renditions.length > 1) {
-            // Live starts on the sharpest rendition instead of the lowest; Auto then adapts
-            // from there, never below the 720p floor while 720p exists.
-            hls.startLevel = levelForHeight(renditions, Number.MAX_SAFE_INTEGER);
+            // Live holds the sharpest rendition from the first second. hls.js's automatic
+            // picker measured each new stream by dropping to 480p and climbing back, which
+            // stuttered on every channel change. A stream that keeps stalling steps down one
+            // rendition at a time instead (below), never under 720p while 720p exists.
+            const top = levelForHeight(renditions, Number.MAX_SAFE_INTEGER);
+            hls.startLevel = top;
+            hls.nextLevel = top;
+            const stalls: number[] = [];
+            hls.on(Hls.Events.ERROR, (_event, data) => {
+              if (!hls || data.details !== Hls.ErrorDetails.BUFFER_STALLED_ERROR) return;
+              if (qualityCap != null) return;
+              const now = Date.now();
+              stalls.push(now);
+              while (stalls.length && now - stalls[0] > 60_000) stalls.shift();
+              if (stalls.length < 3) return;
+              stalls.length = 0;
+              const lower = stepDownLevel(hlsRenditions(), hls.currentLevel);
+              if (lower !== hls.currentLevel) hls.nextLevel = lower;
+            });
           }
           refreshSnapshot();
         });
