@@ -1,6 +1,7 @@
 import type { TournamentKind } from "@/lib/sports/brackets/engine";
 
-export const BRACKET_KINDS: TournamentKind[] = ["cfp", "nfl", "nba", "mlb", "ncaam", "ncaaw"];
+// New brackets: NFL, NBA, college football and college basketball. MLB pools made before still open.
+export const BRACKET_KINDS: TournamentKind[] = ["nfl", "nba", "cfp", "ncaam", "ncaaw"];
 
 export const BRACKET_TITLES: Record<TournamentKind, string> = {
   cfp: "College Football Playoff",

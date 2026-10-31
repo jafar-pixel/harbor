@@ -62,6 +62,7 @@ import {
 } from "./live/live-home/jl-sports/jl-sports-top";
 import { useSportsPageWallpaper } from "./live/live-home/jl-sports/use-page-wallpaper";
 import { SportsHubHome } from "./sports/hub-home";
+import { TeamsAndPlayers } from "./sports/teams-players";
 import { SportsTvBand, type BandItem } from "./sports/sports-tv-band";
 import { replayChannels } from "@/lib/jl/sports/replays";
 import { TV_LEAGUE_LABELS } from "@/lib/jl/sports/tv-leagues";
@@ -619,7 +620,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
         <div className="sh-body" ref={bodyRef}>
           <SportsNoProviderNote />
           {tab === "home" && !browsing && <ContinueAnywhereRow scrollKey="sports:continue" />}
-          {tab !== "explore" && !standalone && tab !== "live" && (
+          {tab !== "explore" && tab !== "teams" && !standalone && tab !== "live" && (
             <div
               ref={sportRail}
               {...sportHandlers}
@@ -661,55 +662,59 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               </button>
             </div>
           )}
-          {tab !== "explore" && !standalone && tab !== "live" && group !== "esports" && (
-            <>
-              <div className="sh-date-dock">
-                <button
-                  className="sh-icon"
-                  aria-label={t("Jump to today")}
-                  onClick={() => setDay(today)}
-                >
-                  <CalendarDays size={18} />
-                </button>
-                <SportsDateBar
-                  days={days}
-                  selected={day}
-                  today={today}
-                  liveDays={new Set(live.map((game) => dayStamp(new Date(game.startMs))))}
-                  onSelect={setDay}
-                />
-                <label className="sh-calendar-input" title={t("Choose date")}>
-                  <CalendarDays size={18} />
-                  <input
-                    type="date"
-                    aria-label={t("Choose date")}
-                    value={`${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}`}
-                    onChange={(e) => {
-                      if (e.target.value) setDay(e.target.value.replaceAll("-", ""));
-                    }}
+          {tab !== "explore" &&
+            tab !== "teams" &&
+            !standalone &&
+            tab !== "live" &&
+            group !== "esports" && (
+              <>
+                <div className="sh-date-dock">
+                  <button
+                    className="sh-icon"
+                    aria-label={t("Jump to today")}
+                    onClick={() => setDay(today)}
+                  >
+                    <CalendarDays size={18} />
+                  </button>
+                  <SportsDateBar
+                    days={days}
+                    selected={day}
+                    today={today}
+                    liveDays={new Set(live.map((game) => dayStamp(new Date(game.startMs))))}
+                    onSelect={setDay}
                   />
-                </label>
-                <SportsSelect
-                  className="sh-league-select"
-                  ariaLabel={t("Filter by league")}
-                  value={scope.leagueFilter}
-                  onChange={setLeagueFilter}
-                  options={[
-                    {
-                      value: "",
-                      label: t("All leagues"),
-                      left: <SportIcon name="trophy" size={20} />,
-                    },
-                    ...scope.options.map((l) => ({
-                      value: l.key,
-                      label: getLeagueLabel(l),
-                      left: <LeagueLogo league={l} size={20} />,
-                    })),
-                  ]}
-                />
-              </div>
-            </>
-          )}
+                  <label className="sh-calendar-input" title={t("Choose date")}>
+                    <CalendarDays size={18} />
+                    <input
+                      type="date"
+                      aria-label={t("Choose date")}
+                      value={`${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}`}
+                      onChange={(e) => {
+                        if (e.target.value) setDay(e.target.value.replaceAll("-", ""));
+                      }}
+                    />
+                  </label>
+                  <SportsSelect
+                    className="sh-league-select"
+                    ariaLabel={t("Filter by league")}
+                    value={scope.leagueFilter}
+                    onChange={setLeagueFilter}
+                    options={[
+                      {
+                        value: "",
+                        label: t("All leagues"),
+                        left: <SportIcon name="trophy" size={20} />,
+                      },
+                      ...scope.options.map((l) => ({
+                        value: l.key,
+                        label: getLeagueLabel(l),
+                        left: <LeagueLogo league={l} size={20} />,
+                      })),
+                    ]}
+                  />
+                </div>
+              </>
+            )}
           {!standalone && group !== "esports" && (statusStale || failures > 0) && (
             <div className="sh-feed-note" role="status">
               <span>
@@ -733,21 +738,25 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               </button>
             </div>
           )}
-          {tab !== "explore" && !standalone && tab !== "live" && group === "esports" && (
-            <Suspense fallback={<SportsRailSkeleton />}>
-              {browsing ? (
-                <EsportsArena active={active && !setup} refresh={refresh} />
-              ) : (
-                <EsportsMatchRail
-                  heroTarget={tab === "home" ? esportsHeroTarget : null}
-                  leagueKeys={leagues}
-                  active={active && !setup}
-                  refresh={refresh}
-                  onExplore={() => setBrowsing(true)}
-                />
-              )}
-            </Suspense>
-          )}
+          {tab !== "explore" &&
+            tab !== "teams" &&
+            !standalone &&
+            tab !== "live" &&
+            group === "esports" && (
+              <Suspense fallback={<SportsRailSkeleton />}>
+                {browsing ? (
+                  <EsportsArena active={active && !setup} refresh={refresh} />
+                ) : (
+                  <EsportsMatchRail
+                    heroTarget={tab === "home" ? esportsHeroTarget : null}
+                    leagueKeys={leagues}
+                    active={active && !setup}
+                    refresh={refresh}
+                    onExplore={() => setBrowsing(true)}
+                  />
+                )}
+              </Suspense>
+            )}
           {tab === "home" && group !== "esports" && (
             <SportsHomeLayout
               onSports={() => setSetup(true)}
@@ -945,6 +954,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               failed={board.failed > 0}
             />
           )}
+          {tab === "teams" && <TeamsAndPlayers active={active && !setup} />}
           {tab === "teams" && (
             <section className="sh-teams" aria-label={t("Your teams")}>
               <div className="sh-teams-head">

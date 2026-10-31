@@ -23,9 +23,11 @@ import { fetchStandings } from "@/lib/sports/standings";
 import { fetchLeagueTeams } from "@/lib/jl/sports/espn-pages";
 import type { LeagueTeam } from "@/lib/jl/sports/espn-league";
 import { BRACKET_TITLES } from "./bracket-meta";
+import { autoFill, pickShares, type AutoFillStrategy } from "@/lib/sports/brackets/simulate";
+import { findStandingsRow } from "@/lib/sports/standings";
 import { BRACKET_FETCH_KEY, useBracketPool } from "./use-bracket-pool";
 
-type Tab = "picks" | "leaderboard" | "setup";
+type Tab = "picks" | "leaderboard" | "insights" | "rules" | "setup";
 
 export function BracketPoolView({
   poolId,
@@ -124,6 +126,9 @@ export function BracketPoolView({
           [
             ["picks", "My picks"],
             ["leaderboard", "Leaderboard"],
+            // How the pool picked stays hidden until picks lock, so nobody copies.
+            ...(open ? [] : [["insights", "Insights"]]),
+            ["rules", "Rules"],
             ...(owner ? [["setup", "Teams & lock"]] : []),
           ] as Array<[Tab, string]>
         ).map(([key, label]) => (
@@ -205,6 +210,15 @@ export function BracketPoolView({
         </>
       )}
 
+      {tab === "insights" && !open && (
+        <PoolInsights
+          tournament={tournament}
+          field={pool.field}
+          entries={entries.map((e) => e.picks)}
+        />
+      )}
+      {tab === "rules" && <PoolRules pool={pool} tournament={tournament} />}
+
       {tab === "setup" && owner && (
         <PoolSetup
           pool={pool}
@@ -248,6 +262,27 @@ function MyPicks({
     setMessage(null);
   };
 
+  // Fills the games still open: by seed, by season record, or with a few upsets.
+  const fill = async (strategy: AutoFillStrategy) => {
+    setMessage(null);
+    let ratings: Record<EntrantKey, number> | undefined;
+    if (strategy === "stats") {
+      const league = BRACKET_LEAGUE[pool.kind];
+      const season = pool.kind === "nfl" ? pool.season - 1 : pool.season;
+      const table = await fetchStandings(league, season).catch(() => null);
+      ratings = {};
+      for (const [entrant, team] of Object.entries(pool.field)) {
+        const row = findStandingsRow(table, team.teamId)?.row;
+        const games = (row?.wins ?? 0) + (row?.losses ?? 0) + (row?.draws ?? 0);
+        if (row && games > 0) ratings[entrant] = (row.wins ?? 0) / games;
+      }
+      if (!Object.keys(ratings).length)
+        setMessage(t("Season records aren't available; seeds decided instead."));
+    }
+    setPicks((prev) => autoFill(tournament, prev, strategy, { ratings }));
+    setDirty(true);
+  };
+
   const save = async () => {
     setBusy(true);
     setMessage(null);
@@ -278,6 +313,20 @@ function MyPicks({
         results={results}
         onPick={open ? pick : undefined}
       />
+      {open && made < total && (
+        <div className="br-save">
+          <span className="br-muted">{t("Auto-fill the rest")}</span>
+          <button className="br-btn" onClick={() => void fill("favorites")}>
+            {t("Favorites")}
+          </button>
+          <button className="br-btn" onClick={() => void fill("stats")}>
+            {t("By season record")}
+          </button>
+          <button className="br-btn" onClick={() => void fill("upsets")}>
+            {t("With upsets")}
+          </button>
+        </div>
+      )}
       {open && (
         <div className="br-save">
           <span className="br-muted">
@@ -547,4 +596,107 @@ function toLocalInput(iso: string | null): string {
   if (Number.isNaN(d.getTime())) return "";
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** How the pool picked each game, once picks are locked. */
+function PoolInsights({
+  tournament,
+  field,
+  entries,
+}: {
+  tournament: Tournament;
+  field: Record<EntrantKey, FieldTeam>;
+  entries: Winners[];
+}) {
+  const t = useT();
+  const shares = useMemo(() => pickShares(tournament, entries), [tournament, entries]);
+  const rounds = [...new Set(tournament.matchups.map((m) => m.round))].sort((a, b) => a - b);
+  return (
+    <div className="flex flex-col gap-6">
+      <p className="br-muted">
+        {t("How everyone in the pool picked each game. Upset picks stand out in the bars.")}
+      </p>
+      {rounds.map((round) => {
+        const games = tournament.matchups.filter((m) => m.round === round && shares[m.id]);
+        if (!games.length) return null;
+        return (
+          <div key={round} className="flex flex-col gap-2">
+            <h3 className="br-sub">{roundOf(tournament, games[0])?.name ?? ""}</h3>
+            {games.map((m) => (
+              <div
+                key={m.id}
+                className="flex flex-col gap-1 rounded-xl border border-edge-soft p-3"
+              >
+                {Object.entries(shares[m.id])
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([entrant, share]) => (
+                    <div key={entrant} className="flex items-center gap-3">
+                      <span className="w-[140px] shrink-0">
+                        <TeamChip team={field[entrant]} entrant={entrant} />
+                      </span>
+                      <span className="h-2 flex-1 overflow-hidden rounded-full bg-canvas">
+                        <span
+                          className="block h-full rounded-full bg-accent"
+                          style={{ width: `${Math.round(share * 100)}%` }}
+                        />
+                      </span>
+                      <span className="w-10 text-end text-[12.5px] tabular-nums">
+                        {Math.round(share * 100)}%
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Scoring, tiebreaker and lock for this pool. */
+function PoolRules({ pool, tournament }: { pool: BracketPool; tournament: Tournament }) {
+  const t = useT();
+  return (
+    <div className="flex max-w-[640px] flex-col gap-4">
+      <h3 className="br-sub">{t("Scoring")}</h3>
+      <table className="br-board">
+        <thead>
+          <tr>
+            <th>{t("Round")}</th>
+            <th>{t("Points per correct pick")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tournament.rounds.map((r) => (
+            <tr key={r.name}>
+              <td>{r.name}</td>
+              <td>{r.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <ul className="flex list-disc flex-col gap-2 ps-5 text-[14px] text-ink-muted">
+        <li>
+          {t(
+            "Pick a winner for every game. Changing an early pick clears the picks that depended on it.",
+          )}
+        </li>
+        <li>
+          {t("Ties on points are broken by the closest guess at the total points in the final.")}
+        </li>
+        <li>
+          {pool.locks_at
+            ? t("Picks lock at {time}. After that nobody can change them.", {
+                time: new Date(pool.locks_at).toLocaleString(),
+              })
+            : t("Picks lock when the pool owner sets a lock time.")}
+        </li>
+        <li>
+          {t("Results fill in from real games as they finish, and the leaderboard updates itself.")}
+        </li>
+        <li>{t("Insights show how the pool picked each game once picks are locked.")}</li>
+      </ul>
+    </div>
+  );
 }
