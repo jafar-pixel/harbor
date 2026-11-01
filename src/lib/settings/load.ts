@@ -41,7 +41,6 @@ import { DEFAULT, STORAGE_KEY } from "./defaults";
 import type { Settings } from "./types";
 import { adoptLegacyPlaylists, readPlaylists } from "@/lib/iptv/playlists-store";
 import { sanitizeDisplaySelection } from "@/lib/monitors";
-import { nativeTvCapabilities } from "@/lib/player/native-tv/shell";
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 
@@ -125,12 +124,6 @@ export function sanitizeTheme(t: Partial<ThemeSettings> | undefined): ThemeSetti
   };
 }
 
-// The TV app opens in Big Picture until the viewer turns that off. Only app builds that hand
-// Back to Big Picture qualify: on older ones the remote's Back never reaches it.
-function tvAppStartsInBigPicture(): boolean {
-  return nativeTvCapabilities()?.pageBack === true;
-}
-
 let cachedKey: string | null = null;
 let cachedRaw: string | null = null;
 let cachedSettings: Settings | null = null;
@@ -155,9 +148,6 @@ function parseStoredSettings(raw: string | null): Settings {
       seekForwardStepSec: sanitizeSeekStep(legacySeekStep("forward"), DEFAULT.seekForwardStepSec),
       _jlShowLiveSportsV1: true,
     };
-    if (tvAppStartsInBigPicture()) {
-      return { ...fresh, bigPictureAutoStart: true, _jlTvBigPictureV1: true } as Settings;
-    }
     return fresh;
   }
   try {
@@ -194,10 +184,14 @@ function parseStoredSettings(raw: string | null): Settings {
       _playbackSourcePreferenceV1?: boolean;
       _playbackSourcePreferenceV2?: boolean;
       _jlTvBigPictureV1?: boolean;
+      _jlTvBigPictureOffV1?: boolean;
     };
-    if (!parsed._jlTvBigPictureV1 && tvAppStartsInBigPicture()) {
-      parsed.bigPictureAutoStart = true;
-      parsed._jlTvBigPictureV1 = true;
+    // The TV app no longer starts in Big Picture: it opens the same app as the desktop. Undo
+    // the start-in-Big-Picture the app itself turned on (_jlTvBigPictureV1) once; Big Picture
+    // stays available from the sidebar.
+    if (parsed._jlTvBigPictureV1 && !parsed._jlTvBigPictureOffV1) {
+      parsed.bigPictureAutoStart = false;
+      parsed._jlTvBigPictureOffV1 = true;
     }
     if (!parsed._playbackSourcePreferenceV1) {
       parsed.playbackSourcePreference = parsed.localPlaybackMode === "local" ? "local" : "online";
@@ -299,11 +293,16 @@ function parseStoredSettings(raw: string | null): Settings {
       parsed.songIdAiModel = DEFAULT.songIdAiModel;
     }
     if (parsed.aiSearchModel) parsed.aiSearchModel = migrateModelId(parsed.aiSearchModel);
-    if (typeof parsed.steamSearchShortcut !== "boolean") parsed.steamSearchShortcut = DEFAULT.steamSearchShortcut;
-    if (!["first", "random", "manual"].includes(parsed.gameArtworkSelection as string)) parsed.gameArtworkSelection = DEFAULT.gameArtworkSelection;
-    if (typeof parsed.gameArtworkScreenshots !== "boolean") parsed.gameArtworkScreenshots = DEFAULT.gameArtworkScreenshots;
-    if (typeof parsed.gameArtworkCoverIcon !== "boolean") parsed.gameArtworkCoverIcon = DEFAULT.gameArtworkCoverIcon;
-    if (parsed.gameAgeRatingAgency !== "ESRB" && parsed.gameAgeRatingAgency !== "PEGI") parsed.gameAgeRatingAgency = DEFAULT.gameAgeRatingAgency;
+    if (typeof parsed.steamSearchShortcut !== "boolean")
+      parsed.steamSearchShortcut = DEFAULT.steamSearchShortcut;
+    if (!["first", "random", "manual"].includes(parsed.gameArtworkSelection as string))
+      parsed.gameArtworkSelection = DEFAULT.gameArtworkSelection;
+    if (typeof parsed.gameArtworkScreenshots !== "boolean")
+      parsed.gameArtworkScreenshots = DEFAULT.gameArtworkScreenshots;
+    if (typeof parsed.gameArtworkCoverIcon !== "boolean")
+      parsed.gameArtworkCoverIcon = DEFAULT.gameArtworkCoverIcon;
+    if (parsed.gameAgeRatingAgency !== "ESRB" && parsed.gameAgeRatingAgency !== "PEGI")
+      parsed.gameAgeRatingAgency = DEFAULT.gameAgeRatingAgency;
     if (parsed.aiSearchProvider !== "groq" && parsed.aiSearchProvider !== "openrouter") {
       parsed.aiSearchProvider = parsed.aiSearchModel
         ? providerTabFor(parsed.aiSearchModel)
