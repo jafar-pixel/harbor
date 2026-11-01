@@ -149,7 +149,7 @@ class MainActivity : AppCompatActivity() {
         return super.dispatchKeyEvent(event)
     }
 
-    /** Keep D-pad events in the app's focus system instead of WebView spatial navigation. */
+    /** Keep D-pad events in the app's focus system instead of WebView spatial navigation, on every screen. */
     private fun forwardNavigationKey(event: KeyEvent): Boolean {
         val key = when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> "ArrowUp"
@@ -167,8 +167,12 @@ class MainActivity : AppCompatActivity() {
         val copy = KeyEvent(event)
         val type = if (event.action == KeyEvent.ACTION_DOWN) "keydown" else "keyup"
         val repeat = event.repeatCount > 0
+        // Big Picture's root when it is showing, otherwise the regular app: both move focus with
+        // the app's own focus system, which reaches every button, list and row. WebView spatial
+        // navigation skipped the side lists and the Sports Hub's watch list.
         val script = "(function(){var r=document.querySelector('[data-bp-root]');" +
-            "if(!r||getComputedStyle(r).visibility==='hidden')return false;" +
+            "if(r&&getComputedStyle(r).visibility==='hidden')return false;" +
+            "if(!r)r=document.body;if(!r)return false;" +
             "var a=document.activeElement;" +
             "if(a&&(a.matches('input,textarea,select')||a.isContentEditable)&&" +
             "!a.closest('[data-search-nav-mode]'))return false;" +
@@ -343,8 +347,11 @@ class MainActivity : AppCompatActivity() {
 
         // Big Picture's Back chain (src/views/big-picture/bp-back.ts): "handled" when it went back
         // a screen, "root" at its home screen, "none" when Big Picture is not open.
-        private const val PAGE_BACK_JS = "(function(){var b=window.__harborBack;" +
-            "if(typeof b!=='function'||!document.documentElement.hasAttribute('data-big-picture'))return 'none';" +
+        // Big Picture walks its own screens; the regular app goes back through its own screens
+        // (App.tsx __harborAppBack). Either says "root" when there is nowhere left to go.
+        private const val PAGE_BACK_JS = "(function(){var bp=document.documentElement.hasAttribute('data-big-picture');" +
+            "var b=bp?window.__harborBack:window.__harborAppBack;" +
+            "if(typeof b!=='function')return 'none';" +
             "try{return b()?'handled':'root'}catch(e){return 'none'}})()"
     }
 }

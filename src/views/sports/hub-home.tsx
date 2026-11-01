@@ -24,6 +24,8 @@ import { gameKey } from "@/lib/sports/hub-cache";
 import { reminderId, useSportsReminders } from "@/lib/sports/reminders";
 import type { LiveSportsChannelsData } from "@/views/live/live-home/jl-sports/live-sports-channels";
 import { HubGameDetails } from "./hub-game-details";
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
+import { requestSmallTvFull } from "@/lib/player/native-tv/small-screen";
 import { HotPoster, HotTeamTitle, hotEventTitle, useHotFeed, WeekLogos } from "./hot-events";
 import { LeagueLogo } from "./league-logo";
 import { SportIcon } from "./sport-icon";
@@ -182,6 +184,11 @@ export function SportsHubHome({
   const watchNow = (channels: IptvChannel[]) => {
     if (channels[0]) onWatch(channels[0]);
   };
+  // A remote has no double click: on the Shield, OK on what's already on the TV goes full screen.
+  const tvTune = (next: SportsTvTuned) => {
+    if (nativeTvAvailable() && tuned?.key === next.key) requestSmallTvFull();
+    else tuneSportsTv(next);
+  };
 
   return (
     <section className="hot-events" aria-label={t("Hub")}>
@@ -305,7 +312,7 @@ export function SportsHubHome({
                     <button
                       className="sh-event-open"
                       onClick={() =>
-                        tuneSportsTv({
+                        tvTune({
                           key: `ch:${e.key}`,
                           title: e.title,
                           live: e.liveNow,
@@ -350,7 +357,7 @@ export function SportsHubHome({
                   >
                     <button
                       className="sh-event-open"
-                      onClick={() => tuneSportsTv(gameTuned(g))}
+                      onClick={() => tvTune(gameTuned(g))}
                       onDoubleClick={() => watchNow(channelsFor(g).map((c) => c.channel))}
                       aria-label={hotEventTitle(g)}
                     />

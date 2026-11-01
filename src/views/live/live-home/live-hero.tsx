@@ -6,6 +6,7 @@ import { useT } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
 import { useView } from "@/lib/view";
 import { MultiPlayer } from "@/views/multiview/multi-player";
+import { useNativeSmallTv } from "@/lib/player/native-tv/small-screen";
 import { TvVolumeControls, useTvVolume } from "../tv-volume";
 import { fmtLeft } from "./now-format";
 import { hydrationKey, type NowItem } from "./use-live-home";
@@ -61,18 +62,30 @@ export function LiveHero({
     onAmbient?.(heroArt);
   }, [heroArt, onAmbient]);
 
+  // On the Shield the TV app's own player plays the channel the viewer put on (not the rotating
+  // spotlight, which would open a stream every few seconds), and Watch makes it full screen.
+  const box = useRef<HTMLElement>(null);
+  const nativeOn =
+    !!active?.channel.url && items.length === 1 && pageVisible && pageActive && !player;
+  const nativeTv = useNativeSmallTv(box, nativeOn ? active!.channel : null, nativeOn);
+  useEffect(() => {
+    if (nativeTv.playing) setPlaying(true);
+  }, [nativeTv.playing]);
+  const watch = (ch: IptvChannel) => (nativeTv.native ? nativeTv.fullScreen() : onPlay(ch));
+
   if (!active) return null;
   const { channel, current, progress } = active;
   // Many IPTV accounts allow one stream at a time, so the preview stops while the full player is
   // open, the page is hidden or Live TV isn't on screen.
-  const showVideo = !!channel.url && pageVisible && pageActive && !player;
+  const showVideo = !!channel.url && pageVisible && pageActive && !player && !nativeTv.native;
   const left = current ? fmtLeft(current.endMs, nowMs, t) : null;
   const title = current?.title || hydrated?.name || channel.name;
   const meta = [channel.name, channel.group].filter(Boolean).join(" · ");
 
   return (
     <section
-      onDoubleClick={() => onPlay(channel)}
+      ref={box}
+      onDoubleClick={() => watch(channel)}
       aria-label={t("Your TV: {name}", { name: channel.name })}
       className="group relative aspect-video max-h-[72vh] w-full min-w-0 cursor-pointer overflow-hidden rounded-lg bg-canvas"
       style={{ isolation: "isolate" }}
@@ -136,7 +149,7 @@ export function LiveHero({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onPlay(channel);
+                watch(channel);
               }}
               onDoubleClick={(e) => e.stopPropagation()}
               className="jl-cta flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-black"

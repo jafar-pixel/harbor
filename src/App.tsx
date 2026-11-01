@@ -1011,6 +1011,21 @@ function Shell({ onReady, compact = false }: { onReady?: () => void; compact?: b
     return false;
   }, [goBack, canGoBack, topKind]);
 
+  // The TV app's Back button asks the page first (android-tv MainActivity): a screen with its own
+  // back (the player, Live TV, a dialog) takes it, then the app goes back a screen. False at the
+  // root, where the TV app asks before closing.
+  useEffect(() => {
+    const w = window as unknown as { __harborAppBack?: () => boolean };
+    w.__harborAppBack = () => {
+      const local = new Event("harbor:local-back", { cancelable: true });
+      if (!window.dispatchEvent(local)) return true;
+      return handleTvBack();
+    };
+    return () => {
+      delete w.__harborAppBack;
+    };
+  }, [handleTvBack]);
+
   const handleTvBackToNav = useCallback(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
     requestAnimationFrame(() =>

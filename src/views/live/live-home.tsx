@@ -31,6 +31,8 @@ import {
   type ChannelRail,
 } from "./live-home/use-live-home";
 import { ContinueAnywhereRow } from "@/views/continue/continue-anywhere";
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
+import { requestSmallTvFull } from "@/lib/player/native-tv/small-screen";
 
 export function LiveHome({
   channels,
@@ -108,8 +110,11 @@ export function LiveHome({
     return ch ? buildNowItem(ch, epg, tvgCounts, nowMs) : null;
   }, [tunedId, channels, epg, tvgCounts, nowMs]);
   const tune = (ch: IptvChannel) => {
-    if (tuned?.channel.id === ch.id) onPlay(ch);
-    else setTunedId(ch.id);
+    // On the Shield the channel already playing on Your TV goes full screen as the same stream.
+    if (tuned?.channel.id === ch.id) {
+      if (nativeTvAvailable()) requestSmallTvFull();
+      else onPlay(ch);
+    } else setTunedId(ch.id);
   };
   const heroItems = useMemo(() => (tuned ? [tuned] : spotlight), [tuned, spotlight]);
 
