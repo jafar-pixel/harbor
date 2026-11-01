@@ -43,25 +43,9 @@ test("4K renditions are labelled 4K", () => {
   assert.equal(qualityLabel(1080), "1080p");
 });
 
-test("a stalling live stream steps down one rendition, never under 720p", async () => {
-  const { stepDownLevel } = await import("../src/lib/player/html5/hls-quality.ts");
-  const levels = [
-    { height: 480, bitrate: 1_500_000 },
-    { height: 720, bitrate: 3_000_000 },
-    { height: 1080, bitrate: 6_000_000 },
-    { height: 2160, bitrate: 16_000_000 },
-  ];
-  assert.equal(stepDownLevel(levels, 3), 2);
-  assert.equal(stepDownLevel(levels, 2), 1);
-  assert.equal(stepDownLevel(levels, 1), 1);
-  assert.equal(
-    stepDownLevel(
-      [
-        { height: 360, bitrate: 1 },
-        { height: 480, bitrate: 2 },
-      ],
-      1,
-    ),
-    0,
-  );
+test("live TV keeps a cushion behind live and a deep buffer", async () => {
+  const { LIVE_HLS_BUFFER } = await import("../src/lib/player/html5/hls-quality.ts");
+  assert.ok(LIVE_HLS_BUFFER.liveSyncDurationCount >= 4);
+  assert.ok(LIVE_HLS_BUFFER.liveMaxLatencyDurationCount > LIVE_HLS_BUFFER.liveSyncDurationCount);
+  assert.ok(LIVE_HLS_BUFFER.maxBufferLength >= 60);
 });

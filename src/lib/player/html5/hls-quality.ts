@@ -43,23 +43,6 @@ export function autoFloorBitrate(levels: readonly HlsRendition[]): number {
   return floor;
 }
 
-/**
- * The rendition a live stream steps down to after repeated stalls: the next smaller height, but
- * never below the 720p floor while a 720p or sharper rendition exists. The same index when there
- * is nowhere to go.
- */
-export function stepDownLevel(levels: readonly HlsRendition[], current: number): number {
-  const now = levels[current];
-  if (!now) return current;
-  const floor = levels.some((l) => l.height >= AUTO_FLOOR_HEIGHT) ? AUTO_FLOOR_HEIGHT : 0;
-  let best = current;
-  levels.forEach((l, i) => {
-    if (l.height >= now.height || l.height < floor) return;
-    if (best === current || l.height > levels[best].height) best = i;
-  });
-  return best;
-}
-
 export function qualityLabel(height: number): string {
   if (height >= 2000) return "4K";
   return `${height}p`;
@@ -83,3 +66,16 @@ export function writeStreamQualityPref(height: number | null): void {
     /* storage unavailable: the choice lasts for this stream only */
   }
 }
+
+/**
+ * Live TV's buffer: about five segments behind live (10 to 30 seconds, by the provider's segment
+ * length) with up to a minute buffered, so a slow segment from the provider doesn't stall the
+ * picture. The preview's three segments and 30 seconds left full screen too little cushion.
+ */
+export const LIVE_HLS_BUFFER = {
+  liveSyncDurationCount: 5,
+  liveMaxLatencyDurationCount: 10,
+  maxBufferLength: 60,
+  maxMaxBufferLength: 120,
+  maxBufferSize: 160 * 1024 * 1024,
+};
