@@ -14,6 +14,10 @@ on:
         description: Verify and retain Windows only; never publish this run
         type: boolean
         default: false
+      tv_only:
+        description: Build only the Android TV APK; a publish reuses the latest release's Windows installer
+        type: boolean
+        default: false
   push:
     tags: ["jl-v*"]
     branches: ["claude/determined-planck-b1p158", "codex/jl-release-026"]
@@ -74,6 +78,8 @@ jobs:
   windows:
     name: Windows x64
     needs: settings
+    # A TV-only release (Android TV fixes) skips the Windows build; publish reuses the last EXE.
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.tv_only) }}
     runs-on: windows-latest
     timeout-minutes: 90
     outputs:
@@ -269,7 +275,11 @@ jobs:
   publish:
     name: Publish verified installers
     needs: [windows, android-tv]
-    if: ((github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'push' && github.ref == 'refs/heads/claude/determined-planck-b1p158' && github.event.head_commit.message == 'Publish JL Media Vision 0.9.42')) && !inputs.windows_only && github.ref != 'refs/heads/codex/jl-release-026'
+    # always() lets a TV-only run publish while the skipped Windows job reports "skipped".
+    if: >-
+      always() && needs.android-tv.result == 'success' &&
+      (needs.windows.result == 'success' || (inputs.tv_only && needs.windows.result == 'skipped')) &&
+      ((github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'push' && github.ref == 'refs/heads/claude/determined-planck-b1p158' && github.event.head_commit.message == 'Publish JL Media Vision 0.9.42')) && !inputs.windows_only && github.ref != 'refs/heads/codex/jl-release-026'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -281,9 +291,24 @@ jobs:
           pattern: jl-installers-*
           merge-multiple: true
 
+      # A TV-only release carries the latest published Windows installer forward unchanged, so the
+      # website's stable download names keep working.
+      - name: Reuse the latest Windows installer
+        if: ${{ inputs.tv_only }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest=$(gh release view --repo "${{ github.repository }}" --json tagName --jq '.tagName')
+          gh release download "$latest" --repo "${{ github.repository }}" --pattern JL-Media-Vision-Setup-x64.exe --clobber
+          test -s JL-Media-Vision-Setup-x64.exe
+          sha256sum JL-Media-Vision-Setup-x64.exe > JL-Media-Vision-Setup-x64.exe.sha256
+          echo "Reusing JL-Media-Vision-Setup-x64.exe from $latest"
+
       - name: Verify retained installers
         run: |
-          for platform in windows android-tv; do
+          platforms="windows android-tv"
+          if [ "${{ inputs.tv_only }}" = "true" ]; then platforms="android-tv"; fi
+          for platform in $platforms; do
             if [ "$(cat "$platform-build-commit.txt")" != "${{ github.sha }}" ]; then
               echo "::error::Retained installer was built from a different commit."
               exit 1
@@ -320,7 +345,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="${{ needs.windows.outputs.tag }}"
+          tag="jl-v$(node -p "require('./src-tauri/tauri.jl-dev.conf.json').version")"
           draft=$(gh api --paginate "repos/${{ github.repository }}/releases" --jq ".[] | select(.tag_name == \"$tag\") | .draft")
           if [ "$draft" = true ]; then
             gh release edit "$tag" --target "${{ github.sha }}" --repo "${{ github.repository }}"
@@ -334,7 +359,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="${{ needs.windows.outputs.tag }}"
+          tag="jl-v$(node -p "require('./src-tauri/tauri.jl-dev.conf.json').version")"
           # GitHub creates a new draft's tag only when the draft is published.
           release_commit=$(gh release view "$tag" --repo "${{ github.repository }}" --json targetCommitish --jq '.targetCommitish')
           if [ "$release_commit" != "${{ github.sha }}" ]; then
