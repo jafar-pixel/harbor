@@ -639,9 +639,9 @@ function NativePlayerView({
       await exitAnyFullscreen();
       return;
     }
-    // Opened from the hero, Back returns there and keeps playing. On the TV app Back always
-    // moves the video into the hero; the hero's Stop button ends it.
-    if (wasExpandedFromDock() || (nativeTvAvailable() && heroDockSupported())) {
+    // Opened from the hero, Back returns there and keeps playing. On the TV app Back stops the
+    // video: the docked hero box had no controls a remote could reach.
+    if (wasExpandedFromDock() && heroDockSupported()) {
       dockPlayer();
       return;
     }
@@ -1416,7 +1416,10 @@ function NativePlayerView({
 
   // Embedded mpv on Linux draws over the whole window, so it can't sit in the hero.
   useEffect(() => {
-    setHeroDockSupported(!(engine === "mpv" && embedActive && isLinuxDesktop()));
+    // No hero box on the TV app: the native video floated over the page with no way to close it.
+    setHeroDockSupported(
+      !nativeTvAvailable() && !(engine === "mpv" && embedActive && isLinuxDesktop()),
+    );
   }, [engine, embedActive]);
 
   // The native video follows the box; tell it when the box moves between hero and full screen.
