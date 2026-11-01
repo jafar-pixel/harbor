@@ -38,6 +38,7 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import org.json.JSONArray
 import org.json.JSONObject
@@ -109,7 +110,7 @@ class NativePlayer(
         keepScreenOn = true
         useController = false
         isFocusable = false
-        controllerShowTimeoutMs = 3000
+        controllerShowTimeoutMs = 5000
         controllerAutoShow = false
         setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
     }
@@ -172,6 +173,7 @@ class NativePlayer(
             else C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF,
         )
         p.addListener(listener)
+        p.volume = volume
         val item = MediaItem.Builder()
             .setUri(url)
             .setMediaMetadata(MediaMetadata.Builder().setTitle(title).build())
@@ -258,6 +260,14 @@ class NativePlayer(
             .build()
     }
 
+    /** The page's volume (Live TV and Sports TV volume buttons); kept for the next [play]. */
+    private var volume = 1f
+
+    fun setVolume(next: Float) {
+        volume = next.coerceIn(0f, 1f)
+        player?.volume = volume
+    }
+
     fun pause() { player?.playWhenReady = false }
 
     fun resume() {
@@ -316,6 +326,8 @@ class NativePlayer(
         // The menu is a dialog with its own window and takes the remote while it is open.
         if (mode != Mode.FULL || player == null || menu != null) return false
         val down = event.action == KeyEvent.ACTION_DOWN
+        // Any remote key brings the controls up; volume keys still go on to the system.
+        if (down) view.showController()
         when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER,
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> if (down && event.repeatCount == 0) { togglePause(); view.showController() }
@@ -459,6 +471,7 @@ class NativePlayer(
             return
         }
         if (mode == Mode.FULL) {
+            view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
             view.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             view.useController = true
             view.isFocusable = true
@@ -466,6 +479,8 @@ class NativePlayer(
             view.requestFocus()
             view.showController()
         } else if (rect != null) {
+            // The small TV fills its box (edges trimmed) instead of letterboxing inside it.
+            view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             view.hideController()
             view.useController = false
             view.isFocusable = false

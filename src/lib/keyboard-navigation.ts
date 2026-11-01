@@ -779,8 +779,14 @@ function focusElement(el: HTMLElement, scroll: "center" | "nearest" | "none" = "
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
     return;
   }
-  // Fixed top chrome must not scroll the page.
-  if (isInTopChrome(el)) return;
+  // Fixed top chrome must not scroll the page, except in the TV app: there the remote reaches
+  // the top bar by moving up past the hero, and the page has to come back to the top so the
+  // hero (above the rows, under the bar) is on screen and the next press down lands on it.
+  if (isInTopChrome(el)) {
+    if (typeof navigator !== "undefined" && navigator.userAgent.includes("JLMediaVisionTV"))
+      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    return;
+  }
 
   // Sidebar/nav focus scrolls only its own vertical container, never the page.
   // This still runs for "none" because that option blocks page scroll, not nav scrolling.
