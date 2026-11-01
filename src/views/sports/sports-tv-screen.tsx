@@ -7,6 +7,7 @@ import { sourceIdOf } from "@/lib/jl/sports/sports-channels";
 import { useView } from "@/lib/view";
 import { usePageVisible } from "@/lib/visibility";
 import { MultiPlayer } from "@/views/multiview/multi-player";
+import { useNativeSmallTv } from "@/lib/player/native-tv/small-screen";
 import { TvVolumeControls, useTvVolume } from "@/views/live/tv-volume";
 import type { SportsTvTuned } from "./sports-tv-tuner";
 
@@ -43,6 +44,13 @@ export function SportsTvScreen({
   const [playing, setPlaying] = useState(false);
   useEffect(() => setPlaying(false), [channel?.id]);
   const showVideo = !!channel?.url && active && pageVisible && !player;
+  // On the Shield the TV app's own player plays in this box, and full screen is the same stream.
+  const box = useRef<HTMLDivElement>(null);
+  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo);
+  const watch = (c: IptvChannel) => (nativeTv.native ? nativeTv.fullScreen() : onWatch(c));
+  useEffect(() => {
+    if (nativeTv.playing) setPlaying(true);
+  }, [nativeTv.playing]);
   const picked = !!channel && isPicked(picks, channel.id);
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   // The overlay hides while the game plays and the mouse is still, and comes back on movement.
@@ -61,7 +69,8 @@ export function SportsTvScreen({
 
   return (
     <div
-      onDoubleClick={() => channel && onWatch(channel)}
+      ref={box}
+      onDoubleClick={() => channel && watch(channel)}
       onMouseMove={wake}
       onMouseLeave={() => setIdle(true)}
       onFocus={wake}
@@ -81,7 +90,7 @@ export function SportsTvScreen({
           className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 text-white/30"
         />
       )}
-      {showVideo && channel && (
+      {showVideo && channel && !nativeTv.native && (
         <div
           className="absolute inset-0 transition-opacity duration-500"
           style={{ opacity: playing ? 1 : 0 }}
@@ -161,7 +170,7 @@ export function SportsTvScreen({
                   type="button"
                   onClick={(e) => {
                     stop(e);
-                    onWatch(channel);
+                    watch(channel);
                   }}
                   className="jl-cta flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[13.5px] font-semibold text-black"
                 >

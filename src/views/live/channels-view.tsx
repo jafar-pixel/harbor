@@ -8,6 +8,8 @@ import { findCurrent } from "@/lib/iptv/xmltv";
 import { useView } from "@/lib/view";
 import { usePageVisible } from "@/lib/visibility";
 import { MultiPlayer } from "@/views/multiview/multi-player";
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
+import { requestSmallTvFull, useNativeSmallTv } from "@/lib/player/native-tv/small-screen";
 import { channelNumber, fmtClock, fmtLeft } from "./live-home/now-format";
 import { TvVolumeControls, useTvVolume } from "./tv-volume";
 
@@ -132,7 +134,9 @@ export function ChannelsView({
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && on) {
                     e.preventDefault();
-                    onPlay(ch);
+                    // On the Shield the preview is the TV app's player: go full screen with it.
+                    if (nativeTvAvailable()) requestSmallTvFull();
+                    else onPlay(ch);
                   }
                 }}
                 className={`flex flex-col overflow-hidden rounded-xl border text-start transition-colors ${
@@ -264,6 +268,13 @@ function Preview({
   // open, the page is hidden or Live TV isn't on screen.
   const showVideo =
     armed === channel.id && active && pageVisible && !player && !FAILED.has(channel.id);
+  // On the Shield the TV app's own player plays the preview, and Full screen is the same stream.
+  const box = useRef<HTMLDivElement>(null);
+  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo);
+  useEffect(() => {
+    if (nativeTv.playing) setPlaying(true);
+  }, [nativeTv.playing]);
+  const watch = () => (nativeTv.native ? nativeTv.fullScreen() : onPlay());
   const art = current?.iconUrl ?? null;
   const left = current ? fmtLeft(current.endMs, nowMs, t) : null;
 
@@ -272,7 +283,10 @@ function Preview({
       aria-label={t("Preview of {name}", { name: channel.name })}
       className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-0 lg:self-start"
     >
-      <div className="relative aspect-video overflow-hidden rounded-2xl border border-edge-soft bg-black shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)]">
+      <div
+        ref={box}
+        className="relative aspect-video overflow-hidden rounded-2xl border border-edge-soft bg-black shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)]"
+      >
         {art ? (
           <img
             src={art}
@@ -284,7 +298,7 @@ function Preview({
             <ChannelLogo channel={channel} large />
           </div>
         )}
-        {showVideo && (
+        {showVideo && !nativeTv.native && (
           <div
             className="absolute inset-0 transition-opacity duration-500"
             style={{ opacity: playing ? 1 : 0 }}
@@ -336,7 +350,7 @@ function Preview({
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={onPlay}
+          onClick={watch}
           className="flex h-14 flex-1 items-center justify-center gap-3 rounded-2xl bg-[#f5c518] text-[17px] font-bold uppercase tracking-wide text-black shadow-[0_10px_30px_-12px_rgba(245,197,24,0.7)] transition-[filter] hover:brightness-105"
         >
           <Maximize size={20} strokeWidth={2.4} /> {t("Full screen")}
