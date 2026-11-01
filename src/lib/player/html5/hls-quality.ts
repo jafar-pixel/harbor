@@ -66,16 +66,3 @@ export function writeStreamQualityPref(height: number | null): void {
     /* storage unavailable: the choice lasts for this stream only */
   }
 }
-
-/**
- * Live TV's buffer: about five segments behind live (10 to 30 seconds, by the provider's segment
- * length) with up to a minute buffered, so a slow segment from the provider doesn't stall the
- * picture. The preview's three segments and 30 seconds left full screen too little cushion.
- */
-export const LIVE_HLS_BUFFER = {
-  liveSyncDurationCount: 5,
-  liveMaxLatencyDurationCount: 10,
-  maxBufferLength: 60,
-  maxMaxBufferLength: 120,
-  maxBufferSize: 160 * 1024 * 1024,
-};

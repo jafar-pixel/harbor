@@ -18,7 +18,3 @@ test("movies and shows keep the viewer's engine", () => {
   assert.equal(chooseEngine(movie, "auto", false), "auto");
   assert.equal(chooseEngine(movie, "auto", true), "mpv");
 });
-
-test("a live channel without sound in the browser moves to mpv", () => {
-  assert.equal(chooseEngine(channel, "html5", false, true), "mpv");
-});

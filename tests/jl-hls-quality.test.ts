@@ -42,10 +42,3 @@ test("4K renditions are labelled 4K", () => {
   assert.equal(qualityLabel(2160), "4K");
   assert.equal(qualityLabel(1080), "1080p");
 });
-
-test("live TV keeps a cushion behind live and a deep buffer", async () => {
-  const { LIVE_HLS_BUFFER } = await import("../src/lib/player/html5/hls-quality.ts");
-  assert.ok(LIVE_HLS_BUFFER.liveSyncDurationCount >= 4);
-  assert.ok(LIVE_HLS_BUFFER.liveMaxLatencyDurationCount > LIVE_HLS_BUFFER.liveSyncDurationCount);
-  assert.ok(LIVE_HLS_BUFFER.maxBufferLength >= 60);
-});

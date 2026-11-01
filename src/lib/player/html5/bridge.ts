@@ -30,7 +30,6 @@ import { html5Transport } from "./transport";
 import { currentWebPlaybackEnv } from "@/lib/player/web-playable";
 import {
   autoFloorBitrate,
-  LIVE_HLS_BUFFER,
   levelForHeight,
   readStreamQualityPref,
   renditionHeights,
@@ -602,11 +601,12 @@ export function createHtml5Bridge(): PlayerBridge {
                 enableWorker: true,
                 lowLatencyMode: false,
                 liveDurationInfinity: true,
-                // hls.js picks the rendition itself, as in the Live TV preview, with patient
-                // retries and a deeper cushion behind live. Locking the top rendition (0.9.64)
-                // buffered.
+                // Exactly the Live TV and Sports TV preview's settings (multi-player.tsx): full
+                // screen plays a channel the way the small screen does. hls.js picks the
+                // rendition itself; locking the top rendition (0.9.64) buffered.
                 backBufferLength: 10,
-                ...LIVE_HLS_BUFFER,
+                maxBufferLength: 30,
+                maxMaxBufferLength: 60,
                 manifestLoadingMaxRetry: 3,
                 manifestLoadingRetryDelay: 1000,
                 levelLoadingMaxRetry: 3,
@@ -652,13 +652,10 @@ export function createHtml5Bridge(): PlayerBridge {
           { type: "mpegts", url, isLive: src.isLive === true, cors: true },
           src.isLive === true
             ? {
-                // As the Live TV preview plays .ts channels (multi-player.tsx): no jumping
-                // ahead to chase the live edge, which stalled full screen, and a cushion.
+                // Exactly as the Live TV preview plays .ts channels (multi-player.tsx).
                 enableWorker: true,
                 liveBufferLatencyChasing: false,
                 lazyLoad: false,
-                enableStashBuffer: true,
-                stashInitialSize: 1024 * 1024,
               }
             : {
                 enableWorker: true,
