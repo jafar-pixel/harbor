@@ -73,6 +73,9 @@ class MainActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val uri = request.url
                 if (uri.host == appHost || uri.host in APP_HOSTS) return false
+                // Google's sign in (Connect YouTube) stays in this view so its redirect lands back
+                // in the app; in the separate browser it could never return.
+                if (uri.scheme == "https" && uri.host in SIGN_IN_HOSTS) return false
                 if (uri.scheme == "https" || uri.scheme == "http") {
                     startActivity(Intent(this@MainActivity, BrowserActivity::class.java).setData(uri))
                 }
@@ -344,6 +347,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         // Where the web app lives now and after the domain swap.
         val APP_HOSTS = setOf("jl-media-vision.vercel.app", "watch.jl-stream.com")
+        val SIGN_IN_HOSTS = setOf("accounts.google.com", "accounts.youtube.com")
 
         // Big Picture's Back chain (src/views/big-picture/bp-back.ts): "handled" when it went back
         // a screen, "root" at its home screen, "none" when Big Picture is not open.
