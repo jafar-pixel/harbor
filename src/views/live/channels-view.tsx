@@ -270,7 +270,7 @@ function Preview({
     armed === channel.id && active && pageVisible && !player && !FAILED.has(channel.id);
   // On the Shield the TV app's own player plays the preview, and Full screen is the same stream.
   const box = useRef<HTMLDivElement>(null);
-  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo);
+  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo, sound);
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
   }, [nativeTv.playing]);

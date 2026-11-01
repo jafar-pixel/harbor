@@ -10,7 +10,9 @@ import { nativeTvAvailable, nativeTvPlayer } from "./shell";
  * press of OK puts it on and it plays. Full screen is the same stream made big, and Back in full
  * screen brings it back to the box: no second connection to the provider.
  *
- * The box leaves its bottom strip uncovered so the page's own controls stay reachable.
+ * The box leaves its bottom strip uncovered so the page's own controls (volume, Watch) stay
+ * visible and reachable; the video fills the rest of the box. The page's volume drives the
+ * player's.
  */
 
 const FULL_EVENT = "jl-small-tv-full";
@@ -26,6 +28,7 @@ export function useNativeSmallTv(
   box: RefObject<HTMLElement | null>,
   channel: IptvChannel | null,
   active: boolean,
+  sound: { volume: number; muted: boolean },
 ): { native: boolean; playing: boolean; fullScreen: () => void } {
   const native = nativeTvAvailable();
   const [playing, setPlaying] = useState(false);
@@ -46,7 +49,8 @@ export function useNativeSmallTv(
       if (!el || owner !== me) return;
       const r = el.getBoundingClientRect();
       const h = r.height - NATIVE_HERO_BAR_PX - 16;
-      const onScreen = r.top >= 0 && r.bottom <= window.innerHeight && r.width > 0 && h > 0;
+      // Shown while any of the box is on screen: Your TV's box can run past the bottom edge.
+      const onScreen = r.bottom > 0 && r.top < window.innerHeight && r.width > 0 && h > 0;
       if (!onScreen) {
         p.setMode("hidden");
         return;
@@ -86,6 +90,11 @@ export function useNativeSmallTv(
       }
     };
   }, [native, active, channel?.id, channel?.url]);
+
+  const level = sound.muted ? 0 : sound.volume;
+  useEffect(() => {
+    if (native && active) nativeTvPlayer()?.setVolume?.(level);
+  }, [native, active, level, channel?.id]);
 
   return {
     native,

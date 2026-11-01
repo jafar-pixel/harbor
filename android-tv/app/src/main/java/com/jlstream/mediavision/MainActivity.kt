@@ -145,7 +145,9 @@ class MainActivity : AppCompatActivity() {
             return true
         }
         if (nativePlayer.handleFullKey(event)) return true
-        if (fullscreenView == null && onAppPage && web.hasWindowFocus() && forwardNavigationKey(event)) return true
+        // No window-focus check: a dialog has its own window and never reaches this, and the
+        // player in the small TV box must not stop the remote from reaching the page.
+        if (fullscreenView == null && onAppPage && forwardNavigationKey(event)) return true
         return super.dispatchKeyEvent(event)
     }
 
@@ -174,8 +176,10 @@ class MainActivity : AppCompatActivity() {
             "if(r&&getComputedStyle(r).visibility==='hidden')return false;" +
             "if(!r)r=document.body;if(!r)return false;" +
             "var a=document.activeElement;" +
-            "if(a&&(a.matches('input,textarea,select')||a.isContentEditable)&&" +
-            "!a.closest('[data-search-nav-mode]'))return false;" +
+            // Only a field being typed in keeps the arrows; a focused field the remote is moving
+            // through (not editing) lets them move focus on, so the remote never gets stuck.
+            "if(a&&(a.matches('textarea,select')||a.isContentEditable||" +
+            "(a.matches('input')&&a.hasAttribute('data-search-editing'))))return false;" +
             "var e=new KeyboardEvent('$type',{key:'$key',code:'$key'," +
             "bubbles:true,cancelable:true,repeat:$repeat});var target=a||r;" +
             "target.dispatchEvent(e);" +
@@ -318,6 +322,10 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun stop() = onMain { nativePlayer.stop() }
+
+        /** The player's own volume, 0 to 1 (README: `setVolume`); the page's volume buttons. */
+        @JavascriptInterface
+        fun setVolume(volume: Double) = onMain { nativePlayer.setVolume(volume.toFloat()) }
 
         private fun onMain(action: () -> Unit) {
             if (!onAppPage) return

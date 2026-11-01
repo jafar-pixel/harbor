@@ -15,6 +15,8 @@ export type NativeTvPlayer = {
   resume(): void;
   seek(ms: number): void;
   stop(): void;
+  /** The player's own volume, 0 to 1; absent from app builds before the small TV's volume. */
+  setVolume?(volume: number): void;
   /** Absent from app builds before the TV playback options. */
   setOptions?(json: string): void;
   /** Absent from app builds before the TV playback options. */

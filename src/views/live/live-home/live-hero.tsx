@@ -67,7 +67,7 @@ export function LiveHero({
   const box = useRef<HTMLElement>(null);
   const nativeOn =
     !!active?.channel.url && items.length === 1 && pageVisible && pageActive && !player;
-  const nativeTv = useNativeSmallTv(box, nativeOn ? active!.channel : null, nativeOn);
+  const nativeTv = useNativeSmallTv(box, nativeOn ? active!.channel : null, nativeOn, sound);
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
   }, [nativeTv.playing]);
