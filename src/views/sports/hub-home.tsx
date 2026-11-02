@@ -186,8 +186,9 @@ export function SportsHubHome({
   };
   // A remote has no double click: on the Shield, OK on what's already on the TV goes full screen.
   const tvTune = (next: SportsTvTuned) => {
-    if (nativeTvAvailable() && tuned?.key === next.key) requestSmallTvFull();
-    else tuneSportsTv(next);
+    if (nativeTvAvailable() && tuned?.key === next.key) {
+      if (!requestSmallTvFull()) watchNow(next.channels);
+    } else tuneSportsTv(next);
   };
 
   return (

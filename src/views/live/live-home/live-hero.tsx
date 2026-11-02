@@ -71,7 +71,9 @@ export function LiveHero({
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
   }, [nativeTv.playing]);
-  const watch = (ch: IptvChannel) => (nativeTv.native ? nativeTv.fullScreen() : onPlay(ch));
+  const watch = (ch: IptvChannel) => {
+    if (!nativeTv.fullScreen()) onPlay(ch);
+  };
 
   if (!active) return null;
   const { channel, current, progress } = active;

@@ -135,8 +135,7 @@ export function ChannelsView({
                   if (e.key === "Enter" && on) {
                     e.preventDefault();
                     // On the Shield the preview is the TV app's player: go full screen with it.
-                    if (nativeTvAvailable()) requestSmallTvFull();
-                    else onPlay(ch);
+                    if (!(nativeTvAvailable() && requestSmallTvFull())) onPlay(ch);
                   }
                 }}
                 className={`flex flex-col overflow-hidden rounded-xl border text-start transition-colors ${
@@ -274,7 +273,9 @@ function Preview({
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
   }, [nativeTv.playing]);
-  const watch = () => (nativeTv.native ? nativeTv.fullScreen() : onPlay());
+  const watch = () => {
+    if (!nativeTv.fullScreen()) onPlay();
+  };
   const art = current?.iconUrl ?? null;
   const left = current ? fmtLeft(current.endMs, nowMs, t) : null;
 

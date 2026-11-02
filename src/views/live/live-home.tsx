@@ -112,8 +112,7 @@ export function LiveHome({
   const tune = (ch: IptvChannel) => {
     // On the Shield the channel already playing on Your TV goes full screen as the same stream.
     if (tuned?.channel.id === ch.id) {
-      if (nativeTvAvailable()) requestSmallTvFull();
-      else onPlay(ch);
+      if (!(nativeTvAvailable() && requestSmallTvFull())) onPlay(ch);
     } else setTunedId(ch.id);
   };
   const heroItems = useMemo(() => (tuned ? [tuned] : spotlight), [tuned, spotlight]);
