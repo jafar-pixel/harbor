@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -86,6 +87,15 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
                 onAppPage = isAppUrl(url)
                 nativePlayer.stop("navigation")
+            }
+
+            // The page's renderer died (most often out of memory with a big playlist). Without this
+            // Android closes the whole app; instead the screen is rebuilt and the app reopens.
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                if (view !== web || isFinishing || isDestroyed) return true
+                nativePlayer.release()
+                recreate()
+                return true
             }
 
             override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
