@@ -28,6 +28,7 @@ import { createJlLinkStore, type JlLink } from "./profile-links";
 import { syncFavoriteRows } from "./favorites-sync";
 import { syncJlProfileData } from "./profile-data-sync";
 import { syncJlDeviceSettings } from "./device-settings-sync";
+import { IPTV_FAVORITES_LOCAL_EVENT, syncJlIptvFavorites } from "./iptv-favorites-sync";
 import { setJlSyncStatus } from "./sync-status";
 
 export type { JlLink } from "./profile-links";
@@ -413,6 +414,13 @@ async function runSync(scope: Scope): Promise<number> {
     profileId: scope.link.profileId,
     assertCurrent: () => assertScope(scope),
   }).catch(() => {});
+  // Live TV favorites follow the profile to every device; a failure retries on the next run.
+  await syncJlIptvFavorites({
+    account: scope.account,
+    localId: scope.localId,
+    profileId: scope.link.profileId,
+    assertCurrent: () => assertScope(scope),
+  }).catch(() => {});
   assertScope(scope);
   // Resolution is supplemental. Membership and its checkpoint are already durable.
   void enrichPlayers(scope).catch(() => {});
@@ -514,6 +522,7 @@ export function useJlSync(): void {
     window.addEventListener("focus", run);
     window.addEventListener("jl:library-changed", run);
     window.addEventListener("jl:addons-local-changed", run);
+    window.addEventListener(IPTV_FAVORITES_LOCAL_EVENT, run);
     const unsubscribe = subscribeJlFavoriteChanges(() => {
       if (!applyingRemote) run();
     });
@@ -524,6 +533,7 @@ export function useJlSync(): void {
       window.removeEventListener("focus", run);
       window.removeEventListener("jl:library-changed", run);
       window.removeEventListener("jl:addons-local-changed", run);
+      window.removeEventListener(IPTV_FAVORITES_LOCAL_EVENT, run);
       unsubscribe();
     };
   }, [accountId, localId, linkedProfile]);
