@@ -40,6 +40,9 @@ class TvControlBar(context: Context, private val actions: Actions) : FrameLayout
         fun englishDub()
         fun openMenu()
         fun leave()
+        /** Moves to the next picture fit and returns its name. */
+        fun nextAspect(): String
+        fun identifySong()
     }
 
     private fun dp(v: Float) =
@@ -105,6 +108,41 @@ class TvControlBar(context: Context, private val actions: Actions) : FrameLayout
     private val dub = button(R.drawable.tv_ic_dub, "English dub") { actions.englishDub() }
     private val subtitles = button(R.drawable.tv_ic_subtitles, "Subtitles") { actions.openMenu() }
     private val audio = button(R.drawable.tv_ic_audio, "Audio") { actions.openMenu() }
+    private val aspect = button(R.drawable.tv_ic_aspect, "Picture fit") { showSong(actions.nextAspect(), "Picture fit") }
+    private val song = button(R.drawable.tv_ic_song, "Identify song") { actions.identifySong() }
+
+    /** Identify song's answer (and short notices), top right; stays up on its own timer. */
+    private val card = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        visibility = View.GONE
+        setPadding(dp(20f), dp(14f), dp(20f), dp(14f))
+        background = GradientDrawable().apply {
+            cornerRadius = dp(16f).toFloat()
+            setColor(Color.argb(220, 12, 14, 20))
+            setStroke(dp(1f), Color.argb(60, 255, 255, 255))
+        }
+    }
+    private val cardTitle = TextView(context).apply {
+        setTextColor(Color.WHITE)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+        maxLines = 2
+        ellipsize = TextUtils.TruncateAt.END
+    }
+    private val cardBody = TextView(context).apply {
+        setTextColor(Color.argb(210, 255, 255, 255))
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+        maxLines = 3
+        ellipsize = TextUtils.TruncateAt.END
+    }
+    private val hideCard = Runnable {
+        card.visibility = View.GONE
+        // Nothing of the bar over the video once both are gone (HDR keeps the video alone).
+        if (bottom.visibility != View.VISIBLE) visibility = View.GONE
+    }
+
+    private lateinit var top: View
+    private lateinit var bottom: View
     private val backButton = button(R.drawable.tv_ic_back, "Back") { actions.leave() }
 
     private var live = false
@@ -115,7 +153,7 @@ class TvControlBar(context: Context, private val actions: Actions) : FrameLayout
         descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
 
         // Top: back and the title over a soft shade.
-        val top = LinearLayout(context).apply {
+        top = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(32f), dp(20f), dp(32f), dp(40f))
@@ -157,6 +195,8 @@ class TvControlBar(context: Context, private val actions: Actions) : FrameLayout
             addView(dub)
             addView(subtitles)
             addView(audio)
+            addView(aspect)
+            addView(song)
         }
         val buttons = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -165,7 +205,7 @@ class TvControlBar(context: Context, private val actions: Actions) : FrameLayout
             addView(middle, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(right, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
-        val bottom = LinearLayout(context).apply {
+        bottom = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(32f), dp(48f), dp(32f), dp(20f))
             background = GradientDrawable(
@@ -178,9 +218,32 @@ class TvControlBar(context: Context, private val actions: Actions) : FrameLayout
             addView(buttons)
         }
         addView(bottom, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
+
+        card.addView(cardTitle)
+        card.addView(cardBody)
+        addView(card, LayoutParams(dp(420f), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(84f)
+            marginEnd = dp(32f)
+        })
     }
 
-    val isShowing get() = visibility == View.VISIBLE
+    /** The controls are up (the song card can stay up without them). */
+    val isShowing get() = visibility == View.VISIBLE && bottom.visibility == View.VISIBLE
+
+    fun setSongIdShown(shown: Boolean) {
+        song.visibility = if (shown) View.VISIBLE else View.GONE
+    }
+
+    /** A short card over the video for ten seconds: a song's name, or why it couldn't be named. */
+    fun showSong(title: String, body: String) {
+        visibility = View.VISIBLE
+        cardTitle.text = title
+        cardBody.text = body
+        cardBody.visibility = if (body.isEmpty()) View.GONE else View.VISIBLE
+        card.visibility = View.VISIBLE
+        removeCallbacks(hideCard)
+        postDelayed(hideCard, 10_000)
+    }
 
     fun setTitle(text: String) {
         title.text = text
@@ -189,10 +252,23 @@ class TvControlBar(context: Context, private val actions: Actions) : FrameLayout
     /** Shows the bar; [focus] puts the remote on play/pause when nothing in the bar has it. */
     fun show(focus: Boolean) {
         visibility = View.VISIBLE
+        top.visibility = View.VISIBLE
+        bottom.visibility = View.VISIBLE
         if (focus && findFocus() == null) playPause.requestFocus()
     }
 
+    /** Hides the controls; a song card still showing stays until its time is up. */
     fun hide() {
+        top.visibility = View.GONE
+        bottom.visibility = View.GONE
+        if (card.visibility != View.VISIBLE) visibility = View.GONE
+    }
+
+    /** Leaving full screen: nothing of the bar stays. */
+    fun hideAll() {
+        hide()
+        removeCallbacks(hideCard)
+        card.visibility = View.GONE
         visibility = View.GONE
     }
 

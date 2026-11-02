@@ -34,7 +34,9 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioCapabilities
+import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.TeeAudioProcessor
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
@@ -74,6 +76,11 @@ class NativePlayer(
         val audioPassthrough: Boolean = true,
         /** Tunneled playback; off by default because some streams fail to start with it. */
         val tunneling: Boolean = false,
+        /** Identify song on the bar: on, "audd" or "ai", the viewer's key and Gemini model. */
+        val songIdEnabled: Boolean = false,
+        val songIdProvider: String = "audd",
+        val songIdKey: String = "",
+        val songIdModel: String = "",
     ) {
         companion object {
             fun parse(json: String?): Options? {
@@ -84,6 +91,10 @@ class NativePlayer(
                     maxHeight = when (o.optString("maxResolution")) { "1080p" -> 1080; "720p" -> 720; else -> 0 },
                     audioPassthrough = o.optBoolean("audioPassthrough", d.audioPassthrough),
                     tunneling = o.optBoolean("tunneling", d.tunneling),
+                    songIdEnabled = o.optJSONObject("songId")?.optBoolean("enabled", false) ?: false,
+                    songIdProvider = o.optJSONObject("songId")?.optString("provider", "audd") ?: "audd",
+                    songIdKey = o.optJSONObject("songId")?.optString("key", "") ?: "",
+                    songIdModel = o.optJSONObject("songId")?.optString("model", "") ?: "",
                 )
             }
         }
@@ -137,9 +148,14 @@ class NativePlayer(
 
     val isActive get() = player != null
 
+    /** The last seconds of decoded sound, for Identify song. */
+    private val songCapture = SongCapture()
+
     /** Muted from the bar; the page's own volume stays in [volume]. */
     private var muted = false
     private var speed = 1f
+    /** Full screen's picture fit, chosen on the bar; kept across videos. */
+    private var aspect = AspectRatioFrameLayout.RESIZE_MODE_FIT
 
     /**
      * The full-screen controls, drawn above the video (see [TvControlBar]). Full screen keeps the
@@ -162,6 +178,17 @@ class NativePlayer(
             return speed
         }
         override fun englishDub() = this@NativePlayer.englishDub()
+        override fun nextAspect(): String {
+            val (mode, label) = when (view.resizeMode) {
+                AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM to "Zoom"
+                AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_FILL to "Stretch"
+                else -> AspectRatioFrameLayout.RESIZE_MODE_FIT to "Fit"
+            }
+            aspect = mode
+            view.resizeMode = mode
+            return label
+        }
+        override fun identifySong() = this@NativePlayer.identifySong()
         override fun openMenu() = this@NativePlayer.openMenu()
         override fun leave() = exitFull()
     })
@@ -208,6 +235,44 @@ class NativePlayer(
         if (hadFocus) view.requestFocus()
     }
 
+    private var identifying = false
+
+    /** Names the song in the last 8 seconds, with the viewer's service and key (Settings). */
+    private fun identifySong() {
+        if (identifying) return
+        val key = options.songIdKey
+        if (key.isBlank()) {
+            bar.showSong("Add your song key", if (options.songIdProvider == "ai") "Settings › Library & metadata › Gemini key" else "Settings › Library & metadata › AudD key")
+            return
+        }
+        val wav = songCapture.lastWav()
+        if (wav == null) {
+            bar.showSong(
+                "Can't listen to this audio",
+                if (options.audioPassthrough) "It goes to your receiver as Dolby or DTS. Turn off Audio passthrough in Video tuning to name songs."
+                else "Let it play a few seconds, then try again.",
+            )
+            return
+        }
+        if (!songCapture.audible(wav)) {
+            bar.showSong("Nothing to hear", "Try again while the music is playing.")
+            return
+        }
+        identifying = true
+        bar.showSong("Listening…", "")
+        SongId.recognize(wav, options.songIdProvider, key, options.songIdModel) { song, error ->
+            identifying = false
+            when {
+                error != null -> bar.showSong("Song identification failed", error.take(200))
+                song == null -> bar.showSong("Couldn't identify the song", "")
+                else -> bar.showSong(
+                    song.title.ifEmpty { song.artist },
+                    listOf(if (song.title.isNotEmpty()) song.artist else "", song.album).filter { it.isNotEmpty() }.joinToString(" · "),
+                )
+            }
+        }
+    }
+
     /** Back with the bar showing hides it; true when it did. */
     fun hideBarOnBack(): Boolean {
         if (mode != Mode.FULL || !bar.isShowing) return false
@@ -219,7 +284,9 @@ class NativePlayer(
         release()
         readySent = false
         speed = 1f
+        songCapture.clear()
         bar.setTitle(title)
+        bar.setSongIdShown(options.songIdEnabled)
         var userAgent = Util.getUserAgent(activity, "JLMediaVisionTV")
         val requestHeaders = HashMap<String, String>()
         for ((name, value) in headers) {
@@ -285,7 +352,7 @@ class NativePlayer(
     // With passthrough on, ExoPlayer's default sink already sends Dolby and DTS to a receiver that
     // reports them. With it off the sink is told the output is plain PCM, so everything is decoded.
     private fun renderersFactory(): DefaultRenderersFactory {
-        val factory = if (options.audioPassthrough) DefaultRenderersFactory(activity) else PcmOnlyRenderersFactory(activity)
+        val factory = CapturingRenderersFactory(activity, options.audioPassthrough, songCapture)
         // A Dolby Vision or HEVC decoder that fails to start falls back to the next one.
         return factory.setEnableDecoderFallback(true)
     }
@@ -556,7 +623,10 @@ class NativePlayer(
         }
         if (mode != Mode.FULL || !visible) closeMenu()
         if (mode == Mode.FULL) matchDisplayMode() else restoreDisplayMode()
-        if (mode != Mode.FULL || !visible) hideBar()
+        if (mode != Mode.FULL || !visible) {
+            hideBar()
+            bar.hideAll()
+        }
         if (!visible) {
             view.hideController()
             view.useController = false
@@ -569,7 +639,7 @@ class NativePlayer(
             // Full screen: the video above the page, as the Shield needs for HDR and Dolby
             // Vision, with the app's player bar drawn natively above it.
             setUnderPage(false)
-            view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+            view.resizeMode = aspect
             view.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             view.hideController()
             view.useController = false
@@ -687,15 +757,24 @@ class NativePlayer(
 
     /** Without passthrough: a sink built without a context assumes PCM-only output. */
     @OptIn(UnstableApi::class)
-    private class PcmOnlyRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
+    /**
+     * The audio sink keeps a copy of decoded sound for Identify song ([SongCapture]); without
+     * passthrough it is built without a context, which makes it PCM-only.
+     */
+    private class CapturingRenderersFactory(
+        context: Context,
+        private val passthrough: Boolean,
+        private val capture: SongCapture,
+    ) : DefaultRenderersFactory(context) {
         @Suppress("DEPRECATION")
         override fun buildAudioSink(
             context: Context,
             enableFloatOutput: Boolean,
             enableAudioTrackPlaybackParams: Boolean,
-        ): AudioSink = DefaultAudioSink.Builder()
+        ): AudioSink = (if (passthrough) DefaultAudioSink.Builder(context) else DefaultAudioSink.Builder())
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            .setAudioProcessors(arrayOf<AudioProcessor>(TeeAudioProcessor(capture)))
             .build()
     }
 

@@ -46,6 +46,8 @@ export type NativeTvOptions = {
   maxResolution: NativeTvMaxResolution;
   audioPassthrough: boolean;
   tunneling: boolean;
+  /** Identify song on the full-screen bar, with the viewer's own service and key. */
+  songId: { enabled: boolean; provider: "audd" | "ai"; key: string; model: string };
 };
 
 export type NativeTvCapabilities = {
@@ -144,12 +146,24 @@ export function nativeTvOptions(s: {
   tvMaxResolution: NativeTvMaxResolution;
   tvAudioPassthrough: boolean;
   tvTunneling: boolean;
+  songIdEnabled: boolean;
+  songIdProvider: "audd" | "ai";
+  auddKey?: string;
+  songIdAiKey?: string;
+  songIdAiModel?: string;
 }): NativeTvOptions {
+  const ai = s.songIdProvider === "ai";
   return {
     matchFrameRate: s.tvMatchFrameRate,
     maxResolution: s.tvMaxResolution,
     audioPassthrough: s.tvAudioPassthrough,
     tunneling: s.tvTunneling,
+    songId: {
+      enabled: s.songIdEnabled,
+      provider: s.songIdProvider,
+      key: ((ai ? s.songIdAiKey : s.auddKey) ?? "").trim(),
+      model: (s.songIdAiModel ?? "").trim(),
+    },
   };
 }
 
