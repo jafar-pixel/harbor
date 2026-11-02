@@ -3,6 +3,8 @@ package com.jlstream.mediavision
 import android.app.Activity
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.graphics.Point
 import android.net.Uri
 import android.os.Handler
@@ -13,6 +15,8 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
@@ -136,12 +140,72 @@ class NativePlayer(
 
     val isActive get() = player != null
 
+    // Full screen's own control bar: what's playing, live or the time, play/pause, volume and the
+    // remote's buttons. Shown when full screen opens and on any remote key, then fades.
+    private var title = ""
+    private fun text(size: Float, color: Int, bold: Boolean = false) = TextView(activity).apply {
+        textSize = size
+        setTextColor(color)
+        if (bold) typeface = Typeface.DEFAULT_BOLD
+        maxLines = 1
+    }
+    private val barTitle = text(24f, Color.WHITE, bold = true)
+    private val barStatus = text(16f, 0xEEFFFFFF.toInt())
+    private val barHints = text(14f, 0xBBFFFFFF.toInt()).apply {
+        text = "OK  Play / pause      \u25BC  Audio & subtitles      Back  Small TV"
+    }
+    private val bar = LinearLayout(activity).apply {
+        orientation = LinearLayout.VERTICAL
+        visibility = View.GONE
+        background = GradientDrawable(
+            GradientDrawable.Orientation.BOTTOM_TOP,
+            intArrayOf(0xE6000000.toInt(), 0x99000000.toInt(), 0x00000000),
+        )
+        val pad = (40 * activity.resources.displayMetrics.density).toInt()
+        setPadding(pad, pad * 2, pad, pad)
+        addView(barTitle)
+        addView(barStatus)
+        addView(barHints)
+    }
+    private val hideBar = Runnable { bar.visibility = View.GONE }
+
     init {
         root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        root.addView(bar, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
+    }
+
+    /** Brings the full-screen control bar up for a few seconds, with the current state. */
+    private fun showBar() {
+        val p = player
+        if (mode != Mode.FULL || p == null) {
+            handler.removeCallbacks(hideBar)
+            bar.visibility = View.GONE
+            return
+        }
+        barTitle.text = title
+        val where = if (p.isCurrentMediaItemLive || p.duration == C.TIME_UNSET) "\u25CF LIVE"
+            else "${clock(p.currentPosition)} / ${clock(p.duration)}"
+        val state = if (p.playWhenReady) "Playing" else "Paused"
+        val sound = if (volume <= 0f) "Muted" else "Volume ${Math.round(volume * 100)}%"
+        barStatus.text = "$where     $state     $sound"
+        bar.visibility = View.VISIBLE
+        bar.bringToFront()
+        handler.removeCallbacks(hideBar)
+        handler.postDelayed(hideBar, 5000)
+    }
+
+    private fun clock(ms: Long): String {
+        val s = (ms / 1000).coerceAtLeast(0)
+        val h = s / 3600
+        val m = (s % 3600) / 60
+        val sec = s % 60
+        return if (h > 0) String.format(Locale.US, "%d:%02d:%02d", h, m, sec)
+            else String.format(Locale.US, "%d:%02d", m, sec)
     }
 
     fun play(url: String, headers: Map<String, String>, title: String, startMs: Long) {
         release()
+        this.title = title
         readySent = false
         var userAgent = Util.getUserAgent(activity, "JLMediaVisionTV")
         val requestHeaders = HashMap<String, String>()
@@ -327,7 +391,10 @@ class NativePlayer(
         if (mode != Mode.FULL || player == null || menu != null) return false
         val down = event.action == KeyEvent.ACTION_DOWN
         // Any remote key brings the controls up; volume keys still go on to the system.
-        if (down) view.showController()
+        if (down) {
+            view.showController()
+            handler.post { showBar() }
+        }
         when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER,
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> if (down && event.repeatCount == 0) { togglePause(); view.showController() }
@@ -460,7 +527,11 @@ class NativePlayer(
             Mode.HERO -> rect != null
             Mode.HIDDEN -> false
         }
-        if (mode != Mode.FULL || !visible) closeMenu()
+        if (mode != Mode.FULL || !visible) {
+            closeMenu()
+            handler.removeCallbacks(hideBar)
+            bar.visibility = View.GONE
+        }
         if (mode == Mode.FULL) matchDisplayMode() else restoreDisplayMode()
         if (!visible) {
             view.hideController()
@@ -478,6 +549,7 @@ class NativePlayer(
             view.visibility = View.VISIBLE
             view.requestFocus()
             view.showController()
+            showBar()
         } else if (rect != null) {
             // The small TV fills its box (edges trimmed) instead of letterboxing inside it.
             view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
@@ -511,6 +583,7 @@ class NativePlayer(
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             val p = player ?: return
+            if (mode == Mode.FULL) showBar()
             if (isPlaying) send("playing")
             else if (!p.playWhenReady && p.playbackState != Player.STATE_ENDED) send("paused")
         }
