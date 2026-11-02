@@ -499,20 +499,18 @@ class NativePlayer(
 
     /**
      * Full screen draws the video under the page (the page's player controls go on top); the
-     * small TV draws it over the page, whose backgrounds would otherwise hide it. Moving the view
-     * swaps the order; the player keeps decoding and picks up the new surface.
+     * small TV draws it over the page, whose backgrounds would otherwise hide it. Only the drawing
+     * order changes: the video view stays attached, so its surface (and 4K/HDR output) carries on.
      */
     private fun setUnderPage(under: Boolean) {
         val webAt = root.indexOfChild(web)
         val at = root.indexOfChild(view)
         if (webAt < 0 || at < 0) return
         if (under && at > webAt) {
-            root.removeView(view)
-            root.addView(view, root.indexOfChild(web))
+            web.bringToFront()
             web.setBackgroundColor(Color.TRANSPARENT)
         } else if (!under && at < webAt) {
-            root.removeView(view)
-            root.addView(view, root.indexOfChild(web) + 1)
+            view.bringToFront()
             web.setBackgroundColor(Color.WHITE)
         }
     }

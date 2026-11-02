@@ -62,11 +62,10 @@ export function LiveHero({
     onAmbient?.(heroArt);
   }, [heroArt, onAmbient]);
 
-  // On the Shield the TV app's own player plays the channel the viewer put on (not the rotating
-  // spotlight, which would open a stream every few seconds), and Watch makes it full screen.
+  // On the Shield the TV app's own player plays the channel on screen, as the desktop's preview
+  // does; the spotlight stops rotating once it plays, so streams don't open every few seconds.
   const box = useRef<HTMLElement>(null);
-  const nativeOn =
-    !!active?.channel.url && items.length === 1 && pageVisible && pageActive && !player;
+  const nativeOn = !!active?.channel.url && pageVisible && pageActive && !player;
   const nativeTv = useNativeSmallTv(box, nativeOn ? active!.channel : null, nativeOn, sound);
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
@@ -89,7 +88,10 @@ export function LiveHero({
       ref={box}
       onDoubleClick={() => watch(channel)}
       aria-label={t("Your TV: {name}", { name: channel.name })}
-      className="group relative aspect-video max-h-[72vh] w-full min-w-0 cursor-pointer overflow-hidden rounded-lg bg-canvas"
+      className={`group relative aspect-video max-h-[72vh] w-full min-w-0 cursor-pointer overflow-hidden rounded-lg ${
+        // The glass theme clears bg-canvas; on the Shield the box is the TV screen, so it stays black.
+        nativeTv.native ? "bg-black" : "bg-canvas"
+      }`}
       style={{ isolation: "isolate" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
