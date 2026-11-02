@@ -118,7 +118,18 @@ test("TV options sent to the app mirror the settings", () => {
       tvMaxResolution: "auto",
       tvAudioPassthrough: false,
       tvTunneling: true,
+      songIdEnabled: true,
+      songIdProvider: "ai",
+      auddKey: "audd-key",
+      songIdAiKey: " ai-key ",
+      songIdAiModel: "",
     }),
-    { matchFrameRate: true, maxResolution: "auto", audioPassthrough: false, tunneling: true },
+    {
+      matchFrameRate: true,
+      maxResolution: "auto",
+      audioPassthrough: false,
+      tunneling: true,
+      songId: { enabled: true, provider: "ai", key: "ai-key", model: "" },
+    },
   );
 });
