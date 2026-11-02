@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 import { HarborMark } from "@/components/icons/harbor-mark";
 import uploadGlyph from "@/assets/nav-icons/download.svg?raw";
 import { resizeAvatar } from "./account/avatar-utils";
@@ -243,6 +244,8 @@ export function SettingsSidebar({
   const t = useT();
   const { settings } = useSettings();
   const native = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+  // The TV app's Video tuning page holds the Shield's player settings (4K, HDR, passthrough).
+  const tvApp = nativeTvAvailable();
   const trimmed = query.trim().toLowerCase();
   const { matches, optionMatches } = useNavSearch(trimmed);
   const searching = trimmed.length > 0;
@@ -391,7 +394,8 @@ export function SettingsSidebar({
               >
                 {band.sections.map((id) => {
                   const tabs =
-                    (!native && (id === "mpv" || id === "shaders" || id === "plugins")) ||
+                    (!native &&
+                      ((id === "mpv" && !tvApp) || id === "shaders" || id === "plugins")) ||
                     (id === "relay" && !settings.togetherRelayUrl)
                       ? []
                       : tabsFor(id).filter(
