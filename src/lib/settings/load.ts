@@ -41,6 +41,7 @@ import { DEFAULT, STORAGE_KEY } from "./defaults";
 import type { Settings } from "./types";
 import { adoptLegacyPlaylists, readPlaylists } from "@/lib/iptv/playlists-store";
 import { sanitizeDisplaySelection } from "@/lib/monitors";
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 
@@ -142,11 +143,12 @@ function parseStoredSettings(raw: string | null): Settings {
   if (!raw) {
     // Fresh settings already show Live TV and Sports, so the one-time unhide is marked done here;
     // otherwise a hide chosen before the next launch would be undone.
-    const fresh: Settings & { _jlShowLiveSportsV1: boolean } = {
+    const fresh: Settings & { _jlShowLiveSportsV1: boolean; _jlTvPlayerNavV1?: boolean } = {
       ...DEFAULT,
       seekBackStepSec: sanitizeSeekStep(legacySeekStep("back"), DEFAULT.seekBackStepSec),
       seekForwardStepSec: sanitizeSeekStep(legacySeekStep("forward"), DEFAULT.seekForwardStepSec),
       _jlShowLiveSportsV1: true,
+      ...(nativeTvAvailable() ? { playerTvNavigation: true, _jlTvPlayerNavV1: true } : {}),
     };
     return fresh;
   }
@@ -185,6 +187,7 @@ function parseStoredSettings(raw: string | null): Settings {
       _playbackSourcePreferenceV2?: boolean;
       _jlTvBigPictureV1?: boolean;
       _jlTvBigPictureOffV1?: boolean;
+      _jlTvPlayerNavV1?: boolean;
     };
     // The TV app no longer starts in Big Picture: it opens the same app as the desktop. Undo
     // the start-in-Big-Picture the app itself turned on (_jlTvBigPictureV1) once; Big Picture
@@ -192,6 +195,12 @@ function parseStoredSettings(raw: string | null): Settings {
     if (parsed._jlTvBigPictureV1 && !parsed._jlTvBigPictureOffV1) {
       parsed.bigPictureAutoStart = false;
       parsed._jlTvBigPictureOffV1 = true;
+    }
+    // The TV app's remote drives the player's own control bar, so the player's remote navigation
+    // starts on there once; Settings › Hotkeys can still turn it off.
+    if (!parsed._jlTvPlayerNavV1 && nativeTvAvailable()) {
+      parsed.playerTvNavigation = true;
+      parsed._jlTvPlayerNavV1 = true;
     }
     if (!parsed._playbackSourcePreferenceV1) {
       parsed.playbackSourcePreference = parsed.localPlaybackMode === "local" ? "local" : "online";

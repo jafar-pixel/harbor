@@ -12,7 +12,17 @@ export type HeroDock = {
 };
 
 /** Root pages that show the docked video in their hero spot. */
-const HUB_KINDS = new Set<Frame["kind"]>(["home", "live", "sports", "movies", "shows", "anime", "kids", "discover", "vod"]);
+const HUB_KINDS = new Set<Frame["kind"]>([
+  "home",
+  "live",
+  "sports",
+  "movies",
+  "shows",
+  "anime",
+  "kids",
+  "discover",
+  "vod",
+]);
 
 export const isHubKind = (kind: Frame["kind"] | string | undefined): boolean =>
   !!kind && HUB_KINDS.has(kind as Frame["kind"]);
@@ -36,7 +46,14 @@ export function isHeroDocked(): boolean {
   return dock !== null;
 }
 
+// The TV app has no hero box: its video can't be drawn into one with controls a remote reaches.
+// A dock set there anyway turned every "open the player" into a hidden hero switch, so Full
+// Screen and Watch did nothing.
+const tvApp = (): boolean =>
+  typeof window !== "undefined" && "JLNativePlayer" in (window as unknown as object);
+
 export function setHeroDock(next: HeroDock | null): void {
+  if (next && tvApp()) next = null;
   if (dock === next) return;
   dock = next;
   if (next) expandedFromDock = false;
@@ -56,7 +73,7 @@ export function setHeroDockSupported(value: boolean): void {
 }
 
 export function heroDockSupported(): boolean {
-  return supported;
+  return supported && !tvApp();
 }
 
 function subscribe(fn: () => void): () => void {
