@@ -101,6 +101,13 @@ class NativePlayer(
     var mode = Mode.HIDDEN
         private set
 
+    /**
+     * The playing video is HDR or Dolby Vision. Full screen then keeps the video above the page,
+     * as before the page's controls moved over it: with the see-through page on top, the Shield
+     * drew Dolby Vision without its colour processing (a purple picture).
+     */
+    private var hdrVideo = false
+
     /** Device pixels per CSS pixel; MainActivity keeps it in step with the WebView's zoom. */
     var cssScale = activity.resources.displayMetrics.density
 
@@ -143,6 +150,7 @@ class NativePlayer(
     fun play(url: String, headers: Map<String, String>, title: String, startMs: Long) {
         release()
         readySent = false
+        hdrVideo = false
         var userAgent = Util.getUserAgent(activity, "JLMediaVisionTV")
         val requestHeaders = HashMap<String, String>()
         for ((name, value) in headers) {
@@ -326,6 +334,22 @@ class NativePlayer(
         // The menu is a dialog with its own window and takes the remote while it is open.
         if (mode != Mode.FULL || player == null || menu != null) return false
         val down = event.action == KeyEvent.ACTION_DOWN
+        if (hdrVideo) {
+            // HDR keeps the player's own controls over the video; any key brings them up.
+            if (down) view.showController()
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER,
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> if (down && event.repeatCount == 0) { togglePause(); view.showController() }
+                KeyEvent.KEYCODE_MEDIA_PLAY -> if (down) resume()
+                KeyEvent.KEYCODE_MEDIA_PAUSE -> if (down) pause()
+                KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> if (down) seekBy(-SEEK_STEP_MS)
+                KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> if (down) seekBy(SEEK_STEP_MS)
+                KeyEvent.KEYCODE_DPAD_UP -> if (down) view.showController()
+                KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MENU -> if (down && event.repeatCount == 0) openMenu()
+                else -> return false
+            }
+            return true
+        }
         // The arrows, OK and Back belong to the page's player controls drawn over the video (the
         // app's own player bar, as on the desktop). Only the remote's media buttons act here.
         when (event.keyCode) {
@@ -467,7 +491,18 @@ class NativePlayer(
             if (view.hasFocus()) web.requestFocus()
             return
         }
-        if (mode == Mode.FULL) {
+        if (mode == Mode.FULL && hdrVideo) {
+            // HDR and Dolby Vision: the video stays above the page, with the player's own
+            // controls, so the Shield shows it exactly as before (4K HDR / Dolby Vision intact).
+            setUnderPage(false)
+            view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+            view.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            view.useController = true
+            view.isFocusable = true
+            view.visibility = View.VISIBLE
+            view.requestFocus()
+            view.showController()
+        } else if (mode == Mode.FULL) {
             // Full screen: the video goes under the page, which turns see-through over it and
             // draws the app's own player controls on top (src/lib/player/native-tv/bridge.ts).
             // The video surface itself is unchanged, so 4K and HDR output stay as they were.
@@ -515,6 +550,22 @@ class NativePlayer(
         }
     }
 
+    private fun selectedVideoFormat(tracks: Tracks): Format? {
+        for (group in tracks.groups) {
+            if (group.type != C.TRACK_TYPE_VIDEO) continue
+            for (i in 0 until group.length) if (group.isTrackSelected(i)) return group.getTrackFormat(i)
+        }
+        return null
+    }
+
+    private fun updateHdr(format: Format?) {
+        format ?: return
+        val hdr = isHdr(format)
+        if (hdr == hdrVideo) return
+        hdrVideo = hdr
+        if (mode == Mode.FULL) applyMode()
+    }
+
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             when (state) {
@@ -526,7 +577,10 @@ class NativePlayer(
 
         // The video's size and frame rate are known by its first decoded frame.
         override fun onVideoSizeChanged(videoSize: VideoSize) {
-            if (videoSize.width > 0 && videoSize.height > 0) matchDisplayMode()
+            if (videoSize.width > 0 && videoSize.height > 0) {
+                updateHdr(player?.videoFormat)
+                matchDisplayMode()
+            }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -536,6 +590,7 @@ class NativePlayer(
         }
 
         override fun onTracksChanged(tracks: Tracks) {
+            updateHdr(selectedVideoFormat(tracks))
             val audio = audioTracks(tracks)
             audioTracksJson = audio.toString()
             send("tracks", audioTracks = audio)
@@ -603,6 +658,14 @@ class NativePlayer(
 
     companion object {
         private const val SEEK_STEP_MS = 10_000L
+
+        /** HDR10, HDR10+, HLG or Dolby Vision. */
+        fun isHdr(format: Format): Boolean {
+            val codecs = format.codecs.orEmpty()
+            if (format.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION || codecs.startsWith("dvh") || codecs.startsWith("dva")) return true
+            val transfer = format.colorInfo?.colorTransfer
+            return transfer == C.COLOR_TRANSFER_ST2084 || transfer == C.COLOR_TRANSFER_HLG
+        }
 
         // As src/lib/player/english-dub.ts: commentary and audio description tracks are English
         // too, but never the dub the viewer wants.
