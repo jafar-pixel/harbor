@@ -161,10 +161,15 @@ class MainActivity : AppCompatActivity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val back = event.keyCode == KeyEvent.KEYCODE_BACK || event.keyCode == KeyEvent.KEYCODE_ESCAPE
         if (back) {
-            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) onBack()
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                // Full screen: Back first hides the player bar, then leaves.
+                if (!nativePlayer.hideBarOnBack()) onBack()
+            }
             return true
         }
         if (nativePlayer.handleFullKey(event)) return true
+        // Full screen's bar buttons take the arrows and OK; the page underneath doesn't.
+        if (nativePlayer.isActive && nativePlayer.mode == NativePlayer.Mode.FULL) return super.dispatchKeyEvent(event)
         // No window-focus check: a dialog has its own window and never reaches this, and the
         // player in the small TV box must not stop the remote from reaching the page.
         if (fullscreenView == null && onAppPage && forwardNavigationKey(event)) return true
