@@ -17,6 +17,14 @@ import { nativeTvAvailable, nativeTvPlayer } from "./shell";
 
 // Only one small screen drives the native player at a time; the last one mounted owns it.
 let owner: symbol | null = null;
+// Full screen is on: the box keeps its place but must not pull the video back into it until the
+// remote's Back leaves full screen (the TV app's "exit-full").
+let full = false;
+
+function goFull(p: NonNullable<ReturnType<typeof nativeTvPlayer>>): void {
+  full = true;
+  p.setMode("full");
+}
 
 /**
  * Make the small TV's channel full screen (OK on the channel already on it). False when no small
@@ -25,7 +33,7 @@ let owner: symbol | null = null;
 export function requestSmallTvFull(): boolean {
   const p = nativeTvPlayer();
   if (!owner || !p) return false;
-  p.setMode("full");
+  goFull(p);
   return true;
 }
 
@@ -56,12 +64,9 @@ export function useNativeSmallTv(
       const h = r.height - NATIVE_HERO_BAR_PX - 16;
       // Shown while any of the box is on screen: Your TV's box can run past the bottom edge.
       const onScreen = r.bottom > 0 && r.top < window.innerHeight && r.width > 0 && h > 0;
-      if (!onScreen) {
-        p.setMode("hidden");
-        return;
-      }
-      p.setRect(r.left, r.top, r.width, h);
-      p.setMode("hero");
+      if (onScreen) p.setRect(r.left, r.top, r.width, h);
+      if (full) return;
+      p.setMode(onScreen ? "hero" : "hidden");
     };
     const schedule = () => {
       if (!frame) frame = window.requestAnimationFrame(place);
@@ -71,7 +76,10 @@ export function useNativeSmallTv(
       if (owner !== me) return;
       if (d?.type === "playing") setPlaying(true);
       // Back in full screen: the TV app already returns to the box; place it again.
-      if (d?.type === "exit-full") schedule();
+      if (d?.type === "exit-full") {
+        full = false;
+        schedule();
+      }
     };
     place();
     const tick = window.setInterval(schedule, 500);
@@ -86,6 +94,7 @@ export function useNativeSmallTv(
       window.removeEventListener("jl-native-player", onNative);
       if (owner === me) {
         owner = null;
+        full = false;
         p.stop();
       }
     };
@@ -106,7 +115,7 @@ export function useNativeSmallTv(
     fullScreen: () => {
       const p = nativeTvPlayer();
       if (owner !== token.current || !p) return false;
-      p.setMode("full");
+      goFull(p);
       return true;
     },
   };
