@@ -198,13 +198,16 @@ class MainActivity : AppCompatActivity() {
      */
     private fun onBack() {
         if (fullscreenView != null) { exitFullscreen(); return }
-        if (nativePlayer.isActive && nativePlayer.mode == NativePlayer.Mode.FULL) { nativePlayer.exitFull(); return }
         if (!isAppUrl(web.url)) { historyBack(); return }
+        // Full screen's player controls are the page's: its Back closes the player. A page that
+        // doesn't take it (an older web version) still gets out of full screen here.
+        val nativeFull = nativePlayer.isActive && nativePlayer.mode == NativePlayer.Mode.FULL
         // Big Picture keeps its screens in its own stack rather than in WebView history.
         web.evaluateJavascript(PAGE_BACK_JS) { result ->
-            when (result?.trim('"')) {
-                "handled" -> Unit
-                "root" -> confirmLeave()
+            when {
+                result?.trim('"') == "handled" -> Unit
+                nativeFull -> nativePlayer.exitFull()
+                result?.trim('"') == "root" -> confirmLeave()
                 else -> historyBack()
             }
         }

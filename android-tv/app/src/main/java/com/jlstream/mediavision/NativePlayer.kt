@@ -326,19 +326,16 @@ class NativePlayer(
         // The menu is a dialog with its own window and takes the remote while it is open.
         if (mode != Mode.FULL || player == null || menu != null) return false
         val down = event.action == KeyEvent.ACTION_DOWN
-        // Any remote key brings the controls up; volume keys still go on to the system.
-        if (down) view.showController()
+        // The arrows, OK and Back belong to the page's player controls drawn over the video (the
+        // app's own player bar, as on the desktop). Only the remote's media buttons act here.
         when (event.keyCode) {
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER,
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> if (down && event.repeatCount == 0) { togglePause(); view.showController() }
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> if (down && event.repeatCount == 0) togglePause()
             KeyEvent.KEYCODE_MEDIA_PLAY -> if (down) resume()
             KeyEvent.KEYCODE_MEDIA_PAUSE -> if (down) pause()
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> if (down) seekBy(-SEEK_STEP_MS)
-            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> if (down) seekBy(SEEK_STEP_MS)
-            // Up only brings up the progress bar; focus never moves into the controller, so
-            // Center/Left/Right always mean play/pause and seek.
-            KeyEvent.KEYCODE_DPAD_UP -> if (down) view.showController()
-            KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MENU -> if (down && event.repeatCount == 0) openMenu()
+            KeyEvent.KEYCODE_MEDIA_REWIND -> if (down) seekBy(-SEEK_STEP_MS)
+            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> if (down) seekBy(SEEK_STEP_MS)
+            // The remote's menu (≡) button: audio and subtitle tracks.
+            KeyEvent.KEYCODE_MENU -> if (down && event.repeatCount == 0) openMenu()
             else -> return false
         }
         return true
@@ -471,14 +468,19 @@ class NativePlayer(
             return
         }
         if (mode == Mode.FULL) {
+            // Full screen: the video goes under the page, which turns see-through over it and
+            // draws the app's own player controls on top (src/lib/player/native-tv/bridge.ts).
+            // The video surface itself is unchanged, so 4K and HDR output stay as they were.
+            setUnderPage(true)
             view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
             view.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            view.useController = true
-            view.isFocusable = true
+            view.hideController()
+            view.useController = false
+            view.isFocusable = false
             view.visibility = View.VISIBLE
-            view.requestFocus()
-            view.showController()
+            if (!web.hasFocus()) web.requestFocus()
         } else if (rect != null) {
+            setUnderPage(false)
             // The small TV fills its box (edges trimmed) instead of letterboxing inside it.
             view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             view.hideController()
@@ -494,6 +496,26 @@ class NativePlayer(
     }
 
     private fun px(css: Double) = Math.round(css * cssScale).toInt()
+
+    /**
+     * Full screen draws the video under the page (the page's player controls go on top); the
+     * small TV draws it over the page, whose backgrounds would otherwise hide it. Moving the view
+     * swaps the order; the player keeps decoding and picks up the new surface.
+     */
+    private fun setUnderPage(under: Boolean) {
+        val webAt = root.indexOfChild(web)
+        val at = root.indexOfChild(view)
+        if (webAt < 0 || at < 0) return
+        if (under && at > webAt) {
+            root.removeView(view)
+            root.addView(view, root.indexOfChild(web))
+            web.setBackgroundColor(Color.TRANSPARENT)
+        } else if (!under && at < webAt) {
+            root.removeView(view)
+            root.addView(view, root.indexOfChild(web) + 1)
+            web.setBackgroundColor(Color.WHITE)
+        }
+    }
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {

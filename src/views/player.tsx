@@ -1344,12 +1344,26 @@ function NativePlayerView({
     },
   });
 
-  const { mpvEmbedWindowsActive, stageBg } = embedFlags(
+  const { mpvEmbedWindowsActive, stageBg: embedStageBg } = embedFlags(
     engine,
     embedActive,
     snap.videoWidth,
     snap.videoHeight,
   );
+  // On the TV app the video is drawn under the page (android-tv NativePlayer, full screen): the
+  // stage stays see-through so the app's own player controls show over it.
+  const tvVideoUnder = nativeTvAvailable() && !src.pipDocked;
+  const stageBg = tvVideoUnder ? "" : embedStageBg;
+  useEffect(() => {
+    if (!tvVideoUnder) return;
+    const root = document.documentElement;
+    root.dataset.mpvEmbed = "1";
+    root.dataset.tvVideoUnder = "1";
+    return () => {
+      delete root.dataset.mpvEmbed;
+      delete root.dataset.tvVideoUnder;
+    };
+  }, [tvVideoUnder]);
   const { loaderActive } = useEverPlayed({
     url: src.url,
     status: snap.status,
