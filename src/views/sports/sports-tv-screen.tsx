@@ -47,7 +47,9 @@ export function SportsTvScreen({
   // On the Shield the TV app's own player plays in this box, and full screen is the same stream.
   const box = useRef<HTMLDivElement>(null);
   const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo, sound);
-  const watch = (c: IptvChannel) => (nativeTv.native ? nativeTv.fullScreen() : onWatch(c));
+  const watch = (c: IptvChannel) => {
+    if (!nativeTv.fullScreen()) onWatch(c);
+  };
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
   }, [nativeTv.playing]);

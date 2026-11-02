@@ -15,13 +15,18 @@ import { nativeTvAvailable, nativeTvPlayer } from "./shell";
  * player's.
  */
 
-const FULL_EVENT = "jl-small-tv-full";
 // Only one small screen drives the native player at a time; the last one mounted owns it.
 let owner: symbol | null = null;
 
-/** Make the small TV's channel full screen (OK on the channel already on it). */
-export function requestSmallTvFull(): void {
-  window.dispatchEvent(new Event(FULL_EVENT));
+/**
+ * Make the small TV's channel full screen (OK on the channel already on it). False when no small
+ * TV is playing, so the caller opens the full player instead.
+ */
+export function requestSmallTvFull(): boolean {
+  const p = nativeTvPlayer();
+  if (!owner || !p) return false;
+  p.setMode("full");
+  return true;
 }
 
 export function useNativeSmallTv(
@@ -29,7 +34,7 @@ export function useNativeSmallTv(
   channel: IptvChannel | null,
   active: boolean,
   sound: { volume: number; muted: boolean },
-): { native: boolean; playing: boolean; fullScreen: () => void } {
+): { native: boolean; playing: boolean; fullScreen: () => boolean } {
   const native = nativeTvAvailable();
   const [playing, setPlaying] = useState(false);
   const token = useRef(Symbol("small-tv"));
@@ -68,22 +73,17 @@ export function useNativeSmallTv(
       // Back in full screen: the TV app already returns to the box; place it again.
       if (d?.type === "exit-full") schedule();
     };
-    const onFull = () => {
-      if (owner === me) p.setMode("full");
-    };
     place();
     const tick = window.setInterval(schedule, 500);
     window.addEventListener("scroll", schedule, true);
     window.addEventListener("resize", schedule);
     window.addEventListener("jl-native-player", onNative);
-    window.addEventListener(FULL_EVENT, onFull);
     return () => {
       window.cancelAnimationFrame(frame);
       window.clearInterval(tick);
       window.removeEventListener("scroll", schedule, true);
       window.removeEventListener("resize", schedule);
       window.removeEventListener("jl-native-player", onNative);
-      window.removeEventListener(FULL_EVENT, onFull);
       if (owner === me) {
         owner = null;
         p.stop();
@@ -99,8 +99,15 @@ export function useNativeSmallTv(
   return {
     native,
     playing,
+    /**
+     * Makes this box's channel full screen as the same stream. False when this box isn't playing
+     * it (Your TV still rotating the spotlight, say): the caller opens the full player instead.
+     */
     fullScreen: () => {
-      if (owner === token.current) nativeTvPlayer()?.setMode("full");
+      const p = nativeTvPlayer();
+      if (owner !== token.current || !p) return false;
+      p.setMode("full");
+      return true;
     },
   };
 }
