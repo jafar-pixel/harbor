@@ -1,3 +1,7 @@
+/* Pages leave this much room at the bottom so the floating pill never covers their last row. */
+body:has(.env-fab) {
+  --env-fab-room: 64px;
+}
 .env-fab {
   position: fixed;
   bottom: 20px;

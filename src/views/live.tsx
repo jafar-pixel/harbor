@@ -410,7 +410,9 @@ export function LiveView({ active }: { active: boolean }) {
           <div
             ref={scrollRef}
             className={`min-h-0 flex-1 ${
-              mode === "guide" ? "flex flex-col overflow-hidden" : "overflow-y-auto px-6 pt-5"
+              mode === "guide"
+                ? "flex flex-col overflow-hidden"
+                : "overflow-y-auto px-6 pt-5 pb-[calc(1.5rem+var(--env-fab-room,0px))]"
             }`}
           >
             {state.kind === "error" ? (

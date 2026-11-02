@@ -72,7 +72,7 @@ export function ChannelsView({
       <div
         ref={listRef}
         aria-label={t("Channels")}
-        className="order-2 flex max-h-[calc(100dvh-220px)] min-h-0 flex-col gap-5 overflow-y-auto pe-1 lg:order-none"
+        className="order-2 flex max-h-[calc(100dvh-220px-var(--env-fab-room,0px))] min-h-0 flex-col gap-5 overflow-y-auto pe-1 lg:order-none"
         onScroll={(e) => {
           const el = e.currentTarget;
           if (el.scrollTop + el.clientHeight > el.scrollHeight - 400 && limit < channels.length)
