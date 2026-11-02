@@ -43,10 +43,12 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashLog.install(this)
         root = FrameLayout(this)
         web = WebView(this)
         root.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         setContentView(root)
+        CrashLog.take(this)?.let(::showLastCrash)
         nativePlayer = NativePlayer(this, root, web, ::dispatchPlayerEvent)
 
         CookieManager.getInstance().setAcceptCookie(true)
@@ -93,6 +95,11 @@ class MainActivity : AppCompatActivity() {
             // Android closes the whole app; instead the screen is rebuilt and the app reopens.
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
                 if (view !== web || isFinishing || isDestroyed) return true
+                CrashLog.record(
+                    this@MainActivity,
+                    if (detail.didCrash()) "The page crashed."
+                    else "Android closed the page to free memory.",
+                )
                 nativePlayer.release()
                 recreate()
                 return true
@@ -228,6 +235,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun historyBack() {
         if (web.canGoBack()) web.goBack() else confirmLeave()
+    }
+
+    /** Why the app closed last time, so it can be photographed and fixed. */
+    private fun showLastCrash(report: String) {
+        AlertDialog.Builder(this)
+            .setTitle("JL Media Vision closed unexpectedly")
+            .setMessage("Take a photo of this so it can be fixed.\n\n$report")
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun confirmLeave() {
