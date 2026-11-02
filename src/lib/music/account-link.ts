@@ -72,13 +72,18 @@ type Granted = { access: string; expiresIn: number; scope: string };
 const tokens: Partial<Record<MusicProvider, { access: string; expiresAt: number }>> = {};
 const inflight: Partial<Record<MusicProvider, Promise<string>>> = {};
 
+/** When this device last finished or renewed each sign in; see refreshMusicLinks. */
+const rememberedAt: Partial<Record<MusicProvider, number>> = {};
+
 function remember(provider: MusicProvider, g: Granted) {
   tokens[provider] = { access: g.access, expiresAt: Date.now() + g.expiresIn * 1000 };
+  rememberedAt[provider] = Date.now();
   set({ links: { ...state.links, [provider]: { scope: g.scope } } });
 }
 
 function forget(provider: MusicProvider) {
   delete tokens[provider];
+  delete rememberedAt[provider];
   const links = { ...state.links };
   delete links[provider];
   set({ links });
@@ -147,6 +152,7 @@ export function refreshMusicLinks(): Promise<void> {
   if (loading && loadedFor === who) return loading;
   loadedFor = who;
   loading = (async () => {
+    const started = Date.now();
     try {
       const out = await call<{
         links: { provider: MusicProvider; scope: string }[];
@@ -157,6 +163,12 @@ export function refreshMusicLinks(): Promise<void> {
       const prefs = await jlRest("music_prefs?select=main_service", { method: "GET" })
         .then((r) => (r.ok ? (r.json() as Promise<{ main_service: MainService }[]>) : []))
         .catch(() => []);
+      // A sign in finished while this was asked (back from Google's redirect) is newer than the
+      // answer; keeping it stops the Connect button coming back.
+      for (const p of Object.keys(rememberedAt) as MusicProvider[]) {
+        const linked = state.links[p];
+        if (!links[p] && linked && (rememberedAt[p] ?? 0) >= started) links[p] = linked;
+      }
       set({
         ready: true,
         links,
