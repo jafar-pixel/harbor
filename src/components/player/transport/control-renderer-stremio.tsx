@@ -13,6 +13,7 @@ import {
   SkipForward,
   Square,
 } from "lucide-react";
+import { browserDecodes } from "@/lib/player/native-playback";
 import { NavGlyph } from "@/components/icons/nav-glyph";
 import { hdrFormatLabel, realQualityLabel } from "@/lib/player/resolution-label";
 import type { PlayerCapabilities, PlayerSnapshot } from "@/lib/player/bridge";
@@ -437,7 +438,8 @@ export function RenderedStremioControl({
         />
       );
     case "audio-menu":
-      if (ctx.engine === "html5") return null;
+      // A browser <video> plays one audio track; the TV app's player switches between them.
+      if (browserDecodes(ctx.engine)) return null;
       return (
         <AudioMenu
           tracks={ctx.snap.audioTracks}
