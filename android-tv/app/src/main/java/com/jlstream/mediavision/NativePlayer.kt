@@ -13,6 +13,9 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
+import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
@@ -151,88 +154,68 @@ class NativePlayer(
     /** The last seconds of decoded sound, for Identify song. */
     private val songCapture = SongCapture()
 
-    /** Muted from the bar; the page's own volume stays in [volume]. */
-    private var muted = false
-    private var speed = 1f
-    /** Full screen's picture fit, chosen on the bar; kept across videos. */
+    /** Full screen's picture fit, chosen on the controls; kept across videos. */
     private var aspect = AspectRatioFrameLayout.RESIZE_MODE_FIT
 
-    /**
-     * The full-screen controls, drawn above the video (see [TvControlBar]). Full screen keeps the
-     * video above the page for every video: with the see-through page on top, the Shield drew HDR
-     * and Dolby Vision without their colour processing (a purple picture, 0.9.68 to 0.9.70).
-     */
-    private val bar = TvControlBar(activity, object : TvControlBar.Actions {
-        override fun togglePause() { this@NativePlayer.togglePause(); refreshBar() }
-        override fun stop() = exitFull()
-        override fun toggleMute() {
-            muted = !muted
-            player?.volume = if (muted) 0f else volume
-            refreshBar()
-        }
-        override fun seekBy(deltaMs: Long) { this@NativePlayer.seekBy(deltaMs); refreshBar() }
-        override fun nextSpeed(): Float {
-            val speeds = floatArrayOf(1f, 1.25f, 1.5f, 2f, 0.75f)
-            speed = speeds[(speeds.indexOfFirst { it == speed } + 1).mod(speeds.size)]
-            player?.setPlaybackSpeed(speed)
-            return speed
-        }
-        override fun englishDub() = this@NativePlayer.englishDub()
-        override fun nextAspect(): String {
-            val (mode, label) = when (view.resizeMode) {
-                AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM to "Zoom"
-                AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_FILL to "Stretch"
-                else -> AspectRatioFrameLayout.RESIZE_MODE_FIT to "Fit"
-            }
-            aspect = mode
-            view.resizeMode = mode
-            return label
-        }
-        override fun identifySong() = this@NativePlayer.identifySong()
-        override fun openMenu() = this@NativePlayer.openMenu()
-        override fun leave() = exitFull()
-    })
+    /** Full screen was set up (the page sends "full" again on every layout pass; set up once). */
+    private var fullShown = false
 
-    private val barTick = object : Runnable {
-        override fun run() {
-            if (!bar.isShowing) return
-            refreshBar()
-            handler.postDelayed(this, 500)
-        }
-    }
-    private val barHide = Runnable { hideBar() }
+    // Buttons this app adds to Media3's own controls, as Just Player (moneytoo/Player) does:
+    // Media3 keeps D-pad focus and clicks working for its bar, and these join it.
+    private val songButton = extraButton(R.drawable.tv_ic_song, "Identify song") { identifySong() }
 
     init {
         root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        root.addView(bar, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        val basic = view.findViewById<LinearLayout>(androidx.media3.ui.R.id.exo_basic_controls)
+        if (basic != null) {
+            val row = LinearLayout(activity).apply { orientation = LinearLayout.HORIZONTAL }
+            // Live: the channel list; a film or show: pick another stream (the page opens it).
+            row.addView(extraButton(R.drawable.tv_ic_streams, "Change stream or channel") { openPanel() })
+            row.addView(extraButton(R.drawable.tv_ic_dub, "English dub") { englishDub() })
+            row.addView(extraButton(R.drawable.tv_ic_aspect, "Picture fit") { showMessage(nextAspect()) })
+            row.addView(songButton)
+            row.addView(extraButton(R.drawable.tv_ic_stop, "Stop") { exitFull() })
+            basic.addView(HorizontalScrollView(activity).apply {
+                isHorizontalScrollBarEnabled = false
+                addView(row)
+            }, 0)
+        }
+        view.setShowNextButton(false)
+        view.setShowPreviousButton(false)
+        view.setShowRewindButton(true)
+        view.setShowFastForwardButton(true)
+        view.setShowSubtitleButton(true)
+        view.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+            // The remote lands on play/pause whenever the controls come up (as in Just Player;
+            // otherwise focus starts on the first button of the bottom bar).
+            if (visibility == View.VISIBLE && mode == Mode.FULL) {
+                view.findViewById<View>(androidx.media3.ui.R.id.exo_play_pause)?.requestFocus()
+            }
+        })
     }
 
-    private fun refreshBar() {
-        val p = player ?: return
-        val duration = p.duration
-        val live = p.isCurrentMediaItemLive || duration == C.TIME_UNSET
-        bar.update(p.currentPosition, if (live) 0 else duration, p.bufferedPosition, live, p.playWhenReady, muted)
+    private fun extraButton(icon: Int, label: String, onPress: () -> Unit): ImageButton =
+        ImageButton(activity, null, 0, androidx.media3.ui.R.style.ExoStyledControls_Button_Bottom).apply {
+            setImageResource(icon)
+            contentDescription = label
+            setOnClickListener { onPress() }
+        }
+
+    /** Asks the page for its stream picker (or, live, the channel list); see bridge.ts "panel". */
+    private fun openPanel() {
+        view.hideController()
+        send("panel")
     }
 
-    /** Shows the bar for five seconds from the last key; [focus] puts the remote on play/pause. */
-    private fun showBar(focus: Boolean) {
-        if (mode != Mode.FULL || player == null) return
-        bar.bringToFront()
-        bar.show(focus)
-        refreshBar()
-        handler.removeCallbacks(barTick)
-        handler.postDelayed(barTick, 500)
-        handler.removeCallbacks(barHide)
-        handler.postDelayed(barHide, BAR_SHOWN_MS)
-    }
-
-    private fun hideBar() {
-        handler.removeCallbacks(barHide)
-        handler.removeCallbacks(barTick)
-        if (!bar.isShowing) return
-        val hadFocus = bar.hasFocus()
-        bar.hide()
-        if (hadFocus) view.requestFocus()
+    private fun nextAspect(): String {
+        val (next, label) = when (aspect) {
+            AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM to "Picture: Zoom"
+            AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_FILL to "Picture: Stretch"
+            else -> AspectRatioFrameLayout.RESIZE_MODE_FIT to "Picture: Fit"
+        }
+        aspect = next
+        view.resizeMode = next
+        return label
     }
 
     private var identifying = false
@@ -242,51 +225,50 @@ class NativePlayer(
         if (identifying) return
         val key = options.songIdKey
         if (key.isBlank()) {
-            bar.showSong("Add your song key", if (options.songIdProvider == "ai") "Settings › Library & metadata › Gemini key" else "Settings › Library & metadata › AudD key")
+            showMessage("Add your song key in Settings › Library & metadata")
             return
         }
         val wav = songCapture.lastWav()
         if (wav == null) {
-            bar.showSong(
-                "Can't listen to this audio",
-                if (options.audioPassthrough) "It goes to your receiver as Dolby or DTS. Turn off Audio passthrough in Video tuning to name songs."
+            showMessage(
+                if (options.audioPassthrough) "Can't hear this audio: it goes to your receiver as Dolby or DTS. Turn off Audio passthrough in Video tuning to name songs."
                 else "Let it play a few seconds, then try again.",
             )
             return
         }
         if (!songCapture.audible(wav)) {
-            bar.showSong("Nothing to hear", "Try again while the music is playing.")
+            showMessage("Nothing to hear. Try again while the music is playing.")
             return
         }
         identifying = true
-        bar.showSong("Listening…", "")
+        showMessage("Listening…")
         SongId.recognize(wav, options.songIdProvider, key, options.songIdModel) { song, error ->
             identifying = false
-            when {
-                error != null -> bar.showSong("Song identification failed", error.take(200))
-                song == null -> bar.showSong("Couldn't identify the song", "")
-                else -> bar.showSong(
-                    song.title.ifEmpty { song.artist },
-                    listOf(if (song.title.isNotEmpty()) song.artist else "", song.album).filter { it.isNotEmpty() }.joinToString(" · "),
-                )
-            }
+            showMessage(
+                when {
+                    error != null -> "Song identification failed: ${error.take(160)}"
+                    song == null -> "Couldn't identify the song"
+                    else -> listOf(
+                        "♪ " + song.title.ifEmpty { song.artist },
+                        listOf(if (song.title.isNotEmpty()) song.artist else "", song.album).filter { it.isNotEmpty() }.joinToString(" · "),
+                    ).filter { it.isNotBlank() }.joinToString("\n")
+                },
+            )
         }
     }
 
-    /** Back with the bar showing hides it; true when it did. */
+    /** Back with the controls up hides them (Just Player does the same); true when it did. */
     fun hideBarOnBack(): Boolean {
-        if (mode != Mode.FULL || !bar.isShowing) return false
-        hideBar()
+        if (mode != Mode.FULL || !view.isControllerFullyVisible) return false
+        view.hideController()
         return true
     }
 
     fun play(url: String, headers: Map<String, String>, title: String, startMs: Long) {
         release()
         readySent = false
-        speed = 1f
         songCapture.clear()
-        bar.setTitle(title)
-        bar.setSongIdShown(options.songIdEnabled)
+        songButton.visibility = if (options.songIdEnabled) View.VISIBLE else View.GONE
         var userAgent = Util.getUserAgent(activity, "JLMediaVisionTV")
         val requestHeaders = HashMap<String, String>()
         for ((name, value) in headers) {
@@ -450,7 +432,6 @@ class NativePlayer(
     /** Releases the decoder without telling the page (the activity is going away). */
     fun release() {
         closeMenu()
-        hideBar()
         handler.removeCallbacks(positionTick)
         view.player = null
         player?.removeListener(listener)
@@ -466,43 +447,35 @@ class NativePlayer(
     }
 
     /**
-     * Remote keys while full screen. Returns true when the key was used here; false lets it reach
-     * the bar's focused button (arrows move between buttons, OK presses one).
+     * Remote keys while full screen, as Just Player (moneytoo/Player) handles them on Android TV:
+     * with the controls hidden, OK plays or pauses, left and right skip 10 seconds and other keys
+     * bring the controls up; with them up, keys go to Media3's controls (false here), which move
+     * focus between the buttons and press them.
      */
     fun handleFullKey(event: KeyEvent): Boolean {
         // The menu is a dialog with its own window and takes the remote while it is open.
         if (mode != Mode.FULL || player == null || menu != null) return false
         val down = event.action == KeyEvent.ACTION_DOWN
         when (event.keyCode) {
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { if (down && event.repeatCount == 0) { togglePause(); showBar(false) }; return true }
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { if (down && event.repeatCount == 0) togglePause(); return true }
             KeyEvent.KEYCODE_MEDIA_PLAY -> { if (down) resume(); return true }
-            KeyEvent.KEYCODE_MEDIA_PAUSE -> { if (down) { pause(); showBar(false) }; return true }
-            KeyEvent.KEYCODE_MEDIA_REWIND -> { if (down) { seekBy(-SEEK_STEP_MS); showBar(false) }; return true }
-            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { if (down) { seekBy(SEEK_STEP_MS); showBar(false) }; return true }
+            KeyEvent.KEYCODE_MEDIA_PAUSE -> { if (down) pause(); return true }
+            KeyEvent.KEYCODE_MEDIA_REWIND -> { if (down) seekBy(-SEEK_STEP_MS); return true }
+            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { if (down) seekBy(SEEK_STEP_MS); return true }
             // The remote's menu (≡) button: audio and subtitle tracks.
             KeyEvent.KEYCODE_MENU -> { if (down && event.repeatCount == 0) openMenu(); return true }
         }
-        val navigation = when (event.keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT,
-            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
-            KeyEvent.KEYCODE_NUMPAD_ENTER -> true
-            else -> false
-        }
-        if (!navigation) return false
-        if (!bar.isShowing) {
-            // The first key brings the bar up on play/pause; left and right also skip 10 seconds.
-            if (down) {
-                when (event.keyCode) {
-                    KeyEvent.KEYCODE_DPAD_LEFT -> seekBy(-SEEK_STEP_MS)
-                    KeyEvent.KEYCODE_DPAD_RIGHT -> seekBy(SEEK_STEP_MS)
-                }
-                showBar(true)
+        if (view.isControllerFullyVisible) return false
+        if (down) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER ->
+                    if (event.repeatCount == 0) { togglePause(); view.showController() }
+                KeyEvent.KEYCODE_DPAD_LEFT -> seekBy(-SEEK_STEP_MS)
+                KeyEvent.KEYCODE_DPAD_RIGHT -> seekBy(SEEK_STEP_MS)
+                else -> view.showController()
             }
-            return true
         }
-        // The bar is up: keep it up, and let the key reach its buttons.
-        if (down) showBar(true)
-        return false
+        return true
     }
 
     /** A short message over the video; shown only in FULL, where the page's own notices are hidden. */
@@ -553,7 +526,7 @@ class NativePlayer(
             .create()
         dialog.setOnDismissListener {
             if (menu === dialog) menu = null
-            if (mode == Mode.FULL && player != null) showBar(true)
+            if (mode == Mode.FULL && player != null) view.showController()
         }
         menu = dialog
         dialog.show()
@@ -614,6 +587,17 @@ class NativePlayer(
         return rows
     }
 
+    /** Out of full screen: the controls go, and the page takes the remote again. */
+    private fun leaveFull() {
+        if (!fullShown) return
+        fullShown = false
+        view.hideController()
+        view.useController = false
+        web.isFocusable = true
+        (web as? ViewGroup)?.descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
+        web.requestFocus()
+    }
+
     private fun applyMode() {
         val rect = heroRect
         val visible = player != null && when (mode) {
@@ -623,10 +607,7 @@ class NativePlayer(
         }
         if (mode != Mode.FULL || !visible) closeMenu()
         if (mode == Mode.FULL) matchDisplayMode() else restoreDisplayMode()
-        if (mode != Mode.FULL || !visible) {
-            hideBar()
-            bar.hideAll()
-        }
+        if (mode != Mode.FULL || !visible) leaveFull()
         if (!visible) {
             view.hideController()
             view.useController = false
@@ -636,17 +617,24 @@ class NativePlayer(
             return
         }
         if (mode == Mode.FULL) {
+            // The page sends "full" on every layout pass: set full screen up once, or the
+            // controls would be hidden and focus moved again each time.
+            if (fullShown) return
+            fullShown = true
             // Full screen: the video above the page, as the Shield needs for HDR and Dolby
-            // Vision, with the app's player bar drawn natively above it.
+            // Vision, with Media3's controls (and this app's buttons) over it.
             setUnderPage(false)
             view.resizeMode = aspect
             view.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            view.hideController()
-            view.useController = false
+            // The page underneath must not take the remote while the controls have it.
+            web.isFocusable = false
+            (web as? ViewGroup)?.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+            view.useController = true
+            view.controllerShowTimeoutMs = 5000
             view.isFocusable = true
             view.visibility = View.VISIBLE
-            if (!bar.hasFocus()) view.requestFocus()
-            showBar(true)
+            view.requestFocus()
+            view.showController()
         } else if (rect != null) {
             setUnderPage(false)
             // The small TV fills its box (edges trimmed) instead of letterboxing inside it.
@@ -780,7 +768,6 @@ class NativePlayer(
 
     companion object {
         private const val SEEK_STEP_MS = 10_000L
-        private const val BAR_SHOWN_MS = 5_000L
 
         // As src/lib/player/english-dub.ts: commentary and audio description tracks are English
         // too, but never the dub the viewer wants.
