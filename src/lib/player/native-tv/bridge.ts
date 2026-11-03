@@ -26,6 +26,7 @@ type NativeEvent = {
     | "stopped"
     | "position"
     | "exit-full"
+    | "panel"
     | "tracks"
     // Handled by useEnglishDub, which listens for it itself.
     | "english-dub";
@@ -59,6 +60,11 @@ export function nativeAudioTrackInfo(tracks: unknown): TrackInfo[] {
 /** Height of the web control bar kept under the native video in the hero. */
 export const NATIVE_HERO_BAR_PX = 56;
 
+/** The TV app's Change stream button: the player opens its channel list or stream switcher. */
+export const TV_PANEL_EVENT = "harbor:tv-panel";
+/** Set on <html> while that list is open: the video steps aside until it closes. */
+const tvPanelOpen = () => document.documentElement.dataset.tvPanel === "1";
+
 /** `options` goes to the app before every play; app builds without `setOptions` ignore it. */
 export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBridge {
   const listeners = new Set<(s: PlayerSnapshot) => void>();
@@ -68,6 +74,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
   let destroyed = false;
   let ro: ResizeObserver | null = null;
   let mo: MutationObserver | null = null;
+  let panelObserver: MutationObserver | null = null;
   let frame = 0;
 
   const set = (patch: Partial<PlayerSnapshot>) => {
@@ -83,6 +90,11 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
     frame = 0;
     const p = native();
     if (!p || !host || destroyed) return;
+    if (tvPanelOpen()) {
+      // Sound carries on; the picture comes back when the list closes.
+      p.setMode("hidden");
+      return;
+    }
     if (docked()) {
       const r = host.getBoundingClientRect();
       p.setRect(r.left, r.top, r.width, Math.max(0, r.height - NATIVE_HERO_BAR_PX));
@@ -132,6 +144,9 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
           errorMessage: d.message ?? "Playback failed",
         });
         break;
+      case "panel":
+        window.dispatchEvent(new Event(TV_PANEL_EVENT));
+        break;
       case "exit-full":
         // The remote's Back left full screen: let the player decide (back to the hero, or close).
         window.dispatchEvent(new CustomEvent("harbor:local-back", { cancelable: true }));
@@ -151,8 +166,10 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
     window.removeEventListener("harbor:mpv-refresh-geom", schedulePlace);
     ro?.disconnect();
     mo?.disconnect();
+    panelObserver?.disconnect();
     ro = null;
     mo = null;
+    panelObserver = null;
     host = null;
   };
 
@@ -164,6 +181,11 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       window.addEventListener("harbor:mpv-refresh-geom", schedulePlace);
       ro = new ResizeObserver(schedulePlace);
       ro.observe(el);
+      panelObserver = new MutationObserver(schedulePlace);
+      panelObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-tv-panel"],
+      });
       const stage = el.closest("[data-harbor-player]");
       if (stage) {
         mo = new MutationObserver(schedulePlace);

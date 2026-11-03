@@ -17,7 +17,7 @@ import { useTogether } from "@/lib/together/provider";
 import { buildPlayInvite } from "@/lib/together/build-invite";
 import { useView, type PlayerSrc, type PlayEpisode } from "@/lib/view";
 import { heroDockSupported, setHeroDockSupported, wasExpandedFromDock } from "@/lib/hero-dock";
-import { nativeTvAvailable } from "@/lib/player/native-tv/bridge";
+import { nativeTvAvailable, TV_PANEL_EVENT } from "@/lib/player/native-tv/bridge";
 import { NativeHeroBar } from "./player/native-hero-bar";
 import { PinnedVideoPill } from "./player/pinned-video-pill";
 import { useQueue, useSleepAtEnd, queueIndexOf, setQueuePlaying } from "@/lib/queue";
@@ -575,6 +575,13 @@ function NativePlayerView({
     src,
     replacePlayerSrc,
   });
+  // Read by the remote's Back handler below without re-subscribing it on every change.
+  const liveOverlayOpenRef = useRef(liveOverlay.open);
+  liveOverlayOpenRef.current = liveOverlay.open;
+  const liveOverlaySetOpenRef = useRef(liveOverlay.setOpen);
+  liveOverlaySetOpenRef.current = liveOverlay.setOpen;
+  const switcherOpenRef = useRef(switcherOpen);
+  switcherOpenRef.current = switcherOpen;
   const isLiveLike = liveOverlay.isLive || isLivePlaybackSrc(src);
   const { hasNextEpisodeNow, hasPrevEpisodeNow, playNext, playPrev, playNextRef, playPrevRef } =
     useQueueNav({
@@ -660,11 +667,20 @@ function NativePlayerView({
       // In the hero, Back belongs to the page being browsed.
       if (heroDockedRef.current) return;
       e.preventDefault();
+      // The TV remote's Back closes the channel list or stream switcher before the player.
+      if (liveOverlayOpenRef.current) {
+        liveOverlaySetOpenRef.current(false);
+        return;
+      }
+      if (switcherOpenRef.current) {
+        setSwitcherOpen(false);
+        return;
+      }
       void backFromPlayer();
     };
     window.addEventListener("harbor:local-back", onLocalBack);
     return () => window.removeEventListener("harbor:local-back", onLocalBack);
-  }, [backFromPlayer]);
+  }, [backFromPlayer, setSwitcherOpen]);
 
   const playerDocked = src.pipDocked || heroDocked;
   useKeyboardNavigation({
@@ -673,7 +689,8 @@ function NativePlayerView({
     // A docked or pinned player leaves the arrows to the page around it.
     enabled: settings.tvNavigation && settings.playerTvNavigation && !screenLocked && !playerDocked,
     wrap: true,
-    arrows: chromeVisible && !pipMode,
+    // The channel list and stream switcher take the arrows too (the remote's only way around them).
+    arrows: (chromeVisible || liveOverlay.open || switcherOpen) && !pipMode,
     onBack: () => {
       void backFromPlayer();
       return true;
@@ -762,6 +779,24 @@ function NativePlayerView({
       pickAnother();
     }
   }, [liveOverlay, pickAnother]);
+
+  // TV app: the full-screen Change stream button (android-tv NativePlayer) opens the channel list
+  // (live) or the stream switcher; while one is open the video steps aside so it can be seen and
+  // driven with the remote, and comes back full screen once it closes (native-tv/bridge.ts).
+  const tvPanelOpen = switcherOpen || liveOverlay.open;
+  useEffect(() => {
+    if (!nativeTvAvailable()) return;
+    window.addEventListener(TV_PANEL_EVENT, pickAnotherOrGuide);
+    return () => window.removeEventListener(TV_PANEL_EVENT, pickAnotherOrGuide);
+  }, [pickAnotherOrGuide]);
+  useEffect(() => {
+    if (!nativeTvAvailable() || !tvPanelOpen) return;
+    const root = document.documentElement;
+    root.dataset.tvPanel = "1";
+    return () => {
+      delete root.dataset.tvPanel;
+    };
+  }, [tvPanelOpen]);
 
   const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
   const { watchedFor } = usePlayerWatched({
@@ -1344,26 +1379,12 @@ function NativePlayerView({
     },
   });
 
-  const { mpvEmbedWindowsActive, stageBg: embedStageBg } = embedFlags(
+  const { mpvEmbedWindowsActive, stageBg } = embedFlags(
     engine,
     embedActive,
     snap.videoWidth,
     snap.videoHeight,
   );
-  // On the TV app the video is drawn under the page (android-tv NativePlayer, full screen): the
-  // stage stays see-through so the app's own player controls show over it.
-  const tvVideoUnder = nativeTvAvailable() && !src.pipDocked;
-  const stageBg = tvVideoUnder ? "" : embedStageBg;
-  useEffect(() => {
-    if (!tvVideoUnder) return;
-    const root = document.documentElement;
-    root.dataset.mpvEmbed = "1";
-    root.dataset.tvVideoUnder = "1";
-    return () => {
-      delete root.dataset.mpvEmbed;
-      delete root.dataset.tvVideoUnder;
-    };
-  }, [tvVideoUnder]);
   const { loaderActive } = useEverPlayed({
     url: src.url,
     status: snap.status,
