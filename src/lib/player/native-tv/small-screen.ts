@@ -22,6 +22,8 @@ let owner: symbol | null = null;
 // The full player is taking the TV app's player over: the box lets go without stopping it.
 let handoff = false;
 let handoffTimer: ReturnType<typeof setTimeout> | undefined;
+/** How often the box re-sends its place even when nothing moved. */
+const NATIVE_REFRESH_MS = 5000;
 
 function startHandoff(): void {
   handoff = true;
@@ -60,6 +62,12 @@ export function useNativeSmallTv(
     p.play(channel.url, JSON.stringify(headersFromChannel(channel) ?? {}), channel.name, 0);
 
     let frame = 0;
+    // What the TV app was last told. Every call makes it lay the screen out again, which held up
+    // the remote while scrolling (this ran twice a second and on every scroll step), so only
+    // changes are sent, plus a refresh every few seconds in case the app moved the video itself.
+    let sentRect = "";
+    let sentMode = "";
+    let sentAt = 0;
     const place = () => {
       frame = 0;
       const el = box.current;
@@ -68,9 +76,26 @@ export function useNativeSmallTv(
       const h = r.height - NATIVE_HERO_BAR_PX - 16;
       // Shown while any of the box is on screen: Your TV's box can run past the bottom edge.
       const onScreen = r.bottom > 0 && r.top < window.innerHeight && r.width > 0 && h > 0;
-      if (onScreen) p.setRect(r.left, r.top, r.width, h);
+      const now = Date.now();
+      const stale = now - sentAt > NATIVE_REFRESH_MS;
+      const rect = `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(h)}`;
+      if (onScreen && (rect !== sentRect || stale)) {
+        p.setRect(r.left, r.top, r.width, h);
+        sentRect = rect;
+        sentAt = now;
+      }
       if (handoff) return;
-      p.setMode(onScreen ? "hero" : "hidden");
+      const mode = onScreen ? "hero" : "hidden";
+      if (mode !== sentMode || stale) {
+        p.setMode(mode);
+        sentMode = mode;
+        sentAt = now;
+      }
+    };
+    // The TV app moved the video itself (full screen and back): tell it again next time.
+    const forget = () => {
+      sentRect = "";
+      sentMode = "";
     };
     const schedule = () => {
       if (!frame) frame = window.requestAnimationFrame(place);
@@ -80,7 +105,10 @@ export function useNativeSmallTv(
       if (owner !== me) return;
       if (d?.type === "playing") setPlaying(true);
       // Back in full screen: the TV app already returns to the box; place it again.
-      if (d?.type === "exit-full") schedule();
+      if (d?.type === "exit-full" || d?.type === "ready" || d?.type === "stopped") {
+        forget();
+        schedule();
+      }
     };
     place();
     const tick = window.setInterval(schedule, 500);
