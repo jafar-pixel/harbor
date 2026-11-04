@@ -26,7 +26,6 @@ type NativeEvent = {
     | "stopped"
     | "position"
     | "exit-full"
-    | "panel"
     | "tracks"
     // Handled by useEnglishDub, which listens for it itself.
     | "english-dub";
@@ -60,11 +59,6 @@ export function nativeAudioTrackInfo(tracks: unknown): TrackInfo[] {
 /** Height of the web control bar kept under the native video in the hero. */
 export const NATIVE_HERO_BAR_PX = 56;
 
-/** The TV app's Change stream button: the player opens its channel list or stream switcher. */
-export const TV_PANEL_EVENT = "harbor:tv-panel";
-/** Set on <html> while that list is open: the video steps aside until it closes. */
-const tvPanelOpen = () => document.documentElement.dataset.tvPanel === "1";
-
 /** `options` goes to the app before every play; app builds without `setOptions` ignore it. */
 export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBridge {
   const listeners = new Set<(s: PlayerSnapshot) => void>();
@@ -74,7 +68,6 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
   let destroyed = false;
   let ro: ResizeObserver | null = null;
   let mo: MutationObserver | null = null;
-  let panelObserver: MutationObserver | null = null;
   let frame = 0;
 
   const set = (patch: Partial<PlayerSnapshot>) => {
@@ -90,11 +83,6 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
     frame = 0;
     const p = native();
     if (!p || !host || destroyed) return;
-    if (tvPanelOpen()) {
-      // Sound carries on; the picture comes back when the list closes.
-      p.setMode("hidden");
-      return;
-    }
     if (docked()) {
       const r = host.getBoundingClientRect();
       p.setRect(r.left, r.top, r.width, Math.max(0, r.height - NATIVE_HERO_BAR_PX));
@@ -115,14 +103,13 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
     if (!d || destroyed) return;
     const timing: Partial<PlayerSnapshot> = {};
     if (typeof d.positionMs === "number") timing.positionSec = d.positionMs / 1000;
-    if (typeof d.durationMs === "number" && !source?.isLive)
-      timing.durationSec = d.durationMs / 1000;
+    if (typeof d.durationMs === "number" && !source?.isLive) timing.durationSec = d.durationMs / 1000;
     switch (d.type) {
       case "ready":
         set({ ...timing, status: "ready", buffering: false, errorCode: null, errorMessage: null });
         break;
       case "playing":
-        set({ ...timing, status: "playing", buffering: false, firstFrameReady: true });
+        set({ ...timing, status: "playing", buffering: false });
         break;
       case "paused":
         set({ ...timing, status: "paused" });
@@ -137,15 +124,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
         set({ ...timing, status: "ended", buffering: false });
         break;
       case "error":
-        set({
-          status: "error",
-          buffering: false,
-          errorCode: "source",
-          errorMessage: d.message ?? "Playback failed",
-        });
-        break;
-      case "panel":
-        window.dispatchEvent(new Event(TV_PANEL_EVENT));
+        set({ status: "error", buffering: false, errorCode: "source", errorMessage: d.message ?? "Playback failed" });
         break;
       case "exit-full":
         // The remote's Back left full screen: let the player decide (back to the hero, or close).
@@ -166,10 +145,8 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
     window.removeEventListener("harbor:mpv-refresh-geom", schedulePlace);
     ro?.disconnect();
     mo?.disconnect();
-    panelObserver?.disconnect();
     ro = null;
     mo = null;
-    panelObserver = null;
     host = null;
   };
 
@@ -181,18 +158,10 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       window.addEventListener("harbor:mpv-refresh-geom", schedulePlace);
       ro = new ResizeObserver(schedulePlace);
       ro.observe(el);
-      panelObserver = new MutationObserver(schedulePlace);
-      panelObserver.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["data-tv-panel"],
-      });
       const stage = el.closest("[data-harbor-player]");
       if (stage) {
         mo = new MutationObserver(schedulePlace);
-        mo.observe(stage, {
-          attributes: true,
-          attributeFilter: ["data-hero-docked", "style", "class"],
-        });
+        mo.observe(stage, { attributes: true, attributeFilter: ["data-hero-docked", "style", "class"] });
       }
       schedulePlace();
     },
@@ -201,11 +170,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       source = src;
       const p = native();
       if (!p) {
-        set({
-          status: "error",
-          errorCode: "unknown",
-          errorMessage: "The TV player isn't available.",
-        });
+        set({ status: "error", errorCode: "unknown", errorMessage: "The TV player isn't available." });
         return;
       }
       set({ ...emptySnapshot, status: "loading", buffering: true });
@@ -219,13 +184,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       }
       const startMs = Math.max(0, Math.round((src.startAtSec ?? 0) * 1000));
       const ok = p.play(src.url, JSON.stringify(src.headers ?? {}), "", startMs);
-      if (!ok)
-        set({
-          status: "error",
-          buffering: false,
-          errorCode: "source",
-          errorMessage: "This stream can't be played.",
-        });
+      if (!ok) set({ status: "error", buffering: false, errorCode: "source", errorMessage: "This stream can't be played." });
     },
     async play() {
       native()?.resume();
@@ -237,14 +196,11 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       native()?.seek(Math.max(0, Math.round(sec * 1000)));
       set({ positionSec: sec });
     },
-    // The page's volume and mute drive the TV app's player (absent from older app builds).
     setVolume(v) {
       set({ volume: v });
-      native()?.setVolume?.(snap.muted ? 0 : v);
     },
     setMuted(m) {
       set({ muted: m });
-      native()?.setVolume?.(m ? 0 : snap.volume);
     },
     setRate() {},
     // The app chooses audio by language, so of two tracks in one language it plays its own pick.

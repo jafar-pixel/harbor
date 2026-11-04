@@ -72,7 +72,7 @@ export function ChannelsView({
       <div
         ref={listRef}
         aria-label={t("Channels")}
-        className="order-2 flex max-h-[calc(100dvh-220px-var(--env-fab-room,0px))] min-h-0 flex-col gap-5 overflow-y-auto pe-1 lg:order-none"
+        className="order-2 flex max-h-[calc(100dvh-220px)] min-h-0 flex-col gap-5 overflow-y-auto pe-1 lg:order-none"
         onScroll={(e) => {
           const el = e.currentTarget;
           if (el.scrollTop + el.clientHeight > el.scrollHeight - 400 && limit < channels.length)
@@ -135,7 +135,8 @@ export function ChannelsView({
                   if (e.key === "Enter" && on) {
                     e.preventDefault();
                     // On the Shield the preview is the TV app's player: go full screen with it.
-                    if (!(nativeTvAvailable() && requestSmallTvFull())) onPlay(ch);
+                    if (nativeTvAvailable()) requestSmallTvFull();
+                    else onPlay(ch);
                   }
                 }}
                 className={`flex flex-col overflow-hidden rounded-xl border text-start transition-colors ${
@@ -269,13 +270,11 @@ function Preview({
     armed === channel.id && active && pageVisible && !player && !FAILED.has(channel.id);
   // On the Shield the TV app's own player plays the preview, and Full screen is the same stream.
   const box = useRef<HTMLDivElement>(null);
-  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo, sound);
+  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo);
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
   }, [nativeTv.playing]);
-  const watch = () => {
-    if (!nativeTv.fullScreen()) onPlay();
-  };
+  const watch = () => (nativeTv.native ? nativeTv.fullScreen() : onPlay());
   const art = current?.iconUrl ?? null;
   const left = current ? fmtLeft(current.endMs, nowMs, t) : null;
 

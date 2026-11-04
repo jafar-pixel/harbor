@@ -7,48 +7,26 @@ import { nativeTvAvailable, nativeTvPlayer } from "./shell";
 /**
  * The small TV screens (Live TV's Your TV, the Sports TV, the Channels preview) on the Shield.
  * The TV app's own player (ExoPlayer: 4K, HDR, Dolby) plays the channel inside the box, so one
- * press of OK puts it on and it plays. Full screen opens the app's full player, which takes the
- * TV app's player over: the box hands it off instead of stopping it, so the full player's
- * stream isn't cut by the box closing. (Enlarging the box's own stream in place never opened
- * on the Shield.)
+ * press of OK puts it on and it plays. Full screen is the same stream made big, and Back in full
+ * screen brings it back to the box: no second connection to the provider.
  *
- * The box leaves its bottom strip uncovered so the page's own controls (volume, Watch) stay
- * visible and reachable; the video fills the rest of the box. The page's volume drives the
- * player's.
+ * The box leaves its bottom strip uncovered so the page's own controls stay reachable.
  */
 
+const FULL_EVENT = "jl-small-tv-full";
 // Only one small screen drives the native player at a time; the last one mounted owns it.
 let owner: symbol | null = null;
-// The full player is taking the TV app's player over: the box lets go without stopping it.
-let handoff = false;
-let handoffTimer: ReturnType<typeof setTimeout> | undefined;
-/** How often the box re-sends its place even when nothing moved. */
-const NATIVE_REFRESH_MS = 5000;
 
-function startHandoff(): void {
-  handoff = true;
-  // If the full player never opens, the box takes its video back.
-  clearTimeout(handoffTimer);
-  handoffTimer = setTimeout(() => {
-    handoff = false;
-  }, 5000);
-}
-
-/**
- * Hand the small TV over to the full player the caller opens next. Always false: the caller
- * opens the full player (kept for the call sites that ask the box first).
- */
-export function requestSmallTvFull(): boolean {
-  if (owner) startHandoff();
-  return false;
+/** Make the small TV's channel full screen (OK on the channel already on it). */
+export function requestSmallTvFull(): void {
+  window.dispatchEvent(new Event(FULL_EVENT));
 }
 
 export function useNativeSmallTv(
   box: RefObject<HTMLElement | null>,
   channel: IptvChannel | null,
   active: boolean,
-  sound: { volume: number; muted: boolean },
-): { native: boolean; playing: boolean; fullScreen: () => boolean } {
+): { native: boolean; playing: boolean; fullScreen: () => void } {
   const native = nativeTvAvailable();
   const [playing, setPlaying] = useState(false);
   const token = useRef(Symbol("small-tv"));
@@ -62,40 +40,19 @@ export function useNativeSmallTv(
     p.play(channel.url, JSON.stringify(headersFromChannel(channel) ?? {}), channel.name, 0);
 
     let frame = 0;
-    // What the TV app was last told. Every call makes it lay the screen out again, which held up
-    // the remote while scrolling (this ran twice a second and on every scroll step), so only
-    // changes are sent, plus a refresh every few seconds in case the app moved the video itself.
-    let sentRect = "";
-    let sentMode = "";
-    let sentAt = 0;
     const place = () => {
       frame = 0;
       const el = box.current;
       if (!el || owner !== me) return;
       const r = el.getBoundingClientRect();
       const h = r.height - NATIVE_HERO_BAR_PX - 16;
-      // Shown while any of the box is on screen: Your TV's box can run past the bottom edge.
-      const onScreen = r.bottom > 0 && r.top < window.innerHeight && r.width > 0 && h > 0;
-      const now = Date.now();
-      const stale = now - sentAt > NATIVE_REFRESH_MS;
-      const rect = `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(h)}`;
-      if (onScreen && (rect !== sentRect || stale)) {
-        p.setRect(r.left, r.top, r.width, h);
-        sentRect = rect;
-        sentAt = now;
+      const onScreen = r.top >= 0 && r.bottom <= window.innerHeight && r.width > 0 && h > 0;
+      if (!onScreen) {
+        p.setMode("hidden");
+        return;
       }
-      if (handoff) return;
-      const mode = onScreen ? "hero" : "hidden";
-      if (mode !== sentMode || stale) {
-        p.setMode(mode);
-        sentMode = mode;
-        sentAt = now;
-      }
-    };
-    // The TV app moved the video itself (full screen and back): tell it again next time.
-    const forget = () => {
-      sentRect = "";
-      sentMode = "";
+      p.setRect(r.left, r.top, r.width, h);
+      p.setMode("hero");
     };
     const schedule = () => {
       if (!frame) frame = window.requestAnimationFrame(place);
@@ -105,44 +62,36 @@ export function useNativeSmallTv(
       if (owner !== me) return;
       if (d?.type === "playing") setPlaying(true);
       // Back in full screen: the TV app already returns to the box; place it again.
-      if (d?.type === "exit-full" || d?.type === "ready" || d?.type === "stopped") {
-        forget();
-        schedule();
-      }
+      if (d?.type === "exit-full") schedule();
+    };
+    const onFull = () => {
+      if (owner === me) p.setMode("full");
     };
     place();
     const tick = window.setInterval(schedule, 500);
     window.addEventListener("scroll", schedule, true);
     window.addEventListener("resize", schedule);
     window.addEventListener("jl-native-player", onNative);
+    window.addEventListener(FULL_EVENT, onFull);
     return () => {
       window.cancelAnimationFrame(frame);
       window.clearInterval(tick);
       window.removeEventListener("scroll", schedule, true);
       window.removeEventListener("resize", schedule);
       window.removeEventListener("jl-native-player", onNative);
+      window.removeEventListener(FULL_EVENT, onFull);
       if (owner === me) {
         owner = null;
-        // Handing off: the full player's own play replaces this stream; stopping here could
-        // cut the full player's stream instead.
-        if (handoff) handoff = false;
-        else p.stop();
+        p.stop();
       }
     };
   }, [native, active, channel?.id, channel?.url]);
 
-  const level = sound.muted ? 0 : sound.volume;
-  useEffect(() => {
-    if (native && active) nativeTvPlayer()?.setVolume?.(level);
-  }, [native, active, level, channel?.id]);
-
   return {
     native,
     playing,
-    /** Hands this box over to the full player the caller opens next; always false. */
     fullScreen: () => {
-      if (owner === token.current) startHandoff();
-      return false;
+      if (owner === token.current) nativeTvPlayer()?.setMode("full");
     },
   };
 }
