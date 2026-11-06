@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Check, ListPlus, MoreHorizontal, Play, Search, Shuffle, X } from "lucide-react";
+import { ListPlus, MoreHorizontal, Play, Search, Settings2, Shuffle, X } from "lucide-react";
 import jlLogo from "@/assets/brand/jl-logo.webp";
 import { useT } from "@/lib/i18n";
-import { setMainService, useMusicLinks, type MainService } from "@/lib/music/account-link";
+import { useMusicLinks, type MainService } from "@/lib/music/account-link";
 import {
   categorySongs,
   formatDuration,
@@ -18,9 +18,10 @@ import {
   type HubSong,
 } from "@/lib/music/hub/library";
 import { addToQueue, playNext, playTracks, usePlayer } from "@/lib/music/player/store";
-import { connectSpotifyWeb, useSpotifyWeb } from "@/lib/music/spotify-web/auth";
-import { connectYouTubeWeb, useYouTubeWeb } from "@/lib/music/youtube-web/auth";
+import { useSpotifyWeb } from "@/lib/music/spotify-web/auth";
+import { useYouTubeWeb } from "@/lib/music/youtube-web/auth";
 import { FoundWhileWatching } from "./found-while-watching";
+import { MusicHubSettings } from "./hub-settings";
 import "./music-hub.css";
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -35,9 +36,8 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
   const youtube = useYouTubeWeb();
   const spotify = useSpotifyWeb();
   const links = useMusicLinks();
-  // Until the listener picks, YouTube leads the lists, but nothing is marked as chosen.
-  const chosen: MainService | null = links.main;
-  const main: MainService = chosen ?? "youtube";
+  // Until the listener picks, YouTube (the recommended service) leads the lists.
+  const main: MainService = links.main ?? "youtube";
   const connected = useMemo(
     () => ({ youtube: youtube.connected, spotify: spotify.connected }),
     [youtube.connected, spotify.connected],
@@ -45,6 +45,7 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
   const [library, setLibrary] = useState<HubLibrary | null>(null);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [results, setResults] = useState<{ title: string; songs: HubSong[] } | null>(null);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,45 +138,21 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
             </button>
           )}
         </form>
+        <button
+          type="button"
+          className="hub-settings-open"
+          onClick={() => setSettingsOpen(true)}
+          aria-label={t("Music settings")}
+        >
+          <Settings2 size={18} /> {t("Music settings")}
+        </button>
       </header>
+      {settingsOpen && <MusicHubSettings onClose={() => setSettingsOpen(false)} />}
 
       <section className="hub-hero" aria-label={t("Music Hub")}>
         <div className="hub-hero-text">
           <p className="hub-eyebrow">{t("By JL Media Vision")}</p>
           <h3>{t("Sound powers your story")}</h3>
-          {!chosen && <p className="hub-choose">{t("Choose your main service:")}</p>}
-          <div className="hub-services" role="group" aria-label={t("Your main service")}>
-            {(["youtube", "spotify"] as const).map((s) => (
-              <div key={s} className="hub-service" data-main={chosen === s}>
-                <button
-                  type="button"
-                  className="hub-service-pick"
-                  aria-pressed={chosen === s}
-                  onClick={() => void setMainService(s)}
-                >
-                  <span className="hub-service-name">{SERVICE_LABEL[s]}</span>
-                  <span className="hub-service-role">
-                    {chosen === s ? t("Main service") : t("Make main")}
-                  </span>
-                </button>
-                {connected[s] ? (
-                  <span className="hub-service-on">
-                    <Check size={14} /> {t("Connected")}
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    className="hub-pill"
-                    onClick={() =>
-                      void (s === "youtube" ? connectYouTubeWeb(true) : connectSpotifyWeb())
-                    }
-                  >
-                    {t("Connect")}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
           <div className="hub-hero-actions">
             <button
               type="button"
@@ -255,6 +232,13 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
               "Connect YouTube Music or Spotify and the Hub fills with your playlists and the songs you love. It stays connected on every device you sign in to.",
             )}
           </p>
+          <button
+            type="button"
+            className="hub-pill hub-pill-strong"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings2 size={14} /> {t("Open Music settings")}
+          </button>
         </section>
       ) : (
         <section className="hub-section" aria-label={t("Featured playlists")}>

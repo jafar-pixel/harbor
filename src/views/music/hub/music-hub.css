@@ -631,3 +631,135 @@
   color: var(--color-ink);
   background: rgb(255 255 255 / 0.08);
 }
+
+/* Music settings: connecting services and the main service live here, not on the front card. */
+.hub-settings-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.hub-settings-open:hover,
+.hub-settings-open:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+}
+.hub-pill-strong {
+  background: var(--hub-orange, #ff7a1a);
+  border-color: transparent;
+  color: #160800;
+}
+.hub-connect .hub-pill-strong {
+  margin-top: 14px;
+}
+.hub-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  background: #12141b;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  color: #f4f5f8;
+  text-shadow: none;
+}
+.hub-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.hub-settings-head h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+.hub-settings-sub,
+.hub-settings-note {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--color-ink-muted);
+}
+.hub-settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hub-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.hub-settings-row[data-main="true"] {
+  border-color: var(--hub-orange, #ff7a1a);
+}
+.hub-settings-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.hub-settings-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.hub-settings-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 122, 26, 0.18);
+  color: #ffb27a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hub-settings-error {
+  font-size: 13px;
+  color: #ff9b9b;
+}
+.hub-settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.hub-settings-main {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+}
+.hub-settings-main legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+.hub-settings-choice {
+  display: flex;
+  gap: 18px;
+  margin-top: 10px;
+}
+.hub-settings-choice label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
