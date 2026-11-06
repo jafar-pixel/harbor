@@ -367,11 +367,22 @@
   min-width: 0;
 }
 .hub-playlist-name {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   font-weight: 700;
   font-size: 15px;
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+}
+.hub-playlist-name:hover,
+.hub-playlist-name:focus-visible {
+  text-decoration: underline;
 }
 
 .hub-tabs {

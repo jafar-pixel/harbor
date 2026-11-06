@@ -122,7 +122,7 @@ export async function loadHubLibrary(
     ),
     take("youtube", async () => (await youtubeLikedSongs()).map(fromYouTube)),
     take("spotify", async () =>
-      (await spotifyPlaylists(50)).map((p): HubPlaylist => ({
+      (await spotifyPlaylists(200)).map((p): HubPlaylist => ({
         id: p.id,
         service: "spotify",
         name: p.name,
@@ -130,7 +130,7 @@ export async function loadHubLibrary(
         count: p.count,
       })),
     ),
-    take("spotify", async () => (await spotifyLikedTracks(50)).map(fromSpotify)),
+    take("spotify", async () => (await spotifyLikedTracks(200)).map(fromSpotify)),
   ]);
   const [lists1, lists2] = main === "spotify" ? [spLists, ytLists] : [ytLists, spLists];
   const [liked1, liked2] = main === "spotify" ? [spLiked, ytLiked] : [ytLiked, spLiked];
@@ -144,13 +144,13 @@ export async function loadHubLibrary(
 /** Every song in a playlist. */
 export async function hubPlaylistSongs(p: HubPlaylist): Promise<HubSong[]> {
   return p.service === "spotify"
-    ? (await spotifyPlaylistTracks(p.id, 100)).map(fromSpotify)
+    ? (await spotifyPlaylistTracks(p.id)).map(fromSpotify)
     : (await youtubePlaylistSongs(p.id)).map(fromYouTube);
 }
 
-/** YouTube videos (cached for every listener on the JL server) as Hub songs. */
+/** YouTube videos (cached for every listener on the JL server) as Hub songs, a full page of 50. */
 async function youtubeSearch(q: string): Promise<HubSong[]> {
-  const results = await searchVideos(q, "music");
+  const results = await searchVideos(q, "music", 50);
   return results.map((v) => {
     const { artist, title } = songFromVideo(v.title, v.channel);
     return {

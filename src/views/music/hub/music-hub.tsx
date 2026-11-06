@@ -50,6 +50,8 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<string>("new");
+  const [allLists, setAllLists] = useState(false);
+  const [allRecent, setAllRecent] = useState(false);
   const searchRun = useRef(0);
 
   useEffect(() => {
@@ -91,6 +93,8 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
   };
 
   const openCategory = (c: HubCategory) => void runSearch(c.label, () => categorySongs(c));
+  const openPlaylist = (p: HubPlaylist) =>
+    void runSearch(`${SERVICE_LABEL[p.service]} · ${p.name}`, () => hubPlaylistSongs(p));
 
   const playPlaylist = (p: HubPlaylist, shuffle = false) =>
     void hubPlaylistSongs(p)
@@ -245,9 +249,16 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
           <div className="hub-section-head">
             <h3>{t("Featured playlists")}</h3>
             {loading && <span className="hub-muted">{t("Loading…")}</span>}
+            {(library?.playlists.length ?? 0) > 18 && (
+              <button type="button" className="hub-pill" onClick={() => setAllLists((v) => !v)}>
+                {allLists
+                  ? t("Show fewer")
+                  : `${t("Show all")} (${library?.playlists.length ?? 0})`}
+              </button>
+            )}
           </div>
           <div className="hub-playlists">
-            {(library?.playlists ?? []).slice(0, 18).map((p) => (
+            {(library?.playlists ?? []).slice(0, allLists ? undefined : 18).map((p) => (
               <article key={`${p.service}:${p.id}`} className="hub-playlist">
                 <button
                   type="button"
@@ -261,7 +272,14 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
                   </span>
                 </button>
                 <div className="hub-playlist-meta">
-                  <span className="hub-playlist-name">{p.name}</span>
+                  <button
+                    type="button"
+                    className="hub-playlist-name"
+                    title={t("Show songs")}
+                    onClick={() => openPlaylist(p)}
+                  >
+                    {p.name}
+                  </button>
                   <span className="hub-muted">
                     {SERVICE_LABEL[p.service]} · {p.count} {t("tracks")}
                   </span>
@@ -318,10 +336,18 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
               className="hub-pill"
               onClick={() => playTracks(recent.map(playerTrack), 0, t("Recently added"))}
             >
-              <Play size={14} /> {t("Play all")}
+              <Play size={14} /> {t("Play all")} ({recent.length})
             </button>
+            {recent.length > 30 && (
+              <button type="button" className="hub-pill" onClick={() => setAllRecent((v) => !v)}>
+                {allRecent ? t("Show fewer") : t("Show all")}
+              </button>
+            )}
           </div>
-          <SongTable songs={recent.slice(0, 30)} context={t("Recently added")} />
+          <SongTable
+            songs={allRecent ? recent : recent.slice(0, 30)}
+            context={t("Recently added")}
+          />
         </section>
       )}
     </div>

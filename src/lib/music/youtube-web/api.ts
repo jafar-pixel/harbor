@@ -48,9 +48,22 @@ function song(videoId: string, snippet: Json): YouTubeSong | null {
   return { videoId, title, artist, image: thumb(snippet) };
 }
 
+/** Items from every page of a list (50 a page, one quota unit each), up to `max`. */
+async function allItems(path: string, max: number): Promise<Json[]> {
+  const items: Json[] = [];
+  let pageToken = "";
+  while (items.length < max) {
+    const page = await get(`${path}&maxResults=50${pageToken ? `&pageToken=${pageToken}` : ""}`);
+    items.push(...arr(page.items));
+    pageToken = str(page.nextPageToken);
+    if (!pageToken) break;
+  }
+  return items.slice(0, max);
+}
+
 export async function youtubePlaylists(): Promise<YouTubePlaylist[]> {
-  const page = await get("/playlists?part=snippet,contentDetails&mine=true&maxResults=50");
-  return arr(page.items).map((p) => {
+  const items = await allItems("/playlists?part=snippet,contentDetails&mine=true", 200);
+  return items.map((p) => {
     const snippet = (p.snippet ?? {}) as Json;
     return {
       id: str(p.id),
@@ -63,19 +76,20 @@ export async function youtubePlaylists(): Promise<YouTubePlaylist[]> {
 
 /** Songs the listener liked, music first (YouTube Music likes count as YouTube likes). */
 export async function youtubeLikedSongs(): Promise<YouTubeSong[]> {
-  const page = await get("/videos?part=snippet&myRating=like&maxResults=50");
-  const items = arr(page.items);
+  const items = await allItems("/videos?part=snippet&myRating=like", 500);
   const music = items.filter((v) => str((v.snippet as Json | undefined)?.categoryId) === "10");
   return (music.length >= 6 ? music : items)
     .map((v) => song(str(v.id), (v.snippet ?? {}) as Json))
     .filter((s): s is YouTubeSong => !!s);
 }
 
+/** A playlist's songs, up to 500. */
 export async function youtubePlaylistSongs(id: string): Promise<YouTubeSong[]> {
-  const page = await get(
-    `/playlistItems?part=snippet&maxResults=50&playlistId=${encodeURIComponent(id)}`,
+  const items = await allItems(
+    `/playlistItems?part=snippet&playlistId=${encodeURIComponent(id)}`,
+    500,
   );
-  return arr(page.items)
+  return items
     .map((i) => {
       const snippet = (i.snippet ?? {}) as Json;
       return song(str((snippet.resourceId as Json | undefined)?.videoId), snippet);

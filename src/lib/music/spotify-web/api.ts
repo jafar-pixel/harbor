@@ -114,16 +114,29 @@ export async function spotifyTopTracks(limit = 20): Promise<SpotifyWebTrack[]> {
     .filter((t): t is SpotifyWebTrack => !!t);
 }
 
+/** Items from `path` page by page (Spotify's pages hold up to `size`), up to `limit` in all. */
+async function pagedItems(path: string, limit: number, size: number): Promise<Json[]> {
+  const items: Json[] = [];
+  const join = path.includes("?") ? "&" : "?";
+  while (items.length < limit) {
+    const want = Math.min(size, limit - items.length);
+    const page = await get(`${path}${join}limit=${want}&offset=${items.length}`);
+    const got = arr(page.items);
+    items.push(...got);
+    if (got.length < want || !page.next) break;
+  }
+  return items;
+}
+
+/** The listener's liked songs, newest first, up to `limit`. */
 export async function spotifyLikedTracks(limit = 50): Promise<SpotifyWebTrack[]> {
-  const page = await get(`/me/tracks?limit=${limit}`);
-  return arr(page.items)
+  return (await pagedItems("/me/tracks", limit, 50))
     .map((item) => track(item.track as Json))
     .filter((t): t is SpotifyWebTrack => !!t);
 }
 
 export async function spotifyPlaylists(limit = 50): Promise<SpotifyWebPlaylist[]> {
-  const page = await get(`/me/playlists?limit=${limit}`);
-  return arr(page.items)
+  return (await pagedItems("/me/playlists", limit, 50))
     .filter((p) => p && p.id)
     .map((p) => {
       const items = (p.items ?? p.tracks ?? {}) as Json;
@@ -139,11 +152,13 @@ export async function spotifyPlaylists(limit = 50): Promise<SpotifyWebPlaylist[]
     });
 }
 
-export async function spotifyPlaylistTracks(id: string, limit = 100): Promise<SpotifyWebTrack[]> {
-  const page = await get(`/playlists/${encodeURIComponent(id)}/items?limit=${limit}`).catch(() =>
-    get(`/playlists/${encodeURIComponent(id)}/tracks?limit=${limit}`),
+/** A playlist's songs, up to `limit` (all of a typical playlist by default). */
+export async function spotifyPlaylistTracks(id: string, limit = 1000): Promise<SpotifyWebTrack[]> {
+  const base = `/playlists/${encodeURIComponent(id)}`;
+  const items = await pagedItems(`${base}/items`, limit, 100).catch(() =>
+    pagedItems(`${base}/tracks`, limit, 100),
   );
-  return arr(page.items)
+  return items
     .map((item) => track((item.item ?? item.track) as Json))
     .filter((t): t is SpotifyWebTrack => !!t);
 }
