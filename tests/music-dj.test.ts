@@ -40,6 +40,33 @@ test("an artist's band suffix and punctuation don't stop a match", () => {
   assert.equal(pickVideo(remix, [v("r", "Burna Boy - Last Last (Remix)", "Burna Boy")])?.id, "r");
 });
 
+test("a song named with feat. or an edition still finds the artist's own video", () => {
+  const feat = { artist: "Drake", title: "Nice For What (feat. Big Freedia)", why: "" };
+  assert.equal(
+    pickVideo(feat, [
+      v("o", "Drake - Nice For What (Official Video)", "DrakeVEVO"),
+      v("x", "Nice For What", "Random Covers"),
+    ])?.id,
+    "o",
+  );
+  const edition = { artist: "Fleetwood Mac", title: "Dreams - 2004 Remaster", why: "" };
+  assert.equal(
+    pickVideo(edition, [v("d", "Fleetwood Mac - Dreams (Official Music Video)", "Fleetwood Mac")])
+      ?.id,
+    "d",
+  );
+  // The core title alone isn't enough from someone else's channel.
+  assert.equal(pickVideo(feat, [v("y", "Nice For What dance", "Dance Crew")]), null);
+  // An exact title still wins over a core-title match.
+  assert.equal(
+    pickVideo(feat, [
+      v("c", "Drake - Nice For What", "Drake"),
+      v("f", "Drake - Nice For What (feat. Big Freedia)", "Drake"),
+    ])?.id,
+    "f",
+  );
+});
+
 test("the crossfade keeps equal power from start to finish", () => {
   assert.deepEqual(
     crossfade(0).map((x) => Math.round(x * 1000) / 1000),

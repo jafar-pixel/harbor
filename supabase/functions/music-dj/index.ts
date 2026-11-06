@@ -51,6 +51,7 @@ Rules:
 - Keep the vibe; flow from one song to the next (energy, tempo, key, era) like a DJ set.
 - Mix in artists the listener knows with similar ones they may not, across one genre or blending genres when the vibe calls for it.
 - No repeats, and skip anything in "avoid".
+- Give exactly the number of tracks asked for.
 - "discover" is 3 artists new to this listener that fit, each with one song to start on.
 - "scene" describes a background video for the vibe (a place or mood, e.g. "Hawaii beach sunset waves 4k"), with no people or brands.
 - "colors" are two hex colours for the vibe.
@@ -146,8 +147,9 @@ Deno.serve(async (req) => {
   const styles = list(body.styles, 20, 60);
   const seeds = list(body.seeds, 30, 60);
   const recent = list(body.recent, 30, 120);
-  const avoid = list(body.avoid, 60, 120);
-  const count = Math.min(20, Math.max(5, Number(body.count) || 12));
+  const avoid = list(body.avoid, 200, 120);
+  // Sets open with 25 and refill 20 at a time (src/lib/music/dj/session.ts).
+  const count = Math.min(30, Math.max(5, Number(body.count) || 12));
   if (!vibe && !request && !styles.length && !seeds.length)
     return json({ error: "Tell the DJ a vibe or pick some styles first." }, 400);
 

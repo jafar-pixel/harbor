@@ -102,22 +102,37 @@ const fold = (s: string) =>
 const NOT_THE_SONG =
   /\b(cover|karaoke|instrumental|reaction|reacts|lesson|tutorial|how to play|8d|slowed|sped up|nightcore|remix|live at|live from|live in|piano version|drum cover|bass cover)\b/;
 
+/** A title without its "(feat. …)", "[Remastered]" or " - Radio Edit" parts. */
+const coreTitle = (title: string) =>
+  fold(
+    title
+      .replace(/\s*[([][^)\]]*[)\]]/g, " ")
+      .replace(/\s+(feat\.?|ft\.?|featuring|with)\s+.*$/i, "")
+      .replace(/\s+-\s+.*$/, ""),
+  );
+
 /**
  * The best video for a song from search results: the title must name the song, the artist
  * should appear in the title or channel, and official uploads win. Null when nothing fits.
+ * A video named with only the song's core title (no "feat." or edition) counts when it is the
+ * artist's own.
  */
 export function pickVideo(song: DjSong, results: readonly VideoResult[]): VideoResult | null {
   const title = fold(song.title);
+  const core = coreTitle(song.title);
   const artist = fold(song.artist.replace(/\s*&\s*the\s+\w+$/i, ""));
   const wantsVariant = NOT_THE_SONG.test(title);
   let best: { r: VideoResult; score: number } | null = null;
   results.forEach((r, i) => {
     const t = fold(r.title);
     const ch = fold(r.channel);
-    if (!t.includes(title)) return;
+    const byArtist = t.includes(artist) || ch.includes(artist);
+    const full = t.includes(title);
+    if (!full && !(core.length >= 3 && !wantsVariant && byArtist && t.includes(core))) return;
     if (!wantsVariant && NOT_THE_SONG.test(t)) return;
     let score = 10 - i;
-    if (t.includes(artist) || ch.includes(artist)) score += 20;
+    if (full) score += 5;
+    if (byArtist) score += 20;
     if (/\b(official|vevo)\b/.test(t) || /vevo|topic|official/.test(ch)) score += 10;
     if (ch.replace(/ /g, "").includes(artist.replace(/ /g, ""))) score += 8;
     // The DJ shows videos, so a music video beats a still-image audio upload.
