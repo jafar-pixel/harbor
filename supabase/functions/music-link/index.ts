@@ -4,10 +4,11 @@
 // back to a device. Callers must be signed in to JL.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// The redirect sign in's callback pages (src/lib/music/youtube-web/auth.ts), registered on the
-// Google OAuth client. Anything else falls back to the pop-up's "postmessage".
+// The redirect sign in's callback pages (src/lib/music/youtube-web/auth.ts) and the desktop app's
+// loopback address (src-tauri/src/youtube_signin.rs), registered on the Google OAuth client.
+// Anything else falls back to the pop-up's "postmessage".
 const YOUTUBE_REDIRECT =
-  /^https:\/\/([a-z0-9-]+\.)*(jl-stream\.com|jl-media-vision\.vercel\.app)\/music\/youtube-callback$/;
+  /^(https:\/\/([a-z0-9-]+\.)*(jl-stream\.com|jl-media-vision\.vercel\.app)\/music\/youtube-callback|http:\/\/localhost:8899\/youtube)$/;
 
 const SPOTIFY_CLIENT_ID =
   Deno.env.get("JL_SPOTIFY_CLIENT_ID") || "739d5262cbb44453ba1f933230eef197";
@@ -144,8 +145,8 @@ Deno.serve(async (req) => {
           : {
               grant_type: "authorization_code",
               code: str("code"),
-              // Google's pop-up hands codes back as "postmessage"; the TV app and phones sign in
-              // by redirect to JL Media Vision's own callback page.
+              // Google's pop-up hands codes back as "postmessage"; browsers and the TV app sign in
+              // by redirect to JL Media Vision's own callback page, the desktop app to loopback.
               redirect_uri: YOUTUBE_REDIRECT.test(str("redirectUri"))
                 ? str("redirectUri")
                 : "postmessage",

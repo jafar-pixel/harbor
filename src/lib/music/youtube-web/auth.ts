@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { useSyncExternalStore } from "react";
 import {
   accountLinksOn,
@@ -12,11 +13,10 @@ import {
 } from "../account-link";
 
 /**
- * YouTube sign in for the web app with Google Identity Services. Signed in to a JL account (and
- * with Google's client secret set on the server), the code model hands the sign in to the account
- * (see ../account-link): it renews itself and every device on that account stays connected.
- * Otherwise the token model keeps an hour-long token in this browser; after that, Reconnect asks
- * Google again, usually without a prompt.
+ * YouTube sign in with Google. Signed in to a JL account (and with Google's client secret set on
+ * the server), Google's code goes to the account (see ../account-link): it renews itself and every
+ * device on that account stays connected. Otherwise an hour-long token stays on this device; after
+ * that, Reconnect asks Google again, usually without a prompt.
  */
 
 /** JL Media Vision's Google OAuth client (public). The JL_GOOGLE_CLIENT_ID build variable swaps it. */
@@ -35,15 +35,17 @@ const PENDING_KEY = "jl.youtube.web.pending.v1";
 /** Where Google sends a redirect sign in back to; registered on the Google OAuth client. */
 export const YOUTUBE_WEB_CALLBACK_PATH = "/music/youtube-callback";
 const redirectUri = () => `${window.location.origin}${YOUTUBE_WEB_CALLBACK_PATH}`;
-
 /**
- * Every browser and the TV app sign in by redirect. Google's pop-up ended on a blank page that
- * never handed the sign in back: the TV app's web view has no pop-up windows, and on the web the
- * pop-up lost its way back too. The desktop app keeps the pop-up; its page isn't on a web address
- * Google can redirect to.
+ * The desktop app's loopback address (src-tauri/src/youtube_signin.rs), registered on the Google
+ * OAuth client. Its page isn't on a web address Google can send the sign in back to, its web view
+ * blocks Google's pop-up, and Google refuses sign ins inside embedded web views, so it signs in
+ * in the listener's own browser, as Spotify does.
  */
-function signInByRedirect(): boolean {
-  return typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window);
+const YOUTUBE_DESKTOP_REDIRECT = "http://localhost:8899/youtube";
+
+/** Every browser and the TV app sign in by redirect; the desktop app in the default browser. */
+function inDesktopApp(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
 type Token = { access: string; expiresAt: number };
@@ -55,30 +57,8 @@ export type YouTubeWebState = {
   error: string | null;
 };
 
-type GoogleTokenClient = { requestAccessToken: (o?: { prompt?: string }) => void };
-type GoogleCodeClient = { requestCode: () => void };
 type GoogleWindow = Window & {
-  google?: {
-    accounts?: {
-      oauth2?: {
-        initTokenClient: (o: {
-          client_id: string;
-          scope: string;
-          callback: (r: { access_token?: string; expires_in?: number; error?: string }) => void;
-          error_callback?: (e: { type?: string; message?: string }) => void;
-        }) => GoogleTokenClient;
-        initCodeClient: (o: {
-          client_id: string;
-          scope: string;
-          ux_mode: "popup";
-          select_account?: boolean;
-          callback: (r: { code?: string; error?: string }) => void;
-          error_callback?: (e: { type?: string; message?: string }) => void;
-        }) => GoogleCodeClient;
-        revoke: (token: string, done?: () => void) => void;
-      };
-    };
-  };
+  google?: { accounts?: { oauth2?: { revoke: (token: string, done?: () => void) => void } } };
 };
 
 function readToken(): Token | null {
@@ -130,23 +110,6 @@ export function useYouTubeWeb(): YouTubeWebState {
   );
 }
 
-let loading: Promise<void> | null = null;
-function loadGis(): Promise<void> {
-  if ((window as GoogleWindow).google?.accounts?.oauth2) return Promise.resolve();
-  loading ??= new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => {
-      loading = null;
-      reject(new Error("Google sign in couldn't load. Check your connection and try again."));
-    };
-    document.head.appendChild(script);
-  });
-  return loading;
-}
-
 /** Whether the current sign in may change playlists. */
 export function youtubeCanEdit(): boolean {
   try {
@@ -158,90 +121,33 @@ export function youtubeCanEdit(): boolean {
   }
 }
 
-/** Sign in with Google (a redirect, or a pop-up in the desktop app). Call from a click. `edit` also asks to manage playlists. */
+/** Sign in with Google (a redirect, or the default browser in the desktop app). Call from a click. `edit` also asks to manage playlists. */
 export async function connectYouTubeWeb(edit = false): Promise<void> {
   set({ error: null });
-  if (signInByRedirect()) {
+  if (!inDesktopApp()) {
     redirectToGoogle(edit);
     return;
   }
+  const request = googleSignIn(edit, YOUTUBE_DESKTOP_REDIRECT);
+  let query: string;
   try {
-    await loadGis();
-    const oauth2 = (window as GoogleWindow).google?.accounts?.oauth2;
-    if (!oauth2) throw new Error("Google sign in isn't available in this browser.");
-    const failed = (e: { type?: string; message?: string }) =>
-      new Error(
-        e.type === "popup_closed"
-          ? "Google sign in was closed."
-          : e.type === "popup_failed_to_open"
-            ? "Allow pop-ups for this site, then try again."
-            : e.message || "Google sign in failed.",
-      );
-    if (accountMode()) {
-      const code = await new Promise<string>((resolve, reject) => {
-        oauth2
-          .initCodeClient({
-            client_id: JL_GOOGLE_CLIENT_ID,
-            // Keep editing once it was granted, so a plain reconnect doesn't take it away.
-            scope: edit || youtubeCanEdit() ? EDIT_SCOPE : SCOPE,
-            ux_mode: "popup",
-            callback: (r) =>
-              r.code ? resolve(r.code) : reject(new Error(r.error || "Google sign in failed.")),
-            error_callback: (e) => reject(failed(e)),
-          })
-          .requestCode();
-      });
-      try {
-        await exchangeMusicLink("youtube", { code });
-      } catch (error) {
-        // Google gives a refresh token only on first consent; one stored before was removed.
-        // Google refused the server's client secret: keep this device's own sign in instead.
-        if (error instanceof MusicLinkError && error.code === "not_configured") {
-          markYouTubeServerOff();
-          throw new Error("Almost there. Press Connect once more to finish connecting YouTube.");
-        }
-        if (error instanceof MusicLinkError && error.code === "relink")
-          throw new Error(
-            "Google didn't renew the sign in. Remove JL Media Vision at myaccount.google.com/permissions, then connect again.",
-          );
-        throw error;
-      }
-      set({ connected: true, linked: true, error: null });
-      return;
-    }
-    await new Promise<void>((resolve, reject) => {
-      const client = oauth2.initTokenClient({
-        client_id: JL_GOOGLE_CLIENT_ID,
-        scope: edit ? EDIT_SCOPE : SCOPE,
-        callback: (r) => {
-          if (!r.access_token) return reject(new Error(r.error || "Google sign in failed."));
-          try {
-            localStorage.setItem(
-              TOKEN_KEY,
-              JSON.stringify({
-                access: r.access_token,
-                expiresAt: Date.now() + (r.expires_in ?? 3600) * 1000,
-              }),
-            );
-            localStorage.setItem(LINKED_KEY, "1");
-            if (edit) localStorage.setItem(EDIT_KEY, "1");
-          } catch {
-            /* storage blocked: the sign in lasts this page */
-          }
-          memory = {
-            access: r.access_token,
-            expiresAt: Date.now() + (r.expires_in ?? 3600) * 1000,
-          };
-          set({ connected: true, linked: true, error: null });
-          resolve();
-        },
-        error_callback: (e) => reject(failed(e)),
-      });
-      client.requestAccessToken({ prompt: readLinked() ? "" : "consent" });
-    });
+    query = await invoke<string>("youtube_browser_signin", { url: request.url });
   } catch (error) {
     set({ error: error instanceof Error ? error.message : String(error) });
+    return;
   }
+  const answer = new URLSearchParams(query);
+  await finishGoogleSignIn(
+    {
+      code: answer.get("code"),
+      token: answer.get("access_token"),
+      expiresIn: Number(answer.get("expires_in")) || 3600,
+      state: answer.get("state"),
+      error: answer.get("error"),
+    },
+    request.pending,
+    YOUTUBE_DESKTOP_REDIRECT,
+  );
 }
 
 let memory: Token | null = null;
@@ -293,24 +199,23 @@ function randomState(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Off to Google's sign in in this page; it comes back to YOUTUBE_WEB_CALLBACK_PATH. */
-function redirectToGoogle(edit: boolean): void {
+type Pending = { state: string; mode: "code" | "token"; edit: boolean; at: number };
+
+/** Google's sign in address sending its answer to `redirect`, and what to check it against. */
+function googleSignIn(edit: boolean, redirect: string): { url: string; pending: Pending } {
   const account = accountMode();
-  const state = randomState();
-  try {
-    localStorage.setItem(
-      PENDING_KEY,
-      JSON.stringify({ state, mode: account ? "code" : "token", edit, at: Date.now() }),
-    );
-  } catch {
-    set({ error: "This browser blocks storage, so Google sign in can't finish here." });
-    return;
-  }
+  const pending: Pending = {
+    state: randomState(),
+    mode: account ? "code" : "token",
+    edit,
+    at: Date.now(),
+  };
   const params: Record<string, string> = {
     client_id: JL_GOOGLE_CLIENT_ID,
-    redirect_uri: redirectUri(),
+    redirect_uri: redirect,
+    // Keep editing once it was granted, so a plain reconnect doesn't take it away.
     scope: (account ? edit || youtubeCanEdit() : edit) ? EDIT_SCOPE : SCOPE,
-    state,
+    state: pending.state,
     include_granted_scopes: "true",
   };
   if (account) {
@@ -324,7 +229,19 @@ function redirectToGoogle(edit: boolean): void {
   }
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.search = new URLSearchParams(params).toString();
-  window.location.assign(url.toString());
+  return { url: url.toString(), pending };
+}
+
+/** Off to Google's sign in in this page; it comes back to YOUTUBE_WEB_CALLBACK_PATH. */
+function redirectToGoogle(edit: boolean): void {
+  const request = googleSignIn(edit, redirectUri());
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify(request.pending));
+  } catch {
+    set({ error: "This browser blocks storage, so Google sign in can't finish here." });
+    return;
+  }
+  window.location.assign(request.url);
 }
 
 let returned = false;
@@ -354,20 +271,31 @@ export function captureYouTubeCallback(): void {
   void finishYouTubeRedirect(answer);
 }
 
-async function finishYouTubeRedirect(answer: {
+type GoogleAnswer = {
   code: string | null;
   token: string | null;
   expiresIn: number;
   state: string | null;
   error: string | null;
-}): Promise<void> {
-  let pending: { state: string; mode: "code" | "token"; edit: boolean; at: number } | null = null;
+};
+
+async function finishYouTubeRedirect(answer: GoogleAnswer): Promise<void> {
+  let pending: Pending | null = null;
   try {
     pending = JSON.parse(localStorage.getItem(PENDING_KEY) ?? "null");
     localStorage.removeItem(PENDING_KEY);
   } catch {
     pending = null;
   }
+  await finishGoogleSignIn(answer, pending, redirectUri());
+}
+
+/** Check Google's answer against the sign in this device started, then keep it. */
+async function finishGoogleSignIn(
+  answer: GoogleAnswer,
+  pending: Pending | null,
+  redirect: string,
+): Promise<void> {
   try {
     if (answer.error)
       throw new Error(
@@ -380,12 +308,18 @@ async function finishYouTubeRedirect(answer: {
     if (pending.mode === "code") {
       if (!answer.code) throw new Error("Google sign in failed.");
       try {
-        await exchangeMusicLink("youtube", { code: answer.code, redirectUri: redirectUri() });
+        await exchangeMusicLink("youtube", { code: answer.code, redirectUri: redirect });
       } catch (error) {
+        // Google refused the server's client secret: keep this device's own sign in instead.
         if (error instanceof MusicLinkError && error.code === "not_configured") {
           markYouTubeServerOff();
           throw new Error("Almost there. Press Connect once more to finish connecting YouTube.");
         }
+        // Google gives a refresh token only on first consent; one stored before was removed.
+        if (error instanceof MusicLinkError && error.code === "relink")
+          throw new Error(
+            "Google didn't renew the sign in. Remove JL Media Vision at myaccount.google.com/permissions, then connect again.",
+          );
         throw error;
       }
     } else {
