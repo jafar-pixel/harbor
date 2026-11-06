@@ -10,7 +10,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
-import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -43,12 +42,10 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        CrashLog.install(this)
         root = FrameLayout(this)
         web = WebView(this)
         root.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         setContentView(root)
-        CrashLog.take(this)?.let(::showLastCrash)
         nativePlayer = NativePlayer(this, root, web, ::dispatchPlayerEvent)
 
         CookieManager.getInstance().setAcceptCookie(true)
@@ -76,9 +73,6 @@ class MainActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val uri = request.url
                 if (uri.host == appHost || uri.host in APP_HOSTS) return false
-                // Google's sign in (Connect YouTube) stays in this view so its redirect lands back
-                // in the app; in the separate browser it could never return.
-                if (uri.scheme == "https" && isSignInHost(uri.host)) return false
                 if (uri.scheme == "https" || uri.scheme == "http") {
                     startActivity(Intent(this@MainActivity, BrowserActivity::class.java).setData(uri))
                 }
@@ -89,20 +83,6 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
                 onAppPage = isAppUrl(url)
                 nativePlayer.stop("navigation")
-            }
-
-            // The page's renderer died (most often out of memory with a big playlist). Without this
-            // Android closes the whole app; instead the screen is rebuilt and the app reopens.
-            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-                if (view !== web || isFinishing || isDestroyed) return true
-                CrashLog.record(
-                    this@MainActivity,
-                    if (detail.didCrash()) "The page crashed."
-                    else "Android closed the page to free memory.",
-                )
-                nativePlayer.release()
-                recreate()
-                return true
             }
 
             override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
@@ -161,18 +141,11 @@ class MainActivity : AppCompatActivity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val back = event.keyCode == KeyEvent.KEYCODE_BACK || event.keyCode == KeyEvent.KEYCODE_ESCAPE
         if (back) {
-            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                // Full screen: Back first hides the player bar, then leaves.
-                if (!nativePlayer.hideBarOnBack()) onBack()
-            }
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) onBack()
             return true
         }
         if (nativePlayer.handleFullKey(event)) return true
-        // Full screen's bar buttons take the arrows and OK; the page underneath doesn't.
-        if (nativePlayer.isActive && nativePlayer.mode == NativePlayer.Mode.FULL) return super.dispatchKeyEvent(event)
-        // No window-focus check: a dialog has its own window and never reaches this, and the
-        // player in the small TV box must not stop the remote from reaching the page.
-        if (fullscreenView == null && onAppPage && forwardNavigationKey(event)) return true
+        if (fullscreenView == null && onAppPage && web.hasWindowFocus() && forwardNavigationKey(event)) return true
         return super.dispatchKeyEvent(event)
     }
 
@@ -201,10 +174,8 @@ class MainActivity : AppCompatActivity() {
             "if(r&&getComputedStyle(r).visibility==='hidden')return false;" +
             "if(!r)r=document.body;if(!r)return false;" +
             "var a=document.activeElement;" +
-            // Only a field being typed in keeps the arrows; a focused field the remote is moving
-            // through (not editing) lets them move focus on, so the remote never gets stuck.
-            "if(a&&(a.matches('textarea,select')||a.isContentEditable||" +
-            "(a.matches('input')&&a.hasAttribute('data-search-editing'))))return false;" +
+            "if(a&&(a.matches('input,textarea,select')||a.isContentEditable)&&" +
+            "!a.closest('[data-search-nav-mode]'))return false;" +
             "var e=new KeyboardEvent('$type',{key:'$key',code:'$key'," +
             "bubbles:true,cancelable:true,repeat:$repeat});var target=a||r;" +
             "target.dispatchEvent(e);" +
@@ -223,16 +194,13 @@ class MainActivity : AppCompatActivity() {
      */
     private fun onBack() {
         if (fullscreenView != null) { exitFullscreen(); return }
+        if (nativePlayer.isActive && nativePlayer.mode == NativePlayer.Mode.FULL) { nativePlayer.exitFull(); return }
         if (!isAppUrl(web.url)) { historyBack(); return }
-        // Full screen's player controls are the page's: its Back closes the player. A page that
-        // doesn't take it (an older web version) still gets out of full screen here.
-        val nativeFull = nativePlayer.isActive && nativePlayer.mode == NativePlayer.Mode.FULL
         // Big Picture keeps its screens in its own stack rather than in WebView history.
         web.evaluateJavascript(PAGE_BACK_JS) { result ->
-            when {
-                result?.trim('"') == "handled" -> Unit
-                nativeFull -> nativePlayer.exitFull()
-                result?.trim('"') == "root" -> confirmLeave()
+            when (result?.trim('"')) {
+                "handled" -> Unit
+                "root" -> confirmLeave()
                 else -> historyBack()
             }
         }
@@ -240,15 +208,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun historyBack() {
         if (web.canGoBack()) web.goBack() else confirmLeave()
-    }
-
-    /** Why the app closed last time, so it can be photographed and fixed. */
-    private fun showLastCrash(report: String) {
-        AlertDialog.Builder(this)
-            .setTitle("JL Media Vision closed unexpectedly")
-            .setMessage("Take a photo of this so it can be fixed.\n\n$report")
-            .setPositiveButton("OK", null)
-            .show()
     }
 
     private fun confirmLeave() {
@@ -360,10 +319,6 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun stop() = onMain { nativePlayer.stop() }
 
-        /** The player's own volume, 0 to 1 (README: `setVolume`); the page's volume buttons. */
-        @JavascriptInterface
-        fun setVolume(volume: Double) = onMain { nativePlayer.setVolume(volume.toFloat()) }
-
         private fun onMain(action: () -> Unit) {
             if (!onAppPage) return
             runOnUiThread { if (isAppUrl(web.url)) action() }
@@ -389,11 +344,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         // Where the web app lives now and after the domain swap.
         val APP_HOSTS = setOf("jl-media-vision.vercel.app", "watch.jl-stream.com")
-        val SIGN_IN_HOSTS = setOf("accounts.youtube.com")
-
-        /** Google's sign in moves between its own pages (consent, 2-step checks) before it returns. */
-        fun isSignInHost(host: String?): Boolean =
-            host != null && (host == "google.com" || host.endsWith(".google.com") || host in SIGN_IN_HOSTS)
 
         // Big Picture's Back chain (src/views/big-picture/bp-back.ts): "handled" when it went back
         // a screen, "root" at its home screen, "none" when Big Picture is not open.

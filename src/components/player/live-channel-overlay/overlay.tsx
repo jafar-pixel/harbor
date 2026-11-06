@@ -8,7 +8,10 @@ import {
   promoteTopChannelsToFront,
   rowsForRegion,
 } from "@/lib/iptv/top-networks";
-import { sortChannelsByGroupRelevance, sortGroupsByRelevance } from "@/lib/iptv/group-relevance";
+import {
+  sortChannelsByGroupRelevance,
+  sortGroupsByRelevance,
+} from "@/lib/iptv/group-relevance";
 import { computeTvgIdCounts, epgProgramsForChannel } from "@/lib/iptv/epg-resolver";
 import { FAVORITES_GROUP_KEY, useFavorites } from "@/lib/iptv/favorites";
 import { getCachedPlaylist } from "@/lib/iptv/store";
@@ -21,8 +24,6 @@ import { useIptvPlaylist } from "@/views/live/hooks/use-iptv-playlist";
 import { useScrollMemory } from "@/lib/view";
 import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
-import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
-import { tvFocus } from "@/lib/keyboard-navigation";
 import { CurrentChannelInfo } from "./current-channel-info";
 import { InlineSourceSwitcher } from "./inline-source-switcher";
 
@@ -149,18 +150,6 @@ export function LiveChannelOverlay({
     if (!currentChannelId) return null;
     return playlist?.channels.find((c) => c.id === currentChannelId) ?? null;
   }, [currentChannelId, playlist]);
-  // On the TV the remote starts on the channel that's playing, not in the search field (which a
-  // remote can't leave by typing, and where OK does nothing).
-  const tvApp = useMemo(() => nativeTvAvailable(), []);
-  const hasChannels = !!playlist && playlist.channels.length > 0;
-  useEffect(() => {
-    if (!tvApp || !hasChannels) return;
-    const id = window.setTimeout(() => {
-      const row = document.querySelector<HTMLElement>('[data-current-channel="true"]');
-      if (row) tvFocus(row);
-    }, 150);
-    return () => window.clearTimeout(id);
-  }, [tvApp, hasChannels]);
 
   const tvgIdCounts = useMemo(
     () => computeTvgIdCounts(playlist?.channels ?? []),
@@ -222,7 +211,11 @@ export function LiveChannelOverlay({
         <CurrentChannelInfo channel={currentChannel} current={currentProgram} now={nowMs} />
       </div>
       <div className="flex shrink-0 items-center gap-2.5 px-6 pt-4 pb-3">
-        <InlineSourceSwitcher sources={sources} selectedId={source.id} onSelect={onSelectSource} />
+        <InlineSourceSwitcher
+          sources={sources}
+          selectedId={source.id}
+          onSelect={onSelectSource}
+        />
         <div className="flex h-11 flex-1 items-center gap-2.5 rounded-xl border border-edge-soft/55 bg-elevated px-3.5">
           <Search size={15} strokeWidth={2} className="text-ink-subtle" />
           <input
@@ -237,7 +230,7 @@ export function LiveChannelOverlay({
                 : t("Search {n} channels", { n: playlist?.channels.length ?? 0 })
             }
             className="flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-subtle focus:outline-none"
-            autoFocus={!tvApp}
+            autoFocus
           />
           {query && (
             <button
@@ -250,19 +243,11 @@ export function LiveChannelOverlay({
         </div>
         <button
           onClick={toggleGuideStyle}
-          title={
-            guideStyle === "timeline"
-              ? t("Switch to channel list (hide program guide)")
-              : t("Switch to program guide")
-          }
+          title={guideStyle === "timeline" ? t("Switch to channel list (hide program guide)") : t("Switch to program guide")}
           aria-label={t("Toggle guide layout")}
           className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-edge-soft/55 bg-elevated px-3.5 text-[13px] font-medium text-ink-muted transition-colors hover:text-ink"
         >
-          {guideStyle === "timeline" ? (
-            <List size={15} strokeWidth={2} />
-          ) : (
-            <CalendarRange size={15} strokeWidth={2} />
-          )}
+          {guideStyle === "timeline" ? <List size={15} strokeWidth={2} /> : <CalendarRange size={15} strokeWidth={2} />}
           {guideStyle === "timeline" ? t("List") : t("Guide")}
         </button>
       </div>
@@ -304,8 +289,8 @@ export function LiveChannelOverlay({
               {inFavorites && favorites.count === 0
                 ? t("No favorites yet. Star a channel to pin it here.")
                 : inFavorites && loadingFavorites
-                  ? t("Loading favorites…")
-                  : t("No channels match. Try a different category or clear the search.")}
+                ? t("Loading favorites…")
+                : t("No channels match. Try a different category or clear the search.")}
             </div>
           )}
         </div>

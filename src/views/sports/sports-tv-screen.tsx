@@ -46,10 +46,8 @@ export function SportsTvScreen({
   const showVideo = !!channel?.url && active && pageVisible && !player;
   // On the Shield the TV app's own player plays in this box, and full screen is the same stream.
   const box = useRef<HTMLDivElement>(null);
-  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo, sound);
-  const watch = (c: IptvChannel) => {
-    if (!nativeTv.fullScreen()) onWatch(c);
-  };
+  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo);
+  const watch = (c: IptvChannel) => (nativeTv.native ? nativeTv.fullScreen() : onWatch(c));
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
   }, [nativeTv.playing]);
@@ -67,8 +65,7 @@ export function SportsTvScreen({
     wake();
     return () => window.clearTimeout(idleTimer.current);
   }, [channel?.id]);
-  // On the TV app the controls stay up: the remote never moves the mouse to bring them back.
-  const overlayHidden = idle && playing && !nativeTv.native;
+  const overlayHidden = idle && playing;
 
   return (
     <div
