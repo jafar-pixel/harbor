@@ -32,7 +32,15 @@ export type DjState = {
 };
 
 const LIKED_KEY = "harbor.music.dj.liked.v1";
-const MORE_WHEN_LEFT = 3;
+/** A set opens with this many songs and grows to SET_SIZE straight away, in the background. */
+const FIRST_BATCH = 25;
+const SET_SIZE = 50;
+/** Each refill; another is asked for once this many songs are left, so the set never ends. */
+const REFILL = 20;
+const MORE_WHEN_LEFT = 15;
+/** The DJ only needs the most recent songs to avoid repeating them. */
+const AVOID_LAST = 200;
+const avoidList = () => state.tracks.slice(-AVOID_LAST).map(songKey);
 
 function readLiked(): DjSong[] {
   try {
@@ -129,11 +137,12 @@ export async function startDj(vibe: Vibe, styleKeys: readonly string[]): Promise
     sounds: [],
   });
   try {
-    const result = await askDj({ vibe: vibe.prompt, ...context(styleKeys), count: 12 });
+    const result = await askDj({ vibe: vibe.prompt, ...context(styleKeys), count: FIRST_BATCH });
     if (run !== generation) return;
     if (!result.tracks.length) throw new Error("The DJ came back empty. Try another vibe.");
     apply(result, []);
     void resolveAhead();
+    void fill(styleKeys);
   } catch (error) {
     if (run === generation)
       set({ status: "error", error: error instanceof Error ? error.message : String(error) });
@@ -187,9 +196,11 @@ export async function startFromSong(
       vibe: vibe.prompt,
       ...context(styleKeys),
       avoid: [songKey(first)],
-      count: 10,
+      count: FIRST_BATCH,
     });
-    if (run === generation) apply(result, state.tracks);
+    if (run !== generation) return;
+    apply(result, state.tracks);
+    void fill(styleKeys);
   } catch (error) {
     if (run === generation) set({ error: error instanceof Error ? error.message : String(error) });
   }
@@ -206,39 +217,52 @@ export async function requestDj(request: string, styleKeys: readonly string[]): 
       vibe: state.vibe.prompt,
       request,
       ...context(styleKeys),
-      avoid: state.tracks.map(songKey),
+      avoid: avoidList(),
       recent: played.slice(-8).map(songKey),
-      count: 10,
+      count: FIRST_BATCH,
     });
     if (run !== generation) return;
     apply(result, played);
     void resolveAhead();
+    void fill(styleKeys);
   } catch (error) {
     if (run === generation)
       set({ status: "ready", error: error instanceof Error ? error.message : String(error) });
   }
 }
 
-/** Ask for more before the set runs out, keeping the same vibe. */
-async function extend(styleKeys: readonly string[]) {
-  if (extending || !state.vibe) return;
+/** Ask for more before the set runs out, keeping the same vibe. True when songs were added. */
+async function extend(styleKeys: readonly string[], count = REFILL): Promise<boolean> {
+  if (extending || !state.vibe) return false;
   extending = true;
   const run = generation;
+  const before = state.tracks.length;
   try {
     const result = await askDj({
       vibe: state.vibe.prompt,
       request: "Keep the set going in the same flow.",
       ...context(styleKeys),
-      avoid: state.tracks.map(songKey),
+      avoid: avoidList(),
       recent: state.tracks.slice(Math.max(0, state.index - 6), state.index + 1).map(songKey),
-      count: 8,
+      count,
     });
-    if (run === generation) apply(result, state.tracks);
+    if (run !== generation) return false;
+    apply(result, state.tracks);
+    return state.tracks.length > before;
   } catch {
     // The current set keeps playing; the next advance tries again.
+    return false;
   } finally {
     extending = false;
   }
+}
+
+/** Grow a new set to SET_SIZE in the background (stops if the DJ has nothing new). */
+async function fill(styleKeys: readonly string[]): Promise<void> {
+  const run = generation;
+  while (run === generation && state.tracks.length < SET_SIZE)
+    if (!(await extend(styleKeys, Math.max(5, Math.min(REFILL, SET_SIZE - state.tracks.length)))))
+      return;
 }
 
 async function resolveTrack(i: number): Promise<void> {
