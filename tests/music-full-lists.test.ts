@@ -80,15 +80,19 @@ test("Spotify liked songs and playlists page through offsets until the end", asy
   const { mod, urls } = load<{
     spotifyLikedTracks: (limit?: number) => Promise<unknown[]>;
     spotifyPlaylistTracks: (id: string) => Promise<unknown[]>;
-  }>("src/lib/music/spotify-web/api.ts", { "./auth": { spotifyWebToken: async () => "t" } }, (url) => {
-    const offset = Number(url.searchParams.get("offset"));
-    const limit = Number(url.searchParams.get("limit"));
-    const count = Math.max(0, Math.min(limit, total - offset));
-    return {
-      items: Array.from({ length: count }, (_, i) => track(offset + i)),
-      next: offset + count < total ? "more" : null,
-    };
-  });
+  }>(
+    "src/lib/music/spotify-web/api.ts",
+    { "./auth": { spotifyWebToken: async () => "t" } },
+    (url) => {
+      const offset = Number(url.searchParams.get("offset"));
+      const limit = Number(url.searchParams.get("limit"));
+      const count = Math.max(0, Math.min(limit, total - offset));
+      return {
+        items: Array.from({ length: count }, (_, i) => track(offset + i)),
+        next: offset + count < total ? "more" : null,
+      };
+    },
+  );
 
   const liked = await mod.spotifyLikedTracks(200);
   assert.equal(liked.length, 130);
