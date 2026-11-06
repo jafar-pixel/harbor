@@ -1,17 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import {
-  IPTV_FAVORITES_LOCAL_EVENT,
-  IPTV_FAVORITES_REMOTE_EVENT,
-} from "@/lib/jl/account/iptv-favorites";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { IptvChannel } from "./types";
 
 const STORAGE_KEY = "harbor.iptv.favorites.v2";
@@ -105,25 +92,12 @@ function readInitial(): Map<string, StoredFavorite> {
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<Map<string, StoredFavorite>>(() => readInitial());
-  // Favorites the account sync brought in are saved as they are, not sent back as a change.
-  const fromAccount = useRef(false);
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(items.values())));
     } catch {}
-    if (fromAccount.current) fromAccount.current = false;
-    else window.dispatchEvent(new Event(IPTV_FAVORITES_LOCAL_EVENT));
   }, [items]);
-
-  useEffect(() => {
-    const reload = () => {
-      fromAccount.current = true;
-      setItems(readInitial());
-    };
-    window.addEventListener(IPTV_FAVORITES_REMOTE_EVENT, reload);
-    return () => window.removeEventListener(IPTV_FAVORITES_REMOTE_EVENT, reload);
-  }, []);
 
   const toggle = useCallback((channel: IptvChannel) => {
     setItems((prev) => {

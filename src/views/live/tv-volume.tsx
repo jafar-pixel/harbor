@@ -1,7 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { Minus, Plus, Volume2, VolumeX } from "lucide-react";
 import { useT } from "@/lib/i18n";
-import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 
 /** Sound for the Live TV previews (the Your TV screen and the Channels preview), kept per device. */
 type TvVolume = { volume: number; muted: boolean };
@@ -14,10 +13,9 @@ function load(): TvVolume {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? "null") as Partial<TvVolume> | null;
     const volume = typeof raw?.volume === "number" ? clamp(raw.volume) : 0.6;
-    // On the TV app the Shield's player plays the preview, which may start with sound.
-    return { volume, muted: raw?.muted ?? !nativeTvAvailable() };
+    return { volume, muted: raw?.muted ?? true };
   } catch {
-    return { volume: 0.6, muted: !nativeTvAvailable() };
+    return { volume: 0.6, muted: true };
   }
 }
 
@@ -46,11 +44,8 @@ export function useTvVolume() {
   const s = useSyncExternalStore(subscribe, () => state);
   // A browser refuses to start a stream with sound before the viewer has interacted with the
   // page, and the preview would stay black, so sound waits for that first interaction.
-  // The TV app's own player has no such rule, and remote presses don't count as interaction.
   const activated =
-    nativeTvAvailable() ||
-    typeof navigator === "undefined" ||
-    navigator.userActivation?.hasBeenActive !== false;
+    typeof navigator === "undefined" || navigator.userActivation?.hasBeenActive !== false;
   return {
     volume: s.volume,
     muted: s.muted || s.volume === 0 || !activated,

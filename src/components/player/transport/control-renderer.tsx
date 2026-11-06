@@ -1,5 +1,4 @@
 import { togglePictureBar } from "@/lib/player/picture-bar";
-import { browserDecodes } from "@/lib/player/native-playback";
 import { t as translate } from "@/lib/i18n";
 import { StremioVolume } from "./stremio-volume";
 import {
@@ -468,8 +467,7 @@ export function renderControl(id: PlayerControlId, ctx: ControlContext): ReactNo
         ) : null)
       );
     case "audio-menu": {
-      // A browser <video> plays one audio track; the TV app's player switches between them.
-      if (ctx.tight || browserDecodes(ctx.engine)) return null;
+      if (ctx.tight || ctx.engine === "html5") return null;
       return (
         <AudioMenu
           tracks={ctx.snap.audioTracks}
