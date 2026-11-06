@@ -227,7 +227,7 @@ export function MusicSpotify({ active }: { active: boolean }) {
               <li>
                 <button
                   type="button"
-                  onClick={() => void openList(t("Liked songs"), () => spotifyLikedTracks(50))}
+                  onClick={() => void openList(t("Liked songs"), () => spotifyLikedTracks(200))}
                 >
                   <span className="music-spotify-liked">
                     <Heart size={22} fill="currentColor" />

@@ -117,7 +117,8 @@ Deno.serve(async (req) => {
   if (Array.isArray(body.aspects)) return aspects(body.aspects);
   const q = typeof body.q === "string" ? normalize(body.q) : "";
   if (!q) return json({ error: "Missing q" }, 400);
-  const max = Math.min(15, Math.max(1, Number(body.max) || 8));
+  // One search costs the same YouTube quota for 1 result or 50, YouTube's page limit.
+  const max = Math.min(50, Math.max(1, Number(body.max) || 8));
   // "music" keeps to YouTube's Music category; "any" is for scenery and vibe videos.
   const kind = body.kind === "any" ? "any" : "music";
   const key = `${kind}:${max}:${q}`;

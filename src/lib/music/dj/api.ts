@@ -40,12 +40,19 @@ export function askDj(ask: DjAsk): Promise<DjSet> {
 
 const searches = new Map<string, Promise<VideoResult[]>>();
 
-/** YouTube videos for a query; one request per query per session. */
-export function searchVideos(q: string, kind: "music" | "any" = "music"): Promise<VideoResult[]> {
-  const key = `${kind}:${q.toLowerCase().trim()}`;
+/**
+ * YouTube videos for a query; one request per query per session. Finding one song needs only
+ * the top few; a list to browse asks for a full page (up to 50, the same YouTube quota cost).
+ */
+export function searchVideos(
+  q: string,
+  kind: "music" | "any" = "music",
+  max = 6,
+): Promise<VideoResult[]> {
+  const key = `${kind}:${max}:${q.toLowerCase().trim()}`;
   const hit = searches.get(key);
   if (hit) return hit;
-  const run = call<{ results: VideoResult[] }>("music-search", { q, kind, max: 6 })
+  const run = call<{ results: VideoResult[] }>("music-search", { q, kind, max })
     .then((r) => r.results ?? [])
     .catch((error: unknown) => {
       searches.delete(key);
