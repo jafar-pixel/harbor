@@ -44,11 +44,10 @@ import { pausePlayer } from "@/lib/music/player/store";
 import { soundById } from "@/lib/music/sounds/catalog";
 import { loadMix } from "@/lib/music/sounds/engine";
 import { useSettings } from "@/lib/settings";
+import { DjHero } from "./music-dj-hero";
 import { DjVinyl } from "./music-dj-vinyl";
 import type { SongToShare } from "@/lib/music/social/api";
 import { SendSongDialog } from "./music-send";
-import jlBackdrop from "@/assets/brand/jl-vision-backdrop.webp";
-import jlMark from "@/assets/brand/jl-particle.webp";
 import "./music-dj.css";
 
 const FADE_MS = 8000;
@@ -410,20 +409,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
           />
         </div>
         <div className="music-dj-glow" />
-        {!dj.vibe && (
-          <div className="music-dj-hello-art" aria-hidden="true">
-            <img className="music-dj-hello-wave" src={jlBackdrop} alt="" />
-            <div className="music-dj-hello-record">
-              <span className="music-dj-hello-grooves" />
-              <img className="music-dj-hello-label" src={jlMark} alt="" />
-            </div>
-            <div className="music-dj-hello-eq">
-              {Array.from({ length: 24 }, (_, i) => (
-                <span key={i} style={{ animationDelay: `${(i % 6) * -0.19}s` }} />
-              ))}
-            </div>
-          </div>
-        )}
+        {!dj.vibe && <DjHero onStart={(vibe) => void begin(vibe)} />}
         {started && dj.vibe && (
           <button
             type="button"
@@ -548,26 +534,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
                 </button>
               </div>
             </>
-          ) : (
-            <div className="music-dj-hello">
-              <p className="music-dj-hello-eyebrow">
-                <Radio size={14} /> {t("JL Media Vision · AI DJ")}
-              </p>
-              <h2>{t("Ask JL")}</h2>
-              <p className="music-dj-hello-tag">{t("Your AI DJ. Name a vibe, get the top 50.")}</p>
-              <ol className="music-dj-hello-steps">
-                <li>
-                  <b>1</b> {t("Pick a vibe or type your own")}
-                </li>
-                <li>
-                  <b>2</b> {t("JL mixes 50 music videos like a club set")}
-                </li>
-                <li>
-                  <b>3</b> {t("The set keeps going until you stop it")}
-                </li>
-              </ol>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
 
