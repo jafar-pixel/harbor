@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, type DragEvent } from "react";
 import type { StudioDeck } from "@/lib/music/studio/deck";
 import { studio, useStudio, type XfadeCurve } from "@/lib/music/studio/engine";
-import { addFiles, prepare, useCrate, type CrateItem } from "@/lib/music/studio/library";
+import { isStudioDrag, readStudioDrag } from "@/lib/music/studio/drag";
+import { addFiles, addUrl, prepare, useCrate, type CrateItem } from "@/lib/music/studio/library";
 import { useSongArt } from "@/lib/music/dj/art";
 import { coverArt } from "@/lib/music/cover-art";
 import { useT } from "@/lib/i18n";
@@ -77,12 +78,35 @@ export function DjStudio() {
     }
   };
 
+  // A song dragged from the library onto a deck (its header or its controls) loads there.
+  const [overDeck, setOverDeck] = useState<number | null>(null);
+  const dropOn = (deck: StudioDeck) => ({
+    "data-drop": overDeck === deck.index || undefined,
+    onDragOver: (e: DragEvent) => {
+      if (!isStudioDrag(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setOverDeck(deck.index);
+    },
+    onDragLeave: () => setOverDeck(null),
+    onDrop: (e: DragEvent) => {
+      if (!isStudioDrag(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setOverDeck(null);
+      const drag = readStudioDrag(e);
+      if (drag?.kind === "crate") void load(deck, drag.id);
+      else if (drag?.kind === "url")
+        void load(deck, addUrl(drag.url, drag.title, drag.artist, drag.art).id);
+    },
+  });
+
   const left = decks.filter((d) => d.index % 2 === 0);
   const right = decks.filter((d) => d.index % 2 === 1);
   const side = (list: StudioDeck[], mirror: boolean) => (
     <div className={`sd-side${mirror ? " is-mirror" : ""}`}>
       {list.map((deck) => (
-        <div key={deck.index} className="sd-deck" data-deck={deck.index}>
+        <div key={deck.index} className="sd-deck" data-deck={deck.index} {...dropOn(deck)}>
           <DeckPitch deck={deck} />
           <DeckJog deck={deck} art={deckArt(deck)} look={engine.deckCount === 4 ? "jog" : look} />
           <ChannelStrip deck={deck} />
@@ -181,12 +205,16 @@ export function DjStudio() {
       <div className="sd-heads" hidden={mode !== "audio"}>
         <div className="sd-heads-col">
           {left.map((d) => (
-            <DeckHeader key={d.index} deck={d} art={deckArt(d)} />
+            <div key={d.index} className="sd-drop" {...dropOn(d)}>
+              <DeckHeader deck={d} art={deckArt(d)} />
+            </div>
           ))}
         </div>
         <div className="sd-heads-col">
           {right.map((d) => (
-            <DeckHeader key={d.index} deck={d} art={deckArt(d)} />
+            <div key={d.index} className="sd-drop" {...dropOn(d)}>
+              <DeckHeader deck={d} art={deckArt(d)} />
+            </div>
           ))}
         </div>
       </div>
