@@ -79,22 +79,10 @@
   padding: clamp(16px, 3cqw, 32px);
   color: #fff;
 }
-.music-dj-hello {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 560px;
-}
-.music-dj-hello h2 {
-  margin: 0;
-  font-size: clamp(28px, 4.5cqw, 48px);
-  font-weight: 900;
-  letter-spacing: -0.03em;
-}
-.music-dj-hello p {
-  margin: 0;
-  font-size: 14.5px;
-  color: rgba(255, 255, 255, 0.78);
+.music-dj-stage[data-hello="true"] {
+  --dj-a: #f97316;
+  --dj-b: #7c1d6f;
+  aspect-ratio: 16 / 7.5;
 }
 .music-dj-vibe {
   display: inline-flex;
@@ -1137,4 +1125,7 @@ li[data-current="true"] > .music-dj-poster {
 }
 .music-dj-poster img.music-dj-poster-art {
   transition: transform 0.4s ease;
+}
+.music-dj-overlay:empty {
+  display: none;
 }

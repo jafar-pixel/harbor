@@ -1,0 +1,290 @@
+/* Ask JL's welcome slides (music-dj-hero.tsx), inside .music-dj-stage before a set starts. */
+.dj-hero {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  color: #fff;
+  touch-action: pan-y;
+}
+.dj-hero-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  background:
+    radial-gradient(70% 90% at 50% 45%, #18205a 0%, transparent 70%),
+    linear-gradient(180deg, #0a0f2e, #070a1f);
+  transition:
+    opacity 0.7s ease,
+    visibility 0s linear 0.7s;
+}
+.dj-hero-slide[data-on="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.7s ease;
+}
+
+.dj-hero-shapes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.dj-hero-float {
+  animation: dj-hero-float 9s ease-in-out infinite alternate;
+}
+.dj-hero-float-2 {
+  animation-duration: 11s;
+  animation-delay: -3s;
+}
+.dj-hero-float-3 {
+  animation-duration: 7s;
+  animation-delay: -5s;
+}
+
+/* Corners: spaced caps top left, a dotted list on the left, the round badge on the right. */
+.dj-hero-eyebrow {
+  position: absolute;
+  top: clamp(14px, 2.6cqw, 28px);
+  left: clamp(16px, 3cqw, 34px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: clamp(9px, 0.9cqw, 11px);
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  line-height: 1.7;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+}
+.dj-hero-points {
+  position: absolute;
+  top: 50%;
+  left: clamp(16px, 3cqw, 34px);
+  translate: 0 -50%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: clamp(10px, 1cqw, 12px);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.dj-hero-points li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dj-hero-points li::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c1);
+  box-shadow: 0 0 10px var(--c1);
+}
+.dj-hero-points li:nth-child(2)::before {
+  background: var(--c2);
+  box-shadow: 0 0 10px var(--c2);
+}
+.dj-hero-points li:nth-child(3)::before {
+  background: var(--c3);
+  box-shadow: 0 0 10px var(--c3);
+}
+.dj-hero-badge {
+  position: absolute;
+  top: clamp(14px, 3cqw, 34px);
+  right: clamp(16px, 4cqw, 52px);
+  width: clamp(90px, 12cqw, 150px);
+  height: auto;
+  overflow: visible;
+}
+.dj-hero-badge-disc {
+  fill: rgba(10, 14, 40, 0.55);
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 1.5;
+}
+.dj-hero-badge text {
+  fill: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.dj-hero-badge-spin {
+  transform-origin: 100px 100px;
+  animation: dj-hero-spin 18s linear infinite;
+}
+.dj-hero-badge-core {
+  fill: var(--c2);
+  filter: drop-shadow(0 0 12px var(--c2));
+}
+
+/* The centre: a huge title and the chip row under it. */
+.dj-hero-center {
+  position: absolute;
+  inset: 0 18% clamp(48px, 7cqw, 70px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 1.6cqw, 18px);
+  text-align: center;
+}
+.dj-hero-word {
+  display: flex;
+  align-items: baseline;
+  margin: 0;
+  font-size: clamp(64px, 13cqw, 168px);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  color: #fff;
+  text-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+.dj-hero-dot {
+  display: inline-block;
+  width: 0.2em;
+  height: 0.2em;
+  margin: 0 0.06em 0 0.08em;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--c1) 30%, var(--c2));
+  box-shadow: 0 0 24px var(--c2);
+}
+.dj-hero-word-vibe {
+  display: block;
+  font-size: clamp(36px, 6.4cqw, 84px);
+  line-height: 0.96;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.dj-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+  font-size: clamp(12px, 1.25cqw, 15px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+}
+.dj-hero-chips span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.dj-hero-chips em {
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(10, 14, 40, 0.55);
+  backdrop-filter: blur(8px);
+  font-style: normal;
+}
+.dj-hero-chips svg {
+  color: var(--c1);
+}
+.dj-hero-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f97316, #db2777);
+  box-shadow: 0 10px 30px rgba(219, 39, 119, 0.45);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.dj-hero-start:hover,
+.dj-hero-start:focus-visible {
+  filter: brightness(1.1);
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.dj-hero-nav {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(12px, 2cqw, 20px);
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dj-hero-nav > button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  background: rgba(10, 14, 40, 0.6);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  cursor: pointer;
+}
+.dj-hero-nav > button:hover,
+.dj-hero-nav > button:focus-visible {
+  background: rgba(255, 255, 255, 0.18);
+}
+.dj-hero-dots {
+  display: flex;
+  gap: 6px;
+}
+.dj-hero-dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition:
+    width 0.3s ease,
+    background 0.3s ease;
+}
+.dj-hero-dots button[aria-current="true"] {
+  width: 26px;
+  background: linear-gradient(90deg, #f97316, #db2777);
+}
+
+@keyframes dj-hero-float {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(18px, -14px);
+  }
+}
+@keyframes dj-hero-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dj-hero-float,
+  .dj-hero-badge-spin {
+    animation: none;
+  }
+}
+@container (max-width: 700px) {
+  .dj-hero-points,
+  .dj-hero-badge {
+    display: none;
+  }
+  .dj-hero-center {
+    inset-inline: 16px;
+  }
+}

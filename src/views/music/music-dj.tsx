@@ -44,6 +44,7 @@ import { pausePlayer } from "@/lib/music/player/store";
 import { soundById } from "@/lib/music/sounds/catalog";
 import { loadMix } from "@/lib/music/sounds/engine";
 import { useSettings } from "@/lib/settings";
+import { DjHero } from "./music-dj-hero";
 import { DjVinyl } from "./music-dj-vinyl";
 import type { SongToShare } from "@/lib/music/social/api";
 import { SendSongDialog } from "./music-send";
@@ -382,6 +383,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
         data-on={started && !!dj.vibe}
         data-idle={started && !!current && idle}
         data-full={full}
+        data-hello={!dj.vibe}
         onMouseMove={wake}
         onMouseLeave={() => setIdle(true)}
         onTouchStart={wake}
@@ -407,6 +409,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
           />
         </div>
         <div className="music-dj-glow" />
+        {!dj.vibe && <DjHero onStart={(vibe) => void begin(vibe)} />}
         {started && dj.vibe && (
           <button
             type="button"
@@ -531,17 +534,7 @@ export function MusicDj({ visible }: { visible: boolean }) {
                 </button>
               </div>
             </>
-          ) : (
-            <div className="music-dj-hello">
-              <Radio size={28} />
-              <h2>{t("Ask JL")}</h2>
-              <p>
-                {t(
-                  "Pick a vibe or tell JL what you're in the mood for. JL plays a set of music videos that fits it.",
-                )}
-              </p>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
 
