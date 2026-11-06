@@ -1,5 +1,7 @@
 #[cfg(desktop)]
 mod ytmusic;
+#[cfg(desktop)]
+mod youtube_signin;
 // Modules that build on every target, desktop and Android alike. Nothing in
 // here may reach a `#[cfg(desktop)]` tauri API: every Window setter (show,
 // hide, close, set_size, set_position, set_focus, set_always_on_top,
@@ -1432,6 +1434,7 @@ pub fn run() {
             browser::browser_open,
             browser::browser_close,
             ytmusic::ytmusic_open,
+            youtube_signin::youtube_browser_signin,
             ytmusic::ytmusic_close,
             ytmusic::ytmusic_is_open,
             #[cfg(windows)]
