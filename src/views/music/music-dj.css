@@ -82,6 +82,7 @@
 .music-dj-stage[data-hello="true"] {
   --dj-a: #f97316;
   --dj-b: #7c1d6f;
+  aspect-ratio: 16 / 7.5;
 }
 .music-dj-vibe {
   display: inline-flex;
