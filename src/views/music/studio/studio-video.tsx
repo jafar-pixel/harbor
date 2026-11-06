@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { Pause, Play, SkipBack, Shuffle } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import {
@@ -7,7 +7,9 @@ import {
   clearVideoError,
   cueVideoDeck,
   nudgeRate,
+  loadVideoDeck,
   screenMix,
+  screenZoom,
   seekVideoDeck,
   setVideoCrossfader,
   setVideoCurve,
@@ -16,6 +18,7 @@ import {
   useVideoDecks,
   type VideoDeck,
 } from "@/lib/music/studio/video-decks";
+import { isStudioDrag, readStudioDrag } from "@/lib/music/studio/drag";
 import { formatTime } from "./studio-controls";
 
 const CURVES = [
@@ -37,15 +40,55 @@ export function StudioVideo() {
   useEffect(() => {
     if (a.current && b.current) return attachVideoDecks(a.current, b.current);
   }, []);
-  const [oa, ob] = screenMix(v.crossfader);
+  const [oa, ob] = screenMix(v.crossfader, v.decks);
+  const [over, setOver] = useState<0 | 1 | null>(null);
+  // The screen's left half is deck A and its right half deck B for a dropped song.
+  const screenSide = (e: DragEvent): 0 | 1 => {
+    const box = e.currentTarget.getBoundingClientRect();
+    return e.clientX < box.left + box.width / 2 ? 0 : 1;
+  };
   return (
     <div className="sv">
-      <div className="sv-screen" aria-label={t("Video mix")}>
-        <div ref={a} className="sv-slot" style={{ opacity: oa } as CSSProperties} />
-        <div ref={b} className="sv-slot" style={{ opacity: ob } as CSSProperties} />
+      <div
+        className="sv-screen"
+        aria-label={t("Video mix")}
+        data-drop={over ?? undefined}
+        onDragOver={(e) => {
+          if (!isStudioDrag(e)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setOver(screenSide(e));
+        }}
+        onDragLeave={() => setOver(null)}
+        onDrop={(e) => {
+          if (!isStudioDrag(e)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setOver(null);
+          const drag = readStudioDrag(e);
+          if (drag?.kind === "video") void loadVideoDeck(screenSide(e), drag.song);
+        }}
+      >
+        <div
+          ref={a}
+          className="sv-slot"
+          style={{ opacity: oa, transform: `scale(${screenZoom(v.decks[0].aspect)})` }}
+        />
+        <div
+          ref={b}
+          className="sv-slot"
+          style={{ opacity: ob, transform: `scale(${screenZoom(v.decks[1].aspect)})` }}
+        />
         {!v.decks[0].song && !v.decks[1].song && (
           <p className="sv-empty">
-            {t("Load songs from YouTube Music below onto deck A and deck B, then blend them.")}
+            {t(
+              "Drag songs from YouTube Music below onto deck A or deck B (or use their A and B buttons), then blend them.",
+            )}
+          </p>
+        )}
+        {over !== null && (
+          <p className="sv-drop-hint" data-side={over}>
+            {t("Drop on deck {name}", { name: over === 0 ? "A" : "B" })}
           </p>
         )}
       </div>
@@ -103,8 +146,29 @@ function VideoDeckPanel({ i, deck }: { i: 0 | 1; deck: VideoDeck }) {
   const t = useT();
   const name = i === 0 ? "A" : "B";
   const progress = deck.duration ? deck.position / deck.duration : 0;
+  const [over, setOver] = useState(false);
   return (
-    <section className="sv-deck" data-deck={i} aria-label={t("Deck {name}", { name })}>
+    <section
+      className="sv-deck"
+      data-deck={i}
+      data-drop={over}
+      aria-label={t("Deck {name}", { name })}
+      onDragOver={(e) => {
+        if (!isStudioDrag(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        if (!isStudioDrag(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setOver(false);
+        const drag = readStudioDrag(e);
+        if (drag?.kind === "video") void loadVideoDeck(i, drag.song);
+      }}
+    >
       <div className="sv-deck-head">
         <span className="sv-deck-name">{name}</span>
         {deck.song?.art ? <img src={deck.song.art} alt="" /> : <span className="sv-noart" />}

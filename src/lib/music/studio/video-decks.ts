@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { videoAspects } from "../dj/api";
 import { pauseDj } from "../dj/playhead";
 import { loadYouTube, youtubeFrame, YT_ENDED, YT_PLAYING, type YtPlayer } from "../dj/youtube";
 import { pausePlayer } from "../player/store";
@@ -28,6 +29,8 @@ export type VideoDeck = {
   rate: number;
   rates: number[];
   volume: number;
+  /** The video's real shape (width / height), once known, so the screen can fill with it. */
+  aspect?: number;
 };
 
 type State = {
@@ -164,10 +167,42 @@ function apply() {
     players[i]?.setVolume(Math.round(state.decks[i].volume * gains[i]));
 }
 
-/** How visible each deck is on the screen (the same curve as the sound). */
-export function screenMix(x = state.crossfader): [number, number] {
-  const t = (Math.max(-1, Math.min(1, x)) + 1) / 2;
-  return [1 - t, t];
+/** The video screen's shape (.sv-screen). */
+export const SCREEN_ASPECT = 16 / 9;
+/** How far either side of centre the picture takes to blend; past it one deck fills the screen. */
+const PICTURE_BLEND = 0.35;
+
+/**
+ * How visible each deck is on the screen. Only a playing deck shows: a deck that's only cued
+ * would put YouTube's still cover over the video that's on. With one deck playing it fills the
+ * screen wherever the crossfader sits; with both playing the picture follows the crossfader,
+ * blending only through the middle of its travel. With neither playing, the cued deck on the
+ * crossfader's side shows (or the only one loaded).
+ */
+export function screenMix(
+  x = state.crossfader,
+  decks: readonly [
+    Pick<VideoDeck, "song" | "playing">,
+    Pick<VideoDeck, "song" | "playing">,
+  ] = state.decks,
+): [number, number] {
+  const [a, b] = decks.map((d) => !!d.song && d.playing);
+  if (a && !b) return [1, 0];
+  if (b && !a) return [0, 1];
+  if (!a && !b) {
+    const side = x <= 0 ? 0 : 1;
+    const show = decks[side].song ? side : decks[1 - side].song ? 1 - side : side;
+    return show === 0 ? [1, 0] : [0, 1];
+  }
+  const t = Math.max(0, Math.min(1, (x + PICTURE_BLEND) / (2 * PICTURE_BLEND)));
+  const s = t * t * (3 - 2 * t);
+  return [1 - s, s];
+}
+
+/** How much to enlarge a video so it fills the screen past YouTube's black bars. */
+export function screenZoom(aspect: number | undefined, screen = SCREEN_ASPECT): number {
+  if (!aspect || !Number.isFinite(aspect) || aspect <= 0) return 1;
+  return Math.min(2.4, Math.max(aspect / screen, screen / aspect));
 }
 
 export async function loadVideoDeck(i: 0 | 1, song: VideoSong): Promise<void> {
@@ -175,7 +210,13 @@ export async function loadVideoDeck(i: 0 | 1, song: VideoSong): Promise<void> {
   const p = players[i];
   if (!p) return;
   p.cueVideoById(song.videoId);
-  patchDeck(i, { song, playing: false, position: 0, duration: 0, rate: 1 });
+  patchDeck(i, { song, playing: false, position: 0, duration: 0, rate: 1, aspect: undefined });
+  void videoAspects([song.videoId])
+    .then((found) => {
+      const aspect = found.get(song.videoId);
+      if (aspect && state.decks[i].song?.videoId === song.videoId) patchDeck(i, { aspect });
+    })
+    .catch(() => undefined);
   // Speed steps show up once the video has loaded.
   window.setTimeout(() => {
     const rates = players[i]?.getAvailablePlaybackRates?.() ?? [1];

@@ -22,6 +22,7 @@ import {
 } from "@/lib/music/youtube-web/api";
 import { connectYouTubeWeb, useYouTubeWeb } from "@/lib/music/youtube-web/auth";
 import { formatTime } from "./studio-controls";
+import { startStudioDrag } from "@/lib/music/studio/drag";
 import { DECK_NAMES } from "./studio-deck";
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -112,7 +113,28 @@ export function YouTubeSource({ onVideo }: { onVideo: () => void }) {
           {songs.map((s) => {
             const f = facts.get(factsKey(s)) ?? {};
             return (
-              <div key={s.videoId} role="row" className="sl-tr">
+              <div
+                key={s.videoId}
+                role="row"
+                className="sl-tr"
+                draggable
+                title={t("Drag onto video deck A or B, or use its deck buttons")}
+                onDragStart={(e) => {
+                  // Show the video decks once the drag is under way, so it isn't cut short.
+                  window.setTimeout(onVideo, 0);
+                  startStudioDrag(e, {
+                    kind: "video",
+                    song: {
+                      videoId: s.videoId,
+                      title: s.title,
+                      artist: s.artist,
+                      art: s.image,
+                      bpm: f.bpm,
+                      key: f.key,
+                    },
+                  });
+                }}
+              >
                 <span
                   className="sl-art"
                   style={s.image ? { backgroundImage: `url("${s.image}")` } : undefined}
@@ -254,7 +276,22 @@ export function JellyfinSource({
       ) : (
         <div className="sl-table" role="table" aria-label={t("Jellyfin")}>
           {songs.map((s) => (
-            <div key={s.id} role="row" className="sl-tr">
+            <div
+              key={s.id}
+              role="row"
+              className="sl-tr"
+              draggable
+              title={t("Drag onto a deck, or use its deck buttons")}
+              onDragStart={(e) =>
+                startStudioDrag(e, {
+                  kind: "url",
+                  url: jellyfinStreamUrl(s.id),
+                  title: s.title,
+                  artist: s.artist,
+                  art: s.art,
+                })
+              }
+            >
               <span
                 className="sl-art"
                 style={s.art ? { backgroundImage: `url("${s.art}")` } : undefined}

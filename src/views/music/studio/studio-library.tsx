@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n";
 import { formatTime } from "./studio-controls";
 import { DECK_NAMES } from "./studio-deck";
 import { JellyfinSource, YouTubeSource } from "./studio-sources";
+import { startStudioDrag } from "@/lib/music/studio/drag";
 
 type Source = "all" | "history" | "youtube" | "jellyfin";
 
@@ -169,6 +170,9 @@ export function StudioLibrary({
                     key={item.id}
                     role="row"
                     tabIndex={0}
+                    draggable
+                    onDragStart={(e) => startStudioDrag(e, { kind: "crate", id: item.id })}
+                    title={t("Drag onto a deck, or use its deck buttons")}
                     className={`sl-tr${selected === item.id ? " is-selected" : ""}`}
                     onClick={() => setSelected(item.id)}
                     onDoubleClick={() => {

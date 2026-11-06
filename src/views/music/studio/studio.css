@@ -911,6 +911,11 @@
   border: 0;
   pointer-events: none;
 }
+.sv-slot {
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
 .sv-empty {
   position: absolute;
   inset: 0;
@@ -1064,4 +1069,44 @@
   .sv-console {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Dropping a library song onto a deck. */
+.sl-tr[draggable="true"] {
+  cursor: grab;
+}
+.sd-drop {
+  min-width: 0;
+  border-radius: 12px;
+}
+.sd-drop[data-drop="true"],
+.sd-deck[data-drop="true"],
+.sv-deck[data-drop="true"] {
+  outline: 2px dashed #f97316;
+  outline-offset: 3px;
+  background-color: rgba(249, 115, 22, 0.08);
+}
+.sv-screen[data-drop] {
+  outline: 2px dashed #f97316;
+  outline-offset: 3px;
+}
+.sv-drop-hint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  background: rgba(249, 115, 22, 0.18);
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  pointer-events: none;
+}
+.sv-drop-hint[data-side="0"] {
+  left: 0;
+}
+.sv-drop-hint[data-side="1"] {
+  right: 0;
 }
