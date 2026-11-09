@@ -58,7 +58,9 @@ export function tvInfoLine(title: string, streamName: string | null | undefined)
   const labels: string[] = [];
   if (streamName) {
     try {
-      const kinds = streamBadges(parseStream({ name: "", title: streamName, addonId: "", addonName: "" }));
+      const kinds = streamBadges(
+        parseStream({ name: "", title: streamName, addonId: "", addonName: "" }),
+      );
       for (const kind of kinds as BadgeKind[]) if (!SKIP.has(kind)) labels.push(badgeText(kind));
     } catch {
       /* An unreadable name shows the title alone. */
