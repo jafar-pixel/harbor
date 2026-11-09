@@ -33,20 +33,22 @@ if (player?.isAvailable()) {
 }
 ```
 
-| Method | Description |
-| --- | --- |
-| `isAvailable(): boolean` | `true` when the bridge will accept calls on this page. |
+| Method                                            | Description                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `isAvailable(): boolean`                          | `true` when the bridge will accept calls on this page.                                                                                                                                                                                                                                                                                                                    |
 | `play(url, headersJson, title, startMs): boolean` | Plays an `http`/`https` URL, replacing what was playing. `headersJson` is a JSON object of request headers (`""` or `"{}"` for none); a `User-Agent` entry replaces the default `JLMediaVisionTV/<version> … AndroidXMedia3/<version>`. `startMs > 0` starts there (ignored by live streams). Returns `false` when the URL or page is rejected. The current mode is kept. |
-| `setMode(mode)` | `"full"`, `"hero"` or `"hidden"`. Unknown values are ignored. The mode can be set before `play`. |
-| `setRect(x, y, w, h)` | The hero area in CSS pixels relative to the WebView viewport (`element.getBoundingClientRect()`). Call it again whenever the area moves or resizes. `w` or `h` `<= 0` clears it. |
-| `pause()` / `resume()` | Pauses or resumes. `resume()` restarts an ended or failed stream. |
-| `seek(ms)` | Seeks to `ms`, clamped to the stream's duration when known. |
-| `stop()` | Stops, releases the player and returns to `hidden`. |
-| `setOptions(json)` | Playback options, applied from the next `play` (see below). Unknown or missing keys keep their defaults; invalid JSON is ignored. |
-| `capabilities(): string` | What the TV supports, as JSON (see below). `"{}"` off an app page. |
-| `audioTracks(): string` | The playing stream's audio tracks, as a JSON array (see [Audio tracks](#audio-tracks)). `"[]"` before the tracks are known, after `stop()`, or off an app page. |
-| `setPreferredAudioLanguage(lang)` | Plays audio in `lang` (an ISO 639 code such as `"en"` or `"eng"`) when the stream has it, replacing any earlier audio choice; `""` goes back to the default pick. It stays in force for later `play` calls until `stop()`. |
-| `showMessage(text)` | Shows `text` (up to 200 characters) as a toast over the video in `full`, where the page can't be seen. Ignored in `hero` and `hidden`. |
+| `setMode(mode)`                                   | `"full"`, `"hero"` or `"hidden"`. Unknown values are ignored. The mode can be set before `play`.                                                                                                                                                                                                                                                                          |
+| `setRect(x, y, w, h)`                             | The hero area in CSS pixels relative to the WebView viewport (`element.getBoundingClientRect()`). Call it again whenever the area moves or resizes. `w` or `h` `<= 0` clears it.                                                                                                                                                                                          |
+| `pause()` / `resume()`                            | Pauses or resumes. `resume()` restarts an ended or failed stream.                                                                                                                                                                                                                                                                                                         |
+| `seek(ms)`                                        | Seeks to `ms`, clamped to the stream's duration when known.                                                                                                                                                                                                                                                                                                               |
+| `stop()`                                          | Stops, releases the player and returns to `hidden`.                                                                                                                                                                                                                                                                                                                       |
+| `setOptions(json)`                                | Playback options, applied from the next `play` (see below). Unknown or missing keys keep their defaults; invalid JSON is ignored.                                                                                                                                                                                                                                         |
+| `capabilities(): string`                          | What the TV supports, as JSON (see below). `"{}"` off an app page.                                                                                                                                                                                                                                                                                                        |
+| `audioTracks(): string`                           | The playing stream's audio tracks, as a JSON array (see [Audio tracks](#audio-tracks)). `"[]"` before the tracks are known, after `stop()`, or off an app page.                                                                                                                                                                                                           |
+| `setPreferredAudioLanguage(lang)`                 | Plays audio in `lang` (an ISO 639 code such as `"en"` or `"eng"`) when the stream has it, replacing any earlier audio choice; `""` goes back to the default pick. It stays in force for later `play` calls until `stop()`.                                                                                                                                                |
+| `showMessage(text)`                               | Shows `text` (up to 200 characters) as a toast over the video in `full`, where the page can't be seen. Ignored in `hero` and `hidden`.                                                                                                                                                                                                                                    |
+| `addSubtitleText(vtt, language, label, select)`   | Adds a subtitle to the playing video as WebVTT text. The page downloads and reads it as the desktop does (addons, subtitle sites, logins, zips, encodings; `native-tv/subtitles.ts`). The item is set again at the same position, as Media3 adds side-loaded subtitles only on prepare. `select` turns it on. False off an app page or over 8 million characters.         |
+| `setSubtitlesEnabled(on)`                         | Subtitles on or off, keeping the tracks.                                                                                                                                                                                                                                                                                                                                  |
 
 `setOptions`, `capabilities`, `audioTracks`, `setPreferredAudioLanguage` and `showMessage` are newer than the
 first app builds, so the page checks `typeof player.setOptions === "function"` (and so on) before
@@ -55,12 +57,14 @@ calling them; an older app plays with the defaults below and reports no audio tr
 ### Playback options
 
 ```js
-player.setOptions(JSON.stringify({
-  matchFrameRate: true,     // default true
-  maxResolution: "auto",    // "auto" (default, up to the TV's largest mode), "1080p" or "720p"
-  audioPassthrough: true,   // default true
-  tunneling: false,         // default false
-}));
+player.setOptions(
+  JSON.stringify({
+    matchFrameRate: true, // default true
+    maxResolution: "auto", // "auto" (default, up to the TV's largest mode), "1080p" or "720p"
+    audioPassthrough: true, // default true
+    tunneling: false, // default false
+  }),
+);
 ```
 
 - Video tracks are chosen for the TV's largest display mode (`Display.getSupportedModes`), not the
@@ -81,7 +85,8 @@ player.setOptions(JSON.stringify({
 
 ```json
 {
-  "maxWidth": 3840, "maxHeight": 2160,
+  "maxWidth": 3840,
+  "maxHeight": 2160,
   "refreshRates": [23.976, 24, 25, 29.97, 30, 50, 59.94, 60],
   "hdr": ["hdr10", "hlg", "dolby-vision"],
   "passthrough": ["ac3", "eac3", "eac3-joc", "dts", "truehd"],
@@ -100,8 +105,22 @@ when it is true.
 
 ```json
 [
-  { "id": "1:0", "language": "ja", "label": "Japanese", "selected": true, "channels": 6, "codec": "audio/eac3" },
-  { "id": "2:0", "language": "en", "label": "English", "selected": false, "channels": 2, "codec": "audio/mp4a-latm" }
+  {
+    "id": "1:0",
+    "language": "ja",
+    "label": "Japanese",
+    "selected": true,
+    "channels": 6,
+    "codec": "audio/eac3"
+  },
+  {
+    "id": "2:0",
+    "language": "en",
+    "label": "English",
+    "selected": false,
+    "channels": 2,
+    "codec": "audio/mp4a-latm"
+  }
 ]
 ```
 
@@ -158,18 +177,18 @@ window.addEventListener("jl-native-player", (event) => {
 });
 ```
 
-| `type` | When |
-| --- | --- |
-| `ready` | The stream is ready to play (once per `play`). |
-| `playing` | Playback started or resumed. |
-| `paused` | Paused (by the page, the remote, or the app leaving the screen). |
-| `buffering` | Waiting for data. |
-| `ended` | The stream finished. |
-| `error` | Playback failed; `message` holds the Media3 error code name and text. A live stream that falls behind its window rejoins the live edge without an error. |
-| `stopped` | The player was released. `message` is `"navigation"` when the WebView loaded a new document, `"background"` when the app left the screen, and absent for `stop()` or Back. |
-| `position` | About once a second while playing. |
-| `exit-full` | Back, or the menu's "More player options", left full screen. |
-| `tracks` | The stream's tracks are known or the selection changed; `audioTracks` holds the same array `audioTracks()` returns. |
+| `type`        | When                                                                                                                                                                                                                                                                    |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ready`       | The stream is ready to play (once per `play`).                                                                                                                                                                                                                          |
+| `playing`     | Playback started or resumed.                                                                                                                                                                                                                                            |
+| `paused`      | Paused (by the page, the remote, or the app leaving the screen).                                                                                                                                                                                                        |
+| `buffering`   | Waiting for data.                                                                                                                                                                                                                                                       |
+| `ended`       | The stream finished.                                                                                                                                                                                                                                                    |
+| `error`       | Playback failed; `message` holds the Media3 error code name and text. A live stream that falls behind its window rejoins the live edge without an error.                                                                                                                |
+| `stopped`     | The player was released. `message` is `"navigation"` when the WebView loaded a new document, `"background"` when the app left the screen, and absent for `stop()` or Back.                                                                                              |
+| `position`    | About once a second while playing.                                                                                                                                                                                                                                      |
+| `exit-full`   | Back, or the menu's "More player options", left full screen.                                                                                                                                                                                                            |
+| `tracks`      | The stream's tracks are known or the selection changed; `audioTracks` holds the same array `audioTracks()` returns.                                                                                                                                                     |
 | `english-dub` | The full-screen menu's English dub item was picked and the file has no English audio track: the page should find an English dub source and `play` it (`src/views/player/hooks/use-english-dub.ts`). The page's notices about it reach the screen through `showMessage`. |
 
 `mode` is `"full"`, `"hero"` or `"hidden"` at the time of the event. `positionMs` and

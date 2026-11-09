@@ -5,7 +5,9 @@ import {
   type PlayerSource,
   type TrackInfo,
 } from "../bridge";
+import type { SubtitleLoadMetadata } from "@/lib/subtitles/types";
 import { nativeTvPlayer as native, type NativeAudioTrack, type NativeTvOptions } from "./shell";
+import { loadSubtitleVtt } from "./subtitles";
 
 export { nativeTvAvailable } from "./shell";
 
@@ -77,6 +79,10 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
   let snap: PlayerSnapshot = { ...emptySnapshot };
   let host: HTMLElement | null = null;
   let source: PlayerSource | null = null;
+  /** Subtitles offered for this stream (addons, then ones the page added) and what each one is. */
+  let subs: (TrackInfo & { meta?: SubtitleLoadMetadata })[] = [];
+  const loaded = new Set<string>();
+  const publishSubs = () => set({ subtitleTracks: subs.map(({ meta: _meta, ...t }) => t) });
   let destroyed = false;
   let ro: ResizeObserver | null = null;
   let mo: MutationObserver | null = null;
@@ -183,7 +189,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
     host = null;
   };
 
-  return {
+  const bridge: PlayerBridge = {
     attach(el) {
       host = el;
       window.addEventListener("jl-native-player", onNative);
@@ -219,6 +225,22 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
         return;
       }
       set({ ...emptySnapshot, status: "loading", buffering: true });
+      loaded.clear();
+      // The stream's addon subtitles, offered like the desktop player's external tracks so the
+      // page's menu lists them and its preferred-language choice can pick one.
+      subs = (src.subtitles ?? [])
+        .filter((sub) => /^https?:/i.test(sub.url))
+        .map((sub, i) => ({
+          id: sub.id ?? `addon-${i}`,
+          label: sub.lang ?? `Subtitles ${i + 1}`,
+          lang: sub.lang,
+          kind: "subtitle" as const,
+          selected: false,
+          external: true,
+          autoSelectionEligible: true,
+          url: sub.url,
+        }));
+      publishSubs();
       place();
       if (options && typeof p.setOptions === "function") {
         try {
@@ -271,9 +293,31 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       }
       p.setPreferredAudioLanguage(track.lang);
     },
-    setSubtitleTrack() {},
+    // Off turns the TV app's subtitles off. A track it doesn't have yet is downloaded and added
+    // (addSubtitle); one it has is turned back on.
+    setSubtitleTrack(id) {
+      const p = native();
+      if (id === null) {
+        p?.setSubtitlesEnabled?.(false);
+        subs = subs.map((t) => ({ ...t, selected: false }));
+        publishSubs();
+        return;
+      }
+      const track = subs.find((t) => t.id === id);
+      if (!track) {
+        p?.setSubtitlesEnabled?.(true);
+        return;
+      }
+      subs = subs.map((t) => ({ ...t, selected: t.id === id }));
+      publishSubs();
+      if (track.url && !loaded.has(track.url))
+        void bridge.addSubtitle(track.url, track.lang, track.label, true, track.meta);
+      else p?.setSubtitlesEnabled?.(true);
+    },
     setSecondarySubtitleTrack() {},
-    setSubVisible() {},
+    setSubVisible(on) {
+      native()?.setSubtitlesEnabled?.(on);
+    },
     setSubDelay() {},
     setAudioDelay() {},
     setPanscan() {},
@@ -282,8 +326,35 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
     setStretch() {},
     setVideoEq() {},
     setAnime4kShaders() {},
-    async addSubtitle() {
-      return false;
+    // The page downloads and reads the subtitle as on the desktop (addons, subtitle sites, their
+    // logins, zips and encodings) and hands the TV app the text; older app builds can't take it.
+    async addSubtitle(url, lang, title, select, metadata) {
+      const p = native();
+      if (!p || typeof p.addSubtitleText !== "function") return false;
+      const vtt = await loadSubtitleVtt(url, lang, metadata).catch(() => null);
+      if (!vtt || destroyed) return false;
+      const ok = !!native()?.addSubtitleText?.(
+        vtt,
+        lang ?? "",
+        title ?? lang ?? "",
+        select === true,
+      );
+      if (!ok) return false;
+      loaded.add(url);
+      if (!subs.some((t) => t.url === url))
+        subs.push({
+          id: `added-${subs.length}`,
+          label: title || lang || "Subtitles",
+          lang,
+          kind: "subtitle",
+          selected: false,
+          external: true,
+          url,
+          meta: metadata,
+        });
+      if (select) subs = subs.map((t) => ({ ...t, selected: t.url === url }));
+      publishSubs();
+      return true;
     },
     getSelectedTrackCues: () => null,
     getSelectedTrackUrl: () => null,
@@ -320,4 +391,5 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       listeners.clear();
     },
   };
+  return bridge;
 }
