@@ -29,12 +29,15 @@ type NativeEvent = {
     | "panel"
     | "tracks"
     // Handled by useEnglishDub, which listens for it itself.
-    | "english-dub";
+    | "english-dub"
+    // A bar button the page carries out (next or previous episode): TV_CONTROL_EVENT.
+    | "control";
   mode?: string;
   positionMs?: number;
   durationMs?: number;
   message?: string;
   audioTracks?: NativeAudioTrack[];
+  id?: string;
 };
 
 export function nativeAudioTrackInfo(tracks: unknown): TrackInfo[] {
@@ -56,6 +59,9 @@ export function nativeAudioTrackInfo(tracks: unknown): TrackInfo[] {
   }
   return out;
 }
+
+/** The TV app's bar asked the page for a control (detail: its id, e.g. "next-episode"). */
+export const TV_CONTROL_EVENT = "harbor:tv-control";
 
 /** Height of the web control bar kept under the native video in the hero. */
 export const NATIVE_HERO_BAR_PX = 56;
@@ -156,6 +162,10 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
         break;
       case "tracks":
         set({ audioTracks: nativeAudioTrackInfo(d.audioTracks) });
+        break;
+      case "control":
+        if (typeof d.id === "string")
+          window.dispatchEvent(new CustomEvent(TV_CONTROL_EVENT, { detail: d.id }));
         break;
     }
   };

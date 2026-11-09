@@ -48,6 +48,10 @@ export type NativeTvOptions = {
   tunneling: boolean;
   /** Identify song on the full-screen bar, with the viewer's own service and key. */
   songId: { enabled: boolean; provider: "audd" | "ai"; key: string; model: string };
+  /** The bar's buttons in the viewer's order (Settings › Player layout); app builds without it keep their row. */
+  controls?: string[];
+  /** The title and the stream's labels, shown across the top with the bar. */
+  info?: string;
 };
 
 export type NativeTvCapabilities = {
