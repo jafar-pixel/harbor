@@ -248,6 +248,25 @@ jobs:
           echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/jl.keystore"
           { echo "JL_KEYSTORE_FILE=$RUNNER_TEMP/jl.keystore"; echo "JL_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"; echo "JL_KEY_ALIAS=$KEY_ALIAS"; echo "JL_KEY_PASSWORD=$KEY_PASSWORD"; } >> "$GITHUB_ENV"
 
+      # The TV app carries its own copy of the app's pages (android-tv BundledSite.kt), built here
+      # from this commit, so a website deploy can't change what the TV runs.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Build the TV app's pages
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+          python3 android-tv/tools/bundle_site.py dist android-tv/app/src/main/assets/site
+          printf '%s\n' "${{ github.sha }}" > android-tv/app/src/main/assets/site/build-commit.txt
+          du -sh android-tv/app/src/main/assets/site
+
       - name: Build APK
         run: gradle -p android-tv assembleRelease --no-daemon
 
@@ -257,6 +276,8 @@ jobs:
           test -s JL-Media-Vision-TV.apk
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose JL-Media-Vision-TV.apk
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging JL-Media-Vision-TV.apk | grep '^package:'
+          # The APK must carry its pages, or it would fall back to the website.
+          unzip -l JL-Media-Vision-TV.apk | grep -q 'assets/site/index.html'
           sha256sum JL-Media-Vision-TV.apk > JL-Media-Vision-TV.apk.sha256
           printf '%s\n' "${{ github.sha }}" > android-tv-build-commit.txt
 

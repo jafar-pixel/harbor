@@ -32,6 +32,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
     private lateinit var root: FrameLayout
     private lateinit var nativePlayer: NativePlayer
+    private lateinit var site: BundledSite
     private var fullscreenView: View? = null
     private var fullscreenCallback: WebChromeClient.CustomViewCallback? = null
 
@@ -50,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(root)
         CrashLog.take(this)?.let(::showLastCrash)
         nativePlayer = NativePlayer(this, root, web, ::dispatchPlayerEvent)
+        site = BundledSite(assets)
 
         CookieManager.getInstance().setAcceptCookie(true)
         with(web.settings) {
@@ -116,6 +118,8 @@ class MainActivity : AppCompatActivity() {
             // Provider requests the page routes through the app (see NativeFetch). Called off the
             // main thread, so the blocking fetch is fine here.
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                // The app's pages come from this APK's own copy (BundledSite), not the website.
+                if (request.url.host == appHost) return site.serve(request.method, request.url)
                 if (request.url.host != NativeFetch.HOST) return null
                 if (!onAppPage || request.method != "GET") return NativeFetch.refused()
                 return NativeFetch.handle(request.url)
