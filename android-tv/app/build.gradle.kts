@@ -49,12 +49,16 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
-val media3 = "1.4.1"
+val media3 = "1.5.0"
 dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.media3:media3-exoplayer:$media3")
     implementation("androidx.media3:media3-exoplayer-hls:$media3")
     implementation("androidx.media3:media3-ui:$media3")
+    // Decodes Dolby Digital, Dolby Digital Plus, DTS and TrueHD on the TV when the TV or receiver
+    // can't take them as passthrough (Jellyfin's published build of Media3's FFmpeg extension;
+    // its version must match Media3's).
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:$media3+1")
     testImplementation("junit:junit:4.13.2")
 }

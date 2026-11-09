@@ -333,8 +333,12 @@ class NativePlayer(
 
     // With passthrough on, ExoPlayer's default sink already sends Dolby and DTS to a receiver that
     // reports them. With it off the sink is told the output is plain PCM, so everything is decoded.
+    // Audio the TV can neither take nor decode itself (DTS and TrueHD on most TVs, Dolby on some)
+    // is decoded by the FFmpeg extension, which runs after the platform's own decoders, so the
+    // film always has sound, as the desktop app's mpv does.
     private fun renderersFactory(): DefaultRenderersFactory {
         val factory = CapturingRenderersFactory(activity, options.audioPassthrough, songCapture)
+        factory.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
         // A Dolby Vision or HEVC decoder that fails to start falls back to the next one.
         return factory.setEnableDecoderFallback(true)
     }

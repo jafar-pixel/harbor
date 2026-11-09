@@ -181,6 +181,14 @@ length of the live window.
 The player pauses when the activity pauses and is released (`stopped`, message `"background"`)
 when it stops, which also frees the provider connection. The page calls `play` again to resume.
 
+### Audio
+
+With Audio passthrough on, Dolby and DTS go to the TV or receiver undecoded when it reports
+them. Anything it can't take is decoded on the TV by Media3's FFmpeg extension
+(`org.jellyfin.media3:media3-ffmpeg-decoder`, which must match the Media3 version): Dolby
+Digital, Dolby Digital Plus, DTS and TrueHD, after the platform's own decoders. With
+passthrough off, everything is decoded to PCM.
+
 ### Streams
 
 HTTP requests allow redirects between `http` and `https`. URLs whose path ends in `.m3u8`, or
