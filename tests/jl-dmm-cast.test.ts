@@ -66,14 +66,14 @@ test("DMM cast receiver: finds the cast lists and acts only on a change", () => 
   );
   assert.deepEqual(castCatalogs(undefined), { movie: undefined, series: undefined });
 
-  const first = { movieId: "tt1", movieUrl: "https://dmm/play/a", showId: "tt9" };
+  const first = { movieId: "tt1", movieCast: "Hope.2026.2160p.mkv", showId: "tt9" };
   assert.equal(newCastBetween(undefined, first), null);
   assert.equal(newCastBetween(first, { ...first }), null);
   assert.deepEqual(newCastBetween(first, { ...first, movieId: "tt2" }), {
     type: "movie",
     id: "tt2",
   });
-  assert.deepEqual(newCastBetween(first, { ...first, movieUrl: "https://dmm/play/b" }), {
+  assert.deepEqual(newCastBetween(first, { ...first, movieCast: "Hope.2026.1080p.mkv" }), {
     type: "movie",
     id: "tt1",
   });
