@@ -7,6 +7,17 @@ drives through `window.JLNativePlayer`.
 Build: `gradle -p android-tv assembleRelease` (JDK 17, Android SDK platform 35). CI builds it in
 `.github/workflows/jl-release.yml`.
 
+## TV track
+
+The TV app is released on its own, from the `tv/main` branch (`jl-release.yml` with `tv_only`,
+which reuses the latest Windows installer untouched). It carries its own copy of the app's pages:
+the release builds them from the same commit and `tools/bundle_site.py` puts them in
+`assets/site`, and `BundledSite.kt` answers the app's address (`watch.jl-stream.com`) from that
+copy. The address is unchanged, so sign ins, saved data and server access stay as they were; the
+server's `/api/` paths and big media (models, game files, large images) still load from the
+website. A website deploy no longer changes the TV, and TV fixes on `tv/main` never reach the
+desktop app's release branch.
+
 ## Native player bridge
 
 `window.JLNativePlayer` exists in the main WebView only (not in the in-app browser). Calls do
