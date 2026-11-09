@@ -33,13 +33,18 @@ type NativeEvent = {
     // Handled by useEnglishDub, which listens for it itself.
     | "english-dub"
     // A bar button the page carries out (next or previous episode): TV_CONTROL_EVENT.
-    | "control";
+    | "control"
+    // The viewer changed the timing in the TV app's menu: the snapshot follows, and the page
+    // saves the subtitle timing for this title (TV_CONTROL_EVENT "sub-delay").
+    | "sync";
   mode?: string;
   positionMs?: number;
   durationMs?: number;
   message?: string;
   audioTracks?: NativeAudioTrack[];
   id?: string;
+  subDelaySec?: number;
+  audioDelaySec?: number;
 };
 
 export function nativeAudioTrackInfo(tracks: unknown): TrackInfo[] {
@@ -173,6 +178,17 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
         if (typeof d.id === "string")
           window.dispatchEvent(new CustomEvent(TV_CONTROL_EVENT, { detail: d.id }));
         break;
+      case "sync": {
+        const sub = typeof d.subDelaySec === "number" ? d.subDelaySec : 0;
+        const changed = sub !== snap.subDelaySec;
+        set({
+          subDelaySec: sub,
+          audioDelaySec: typeof d.audioDelaySec === "number" ? d.audioDelaySec : 0,
+        });
+        if (changed)
+          window.dispatchEvent(new CustomEvent(TV_CONTROL_EVENT, { detail: "sub-delay" }));
+        break;
+      }
     }
   };
 
@@ -318,8 +334,14 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
     setSubVisible(on) {
       native()?.setSubtitlesEnabled?.(on);
     },
-    setSubDelay() {},
-    setAudioDelay() {},
+    setSubDelay(sec) {
+      native()?.setSubtitleDelay?.(sec);
+      set({ subDelaySec: sec });
+    },
+    setAudioDelay(sec) {
+      native()?.setAudioDelay?.(sec);
+      set({ audioDelaySec: sec });
+    },
     setPanscan() {},
     setVideoZoom() {},
     setAspectOverride() {},

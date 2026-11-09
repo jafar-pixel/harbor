@@ -37,6 +37,9 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.text.TextOutput
 import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.exoplayer.audio.AudioSink
@@ -216,6 +219,13 @@ class NativePlayer(
     private var baseItem: MediaItem? = null
     private val sideSubtitles = ArrayList<MediaItem.SubtitleConfiguration>()
     private var selector: DefaultTrackSelector? = null
+
+    /** Audio and subtitle timing; see [SyncOffsets]. Audio timing stays for the next video, as in mpv. */
+    private val sync = SyncOffsets()
+
+    /** The decoders playing the video and sound, for Stream info. */
+    private var videoDecoder: String? = null
+    private var audioDecoder: String? = null
 
     private val songButton = extraButton(R.drawable.tv_ic_song, "Identify song") { identifySong() }
 
@@ -455,6 +465,17 @@ class NativePlayer(
             else C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF,
         )
         p.addListener(listener)
+        videoDecoder = null
+        audioDecoder = null
+        p.addAnalyticsListener(object : AnalyticsListener {
+            override fun onVideoDecoderInitialized(
+                eventTime: AnalyticsListener.EventTime, decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long,
+            ) { videoDecoder = decoderName }
+
+            override fun onAudioDecoderInitialized(
+                eventTime: AnalyticsListener.EventTime, decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long,
+            ) { audioDecoder = decoderName }
+        })
         p.volume = volume
         val item = MediaItem.Builder()
             .setUri(url)
@@ -497,7 +518,7 @@ class NativePlayer(
     // is decoded by the FFmpeg extension, which runs after the platform's own decoders, so the
     // film always has sound, as the desktop app's mpv does.
     private fun renderersFactory(): DefaultRenderersFactory {
-        val factory = CapturingRenderersFactory(activity, options.audioPassthrough, songCapture)
+        val factory = CapturingRenderersFactory(activity, options.audioPassthrough, songCapture, sync, !options.tunneling)
         factory.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
         // A Dolby Vision or HEVC decoder that fails to start falls back to the next one.
         return factory.setEnableDecoderFallback(true)
@@ -682,12 +703,114 @@ class NativePlayer(
                 entries += MenuEntry(checked(row.selected, "Subtitles: $name")) { selectTrack(row) }
             }
         }
+        entries += MenuEntry(checked(false, "Subtitle timing: ${SyncOffsets.describe(SyncOffsets.toSec(sync.subtitleUs))}")) { openTiming(subtitles = true) }
+        entries += MenuEntry(checked(false, "Audio timing: ${SyncOffsets.describe(SyncOffsets.toSec(sync.audioUs))}")) { openTiming(subtitles = false) }
+        entries += MenuEntry(checked(false, "Stream info")) { openStreamInfo() }
         entries += MenuEntry(checked(false, "More player options")) { exitFull() }
         val labels = Array<CharSequence>(entries.size) { entries[it].label }
         val dialog = AlertDialog.Builder(activity)
             .setTitle("Audio & options")
             .setItems(labels) { _, which -> entries[which].action() }
             .create()
+        dialog.setOnDismissListener {
+            if (menu === dialog) menu = null
+            if (mode == Mode.FULL && player != null) view.showController()
+        }
+        menu = dialog
+        dialog.show()
+    }
+
+    /** Subtitle or audio timing (the page's sets go through [setSubtitleDelay] and [setAudioDelay]). */
+    fun setSubtitleDelay(sec: Double) {
+        sync.subtitleUs = SyncOffsets.toUs(sec)
+    }
+
+    fun setAudioDelay(sec: Double) {
+        sync.audioUs = SyncOffsets.toUs(sec)
+    }
+
+    /**
+     * Earlier and later in tenths of a second, as the desktop's timing rows; the dialog stays
+     * open while the viewer adjusts, and the page saves the subtitle timing for this title.
+     */
+    private fun openTiming(subtitles: Boolean) {
+        if (player == null) return
+        if (!subtitles && options.tunneling) {
+            showMessage("Audio timing needs Tunneled playback off in Video tuning.")
+            return
+        }
+        val current = { SyncOffsets.toSec(if (subtitles) sync.subtitleUs else sync.audioUs) }
+        val value = TextView(activity).apply {
+            textSize = 28f
+            gravity = Gravity.CENTER
+            val pad = (24 * activity.resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad)
+        }
+        val what = if (subtitles) "Subtitles" else "Sound"
+        val show = { value.text = "$what: ${SyncOffsets.describe(current())}" }
+        show()
+        val dialog = AlertDialog.Builder(activity)
+            .setTitle(if (subtitles) "Subtitle timing" else "Audio timing")
+            .setView(value)
+            .setNegativeButton("Earlier", null)
+            .setNeutralButton("Reset", null)
+            .setPositiveButton("Later", null)
+            .create()
+        val set = { sec: Double ->
+            if (subtitles) setSubtitleDelay(sec) else setAudioDelay(sec)
+            show()
+            emit(
+                JSONObject().put("type", "sync")
+                    .put("subDelaySec", SyncOffsets.toSec(sync.subtitleUs))
+                    .put("audioDelaySec", SyncOffsets.toSec(sync.audioUs)),
+            )
+        }
+        dialog.setOnShowListener {
+            // Set here rather than on the builder, so a press adjusts without closing the dialog.
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener { set(current() - SyncOffsets.STEP_SEC) }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener { set(current() + SyncOffsets.STEP_SEC) }
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener { set(0.0) }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.requestFocus()
+        }
+        showDialog(dialog)
+    }
+
+    /** What is playing and how: resolution, HDR, codecs, sound, decoders and the TV's mode. */
+    private fun openStreamInfo() {
+        val p = player ?: return
+        val lines = ArrayList<String>()
+        p.videoFormat?.let { v ->
+            val size = if (v.width > 0 && v.height > 0) "${v.width}×${v.height}" else null
+            val fps = v.frameRate.takeIf { it > 0 }?.let { String.format(Locale.US, "%.3g fps", it) }
+            lines += "Video: " + listOfNotNull(size, fps, videoCodecName(v), hdrName(v)).joinToString(" · ")
+            bitrateName(v.bitrate)?.let { lines += "Video bitrate: $it" }
+        }
+        videoDecoder?.let { lines += "Video decoder: $it" }
+        p.audioFormat?.let { a ->
+            lines += "Sound: " + listOfNotNull(
+                audioCodecName(a),
+                channelsName(a.channelCount),
+                a.sampleRate.takeIf { it > 0 }?.let { "${it / 1000.0} kHz" },
+                a.language?.takeIf { it != C.LANGUAGE_UNDETERMINED },
+            ).joinToString(" · ")
+        }
+        audioDecoder?.let { lines += "Sound decoder: $it" }
+        lines += "Audio passthrough: " + if (options.audioPassthrough) "On" else "Off"
+        lines += "Tunneled playback: " + if (options.tunneling) "On" else "Off"
+        DisplayModes.display(activity)?.mode?.let { m ->
+            lines += String.format(Locale.US, "TV mode: %d×%d at %.3g Hz", m.physicalWidth, m.physicalHeight, m.refreshRate)
+        }
+        val dialog = AlertDialog.Builder(activity)
+            .setTitle("Stream info")
+            .setMessage(lines.joinToString("\n"))
+            .setPositiveButton("Close", null)
+            .create()
+        showDialog(dialog)
+    }
+
+    /** Shows a dialog over full screen; the controls come back when it closes. */
+    private fun showDialog(dialog: AlertDialog) {
+        closeMenu()
         dialog.setOnDismissListener {
             if (menu === dialog) menu = null
             if (mode == Mode.FULL && player != null) view.showController()
@@ -917,6 +1040,8 @@ class NativePlayer(
         context: Context,
         private val passthrough: Boolean,
         private val capture: SongCapture,
+        private val sync: SyncOffsets,
+        private val audioTiming: Boolean,
     ) : DefaultRenderersFactory(context) {
         @Suppress("DEPRECATION")
         override fun buildAudioSink(
@@ -928,6 +1053,19 @@ class NativePlayer(
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
             .setAudioProcessors(arrayOf<AudioProcessor>(TeeAudioProcessor(capture)))
             .build()
+            .let { DelayedAudioSink(it, sync, audioTiming) }
+
+        override fun buildTextRenderers(
+            context: Context,
+            output: TextOutput,
+            outputLooper: Looper,
+            extensionRendererMode: Int,
+            out: ArrayList<Renderer>,
+        ) {
+            val from = out.size
+            super.buildTextRenderers(context, output, outputLooper, extensionRendererMode, out)
+            for (i in from until out.size) out[i] = DelayedTextRenderer(out[i], sync)
+        }
     }
 
     companion object {
@@ -971,6 +1109,42 @@ class NativePlayer(
                 else -> "$label ($language)"
             }
         }
+
+        private fun videoCodecName(f: Format): String? = when (f.sampleMimeType) {
+            MimeTypes.VIDEO_H265 -> "HEVC"
+            MimeTypes.VIDEO_H264 -> "H.264"
+            MimeTypes.VIDEO_AV1 -> "AV1"
+            MimeTypes.VIDEO_VP9 -> "VP9"
+            MimeTypes.VIDEO_DOLBY_VISION -> "Dolby Vision"
+            MimeTypes.VIDEO_MPEG2 -> "MPEG-2"
+            else -> f.sampleMimeType?.substringAfter('/')
+        }
+
+        private fun hdrName(f: Format): String? = when {
+            f.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION -> null
+            f.codecs?.startsWith("dvh") == true || f.codecs?.startsWith("dva") == true -> "Dolby Vision"
+            f.colorInfo?.colorTransfer == C.COLOR_TRANSFER_ST2084 -> "HDR10"
+            f.colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG -> "HLG"
+            else -> "SDR"
+        }
+
+        private fun audioCodecName(f: Format): String? = when (f.sampleMimeType) {
+            MimeTypes.AUDIO_AC3 -> "Dolby Digital"
+            MimeTypes.AUDIO_E_AC3 -> "Dolby Digital Plus"
+            MimeTypes.AUDIO_E_AC3_JOC -> "Dolby Atmos (DD+)"
+            MimeTypes.AUDIO_TRUEHD -> "Dolby TrueHD"
+            MimeTypes.AUDIO_DTS -> "DTS"
+            MimeTypes.AUDIO_DTS_HD -> "DTS-HD"
+            MimeTypes.AUDIO_DTS_EXPRESS -> "DTS Express"
+            MimeTypes.AUDIO_AAC -> "AAC"
+            MimeTypes.AUDIO_OPUS -> "Opus"
+            MimeTypes.AUDIO_FLAC -> "FLAC"
+            MimeTypes.AUDIO_MPEG -> "MP3"
+            else -> f.sampleMimeType?.substringAfter('/')
+        }
+
+        private fun bitrateName(bps: Int): String? =
+            if (bps <= 0) null else String.format(Locale.US, "%.1f Mb/s", bps / 1_000_000.0)
 
         private fun channelsName(count: Int): String? = when {
             count <= 0 -> null
