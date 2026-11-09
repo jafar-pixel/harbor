@@ -45,9 +45,12 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.CaptionStyleCompat
+import androidx.media3.ui.SubtitleView
 import androidx.media3.ui.PlayerView
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.util.Locale
 
 /**
@@ -92,8 +95,18 @@ class NativePlayer(
         val controls: List<String>? = null,
         /** The title and the stream's labels (e.g. "Hope · 4K · HDR10 · DTS-HD MA"), shown with the bar. */
         val info: String = "",
+        /** Subtitle look (Settings › Subtitles): text size as the page's px at 1080p, colours, style. */
+        val subSize: Int = 32,
+        val subColor: Int = Color.WHITE,
+        val subEdgeColor: Int = Color.BLACK,
+        /** "shadow", "outline" or "box". */
+        val subStyle: String = "shadow",
+        val subBoxColor: Int = Color.argb(153, 0, 0, 0),
     ) {
         companion object {
+            private fun color(hex: String?, fallback: Int): Int =
+                try { if (hex.isNullOrBlank()) fallback else Color.parseColor(hex) } catch (_: Exception) { fallback }
+
             fun parse(json: String?): Options? {
                 val o = try { JSONObject(json ?: return null) } catch (_: Exception) { return null }
                 val d = Options()
@@ -110,6 +123,15 @@ class NativePlayer(
                         (0 until a.length()).mapNotNull { i -> a.optString(i).takeIf { it.isNotBlank() } }
                     },
                     info = o.optString("info", "").take(300),
+                    subSize = o.optJSONObject("subtitles")?.optInt("size", d.subSize)?.coerceIn(12, 96) ?: d.subSize,
+                    subColor = color(o.optJSONObject("subtitles")?.optString("color"), d.subColor),
+                    subEdgeColor = color(o.optJSONObject("subtitles")?.optString("edgeColor"), d.subEdgeColor),
+                    subStyle = o.optJSONObject("subtitles")?.optString("style", d.subStyle) ?: d.subStyle,
+                    subBoxColor = o.optJSONObject("subtitles")?.let { sub ->
+                        val base = color(sub.optString("boxColor"), Color.BLACK)
+                        val alpha = (sub.optDouble("boxOpacity", 0.6).coerceIn(0.0, 1.0) * 255).toInt()
+                        Color.argb(alpha, Color.red(base), Color.green(base), Color.blue(base))
+                    } ?: d.subBoxColor,
                 )
             }
         }
@@ -189,6 +211,11 @@ class NativePlayer(
     }
 
     private val speeds = floatArrayOf(1f, 1.25f, 1.5f, 2f, 0.5f, 0.75f)
+
+    /** The playing item without side-loaded subtitles, and the subtitles the page added to it. */
+    private var baseItem: MediaItem? = null
+    private val sideSubtitles = ArrayList<MediaItem.SubtitleConfiguration>()
+    private var selector: DefaultTrackSelector? = null
 
     private val songButton = extraButton(R.drawable.tv_ic_song, "Identify song") { identifySong() }
 
@@ -276,6 +303,62 @@ class NativePlayer(
     private fun openPanel() {
         view.hideController()
         send("panel")
+    }
+
+    /**
+     * A subtitle the page found (an addon's or a subtitle site's, downloaded and parsed by the page
+     * as on the desktop) joins the playing video as a WebVTT track. Media3 adds side-loaded
+     * subtitles only when the item is prepared, so the item is set again at the same position.
+     */
+    fun addSubtitleText(vtt: String, language: String?, label: String?, select: Boolean): Boolean {
+        val p = player ?: return false
+        val base = baseItem ?: return false
+        val dir = File(activity.cacheDir, "subtitles").apply { mkdirs() }
+        if (sideSubtitles.isEmpty()) dir.listFiles()?.forEach { it.delete() }
+        val file = File(dir, "sub-${sideSubtitles.size}-${System.currentTimeMillis()}.vtt")
+        try {
+            file.writeText(vtt)
+        } catch (_: Exception) {
+            return false
+        }
+        val lang = language?.takeIf { it.isNotBlank() }
+        sideSubtitles += MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(file))
+            .setMimeType(MimeTypes.TEXT_VTT)
+            .setLanguage(lang)
+            .setLabel(label?.takeIf { it.isNotBlank() } ?: lang ?: "Subtitles")
+            .setId("jl-sub-${sideSubtitles.size}")
+            .setSelectionFlags(if (select) C.SELECTION_FLAG_DEFAULT else 0)
+            .build()
+        if (select) setSubtitlesEnabled(true, lang)
+        val at = p.currentPosition
+        val playing = p.playWhenReady
+        p.setMediaItem(base.buildUpon().setSubtitleConfigurations(ArrayList(sideSubtitles)).build(), at)
+        p.prepare()
+        p.playWhenReady = playing
+        return true
+    }
+
+    /** Subtitles on or off (the page's subtitle menu and its Off item); [language] is preferred when on. */
+    fun setSubtitlesEnabled(on: Boolean, language: String? = null) {
+        val s = selector ?: return
+        val params = s.buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !on)
+        if (on && language != null) params.setPreferredTextLanguage(language)
+        s.setParameters(params.build())
+    }
+
+    /** The viewer's subtitle size, colours and style (Settings › Subtitles), as on the desktop. */
+    private fun applySubtitleStyle() {
+        val sub = view.subtitleView ?: return
+        val o = options
+        val (edgeType, background) = when (o.subStyle) {
+            "box" -> CaptionStyleCompat.EDGE_TYPE_NONE to o.subBoxColor
+            "outline" -> CaptionStyleCompat.EDGE_TYPE_OUTLINE to Color.TRANSPARENT
+            else -> CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW to Color.TRANSPARENT
+        }
+        sub.setStyle(CaptionStyleCompat(o.subColor, background, Color.TRANSPARENT, edgeType, o.subEdgeColor, null))
+        // The page's size is in px at 1080p (32 by default); Media3's default is a fraction of the height.
+        sub.setFractionalTextSize(SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * o.subSize / 32f)
+        sub.setApplyEmbeddedStyles(false)
     }
 
     private fun nextAspect(): String {
@@ -378,6 +461,9 @@ class NativePlayer(
             .setMediaMetadata(MediaMetadata.Builder().setTitle(title).build())
             .apply { if (looksLikeHls(Uri.parse(url))) setMimeType(MimeTypes.APPLICATION_M3U8) }
             .build()
+        baseItem = item
+        sideSubtitles.clear()
+        applySubtitleStyle()
         if (startMs > 0) p.setMediaItem(item, startMs) else p.setMediaItem(item)
         p.prepare()
         p.playWhenReady = true
@@ -392,6 +478,7 @@ class NativePlayer(
     // 4K Shield), so adaptive streams pick their 4K variants. No size cap unless the page sets one.
     private fun trackSelector(): DefaultTrackSelector {
         val selector = DefaultTrackSelector(activity)
+        this.selector = selector
         val largest = DisplayModes.display(activity)?.let { DisplayModes.largest(it.supportedModes) }
         val viewport = largest?.let { Point(it.physicalWidth, it.physicalHeight) }
             ?: Util.getCurrentDisplayModeSize(activity)

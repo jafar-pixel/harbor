@@ -345,6 +345,21 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun setPreferredAudioLanguage(lang: String?) = onMain { nativePlayer.setPreferredAudioLanguage(lang) }
 
+        /**
+         * A subtitle the page downloaded and parsed, as WebVTT text (README: `addSubtitleText`);
+         * false off an app page or for an implausibly large file.
+         */
+        @JavascriptInterface
+        fun addSubtitleText(vtt: String?, language: String?, label: String?, select: Boolean): Boolean {
+            if (!onAppPage || vtt.isNullOrBlank() || vtt.length > MAX_SUBTITLE_CHARS) return false
+            onMain { nativePlayer.addSubtitleText(vtt, language, label, select) }
+            return true
+        }
+
+        /** Subtitles on or off (README: `setSubtitlesEnabled`). */
+        @JavascriptInterface
+        fun setSubtitlesEnabled(on: Boolean) = onMain { nativePlayer.setSubtitlesEnabled(on) }
+
         /** A short message over the full-screen video (README: `showMessage`); ignored outside `full`. */
         @JavascriptInterface
         fun showMessage(text: String?) {
@@ -391,6 +406,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        /** A long film's subtitles are well under 1 MB; anything far larger isn't a subtitle. */
+        private const val MAX_SUBTITLE_CHARS = 8_000_000
+
         // Where the web app lives now and after the domain swap.
         val APP_HOSTS = setOf("jl-media-vision.vercel.app", "watch.jl-stream.com")
         val SIGN_IN_HOSTS = setOf("accounts.youtube.com")
