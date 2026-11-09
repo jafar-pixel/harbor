@@ -24,6 +24,8 @@ import { svpEnsureRunning, svpStatus } from "@/lib/svp";
 import { isSvpActiveForMedia } from "@/lib/player/svp-policy";
 import { nativeTvOptions } from "@/lib/player/native-tv/shell";
 import { pickBridge } from "../player-utils";
+import { tvInfoLine, tvLayout } from "@/lib/player/native-tv/layout";
+import { resolveChromeTheme } from "@/lib/theme";
 
 function snapChangedIgnoringClock(a: PlayerSnapshot, b: PlayerSnapshot): boolean {
   return (
@@ -105,6 +107,8 @@ export function usePlayerBridge(params: {
   const [bridgeReady, setBridgeReady] = useState(false);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  const srcRef = useRef(src);
+  srcRef.current = src;
   useEffect(() => {
     if (svpPending) return;
     const host = videoMountRef.current;
@@ -145,7 +149,23 @@ export function usePlayerBridge(params: {
           .filter(Boolean)
           .join("\n"),
         getEmbedRect,
-        nativeTv: () => nativeTvOptions(settingsRef.current),
+        nativeTv: () => {
+          const now = settingsRef.current;
+          const playing = srcRef.current;
+          const theme =
+            resolveChromeTheme(now.theme, now.playerChromeTheme) === "stremio"
+              ? "stremio"
+              : "default";
+          const ref = playing.streamRef;
+          return {
+            ...nativeTvOptions(now),
+            controls: tvLayout(theme),
+            info: tvInfoLine(
+              [playing.title, playing.subtitle].filter(Boolean).join(" · "),
+              ref?.title ?? ref?.parsedTitle ?? ref?.resolvedFilename,
+            ),
+          };
+        },
       });
       if (cancelled) return;
       bridge = choose;

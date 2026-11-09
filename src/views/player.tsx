@@ -17,7 +17,7 @@ import { useTogether } from "@/lib/together/provider";
 import { buildPlayInvite } from "@/lib/together/build-invite";
 import { useView, type PlayerSrc, type PlayEpisode } from "@/lib/view";
 import { heroDockSupported, setHeroDockSupported, wasExpandedFromDock } from "@/lib/hero-dock";
-import { nativeTvAvailable, TV_PANEL_EVENT } from "@/lib/player/native-tv/bridge";
+import { nativeTvAvailable, TV_CONTROL_EVENT, TV_PANEL_EVENT } from "@/lib/player/native-tv/bridge";
 import { NativeHeroBar } from "./player/native-hero-bar";
 import { PinnedVideoPill } from "./player/pinned-video-pill";
 import { useQueue, useSleepAtEnd, queueIndexOf, setQueuePlaying } from "@/lib/queue";
@@ -593,6 +593,16 @@ function NativePlayerView({
       goToEpisode,
       openPicker,
     });
+  // The TV app's bar asks for the previous or next episode (NativePlayer "control").
+  useEffect(() => {
+    const onControl = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      if (id === "next-episode") playNextRef.current?.();
+      else if (id === "prev-episode") playPrevRef.current?.();
+    };
+    window.addEventListener(TV_CONTROL_EVENT, onControl);
+    return () => window.removeEventListener(TV_CONTROL_EVENT, onControl);
+  }, [playNextRef, playPrevRef]);
 
   usePlaybackPresence({ src, snap, season, episode, liveGuideOpen: liveOverlay.open });
   useCastReturnPublish({

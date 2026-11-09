@@ -16,6 +16,7 @@ import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
@@ -84,6 +85,13 @@ class NativePlayer(
         val songIdProvider: String = "audd",
         val songIdKey: String = "",
         val songIdModel: String = "",
+        /**
+         * The player bar's buttons in the viewer's order (Settings › Player layout), as the page's
+         * control ids; null keeps this app's default row. Ids the TV can't do are skipped.
+         */
+        val controls: List<String>? = null,
+        /** The title and the stream's labels (e.g. "Hope · 4K · HDR10 · DTS-HD MA"), shown with the bar. */
+        val info: String = "",
     ) {
         companion object {
             fun parse(json: String?): Options? {
@@ -98,6 +106,10 @@ class NativePlayer(
                     songIdProvider = o.optJSONObject("songId")?.optString("provider", "audd") ?: "audd",
                     songIdKey = o.optJSONObject("songId")?.optString("key", "") ?: "",
                     songIdModel = o.optJSONObject("songId")?.optString("model", "") ?: "",
+                    controls = o.optJSONArray("controls")?.let { a ->
+                        (0 until a.length()).mapNotNull { i -> a.optString(i).takeIf { it.isNotBlank() } }
+                    },
+                    info = o.optString("info", "").take(300),
                 )
             }
         }
@@ -162,24 +174,38 @@ class NativePlayer(
 
     // Buttons this app adds to Media3's own controls, as Just Player (moneytoo/Player) does:
     // Media3 keeps D-pad focus and clicks working for its bar, and these join it.
+    /** The bar's own buttons, rebuilt from the viewer's layout before each play. */
+    private val row = LinearLayout(activity).apply { orientation = LinearLayout.HORIZONTAL }
+
+    private val infoLine = TextView(activity).apply {
+        visibility = View.GONE
+        setTextColor(Color.WHITE)
+        textSize = 20f
+        maxLines = 2
+        setShadowLayer(8f, 0f, 2f, Color.BLACK)
+        val pad = (24 * activity.resources.displayMetrics.density).toInt()
+        setPadding(pad * 2, pad, pad * 2, pad)
+        setBackgroundColor(Color.argb(150, 0, 0, 0))
+    }
+
+    private val speeds = floatArrayOf(1f, 1.25f, 1.5f, 2f, 0.5f, 0.75f)
+
     private val songButton = extraButton(R.drawable.tv_ic_song, "Identify song") { identifySong() }
 
     init {
         root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         val basic = view.findViewById<LinearLayout>(androidx.media3.ui.R.id.exo_basic_controls)
         if (basic != null) {
-            val row = LinearLayout(activity).apply { orientation = LinearLayout.HORIZONTAL }
-            // Live: the channel list; a film or show: pick another stream (the page opens it).
-            row.addView(extraButton(R.drawable.tv_ic_streams, "Change stream or channel") { openPanel() })
-            row.addView(extraButton(R.drawable.tv_ic_dub, "English dub") { englishDub() })
-            row.addView(extraButton(R.drawable.tv_ic_aspect, "Picture fit") { showMessage(nextAspect()) })
-            row.addView(songButton)
-            row.addView(extraButton(R.drawable.tv_ic_stop, "Stop") { exitFull() })
             basic.addView(HorizontalScrollView(activity).apply {
                 isHorizontalScrollBarEnabled = false
                 addView(row)
             }, 0)
         }
+        buildRow()
+        // The title and stream labels across the top while the bar is up.
+        view.overlayFrameLayout?.addView(infoLine, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP,
+        ))
         view.setShowNextButton(false)
         view.setShowPreviousButton(false)
         view.setShowRewindButton(true)
@@ -191,7 +217,52 @@ class NativePlayer(
             if (visibility == View.VISIBLE && mode == Mode.FULL) {
                 view.findViewById<View>(androidx.media3.ui.R.id.exo_play_pause)?.requestFocus()
             }
+            infoLine.visibility = if (visibility == View.VISIBLE && options.info.isNotBlank()) View.VISIBLE else View.GONE
         })
+    }
+
+
+    /**
+     * The buttons in the viewer's order (Settings › Player layout). Play/pause and the 10 second
+     * skips are Media3's own, in the middle of the bar; controls the TV can't do (shaders, RTX,
+     * picture-in-picture, window buttons) are left out.
+     */
+    private fun buildRow() {
+        row.removeAllViews()
+        val ids = (options.controls ?: DEFAULT_ROW).distinctBy { if (it == "back") "stop" else it }
+        for (id in ids) buttonFor(id)?.let { button ->
+            (button.parent as? ViewGroup)?.removeView(button)
+            row.addView(button)
+        }
+    }
+
+    private fun buttonFor(id: String): View? = when (id) {
+        "pick-another" -> extraButton(R.drawable.tv_ic_streams, "Change stream or channel") { openPanel() }
+        "english-dub" -> extraButton(R.drawable.tv_ic_dub, "English dub") { englishDub() }
+        "aspect-menu" -> extraButton(R.drawable.tv_ic_aspect, "Picture fit") { showMessage(nextAspect()) }
+        "song-id" -> songButton
+        "stop", "back" -> extraButton(R.drawable.tv_ic_stop, "Stop") { exitFull() }
+        "audio-menu" -> extraButton(androidx.media3.ui.R.drawable.exo_styled_controls_audiotrack, "Audio") { openMenu() }
+        "subtitle-menu" -> extraButton(androidx.media3.ui.R.drawable.exo_styled_controls_subtitle_on, "Subtitles") { openMenu() }
+        "speed-menu" -> extraButton(androidx.media3.ui.R.drawable.exo_styled_controls_speed, "Playback speed") { showMessage(nextSpeed()) }
+        "prev-episode" -> extraButton(androidx.media3.ui.R.drawable.exo_styled_controls_previous, "Previous episode") { control("prev-episode") }
+        "next-episode" -> extraButton(androidx.media3.ui.R.drawable.exo_styled_controls_next, "Next episode") { control("next-episode") }
+        else -> null
+    }
+
+    /** A button the page carries out (next or previous episode); see bridge.ts "control". */
+    private fun control(id: String) {
+        view.hideController()
+        emit(JSONObject().put("type", "control").put("id", id).put("mode", mode.name.lowercase(Locale.ROOT)))
+    }
+
+    private fun nextSpeed(): String {
+        val p = player ?: return "Nothing is playing"
+        val now = p.playbackParameters.speed
+        val at = speeds.indexOfFirst { kotlin.math.abs(it - now) < 0.01f }
+        val next = speeds[(at + 1).mod(speeds.size)]
+        p.setPlaybackSpeed(next)
+        return if (next == 1f) "Speed: Normal" else "Speed: ${next}×"
     }
 
     private fun extraButton(icon: Int, label: String, onPress: () -> Unit): ImageButton =
@@ -268,6 +339,8 @@ class NativePlayer(
         release()
         readySent = false
         songCapture.clear()
+        buildRow()
+        infoLine.text = options.info
         songButton.visibility = if (options.songIdEnabled) View.VISIBLE else View.GONE
         var userAgent = Util.getUserAgent(activity, "JLMediaVisionTV")
         val requestHeaders = HashMap<String, String>()
@@ -772,6 +845,9 @@ class NativePlayer(
 
     companion object {
         private const val SEEK_STEP_MS = 10_000L
+
+        /** The bar before the page sends a layout (older app pages). */
+        val DEFAULT_ROW = listOf("pick-another", "english-dub", "aspect-menu", "song-id", "stop")
 
         // As src/lib/player/english-dub.ts: commentary and audio description tracks are English
         // too, but never the dub the viewer wants.
