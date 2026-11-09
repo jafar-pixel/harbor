@@ -70,10 +70,14 @@ export async function findDmmCast(type: string, videoId: string): Promise<DmmCas
 
 /**
  * What DMM's cast lists show for one Cast addon: the title cast most recently (its catalogs list
- * titles newest first) and, for a movie, the file your cast points at, so casting the same movie
- * again with another file still counts as new.
+ * titles newest first) and, for a movie, which file your cast is (its name), so casting the same
+ * movie again with another file still counts as new. The file's name, not its link: a debrid link
+ * can change between two asks for the same cast.
  */
-export type CastSnapshot = { movieId?: string; movieUrl?: string; showId?: string };
+export type CastSnapshot = { movieId?: string; movieCast?: string; showId?: string };
+
+/** The same cast reads the same each time: its file name, else its link without a query. */
+export const castIdentity = (cast: DmmCastStream) => cast.title || cast.url.split("?")[0];
 
 type Catalog = { type?: string; id?: string };
 
@@ -93,7 +97,7 @@ export function newCastBetween(
   after: CastSnapshot,
 ): { type: "movie" | "series"; id: string } | null {
   if (!before) return null;
-  if (after.movieId && (after.movieId !== before.movieId || after.movieUrl !== before.movieUrl)) {
+  if (after.movieId && (after.movieId !== before.movieId || after.movieCast !== before.movieCast)) {
     return { type: "movie", id: after.movieId };
   }
   if (after.showId && after.showId !== before.showId) return { type: "series", id: after.showId };
@@ -114,8 +118,18 @@ async function snapshotOf(addon: { transportUrl: string; manifest?: { catalogs?:
     return typeof first === "string" && first.startsWith("tt") ? first : undefined;
   };
   const [movieId, showId] = await Promise.all([top("movie", ids.movie), top("series", ids.series)]);
-  const movieUrl = movieId ? (await yourCastAt(base, "movie", movieId))?.url : undefined;
-  return { movieId, movieUrl, showId } satisfies CastSnapshot;
+  let movieCast: string | undefined;
+  if (movieId) {
+    // A lookup that failed or timed out is no answer, not "no cast": reading it as a change made
+    // the next good answer look like a new cast and opened the title again every few minutes.
+    const json = await fetchJson<{ streams?: RawStream[] }>(
+      `${base}/stream/movie/${encodeURIComponent(movieId)}.json`,
+    );
+    if (!json) throw new Error("unreachable");
+    const cast = pickYourCast(Array.isArray(json.streams) ? json.streams : []);
+    movieCast = cast ? castIdentity(cast) : undefined;
+  }
+  return { movieId, movieCast, showId } satisfies CastSnapshot;
 }
 
 /**
