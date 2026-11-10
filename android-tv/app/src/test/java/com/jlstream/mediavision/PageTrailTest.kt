@@ -14,9 +14,9 @@ class PageTrailTest {
 
     @Test
     fun keepsTheLastFewDistinctErrors() {
-        repeat(6) { PageTrail.noteError("error $it") }
-        PageTrail.noteError("error 5")
-        assertEquals(listOf("error 2", "error 3", "error 4", "error 5"), PageTrail.recentErrors())
+        repeat(8) { PageTrail.noteError("error $it") }
+        PageTrail.noteError("error 7")
+        assertEquals(listOf("error 2", "error 3", "error 4", "error 5", "error 6", "error 7"), PageTrail.recentErrors())
     }
 
     @Test
@@ -27,6 +27,13 @@ class PageTrailTest {
         assertEquals(10, steps.size)
         assertEquals("step 2", steps.first())
         assertEquals("step 11", steps.last())
+    }
+
+    @Test
+    fun leavesOutRefusedRequests() {
+        PageTrail.noteError("real error")
+        PageTrail.noteError("Access to fetch at 'https://api.example.org/x' has been blocked by CORS policy")
+        assertEquals("real error", PageTrail.recentErrors().last())
     }
 
     @Test

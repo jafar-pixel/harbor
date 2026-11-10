@@ -6,7 +6,9 @@ package com.jlstream.mediavision
  * tokens never reach the report.
  */
 object PageTrail {
-    private const val KEEP = 4
+    private const val KEEP = 6
+    // Requests a server refuses to the page (CORS) are routine and would crowd out real errors.
+    private val ROUTINE = Regex("blocked by CORS policy|net::ERR_|Failed to load resource", RegexOption.IGNORE_CASE)
     private const val MAX_CHARS = 140
     private val URL = Regex("""\b([a-z][a-z0-9+.-]*)://([^/\s'"<>)]+)[^\s'"<>)]*""", RegexOption.IGNORE_CASE)
     private val errors = ArrayDeque<String>()
@@ -18,6 +20,7 @@ object PageTrail {
 
     @Synchronized
     fun noteError(message: String) {
+        if (ROUTINE.containsMatchIn(message)) return
         val clean = sanitize(message)
         if (clean.isBlank() || errors.lastOrNull() == clean) return
         errors.addLast(clean)
