@@ -192,7 +192,31 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
     }
   };
 
+  // While a video plays, the TV app's crash report learns what the page underneath is doing:
+  // how much memory its code holds, and any video or embedded player it is running.
+  let pageNote = 0;
+  const notePage = () => {
+    const p = native();
+    if (!p?.notePage) return;
+    const heap = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
+    const videos = Array.from(document.querySelectorAll("video"));
+    const playing = videos.filter((v) => !v.paused).length;
+    const frames = document.querySelectorAll("iframe").length;
+    p.notePage(
+      [
+        heap ? `heap ${Math.round(heap.usedJSHeapSize / 1048576)} MB` : null,
+        `${videos.length} video (${playing} playing)`,
+        `${frames} frames`,
+        `${document.getElementsByTagName("*").length} elements`,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    );
+  };
+
   const detach = () => {
+    window.clearInterval(pageNote);
+    pageNote = 0;
     window.removeEventListener("jl-native-player", onNative);
     window.removeEventListener("resize", schedulePlace);
     window.removeEventListener("harbor:mpv-refresh-geom", schedulePlace);
@@ -208,6 +232,8 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
   const bridge: PlayerBridge = {
     attach(el) {
       host = el;
+      window.clearInterval(pageNote);
+      pageNote = window.setInterval(notePage, 5000);
       window.addEventListener("jl-native-player", onNative);
       window.addEventListener("resize", schedulePlace);
       window.addEventListener("harbor:mpv-refresh-geom", schedulePlace);
