@@ -130,7 +130,8 @@ export function removeRow(list: AutoList, row: AutoRow) {
 }
 
 /** Find the service's own copy of a song (a Spotify uri or a YouTube video). */
-async function resolveFor(service: HubService, song: AutoSong): Promise<AutoSong | null> {
+/** The song on [service]: its Spotify uri, or its YouTube video (searched for when unknown). */
+export async function resolveFor(service: HubService, song: AutoSong): Promise<AutoSong | null> {
   if (service === "spotify") {
     if (song.uri) return song;
     const hit = (await searchSpotifyTracks(`${song.artist} ${song.title}`))[0];
