@@ -138,6 +138,8 @@ type HeroDockProps = {
   dockStyle?: CSSProperties;
 };
 
+/** How long Live TV's channel list stays up on the TV with no key pressed. */
+const TV_LIST_IDLE_MS = 8000;
 export function PlayerView({ src, ...dock }: { src: PlayerSrc } & HeroDockProps) {
   return src.officialBroadcast ? (
     <EmbeddedBroadcastPlayer src={src} stream={src.officialBroadcast} />
@@ -827,6 +829,25 @@ function NativePlayerView({
       delete root.dataset.tvPanel;
     };
   }, [tvPanelOpen]);
+  // On the TV the channel list hides by itself after a few idle seconds, as the player's bar
+  // does, so the live picture comes back full screen; any key restarts the wait.
+  const liveListOpen = liveOverlay.open;
+  const closeLiveList = liveOverlay.setOpen;
+  useEffect(() => {
+    if (!nativeTvAvailable() || !liveListOpen) return;
+    let timer = window.setTimeout(() => closeLiveList(false), TV_LIST_IDLE_MS);
+    const restart = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => closeLiveList(false), TV_LIST_IDLE_MS);
+    };
+    window.addEventListener("keydown", restart, true);
+    window.addEventListener("pointermove", restart, true);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("keydown", restart, true);
+      window.removeEventListener("pointermove", restart, true);
+    };
+  }, [liveListOpen, closeLiveList]);
 
   const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
   const { watchedFor } = usePlayerWatched({

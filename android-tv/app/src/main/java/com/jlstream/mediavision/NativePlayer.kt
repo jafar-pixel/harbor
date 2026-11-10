@@ -80,7 +80,13 @@ class NativePlayer(
     /** Sends an event's detail to the page. */
     private val emit: (JSONObject) -> Unit,
 ) {
-    enum class Mode { FULL, HERO, HIDDEN }
+    /**
+     * FULL: the video fills the screen above the page, with this app's controls. HERO: a box over
+     * the page. UNDER: the video fills the screen under the page, so the page's own overlays
+     * (Live TV's channel list, the stream picker) show over a live picture; HDR and Dolby Vision
+     * can't go under the page (their colours break), so they are hidden instead. HIDDEN: no video.
+     */
+    enum class Mode { FULL, HERO, UNDER, HIDDEN }
 
     /** Playback options the page sends through `setOptions`; they apply from the next [play]. */
     data class Options(
@@ -702,6 +708,17 @@ class NativePlayer(
         if (mode == Mode.HERO) applyMode()
     }
 
+    /** Whether the playing video can go under the page (not HDR or Dolby Vision). */
+    fun canShowUnderPage(): Boolean = player != null && !isHdr()
+
+    private fun isHdr(): Boolean {
+        val f = player?.videoFormat ?: return false
+        if (f.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION) return true
+        if (f.codecs?.startsWith("dvh") == true || f.codecs?.startsWith("dva") == true) return true
+        val transfer = f.colorInfo?.colorTransfer
+        return transfer == C.COLOR_TRANSFER_ST2084 || transfer == C.COLOR_TRANSFER_HLG
+    }
+
     fun setMode(next: Mode) {
         mode = next
         applyMode()
@@ -1147,6 +1164,7 @@ private fun speedName(speed: Float): String =
         val visible = player != null && when (mode) {
             Mode.FULL -> true
             Mode.HERO -> rect != null
+            Mode.UNDER -> !isHdr()
             Mode.HIDDEN -> false
         }
         if (mode != Mode.FULL || !visible) closeMenu()
@@ -1179,6 +1197,16 @@ private fun speedName(speed: Float): String =
             view.visibility = View.VISIBLE
             view.requestFocus()
             view.showController()
+        } else if (mode == Mode.UNDER) {
+            // The page's overlay takes the remote; the picture carries on full size beneath it.
+            setUnderPage(true)
+            view.hideController()
+            view.useController = false
+            view.isFocusable = false
+            view.resizeMode = aspect
+            view.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            view.visibility = View.VISIBLE
+            if (!web.hasFocus()) web.requestFocus()
         } else if (rect != null) {
             setUnderPage(false)
             // The small TV fills its box (edges trimmed) instead of letterboxing inside it.

@@ -9,7 +9,9 @@ import type { PassthroughAudio } from "@/lib/streams/scoring/scoring-types";
 export type NativeTvPlayer = {
   isAvailable(): boolean;
   play(url: string, headersJson: string, title: string, startMs: number): boolean;
-  setMode(mode: "full" | "hero" | "hidden"): void;
+  setMode(mode: "full" | "hero" | "under" | "hidden"): void;
+  /** Whether the video can play under the page's overlays (not HDR); absent from older builds. */
+  canShowUnderPage?(): boolean;
   setRect(x: number, y: number, w: number, h: number): void;
   pause(): void;
   resume(): void;

@@ -362,12 +362,17 @@ class MainActivity : AppCompatActivity() {
             val next = when (mode) {
                 "full" -> NativePlayer.Mode.FULL
                 "hero" -> NativePlayer.Mode.HERO
+                "under" -> NativePlayer.Mode.UNDER
                 "hidden" -> NativePlayer.Mode.HIDDEN
                 else -> return
             }
             PageTrail.noteCall("setMode $mode")
             onMain { nativePlayer.setMode(next) }
         }
+
+        /** Whether the video can play under the page's overlays (README: `canShowUnderPage`). */
+        @JavascriptInterface
+        fun canShowUnderPage(): Boolean = onAppPage && nativePlayer.canShowUnderPage()
 
         /** Playback options (README: `setOptions`); they apply from the next `play`. */
         @JavascriptInterface
