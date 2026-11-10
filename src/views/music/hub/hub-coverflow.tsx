@@ -80,6 +80,9 @@ export function HubCoverflow({
       <div className="hub-flow-track">
         {slides.map((s, i) => {
           const d = coverflowOffset(i, at, count);
+          // Only the cards on show and the next one each side are drawn, so a long list of
+          // playlists doesn't load every cover at once (the TV app has little memory to spare).
+          if (Math.abs(d) > SIDE + 1) return null;
           const far = Math.abs(d) > SIDE;
           const centre = d === 0;
           return (
