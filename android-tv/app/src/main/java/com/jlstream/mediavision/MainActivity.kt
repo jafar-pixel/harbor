@@ -360,6 +360,14 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun setSubtitlesEnabled(on: Boolean) = onMain { nativePlayer.setSubtitlesEnabled(on) }
 
+        /** Subtitle timing in seconds, positive for later (README: `setSubtitleDelay`). */
+        @JavascriptInterface
+        fun setSubtitleDelay(sec: Double) = onMain { nativePlayer.setSubtitleDelay(sec) }
+
+        /** Audio timing in seconds, positive for later (README: `setAudioDelay`). */
+        @JavascriptInterface
+        fun setAudioDelay(sec: Double) = onMain { nativePlayer.setAudioDelay(sec) }
+
         /** A short message over the full-screen video (README: `showMessage`); ignored outside `full`. */
         @JavascriptInterface
         fun showMessage(text: String?) {

@@ -49,6 +49,8 @@ if (player?.isAvailable()) {
 | `showMessage(text)`                               | Shows `text` (up to 200 characters) as a toast over the video in `full`, where the page can't be seen. Ignored in `hero` and `hidden`.                                                                                                                                                                                                                                    |
 | `addSubtitleText(vtt, language, label, select)`   | Adds a subtitle to the playing video as WebVTT text. The page downloads and reads it as the desktop does (addons, subtitle sites, logins, zips, encodings; `native-tv/subtitles.ts`). The item is set again at the same position, as Media3 adds side-loaded subtitles only on prepare. `select` turns it on. False off an app page or over 8 million characters.         |
 | `setSubtitlesEnabled(on)`                         | Subtitles on or off, keeping the tracks.                                                                                                                                                                                                                                                                                                                                  |
+| `setSubtitleDelay(sec)`                           | Subtitle timing in seconds; positive shows them later.                                                                                                                                                                                                                                                                                                                    |
+| `setAudioDelay(sec)`                              | Audio timing in seconds; positive plays the sound later. No effect with tunneled playback.                                                                                                                                                                                                                                                                                |
 
 `setOptions`, `capabilities`, `audioTracks`, `setPreferredAudioLanguage` and `showMessage` are newer than the
 first app builds, so the page checks `typeof player.setOptions === "function"` (and so on) before
@@ -162,6 +164,14 @@ is the current choice.
   `setPreferredAudioLanguage`.
 - **Subtitles: Off / …**: shown when the stream has embedded text tracks. Off disables text
   tracks; a track plays exactly that track.
+- **Subtitle timing / Audio timing**: Earlier and Later move the subtitles or the sound by 0.1 s
+  (Reset puts them back), as the desktop's timing rows and mpv's `sub-delay` and `audio-delay`.
+  The dialog stays open while adjusting and sends `sync`. Subtitles are shown at the playback
+  position minus the delay (`DelayedTextRenderer`); the sound is delayed by moving the playback
+  clock, which follows the audio sink (`DelayedAudioSink`). Audio timing is off with tunneled
+  playback, where the TV's decoder syncs the picture itself. See `SyncOffsets.kt`.
+- **Stream info**: resolution, frame rate, codec and HDR type, bitrate, sound format, the
+  decoders in use, passthrough and tunneling, and the TV's current display mode.
 - **More player options**: leaves `full` as Back does (`exit-full`), so the page's own controls
   can be reached.
 
@@ -190,6 +200,7 @@ window.addEventListener("jl-native-player", (event) => {
 | `exit-full`   | Back, or the menu's "More player options", left full screen.                                                                                                                                                                                                            |
 | `tracks`      | The stream's tracks are known or the selection changed; `audioTracks` holds the same array `audioTracks()` returns.                                                                                                                                                     |
 | `english-dub` | The full-screen menu's English dub item was picked and the file has no English audio track: the page should find an English dub source and `play` it (`src/views/player/hooks/use-english-dub.ts`). The page's notices about it reach the screen through `showMessage`. |
+| `sync`        | The viewer changed the timing in the menu; `subDelaySec` and `audioDelaySec` hold both timings in seconds (positive is later). The page keeps the subtitle timing for the title, as on the desktop.                                                                     |
 
 `mode` is `"full"`, `"hero"` or `"hidden"` at the time of the event. `positionMs` and
 `durationMs` are milliseconds; `durationMs` is `0` when unknown, and for a live stream it is the

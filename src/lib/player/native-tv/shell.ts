@@ -31,6 +31,10 @@ export type NativeTvPlayer = {
   addSubtitleText?(vtt: string, language: string, label: string, select: boolean): boolean;
   /** Subtitles on or off; absent from older app builds. */
   setSubtitlesEnabled?(on: boolean): void;
+  /** Subtitle timing in seconds, positive for later; absent from older app builds. */
+  setSubtitleDelay?(sec: number): void;
+  /** Audio timing in seconds, positive for later; absent from older app builds. */
+  setAudioDelay?(sec: number): void;
 };
 
 /** One entry of `audioTracks()` and of the `tracks` event (android-tv/README.md). */

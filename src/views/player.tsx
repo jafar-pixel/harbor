@@ -12,6 +12,7 @@ import { needsEnglishDub } from "@/lib/player/english-dub";
 import { useDebridClients } from "@/lib/debrid/registry";
 import { useSettings } from "@/lib/settings";
 import { writePlayerVolume } from "@/lib/player-volume";
+import { writePlayerPrefs } from "@/lib/player-prefs";
 import { nameColor } from "@/lib/together/colors";
 import { useTogether } from "@/lib/together/provider";
 import { buildPlayInvite } from "@/lib/together/build-invite";
@@ -593,16 +594,20 @@ function NativePlayerView({
       goToEpisode,
       openPicker,
     });
-  // The TV app's bar asks for the previous or next episode (NativePlayer "control").
+  // The TV app's bar asks for the previous or next episode (NativePlayer "control"), and its
+  // menu changed the subtitle timing, which is kept for this title as on the desktop.
+  const tvMetaId = src.meta.id;
   useEffect(() => {
     const onControl = (e: Event) => {
       const id = (e as CustomEvent<string>).detail;
       if (id === "next-episode") playNextRef.current?.();
       else if (id === "prev-episode") playPrevRef.current?.();
+      else if (id === "sub-delay")
+        writePlayerPrefs(tvMetaId, { subDelaySec: snapRef.current.subDelaySec });
     };
     window.addEventListener(TV_CONTROL_EVENT, onControl);
     return () => window.removeEventListener(TV_CONTROL_EVENT, onControl);
-  }, [playNextRef, playPrevRef]);
+  }, [playNextRef, playPrevRef, tvMetaId]);
 
   usePlaybackPresence({ src, snap, season, episode, liveGuideOpen: liveOverlay.open });
   useCastReturnPublish({
