@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from "react";
 import type { StudioDeck } from "@/lib/music/studio/deck";
 import { studio, useStudio, type XfadeCurve } from "@/lib/music/studio/engine";
-import { isStudioDrag, readStudioDrag } from "@/lib/music/studio/drag";
+import { isStudioDrag, readStudioDrag, startStudioDrag } from "@/lib/music/studio/drag";
 import { addFiles, addUrl, prepare, useCrate, type CrateItem } from "@/lib/music/studio/library";
 import { useSongArt } from "@/lib/music/dj/art";
 import { coverArt } from "@/lib/music/cover-art";
@@ -16,6 +16,12 @@ import {
   type DeckLook,
 } from "./studio-deck";
 import { StudioLibrary } from "./studio-library";
+import type { AutoSong } from "@/lib/music/automix/playlists";
+import { youtubeSongFor } from "@/lib/music/studio/mix-song";
+import { notePlayed } from "@/lib/music/studio/setlist";
+import { songFromDrag } from "@/lib/music/song-drag";
+import { loadVideoDeck } from "@/lib/music/studio/video-decks";
+import { youtubeAudio, youtubeOnAudioDecks } from "@/lib/music/studio/youtube-audio";
 import { StudioVideo } from "./studio-video";
 import { StudioWaves } from "./studio-wave";
 import "./studio.css";
@@ -78,6 +84,31 @@ export function DjStudio() {
     }
   };
 
+  // A song from your YouTube Music or Spotify playlists. In the desktop app it goes on the
+  // turntables as music; on the website YouTube allows only the video decks (A and B).
+  const playSong = async (index: number, song: AutoSong) => {
+    const deck = engine.all[index];
+    if (!deck) return;
+    setBusyDeck(index);
+    setError(null);
+    try {
+      const yt = await youtubeSongFor(song);
+      notePlayed(song);
+      if (youtubeOnAudioDecks()) {
+        const id = await youtubeAudio(yt);
+        setBusyDeck(null);
+        await load(deck, id);
+      } else {
+        showVideo();
+        await loadVideoDeck(index % 2 === 0 ? 0 : 1, yt);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyDeck((b) => (b === index ? null : b));
+    }
+  };
+
   // A song dragged from the library onto a deck (its header or its controls) loads there.
   const [overDeck, setOverDeck] = useState<number | null>(null);
   const dropOn = (deck: StudioDeck) => ({
@@ -98,6 +129,12 @@ export function DjStudio() {
       if (drag?.kind === "crate") void load(deck, drag.id);
       else if (drag?.kind === "url")
         void load(deck, addUrl(drag.url, drag.title, drag.artist, drag.art).id);
+      else if (drag?.kind === "song") void playSong(deck.index, drag.song);
+      else if (drag?.kind === "video") {
+        // From a video deck: the same song, on the turntable as music.
+        const song = songFromDrag(drag);
+        if (song) void playSong(deck.index, song);
+      }
     },
   });
 
@@ -205,14 +242,40 @@ export function DjStudio() {
       <div className="sd-heads" hidden={mode !== "audio"}>
         <div className="sd-heads-col">
           {left.map((d) => (
-            <div key={d.index} className="sd-drop" {...dropOn(d)}>
+            <div
+              key={d.index}
+              className="sd-drop"
+              {...dropOn(d)}
+              draggable={!!d.track}
+              title={
+                d.track
+                  ? t("Drag this song onto a video deck, another deck or the queue")
+                  : undefined
+              }
+              onDragStart={(e) => {
+                if (d.track) startStudioDrag(e, { kind: "crate", id: d.track.id });
+              }}
+            >
               <DeckHeader deck={d} art={deckArt(d)} />
             </div>
           ))}
         </div>
         <div className="sd-heads-col">
           {right.map((d) => (
-            <div key={d.index} className="sd-drop" {...dropOn(d)}>
+            <div
+              key={d.index}
+              className="sd-drop"
+              {...dropOn(d)}
+              draggable={!!d.track}
+              title={
+                d.track
+                  ? t("Drag this song onto a video deck, another deck or the queue")
+                  : undefined
+              }
+              onDragStart={(e) => {
+                if (d.track) startStudioDrag(e, { kind: "crate", id: d.track.id });
+              }}
+            >
               <DeckHeader deck={d} art={deckArt(d)} />
             </div>
           ))}
@@ -300,7 +363,7 @@ export function DjStudio() {
         onLoad={(d, id) => void load(d, id)}
         busyDeck={busyDeck}
         artOf={artOf}
-        onVideo={showVideo}
+        onSong={(d, song) => void playSong(d, song)}
       />
     </div>
   );
