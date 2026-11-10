@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+} from "react";
 import {
   AudioWaveform,
   ChevronDown,
@@ -66,8 +73,11 @@ export function WebPlayer() {
   const t = useT();
   const player = usePlayer();
   const stage = useRef<HTMLDivElement>(null);
+  const slot = useRef<HTMLDivElement>(null);
+  const main = useRef<HTMLDivElement>(null);
   const track = player.queue[player.index] ?? null;
   const full = player.view === "full";
+  useStageOverSlot(full && !!track, stage, slot, main);
 
   useEffect(() => {
     if (stage.current) return attachPlayer(stage.current);
@@ -102,8 +112,10 @@ export function WebPlayer() {
           >
             <ChevronDown size={26} />
           </button>
-          <div className="wp-full-main">
-            <div className="wp-full-stage-slot" aria-hidden="true">
+          <div className="wp-full-main" ref={main}>
+            {/* The cover, which a playing video replaces: the video is drawn exactly over it
+                (useStageOverSlot). */}
+            <div className="wp-full-stage-slot" ref={slot} aria-hidden="true">
               {track.art && <img src={track.art} alt="" />}
             </div>
             <div className="wp-full-info">
@@ -189,6 +201,70 @@ export function WebPlayer() {
       {shown && !full && player.queueOpen && <QueuePanel player={player} />}
     </div>
   );
+}
+
+/**
+ * Full screen keeps the video decks in their own fixed element (moving an embed reloads it), so
+ * it is placed over its slot in the Now Playing column by measuring the slot: the column scrolls,
+ * and the app's size setting zooms the page, so fixed numbers in CSS drift off it and the video
+ * covered the title. Rects are converted to the stage's own CSS pixels through its current box,
+ * which holds under zoom and transforms alike.
+ */
+function useStageOverSlot(
+  active: boolean,
+  stageRef: { current: HTMLDivElement | null },
+  slotRef: { current: HTMLDivElement | null },
+  mainRef: { current: HTMLDivElement | null },
+) {
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    const slot = slotRef.current;
+    const main = mainRef.current;
+    if (!active || !stage || !slot) return;
+    let frame = 0;
+    const place = () => {
+      frame = 0;
+      const box = stage.getBoundingClientRect();
+      const css = getComputedStyle(stage);
+      const width = parseFloat(css.width);
+      const k = width > 0 && box.width > 0 ? box.width / width : 1;
+      const originX = box.left - (parseFloat(css.left) || 0) * k;
+      const originY = box.top - (parseFloat(css.top) || 0) * k;
+      const to = slot.getBoundingClientRect();
+      stage.style.setProperty("--wp-full-x", `${(to.left - originX) / k}px`);
+      stage.style.setProperty("--wp-full-y", `${(to.top - originY) / k}px`);
+      stage.style.setProperty("--wp-full-w", `${to.width / k}px`);
+      stage.style.setProperty("--wp-full-h", `${to.height / k}px`);
+      // Scrolled up, the video slides under the column's top margin (where the close button
+      // is) rather than over it.
+      const edge = main
+        ? main.getBoundingClientRect().top +
+          (parseFloat(getComputedStyle(main).paddingTop) || 0) * k
+        : to.top;
+      const cut = Math.max(0, edge - to.top) / k;
+      stage.style.clipPath = cut > 0 ? `inset(${cut}px 0 0 0)` : "";
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(place);
+    };
+    place();
+    const ro = new ResizeObserver(schedule);
+    ro.observe(slot);
+    main?.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    // The stage slides in from the bar; measure again once it has arrived.
+    stage.addEventListener("transitionend", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+      main?.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      stage.removeEventListener("transitionend", schedule);
+      for (const name of ["--wp-full-x", "--wp-full-y", "--wp-full-w", "--wp-full-h"])
+        stage.style.removeProperty(name);
+      stage.style.clipPath = "";
+    };
+  }, [active, stageRef, slotRef, mainRef]);
 }
 
 /**
