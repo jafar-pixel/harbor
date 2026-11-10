@@ -219,6 +219,7 @@ class NativePlayer(
     /** The playing item without side-loaded subtitles, and the subtitles the page added to it. */
     private var baseItem: MediaItem? = null
     private val sideSubtitles = ArrayList<MediaItem.SubtitleConfiguration>()
+    private val sideSubtitleKeys = HashSet<String>()
     private var selector: DefaultTrackSelector? = null
 
     /** Audio and subtitle timing; see [SyncOffsets]. Audio timing stays for the next video, as in mpv. */
@@ -322,8 +323,14 @@ class NativePlayer(
      * subtitles only when the item is prepared, so the item is set again at the same position.
      */
     fun addSubtitleText(vtt: String, language: String?, label: String?, select: Boolean): Boolean {
-        val p = player ?: return false
-        val base = baseItem ?: return false
+        if (player == null || baseItem == null) return false
+        val lang = language?.takeIf { it.isNotBlank() }
+        // The same subtitle again (the page restores and auto-picks the same one): just show it.
+        val key = "${vtt.length}:${vtt.hashCode()}"
+        if (key in sideSubtitleKeys) {
+            if (select) setSubtitlesEnabled(true, lang)
+            return true
+        }
         val dir = File(activity.cacheDir, "subtitles").apply { mkdirs() }
         if (sideSubtitles.isEmpty()) dir.listFiles()?.forEach { it.delete() }
         val file = File(dir, "sub-${sideSubtitles.size}-${System.currentTimeMillis()}.vtt")
@@ -332,7 +339,7 @@ class NativePlayer(
         } catch (_: Exception) {
             return false
         }
-        val lang = language?.takeIf { it.isNotBlank() }
+        sideSubtitleKeys += key
         sideSubtitles += MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(file))
             .setMimeType(MimeTypes.TEXT_VTT)
             .setLanguage(lang)
@@ -341,12 +348,21 @@ class NativePlayer(
             .setSelectionFlags(if (select) C.SELECTION_FLAG_DEFAULT else 0)
             .build()
         if (select) setSubtitlesEnabled(true, lang)
+        // Each change of side-loaded subtitles reloads the stream; subtitles the page adds in a
+        // burst (as a video starts) are taken in one reload instead of one each.
+        handler.removeCallbacks(applySideSubtitles)
+        handler.postDelayed(applySideSubtitles, SUBTITLE_BATCH_MS)
+        return true
+    }
+
+    private val applySideSubtitles = Runnable {
+        val p = player ?: return@Runnable
+        val base = baseItem ?: return@Runnable
         val at = p.currentPosition
         val playing = p.playWhenReady
         p.setMediaItem(base.buildUpon().setSubtitleConfigurations(ArrayList(sideSubtitles)).build(), at)
         p.prepare()
         p.playWhenReady = playing
-        return true
     }
 
     /** Subtitles on or off (the page's subtitle menu and its Off item); [language] is preferred when on. */
@@ -489,6 +505,7 @@ class NativePlayer(
             .build()
         baseItem = item
         sideSubtitles.clear()
+        sideSubtitleKeys.clear()
         applySubtitleStyle()
         if (startMs > 0) p.setMediaItem(item, startMs) else p.setMediaItem(item)
         p.prepare()
@@ -663,6 +680,7 @@ class NativePlayer(
     fun release() {
         closeMenu()
         handler.removeCallbacks(positionTick)
+        handler.removeCallbacks(applySideSubtitles)
         view.player = null
         player?.removeListener(listener)
         player?.release()
@@ -1193,6 +1211,7 @@ class NativePlayer(
         }
 
         private const val MAX_BUFFER_BYTES = 256 * 1024 * 1024
+        private const val SUBTITLE_BATCH_MS = 1_500L
 
         /**
          * The playback buffer's size for an app heap of [maxMemory] bytes: half the heap, at most
