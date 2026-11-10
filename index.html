@@ -7,6 +7,7 @@
       // A television's WebView reports about 960 CSS px across, which lays the app out at double
       // size. TVs get a fixed canvas from the "Screen size" setting instead (src/lib/tv-canvas.ts),
       // set here before the bundle boots: changing the viewport on a live page stalls focus.
+      // The TV's page is also kept from zooming (see below).
       (function () {
         try {
           var ua = navigator.userAgent || "";
@@ -18,9 +19,16 @@
           var sizes = [1140, 1366, 1600, 1920];
           var saved = Number(localStorage.getItem("jl.tv.canvas"));
           var canvas = sizes.indexOf(saved) >= 0 ? saved : 1366;
-          if (Math.abs(canvas - window.innerWidth) < 48) return;
           var m = document.querySelector('meta[name="viewport"]');
-          if (m) m.setAttribute("content", "width=" + canvas + ", viewport-fit=cover");
+          if (!m) return;
+          // user-scalable=no holds the page at the scale that fits the screen: otherwise the
+          // WebView zooms in on a text box when it gets focus and the keyboard opens, and nothing
+          // on a TV can zoom it back out.
+          var width =
+            Math.abs(canvas - window.innerWidth) < 48
+              ? "device-width, initial-scale=1"
+              : String(canvas);
+          m.setAttribute("content", "width=" + width + ", user-scalable=no, viewport-fit=cover");
         } catch (e) {
           /* leave the authored viewport alone */
         }
