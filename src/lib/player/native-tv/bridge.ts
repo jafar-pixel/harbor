@@ -93,6 +93,13 @@ export const TV_PANEL_EVENT = "harbor:tv-panel";
 /** Set on <html> while that list is open: the video steps aside until it closes. */
 const tvPanelOpen = () => document.documentElement.dataset.tvPanel === "1";
 
+/** Marks the page see-through over the video (index.css `data-tv-video-under`). */
+const setVideoUnder = (under: boolean) => {
+  const root = document.documentElement;
+  if (under) root.dataset.tvVideoUnder = "1";
+  else delete root.dataset.tvVideoUnder;
+};
+
 /** `options` goes to the app before every play; app builds without `setOptions` ignore it. */
 export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBridge {
   const listeners = new Set<(s: PlayerSnapshot) => void>();
@@ -123,10 +130,15 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
     const p = native();
     if (!p || !host || destroyed) return;
     if (tvPanelOpen()) {
-      // Sound carries on; the picture comes back when the list closes.
-      p.setMode("hidden");
+      // Live TV's channel list or the stream picker is open. The picture carries on under the
+      // page so the list shows over it (Live TV and most channels); HDR and Dolby Vision can't
+      // go under the page, so they hide while the list is open and the sound carries on.
+      const under = typeof p.canShowUnderPage === "function" && p.canShowUnderPage();
+      setVideoUnder(under);
+      p.setMode(under ? "under" : "hidden");
       return;
     }
+    setVideoUnder(false);
     if (docked()) {
       const r = host.getBoundingClientRect();
       p.setRect(r.left, r.top, r.width, Math.max(0, r.height - NATIVE_HERO_BAR_PX));
@@ -240,6 +252,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
   };
 
   const detach = () => {
+    setVideoUnder(false);
     window.clearInterval(pageNote);
     pageNote = 0;
     window.removeEventListener("jl-native-player", onNative);

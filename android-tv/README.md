@@ -254,6 +254,15 @@ player options.
 to that second) or `{label, action: "next"}` (next episode); `""` hides it. OK on the remote
 presses it while it shows.
 
+## Overlays over live video
+
+While Live TV's channel list or the stream picker is open (`data-tv-panel`), the page asks
+`canShowUnderPage()`. For a non-HDR video it sets `setMode("under")`: the video keeps playing full
+size under the page, the page marks itself see-through (`data-tv-video-under`, index.css), and the
+list shows over the picture with the remote. HDR and Dolby Vision can't go under the page (their
+colours break), so for those the picture hides while the list is open and the sound carries on.
+The channel list closes by itself after 8 idle seconds.
+
 ## Buffering
 
 Media3 caps its buffer by size as well as time (about 140 MB by default), which a 4K UHD remux at

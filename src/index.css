@@ -131,6 +131,10 @@ html[data-tv-video-under="1"] .glass-shade {
 html[data-tv-video-under="1"] [data-harbor-native-backdrop] {
   box-shadow: none !important;
 }
+/* The player's black stage would hide the video under the TV app's channel list. */
+html[data-tv-video-under="1"] [data-harbor-player] {
+  background: transparent !important;
+}
 
 html[data-os="linux"]:not([data-mpv-embed="1"]):not([data-pinned-wallpaper="1"]),
 html[data-os="linux"]:not([data-mpv-embed="1"]):not([data-pinned-wallpaper="1"]) body,
