@@ -582,8 +582,8 @@
 
       (function () {
         // Each download shows its own version. A TV-only release carries a byte-identical copy of
-        // the last Windows installer, so Windows' version is the oldest release in the newest run
-        // of identical installers; Android TV's is the newest release.
+        // the last Windows installer (and a Windows-only release the last TV app), so each
+        // platform's version is the oldest release in the newest run of identical installers.
         var labels = document.querySelectorAll("[data-release]");
         if (!labels.length || !window.fetch) return;
         fetch("https://api.github.com/repos/jafar-pixel/harbor/releases?per_page=30", {
@@ -603,14 +603,19 @@
               })[0];
               return a ? a.size : null;
             };
-            var exe = "JL-Media-Vision-Setup-x64.exe";
-            var windows = shown[0];
-            var first = size(shown[0], exe);
-            for (var i = 1; i < shown.length && first !== null; i++) {
-              if (size(shown[i], exe) !== first) break;
-              windows = shown[i];
-            }
-            var android = shown[0];
+            // A release can carry the other platform's installer forward unchanged, so each
+            // platform's version is the oldest release in the newest run of identical files.
+            var introduced = function (name) {
+              var found = shown[0];
+              var first = size(shown[0], name);
+              for (var i = 1; i < shown.length && first !== null; i++) {
+                if (size(shown[i], name) !== first) break;
+                found = shown[i];
+              }
+              return found;
+            };
+            var windows = introduced("JL-Media-Vision-Setup-x64.exe");
+            var android = introduced("JL-Media-Vision-TV.apk");
             var version = function (r) {
               return /(\d+\.\d+\.\d+)/.exec(r.tag_name)[1];
             };
