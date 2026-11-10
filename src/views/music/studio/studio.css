@@ -1081,7 +1081,9 @@
 }
 .sd-drop[data-drop="true"],
 .sd-deck[data-drop="true"],
-.sv-deck[data-drop="true"] {
+.sv-deck[data-drop="true"],
+.sl-queue[data-drop="true"],
+.sp-build[data-drop="true"] {
   outline: 2px dashed #f97316;
   outline-offset: 3px;
   background-color: rgba(249, 115, 22, 0.08);
@@ -1109,4 +1111,132 @@
 }
 .sv-drop-hint[data-side="1"] {
   right: 0;
+}
+
+/* The playlist mixer (studio-playlists.tsx): your playlists, and a new playlist beside them. */
+.sp {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.sp-services {
+  display: flex;
+  gap: 6px;
+}
+.sp-note {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+.sp-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+}
+.sp-body[data-building="true"] {
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+.sp-songs {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+.sp-add[aria-pressed="true"] {
+  background: #b8860b;
+  color: #fff;
+}
+.sp-build {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+  border-left: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(255 255 255 / 0.03);
+  overflow-y: auto;
+}
+.sp-build-list {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sp-build-list li::marker {
+  color: var(--studio-muted);
+  font-size: 0.75rem;
+}
+.sp-build-list li {
+  display: list-item;
+}
+.sp-build-list li > * {
+  vertical-align: middle;
+}
+.sp-build-song {
+  display: inline-flex;
+  flex-direction: column;
+  width: calc(100% - 40px);
+  min-width: 0;
+}
+.sp-build-song span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-build-save {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 900px) {
+  .sp-body[data-building="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sp-build {
+    border-left: 0;
+    border-top: 1px solid rgb(255 255 255 / 0.08);
+  }
+}
+
+/* Songs slide into the queue and the new playlist, and out when removed. */
+.sl-qrow,
+.sp-build-list li {
+  animation: sd-song-in 0.24s ease-out;
+}
+.sl-qrow[data-leaving],
+.sp-build-list li[data-leaving] {
+  animation: sd-song-out 0.18s ease-in forwards;
+}
+.sl-qrow[draggable="true"],
+.sp-build-list li[draggable="true"],
+.sd-drop[draggable="true"],
+.sv-deck-head[draggable="true"] {
+  cursor: grab;
+}
+@keyframes sd-song-in {
+  from {
+    opacity: 0;
+    transform: translateX(-14px) scale(0.98);
+  }
+}
+@keyframes sd-song-out {
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sl-qrow,
+  .sp-build-list li,
+  .sl-qrow[data-leaving],
+  .sp-build-list li[data-leaving] {
+    animation: none;
+  }
+}
+.sp-build .studio-search {
+  flex: none;
+  width: 100%;
+  min-height: 36px;
 }

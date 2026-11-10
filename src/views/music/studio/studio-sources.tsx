@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n";
-import { analyzeSongs, factsKey } from "@/lib/music/automix/analyze";
 import {
   connectJellyfin,
   disconnectJellyfin,
@@ -12,160 +11,11 @@ import {
 } from "@/lib/music/jellyfin-web";
 import type { StudioDeck } from "@/lib/music/studio/deck";
 import { addUrl } from "@/lib/music/studio/library";
-import { loadVideoDeck, type VideoSong } from "@/lib/music/studio/video-decks";
-import {
-  youtubeLikedSongs,
-  youtubePlaylists,
-  youtubePlaylistSongs,
-  type YouTubePlaylist,
-  type YouTubeSong,
-} from "@/lib/music/youtube-web/api";
-import { connectYouTubeWeb, useYouTubeWeb } from "@/lib/music/youtube-web/auth";
 import { formatTime } from "./studio-controls";
 import { startStudioDrag } from "@/lib/music/studio/drag";
 import { DECK_NAMES } from "./studio-deck";
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
-
-/** Your YouTube Music (liked songs and playlists) for the video decks. */
-export function YouTubeSource({ onVideo }: { onVideo: () => void }) {
-  const t = useT();
-  const youtube = useYouTubeWeb();
-  const [lists, setLists] = useState<YouTubePlaylist[]>([]);
-  const [list, setList] = useState<string>("liked");
-  const [songs, setSongs] = useState<YouTubeSong[] | null>(null);
-  const [facts, setFacts] = useState<Map<string, { bpm?: number; key?: string }>>(new Map());
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!youtube.connected) return;
-    void youtubePlaylists()
-      .then(setLists)
-      .catch((e: unknown) => setError(message(e)));
-  }, [youtube.connected]);
-
-  useEffect(() => {
-    if (!youtube.connected) return;
-    setSongs(null);
-    void (list === "liked" ? youtubeLikedSongs() : youtubePlaylistSongs(list))
-      .then((s) => {
-        setSongs(s);
-        void analyzeSongs(s.map((x) => ({ artist: x.artist, title: x.title })))
-          .then(setFacts)
-          .catch(() => undefined);
-      })
-      .catch((e: unknown) => {
-        setError(message(e));
-        setSongs([]);
-      });
-  }, [list, youtube.connected]);
-
-  if (!youtube.connected)
-    return (
-      <div className="studio-empty sl-connect">
-        <p>{t("Connect YouTube Music to mix its videos on the video decks.")}</p>
-        <button type="button" className="studio-btn" onClick={() => void connectYouTubeWeb()}>
-          {t("Connect YouTube Music")}
-        </button>
-      </div>
-    );
-
-  const load = (i: 0 | 1, s: YouTubeSong) => {
-    const f = facts.get(factsKey(s)) ?? {};
-    const song: VideoSong = {
-      videoId: s.videoId,
-      title: s.title,
-      artist: s.artist,
-      art: s.image,
-      bpm: f.bpm,
-      key: f.key,
-    };
-    onVideo();
-    void loadVideoDeck(i, song);
-  };
-
-  return (
-    <>
-      <div className="sl-bar">
-        <strong>{t("YouTube Music")}</strong>
-        <label className="sr-only" htmlFor="sl-yt-list">
-          {t("Playlist")}
-        </label>
-        <select
-          id="sl-yt-list"
-          className="studio-search"
-          value={list}
-          onChange={(e) => setList(e.target.value)}
-        >
-          <option value="liked">{t("Liked songs")}</option>
-          {lists.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      {error && <p className="studio-error">{error}</p>}
-      {!songs ? (
-        <p className="studio-empty">{t("Loading…")}</p>
-      ) : (
-        <div className="sl-table" role="table" aria-label={t("YouTube Music")}>
-          {songs.map((s) => {
-            const f = facts.get(factsKey(s)) ?? {};
-            return (
-              <div
-                key={s.videoId}
-                role="row"
-                className="sl-tr"
-                draggable
-                title={t("Drag onto video deck A or B, or use its deck buttons")}
-                onDragStart={(e) => {
-                  // Show the video decks once the drag is under way, so it isn't cut short.
-                  window.setTimeout(onVideo, 0);
-                  startStudioDrag(e, {
-                    kind: "video",
-                    song: {
-                      videoId: s.videoId,
-                      title: s.title,
-                      artist: s.artist,
-                      art: s.image,
-                      bpm: f.bpm,
-                      key: f.key,
-                    },
-                  });
-                }}
-              >
-                <span
-                  className="sl-art"
-                  style={s.image ? { backgroundImage: `url("${s.image}")` } : undefined}
-                />
-                <span className="sl-title">{s.title}</span>
-                <span className="sl-dim">{s.artist || "—"}</span>
-                <span className="sl-dim">{f.bpm ?? ""}</span>
-                <span className="sl-key">{f.key ?? ""}</span>
-                <span className="sl-dim">{t("Video")}</span>
-                <span className="sl-actions">
-                  {([0, 1] as const).map((i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className="studio-btn studio-mini"
-                      data-deck={i}
-                      onClick={() => load(i, s)}
-                      title={t("Load on video deck {name}", { name: DECK_NAMES[i] })}
-                    >
-                      {DECK_NAMES[i]}
-                    </button>
-                  ))}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </>
-  );
-}
 
 /** Your Jellyfin server's music for the audio decks. */
 export function JellyfinSource({

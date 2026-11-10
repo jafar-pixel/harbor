@@ -18,6 +18,8 @@ import {
   useVideoDecks,
   type VideoDeck,
 } from "@/lib/music/studio/video-decks";
+import { videoSongFromCrate, youtubeSongFor } from "@/lib/music/studio/mix-song";
+import { startStudioDrag } from "@/lib/music/studio/drag";
 import { isStudioDrag, readStudioDrag } from "@/lib/music/studio/drag";
 import { formatTime } from "./studio-controls";
 
@@ -66,7 +68,15 @@ export function StudioVideo() {
           e.stopPropagation();
           setOver(null);
           const drag = readStudioDrag(e);
-          if (drag?.kind === "video") void loadVideoDeck(screenSide(e), drag.song);
+          const side = screenSide(e);
+          if (drag?.kind === "video") void loadVideoDeck(side, drag.song);
+          else if (drag?.kind === "crate") {
+            const v = videoSongFromCrate(drag.id);
+            if (v) void loadVideoDeck(side, v);
+          } else if (drag?.kind === "song")
+            void youtubeSongFor(drag.song)
+              .then((v) => loadVideoDeck(side, v))
+              .catch(() => undefined);
         }}
       >
         <div
@@ -167,9 +177,26 @@ function VideoDeckPanel({ i, deck }: { i: 0 | 1; deck: VideoDeck }) {
         setOver(false);
         const drag = readStudioDrag(e);
         if (drag?.kind === "video") void loadVideoDeck(i, drag.song);
+        else if (drag?.kind === "crate") {
+          // From a turntable or the crate: YouTube Music songs carry their video.
+          const v = videoSongFromCrate(drag.id);
+          if (v) void loadVideoDeck(i, v);
+        } else if (drag?.kind === "song")
+          void youtubeSongFor(drag.song)
+            .then((v) => loadVideoDeck(i, v))
+            .catch(() => undefined);
       }}
     >
-      <div className="sv-deck-head">
+      <div
+        className="sv-deck-head"
+        draggable={!!deck.song}
+        title={
+          deck.song ? t("Drag this song onto a turntable, the queue or the player") : undefined
+        }
+        onDragStart={(e) => {
+          if (deck.song) startStudioDrag(e, { kind: "video", song: deck.song });
+        }}
+      >
         <span className="sv-deck-name">{name}</span>
         {deck.song?.art ? <img src={deck.song.art} alt="" /> : <span className="sv-noart" />}
         <div className="sv-deck-text">

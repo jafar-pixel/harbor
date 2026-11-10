@@ -1,13 +1,26 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type DragEvent } from "react";
 import type { StudioDeck } from "@/lib/music/studio/deck";
-import { addFiles, dequeue, enqueue, useCrate, type CrateItem } from "@/lib/music/studio/library";
+import {
+  addFiles,
+  dequeue,
+  enqueue,
+  moveInQueue,
+  useCrate,
+  type CrateItem,
+} from "@/lib/music/studio/library";
 import { useT } from "@/lib/i18n";
 import { formatTime } from "./studio-controls";
 import { DECK_NAMES } from "./studio-deck";
-import { JellyfinSource, YouTubeSource } from "./studio-sources";
-import { startStudioDrag } from "@/lib/music/studio/drag";
+import type { AutoSong } from "@/lib/music/automix/playlists";
+import { JellyfinSource } from "./studio-sources";
+import { PlaylistSource } from "./studio-playlists";
+import { isStudioDrag, readStudioDrag, startStudioDrag } from "@/lib/music/studio/drag";
+import { trackFromDrag } from "@/lib/music/song-drag";
+import { addToQueue } from "@/lib/music/player/store";
+import { youtubeSongFor } from "@/lib/music/studio/mix-song";
+import { youtubeAudio, youtubeOnAudioDecks } from "@/lib/music/studio/youtube-audio";
 
-type Source = "all" | "history" | "youtube" | "jellyfin";
+type Source = "all" | "history" | "playlists" | "jellyfin";
 
 /**
  * The library: sources on the left, the track table in the middle (cover, title, artist, BPM,
@@ -18,20 +31,61 @@ export function StudioLibrary({
   onLoad,
   busyDeck,
   artOf,
-  onVideo,
+  onSong,
 }: {
   decks: StudioDeck[];
   onLoad: (deck: StudioDeck, id: string) => void;
   busyDeck: number | null;
   artOf: (item: CrateItem) => string;
-  /** A YouTube song went onto a video deck: show the video decks. */
-  onVideo: () => void;
+  /** A song from your playlists for a deck (see PlaylistSource). */
+  onSong: (deck: number, song: AutoSong) => void;
 }) {
   const t = useT();
   const crate = useCrate();
-  const [source, setSource] = useState<Source>("all");
+  const [source, setSource] = useState<Source>("playlists");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [queueOver, setQueueOver] = useState(false);
+  const [queueNote, setQueueNote] = useState<string | null>(null);
+  const [queueFrom, setQueueFrom] = useState<number | null>(null);
+  const [leaving, setLeaving] = useState<string | null>(null);
+  // A queued song slides out before it goes.
+  const unqueue = (id: string) => {
+    setLeaving(id);
+    window.setTimeout(() => {
+      dequeue(id);
+      setLeaving(null);
+    }, 180);
+  };
+  // A song dropped on the queue: crate songs line up as they are; a playlist song is fetched as
+  // music in the desktop app, and on the website (where it can't go on these decks) it joins
+  // the player's queue instead.
+  const dropOnQueue = async (e: DragEvent) => {
+    if (!isStudioDrag(e)) return;
+    e.preventDefault();
+    setQueueOver(false);
+    setQueueNote(null);
+    const drag = readStudioDrag(e);
+    if (!drag) return;
+    try {
+      if (drag.kind === "crate") {
+        if (queueFrom !== null) moveInQueue(queueFrom, crate.queue.length - 1);
+        else enqueue(drag.id);
+      } else if (drag.kind === "song" && youtubeOnAudioDecks()) {
+        setQueueNote(t("Getting “{title}”…", { title: drag.song.title }));
+        enqueue(await youtubeAudio(await youtubeSongFor(drag.song)));
+        setQueueNote(null);
+      } else {
+        const track = trackFromDrag(drag);
+        if (track) {
+          addToQueue([track]);
+          setQueueNote(t("Added to the player's queue."));
+        }
+      }
+    } catch (err) {
+      setQueueNote(err instanceof Error ? err.message : String(err));
+    }
+  };
   const files = useRef<HTMLInputElement>(null);
   const folder = useRef<HTMLInputElement>(null);
   const byId = new Map(crate.crate.map((c) => [c.id, c]));
@@ -81,10 +135,10 @@ export function StudioLibrary({
         </button>
         <button
           type="button"
-          className={`sl-source${source === "youtube" ? " is-on" : ""}`}
-          onClick={() => setSource("youtube")}
+          className={`sl-source${source === "playlists" ? " is-on" : ""}`}
+          onClick={() => setSource("playlists")}
         >
-          ▶ {t("YouTube Music")}
+          ▶ {t("Your playlists")}
         </button>
         <button
           type="button"
@@ -128,8 +182,8 @@ export function StudioLibrary({
         />
       </nav>
       <div className="sl-main">
-        {source === "youtube" ? (
-          <YouTubeSource onVideo={onVideo} />
+        {source === "playlists" ? (
+          <PlaylistSource deckCount={decks.length} busyDeck={busyDeck} onSong={onSong} />
         ) : source === "jellyfin" ? (
           <JellyfinSource decks={decks} onLoad={onLoad} busyDeck={busyDeck} />
         ) : (
@@ -207,18 +261,49 @@ export function StudioLibrary({
           </>
         )}
       </div>
-      <aside className="sl-queue" aria-label={t("Queue")}>
+      <aside
+        className="sl-queue"
+        aria-label={t("Queue")}
+        data-drop={queueOver || undefined}
+        onDragOver={(e) => {
+          if (!isStudioDrag(e)) return;
+          e.preventDefault();
+          setQueueOver(true);
+        }}
+        onDragLeave={() => setQueueOver(false)}
+        onDrop={(e) => void dropOnQueue(e)}
+      >
         <div className="sl-bar">
           <strong>{t("Queue")}</strong>
           <span className="sl-count">
             {t("{n} songs", { n: queue.length })} · {formatTime(queueTime)}
           </span>
         </div>
+        {queueNote && <p className="studio-empty">{queueNote}</p>}
         {queue.length === 0 ? (
-          <p className="studio-empty">{t("Press + on a song to line it up here.")}</p>
+          <p className="studio-empty">{t("Press + on a song, or drag it here, to line it up.")}</p>
         ) : (
-          queue.map((item) => (
-            <div key={item.id} className="sl-qrow">
+          queue.map((item, i) => (
+            <div
+              key={item.id}
+              className="sl-qrow"
+              data-leaving={leaving === item.id || undefined}
+              draggable
+              title={t("Drag to move it in the queue, or onto a deck")}
+              onDragStart={(e) => {
+                setQueueFrom(i);
+                startStudioDrag(e, { kind: "crate", id: item.id });
+              }}
+              onDragEnd={() => setQueueFrom(null)}
+              onDrop={(e) => {
+                if (queueFrom === null) return;
+                e.preventDefault();
+                e.stopPropagation();
+                setQueueOver(false);
+                moveInQueue(queueFrom, i);
+                setQueueFrom(null);
+              }}
+            >
               <span className="sl-art" style={{ backgroundImage: `url("${artOf(item)}")` }} />
               <div className="sl-qtext">
                 <strong>{item.title}</strong>
@@ -236,7 +321,7 @@ export function StudioLibrary({
                 <button
                   type="button"
                   className="studio-btn studio-mini"
-                  onClick={() => dequeue(item.id)}
+                  onClick={() => unqueue(item.id)}
                   aria-label={t("Remove from queue")}
                 >
                   ✕
