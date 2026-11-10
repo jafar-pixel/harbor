@@ -36,7 +36,9 @@ type NativeEvent = {
     | "control"
     // The viewer changed the timing in the TV app's menu: the snapshot follows, and the page
     // saves the subtitle timing for this title (TV_CONTROL_EVENT "sub-delay").
-    | "sync";
+    | "sync"
+    // A setting changed in the TV app's player menu (skip intros…): TV_SETTING_EVENT.
+    | "setting";
   mode?: string;
   positionMs?: number;
   durationMs?: number;
@@ -45,6 +47,8 @@ type NativeEvent = {
   id?: string;
   subDelaySec?: number;
   audioDelaySec?: number;
+  key?: string;
+  value?: unknown;
 };
 
 export function nativeAudioTrackInfo(tracks: unknown): TrackInfo[] {
@@ -66,6 +70,17 @@ export function nativeAudioTrackInfo(tracks: unknown): TrackInfo[] {
   }
   return out;
 }
+
+/** A setting changed in the TV app's player menu (detail: {key, value}); see player.tsx. */
+export const TV_SETTING_EVENT = "harbor:tv-setting";
+
+/** The settings the TV app's player menu may change. */
+export const TV_MENU_SETTINGS = new Set([
+  "autoSkipIntro",
+  "autoSkipRecap",
+  "autoSkipOutro",
+  "showSkipButton",
+]);
 
 /** The TV app's bar asked the page for a control (detail: its id, e.g. "next-episode"). */
 export const TV_CONTROL_EVENT = "harbor:tv-control";
@@ -177,6 +192,16 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       case "control":
         if (typeof d.id === "string")
           window.dispatchEvent(new CustomEvent(TV_CONTROL_EVENT, { detail: d.id }));
+        break;
+      case "setting":
+        if (
+          typeof d.key === "string" &&
+          TV_MENU_SETTINGS.has(d.key) &&
+          typeof d.value === "boolean"
+        )
+          window.dispatchEvent(
+            new CustomEvent(TV_SETTING_EVENT, { detail: { key: d.key, value: d.value } }),
+          );
         break;
       case "sync": {
         const sub = typeof d.subDelaySec === "number" ? d.subDelaySec : 0;

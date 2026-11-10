@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The TV player's controls, laid out like the desktop app's player: a glass bar along the bottom
+  with the seek bar across its top (time played on the left, time left on the right) and the
+  viewer's buttons (Settings › Player layout) on the right; play/pause and the skips in the
+  middle; the title and stream labels top left (NativePlayer's info line). Media3's own
+  subtitle and settings buttons are left out: the viewer's layout carries those, and the gear
+  opens this app's player menu (Media3 checks for both before use). It replaces Media3's
+  exo_player_control_view and keeps every id Media3 looks up, so its focus handling, remote keys
+  and show/hide animations carry on unchanged. Based on Media3 1.5.0's layout (Apache 2.0).
+-->
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <View android:id="@id/exo_controls_background"
+      android:layout_width="0dp"
+      android:layout_height="0dp"
+      android:background="@drawable/jl_controls_scrim"/>
+
+  <!-- The glass behind the seek bar and the bar's row. -->
+  <View android:id="@+id/jl_bar_glass"
+      android:layout_width="match_parent"
+      android:layout_height="132dp"
+      android:layout_gravity="bottom"
+      android:layout_marginStart="40dp"
+      android:layout_marginEnd="40dp"
+      android:layout_marginBottom="32dp"
+      android:background="@drawable/jl_glass_bar"/>
+
+  <FrameLayout android:id="@id/exo_bottom_bar"
+      android:layout_width="match_parent"
+      android:layout_height="72dp"
+      android:layout_gravity="bottom"
+      android:layout_marginStart="56dp"
+      android:layout_marginEnd="56dp"
+      android:layout_marginBottom="40dp"
+      android:background="@android:color/transparent"
+      android:layoutDirection="ltr">
+
+    <LinearLayout android:id="@id/exo_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|start"
+        android:gravity="center_vertical"
+        android:layoutDirection="ltr">
+
+      <TextView android:id="@id/exo_position"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:textColor="#FFFFFFFF"
+          android:textSize="18sp"
+          android:fontFeatureSettings="tnum"/>
+
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="  /  "
+          android:textColor="#99FFFFFF"
+          android:textSize="18sp"/>
+
+      <TextView android:id="@id/exo_duration"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:textColor="#B3FFFFFF"
+          android:textSize="18sp"
+          android:fontFeatureSettings="tnum"/>
+
+    </LinearLayout>
+
+    <LinearLayout android:id="@id/exo_basic_controls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|end"
+        android:gravity="center_vertical"
+        android:layoutDirection="ltr">
+
+      <ImageButton android:id="@id/exo_vr"
+          style="@style/ExoStyledControls.Button.Bottom.VR"/>
+
+      <ImageButton android:id="@id/exo_shuffle"
+          style="@style/ExoStyledControls.Button.Bottom.Shuffle"/>
+
+      <ImageButton android:id="@id/exo_repeat_toggle"
+          style="@style/ExoStyledControls.Button.Bottom.RepeatToggle"/>
+
+      <ImageButton android:id="@id/exo_fullscreen"
+          style="@style/ExoStyledControls.Button.Bottom.FullScreen"/>
+
+      <ImageButton android:id="@id/exo_overflow_show"
+          style="@style/ExoStyledControls.Button.Bottom.OverflowShow"/>
+
+    </LinearLayout>
+
+    <HorizontalScrollView android:id="@id/exo_extra_controls_scroll_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|end"
+        android:visibility="invisible">
+
+      <LinearLayout android:id="@id/exo_extra_controls"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layoutDirection="ltr">
+
+        <ImageButton android:id="@id/exo_overflow_hide"
+            style="@style/ExoStyledControls.Button.Bottom.OverflowHide"/>
+
+      </LinearLayout>
+
+    </HorizontalScrollView>
+
+  </FrameLayout>
+
+  <!-- The seek bar across the top of the glass, with the time left at its end. -->
+  <View android:id="@id/exo_progress_placeholder"
+      android:layout_width="match_parent"
+      android:layout_height="28dp"
+      android:layout_gravity="bottom"
+      android:layout_marginStart="64dp"
+      android:layout_marginEnd="150dp"
+      android:layout_marginBottom="112dp"/>
+
+  <TextView android:id="@+id/jl_time_left"
+      android:layout_width="wrap_content"
+      android:layout_height="28dp"
+      android:layout_gravity="bottom|end"
+      android:layout_marginEnd="64dp"
+      android:layout_marginBottom="112dp"
+      android:gravity="center_vertical|end"
+      android:textColor="#B3FFFFFF"
+      android:textSize="18sp"
+      android:fontFeatureSettings="tnum"/>
+
+  <LinearLayout android:id="@id/exo_minimal_controls"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_gravity="bottom|end"
+      android:layout_marginBottom="@dimen/exo_styled_minimal_controls_margin_bottom"
+      android:orientation="horizontal"
+      android:gravity="center_vertical"
+      android:layoutDirection="ltr">
+
+    <ImageButton android:id="@id/exo_minimal_fullscreen"
+        style="@style/ExoStyledControls.Button.Bottom.FullScreen"/>
+
+  </LinearLayout>
+
+  <LinearLayout
+      android:id="@id/exo_center_controls"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_gravity="center"
+      android:background="@android:color/transparent"
+      android:gravity="center"
+      android:padding="@dimen/exo_styled_controls_padding"
+      android:clipToPadding="false"
+      android:layoutDirection="ltr">
+
+    <ImageButton android:id="@id/exo_prev"
+        style="@style/ExoStyledControls.Button.Center.Previous"/>
+
+    <include layout="@layout/exo_player_control_rewind_button" />
+
+    <ImageButton android:id="@id/exo_play_pause"
+        style="@style/ExoStyledControls.Button.Center.PlayPause"/>
+
+    <include layout="@layout/exo_player_control_ffwd_button" />
+
+    <ImageButton android:id="@id/exo_next"
+        style="@style/ExoStyledControls.Button.Center.Next"/>
+
+  </LinearLayout>
+
+</merge>

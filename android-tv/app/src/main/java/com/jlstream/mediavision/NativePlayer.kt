@@ -3,6 +3,7 @@ package com.jlstream.mediavision
 import android.app.Activity
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.graphics.Point
 import android.net.Uri
 import android.os.Handler
@@ -53,6 +54,8 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.SubtitleView
+import androidx.media3.ui.DefaultTimeBar
+import androidx.media3.ui.PlayerControlView
 import androidx.media3.ui.PlayerView
 import org.json.JSONArray
 import org.json.JSONObject
@@ -108,6 +111,13 @@ class NativePlayer(
         /** "shadow", "outline" or "box". */
         val subStyle: String = "shadow",
         val subBoxColor: Int = Color.argb(153, 0, 0, 0),
+        /** Settings › Intros: what skips by itself, and whether the skip button shows. */
+        val skipIntro: Boolean = false,
+        val skipRecap: Boolean = false,
+        val skipOutro: Boolean = false,
+        val skipButton: Boolean = true,
+        /** The theme's accent colour, for the seek bar. */
+        val accent: Int = Color.rgb(47, 134, 255),
     ) {
         companion object {
             private fun color(hex: String?, fallback: Int): Int =
@@ -138,6 +148,11 @@ class NativePlayer(
                         val alpha = (sub.optDouble("boxOpacity", 0.6).coerceIn(0.0, 1.0) * 255).toInt()
                         Color.argb(alpha, Color.red(base), Color.green(base), Color.blue(base))
                     } ?: d.subBoxColor,
+                    skipIntro = o.optJSONObject("skip")?.optBoolean("intro", d.skipIntro) ?: d.skipIntro,
+                    skipRecap = o.optJSONObject("skip")?.optBoolean("recap", d.skipRecap) ?: d.skipRecap,
+                    skipOutro = o.optJSONObject("skip")?.optBoolean("outro", d.skipOutro) ?: d.skipOutro,
+                    skipButton = o.optJSONObject("skip")?.optBoolean("button", d.skipButton) ?: d.skipButton,
+                    accent = color(o.optString("accent").takeIf { it.startsWith("#") }, d.accent),
                 )
             }
         }
@@ -210,10 +225,11 @@ class NativePlayer(
         setTextColor(Color.WHITE)
         textSize = 20f
         maxLines = 2
-        setShadowLayer(8f, 0f, 2f, Color.BLACK)
+        typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+        setShadowLayer(10f, 0f, 2f, Color.BLACK)
         val pad = (24 * activity.resources.displayMetrics.density).toInt()
-        setPadding(pad * 2, pad, pad * 2, pad)
-        setBackgroundColor(Color.argb(150, 0, 0, 0))
+        // Top left, as on the desktop player; the controls' scrim darkens the top behind it.
+        setPadding(pad * 2, pad * 2, pad * 6, pad)
     }
 
     private val speeds = floatArrayOf(1f, 1.25f, 1.5f, 2f, 0.5f, 0.75f)
@@ -233,7 +249,25 @@ class NativePlayer(
     private var sourceChecked = false
     private var audioDecoder: String? = null
 
-    private val songButton = extraButton(R.drawable.tv_ic_song, "Identify song") { identifySong() }
+    /** The skip button over the video (Skip intro, Skip credits, Next episode); see [setSkipButton]. */
+    private var skipAction: (() -> Unit)? = null
+    private val skipView = TextView(activity).apply {
+        visibility = View.GONE
+        isFocusable = true
+        setTextColor(Color.WHITE)
+        textSize = 20f
+        val padH = (28 * activity.resources.displayMetrics.density).toInt()
+        val padV = (14 * activity.resources.displayMetrics.density).toInt()
+        setPadding(padH, padV, padH, padV)
+        background = GradientDrawable().apply {
+            cornerRadius = 999f
+            setColor(Color.argb(200, 12, 16, 30))
+            setStroke((2 * activity.resources.displayMetrics.density).toInt(), Color.argb(150, 255, 255, 255))
+        }
+        setOnClickListener { skipAction?.invoke() }
+    }
+
+    private val songButton = extraButton(R.drawable.jl_ic_song, "Identify song") { identifySong() }
 
     init {
         root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -247,8 +281,17 @@ class NativePlayer(
         buildRow()
         // The title and stream labels across the top while the bar is up.
         view.overlayFrameLayout?.addView(infoLine, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP,
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START,
         ))
+        // Time left at the end of the seek bar (res/layout/exo_player_control_view.xml).
+        view.findViewById<PlayerControlView>(androidx.media3.ui.R.id.exo_controller)
+            ?.setProgressUpdateListener { position, _ -> showTimeLeft(position) }
+        view.overlayFrameLayout?.addView(skipView, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.END,
+        ).apply {
+            val m = (48 * activity.resources.displayMetrics.density).toInt()
+            setMargins(m, m, m, m * 3)
+        })
         view.setShowNextButton(false)
         view.setShowPreviousButton(false)
         view.setShowRewindButton(true)
@@ -272,7 +315,8 @@ class NativePlayer(
      */
     private fun buildRow() {
         row.removeAllViews()
-        val ids = (options.controls ?: DEFAULT_ROW).distinctBy { if (it == "back") "stop" else it }
+        // The player menu (gear) always comes last, so audio, subtitles and the rest are one press away.
+        val ids = ((options.controls ?: DEFAULT_ROW) + "menu").distinctBy { if (it == "back") "stop" else it }
         for (id in ids) buttonFor(id)?.let { button ->
             (button.parent as? ViewGroup)?.removeView(button)
             row.addView(button)
@@ -280,16 +324,18 @@ class NativePlayer(
     }
 
     private fun buttonFor(id: String): View? = when (id) {
-        "pick-another" -> extraButton(R.drawable.tv_ic_streams, "Change stream or channel") { openPanel() }
-        "english-dub" -> extraButton(R.drawable.tv_ic_dub, "English dub") { englishDub() }
-        "aspect-menu" -> extraButton(R.drawable.tv_ic_aspect, "Picture fit") { showMessage(nextAspect()) }
+        // The desktop player's icons (Lucide, res/drawable/jl_ic_*).
+        "pick-another" -> extraButton(R.drawable.jl_ic_streams, "Change stream or channel") { openPanel() }
+        "english-dub" -> extraButton(R.drawable.jl_ic_dub, "English dub") { englishDub() }
+        "aspect-menu" -> extraButton(R.drawable.jl_ic_aspect, "Picture fit") { showMessage(nextAspect()) }
         "song-id" -> songButton
-        "stop", "back" -> extraButton(R.drawable.tv_ic_stop, "Stop") { exitFull() }
-        "audio-menu" -> extraButton(androidx.media3.ui.R.drawable.exo_styled_controls_audiotrack, "Audio") { openMenu() }
-        "subtitle-menu" -> extraButton(androidx.media3.ui.R.drawable.exo_styled_controls_subtitle_on, "Subtitles") { openMenu() }
-        "speed-menu" -> extraButton(androidx.media3.ui.R.drawable.exo_styled_controls_speed, "Playback speed") { showMessage(nextSpeed()) }
-        "prev-episode" -> extraButton(androidx.media3.ui.R.drawable.exo_styled_controls_previous, "Previous episode") { control("prev-episode") }
-        "next-episode" -> extraButton(androidx.media3.ui.R.drawable.exo_styled_controls_next, "Next episode") { control("next-episode") }
+        "stop", "back" -> extraButton(R.drawable.jl_ic_stop, "Stop") { exitFull() }
+        "audio-menu" -> extraButton(R.drawable.jl_ic_audio, "Audio") { openMenu() }
+        "subtitle-menu" -> extraButton(R.drawable.jl_ic_subtitles, "Subtitles") { openMenu() }
+        "menu" -> extraButton(R.drawable.jl_ic_menu, "Player menu") { openMenu() }
+        "speed-menu" -> extraButton(R.drawable.jl_ic_speed, "Playback speed") { showMessage(nextSpeed()) }
+        "prev-episode" -> extraButton(R.drawable.jl_ic_prev, "Previous episode") { control("prev-episode") }
+        "next-episode" -> extraButton(R.drawable.jl_ic_next, "Next episode") { control("next-episode") }
         else -> null
     }
 
@@ -297,6 +343,30 @@ class NativePlayer(
     private fun control(id: String) {
         view.hideController()
         emit(JSONObject().put("type", "control").put("id", id).put("mode", mode.name.lowercase(Locale.ROOT)))
+    }
+
+    private val timeLeft: TextView? get() = view.findViewById(R.id.jl_time_left)
+
+    private fun showTimeLeft(position: Long) {
+        val label = timeLeft ?: return
+        val duration = player?.duration ?: C.TIME_UNSET
+        if (duration == C.TIME_UNSET || duration <= 0 || player?.isCurrentMediaItemLive == true) {
+            label.text = ""
+            return
+        }
+        val left = ((duration - position).coerceAtLeast(0) + 999) / 1000
+        label.text = if (left >= 3600) String.format(Locale.US, "-%d:%02d:%02d", left / 3600, left / 60 % 60, left % 60)
+        else String.format(Locale.US, "-%d:%02d", left / 60, left % 60)
+    }
+
+    /** The theme's accent on the seek bar, as on the desktop player. */
+    private fun applyAccent() {
+        val bar = view.findViewById<DefaultTimeBar>(androidx.media3.ui.R.id.exo_progress) ?: return
+        val accent = options.accent
+        bar.setPlayedColor(accent)
+        bar.setScrubberColor(accent)
+        bar.setBufferedColor(Color.argb(110, 255, 255, 255))
+        bar.setUnplayedColor(Color.argb(60, 255, 255, 255))
     }
 
     private fun nextSpeed(): String {
@@ -326,6 +396,38 @@ class NativePlayer(
      * as on the desktop) joins the playing video as a WebVTT track. Media3 adds side-loaded
      * subtitles only when the item is prepared, so the item is set again at the same position.
      */
+/**
+     * The page's skip button (Settings › Intros), drawn over the video: JSON {label, toSec} skips
+     * to that second, {label, action: "next"} asks the page for the next episode, "" hides it.
+     */
+    fun setSkipButton(json: String) {
+        val o = try { if (json.isBlank()) null else JSONObject(json) } catch (_: Exception) { null }
+        val label = o?.optString("label").orEmpty()
+        if (o == null || label.isBlank() || !options.skipButton || mode != Mode.FULL) {
+            if (skipView.hasFocus()) view.requestFocus()
+            skipView.visibility = View.GONE
+            skipAction = null
+            return
+        }
+        val toSec = o.optDouble("toSec", -1.0)
+        val next = o.optString("action") == "next"
+        skipAction = {
+            skipView.visibility = View.GONE
+            if (next) control("next-episode")
+            else if (toSec >= 0) seek((toSec * 1000).toLong())
+        }
+        skipView.text = label
+        skipView.visibility = View.VISIBLE
+    }
+
+    /** OK on the remote presses the skip button while it shows and the bar is hidden. */
+    fun pressSkipIfShown(): Boolean {
+        val action = skipAction ?: return false
+        if (skipView.visibility != View.VISIBLE) return false
+        action()
+        return true
+    }
+
     fun addSubtitleText(vtt: String, language: String?, label: String?, select: Boolean): Boolean {
         if (player == null || baseItem == null) return false
         val lang = language?.takeIf { it.isNotBlank() }
@@ -455,6 +557,7 @@ class NativePlayer(
         songCapture.clear()
         buildRow()
         infoLine.text = options.info
+        applyAccent()
         songButton.visibility = if (options.songIdEnabled) View.VISIBLE else View.GONE
         var userAgent = Util.getUserAgent(activity, "JLMediaVisionTV")
         val requestHeaders = HashMap<String, String>()
@@ -484,6 +587,9 @@ class NativePlayer(
             .setRenderersFactory(renderersFactory())
             .setTrackSelector(trackSelector())
             .setHandleAudioBecomingNoisy(true)
+            // The skips the desktop player and the remote's left and right use.
+            .setSeekBackIncrementMs(SEEK_STEP_MS)
+            .setSeekForwardIncrementMs(SEEK_STEP_MS)
             .build()
         p.setVideoChangeFrameRateStrategy(
             if (options.matchFrameRate) C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_ONLY_IF_SEAMLESS
@@ -700,6 +806,8 @@ class NativePlayer(
 
     fun release() {
         closeMenu()
+        skipView.visibility = View.GONE
+        skipAction = null
         handler.removeCallbacks(positionTick)
         handler.removeCallbacks(applySideSubtitles)
         view.player = null
@@ -738,7 +846,8 @@ class NativePlayer(
         if (down) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER ->
-                    if (event.repeatCount == 0) { togglePause(); view.showController() }
+                    // OK presses Skip intro / Next episode while it shows; otherwise play or pause.
+                    if (event.repeatCount == 0 && !pressSkipIfShown()) { togglePause(); view.showController() }
                 KeyEvent.KEYCODE_DPAD_LEFT -> seekBy(-SEEK_STEP_MS)
                 KeyEvent.KEYCODE_DPAD_RIGHT -> seekBy(SEEK_STEP_MS)
                 else -> view.showController()
@@ -787,15 +896,22 @@ class NativePlayer(
                 entries += MenuEntry(checked(row.selected, "Subtitles: $name")) { selectTrack(row) }
             }
         }
+        entries += MenuEntry(checked(false, "Speed: " + speedName(p.playbackParameters.speed))) { showMessage(nextSpeed()); openMenuSoon() }
+        entries += MenuEntry(checked(false, "Picture: " + aspectName())) { showMessage(nextAspect()); openMenuSoon() }
+        entries += MenuEntry(checked(options.skipIntro, "Skip intros automatically")) { toggleSkip("autoSkipIntro") }
+        entries += MenuEntry(checked(options.skipRecap, "Skip recaps automatically")) { toggleSkip("autoSkipRecap") }
+        entries += MenuEntry(checked(options.skipOutro, "Skip credits automatically")) { toggleSkip("autoSkipOutro") }
+        entries += MenuEntry(checked(options.skipButton, "Show the skip button")) { toggleSkip("showSkipButton") }
         entries += MenuEntry(checked(false, "Subtitle timing: ${SyncOffsets.describe(SyncOffsets.toSec(sync.subtitleUs))}")) { openTiming(subtitles = true) }
         entries += MenuEntry(checked(false, "Audio timing: ${SyncOffsets.describe(SyncOffsets.toSec(sync.audioUs))}")) { openTiming(subtitles = false) }
         entries += MenuEntry(checked(false, "Stream info")) { openStreamInfo() }
         entries += MenuEntry(checked(false, "More player options")) { exitFull() }
         val labels = Array<CharSequence>(entries.size) { entries[it].label }
         val dialog = AlertDialog.Builder(activity)
-            .setTitle("Audio & options")
+            .setTitle("Player menu")
             .setItems(labels) { _, which -> entries[which].action() }
             .create()
+        styleAsSidePanel(dialog)
         dialog.setOnDismissListener {
             if (menu === dialog) menu = null
             if (mode == Mode.FULL && player != null) view.showController()
@@ -905,6 +1021,59 @@ class NativePlayer(
         }
         menu = dialog
         dialog.show()
+    }
+
+private fun speedName(speed: Float): String =
+        if (kotlin.math.abs(speed - 1f) < 0.01f) "Normal" else "${speed}×"
+
+    private fun aspectName(): String = when (aspect) {
+        AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> "Zoom"
+        AspectRatioFrameLayout.RESIZE_MODE_FILL -> "Stretch"
+        else -> "Fit"
+    }
+
+    /** A skip setting from the menu: kept here and saved by the page (Settings › Intros). */
+    private fun toggleSkip(key: String) {
+        val o = options
+        options = when (key) {
+            "autoSkipIntro" -> o.copy(skipIntro = !o.skipIntro)
+            "autoSkipRecap" -> o.copy(skipRecap = !o.skipRecap)
+            "autoSkipOutro" -> o.copy(skipOutro = !o.skipOutro)
+            else -> o.copy(skipButton = !o.skipButton)
+        }
+        val value = when (key) {
+            "autoSkipIntro" -> options.skipIntro
+            "autoSkipRecap" -> options.skipRecap
+            "autoSkipOutro" -> options.skipOutro
+            else -> options.skipButton
+        }
+        if (key == "showSkipButton" && !value) setSkipButton("")
+        emit(JSONObject().put("type", "setting").put("key", key).put("value", value))
+        openMenuSoon()
+    }
+
+    /** Opens the menu again once the one just picked from has closed, so a change is seen at once. */
+    private fun openMenuSoon() {
+        handler.postDelayed({ if (mode == Mode.FULL && player != null) openMenu() }, 150)
+    }
+
+/**
+     * The menu as a glass panel down the right side of the picture, which stays in view (the
+     * dialog's own window, so the remote moves through it and Back closes it).
+     */
+    private fun styleAsSidePanel(dialog: AlertDialog) {
+        val window = dialog.window ?: return
+        val density = activity.resources.displayMetrics.density
+        window.setGravity(Gravity.END or Gravity.CENTER_VERTICAL)
+        window.setDimAmount(0f)
+        window.setBackgroundDrawable(GradientDrawable().apply {
+            cornerRadius = 28 * density
+            setColor(Color.argb(232, 11, 15, 28))
+            setStroke((1 * density).toInt(), Color.argb(60, 255, 255, 255))
+        })
+        dialog.setOnShowListener {
+            window.setLayout((520 * density).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
     }
 
     private fun closeMenu() {

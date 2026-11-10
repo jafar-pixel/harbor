@@ -35,6 +35,11 @@ export type NativeTvPlayer = {
   setSubtitlesEnabled?(on: boolean): void;
   /** Subtitle timing in seconds, positive for later; absent from older app builds. */
   setSubtitleDelay?(sec: number): void;
+  /**
+   * The skip button over the video, as JSON {label, toSec} or {label, action: "next"}; an empty
+   * string hides it. Absent from older app builds.
+   */
+  setSkipButton?(json: string): void;
   /** Audio timing in seconds, positive for later; absent from older app builds. */
   setAudioDelay?(sec: number): void;
 };
@@ -60,6 +65,8 @@ export type NativeTvOptions = {
   songId: { enabled: boolean; provider: "audd" | "ai"; key: string; model: string };
   /** The bar's buttons in the viewer's order (Settings › Player layout); app builds without it keep their row. */
   controls?: string[];
+  /** The theme's accent colour (#rrggbb), for the seek bar and highlights. */
+  accent?: string;
   /** The title and the stream's labels, shown across the top with the bar. */
   info?: string;
   /** Settings › Subtitles: size in px at 1080p, colours, and "shadow", "outline" or "box". */
@@ -71,6 +78,8 @@ export type NativeTvOptions = {
     boxColor: string;
     boxOpacity: number;
   };
+  /** Settings › Intros: what skips by itself, and whether the skip button shows. */
+  skip?: { intro: boolean; recap: boolean; outro: boolean; button: boolean };
 };
 
 export type NativeTvCapabilities = {
@@ -180,6 +189,10 @@ export function nativeTvOptions(s: {
   subStyle?: "shadow" | "outline" | "box";
   subBoxColor?: string;
   subBoxOpacity?: number;
+  autoSkipIntro?: boolean;
+  autoSkipRecap?: boolean;
+  autoSkipOutro?: boolean;
+  showSkipButton?: boolean;
 }): NativeTvOptions {
   const ai = s.songIdProvider === "ai";
   return {
@@ -200,6 +213,12 @@ export function nativeTvOptions(s: {
       style: s.subStyle ?? "shadow",
       boxColor: s.subBoxColor ?? "#000000",
       boxOpacity: s.subBoxOpacity ?? 0.6,
+    },
+    skip: {
+      intro: s.autoSkipIntro === true,
+      recap: s.autoSkipRecap === true,
+      outro: s.autoSkipOutro === true,
+      button: s.showSkipButton !== false,
     },
   };
 }

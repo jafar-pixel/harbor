@@ -18,7 +18,13 @@ import { useTogether } from "@/lib/together/provider";
 import { buildPlayInvite } from "@/lib/together/build-invite";
 import { useView, type PlayerSrc, type PlayEpisode } from "@/lib/view";
 import { heroDockSupported, setHeroDockSupported, wasExpandedFromDock } from "@/lib/hero-dock";
-import { nativeTvAvailable, TV_CONTROL_EVENT, TV_PANEL_EVENT } from "@/lib/player/native-tv/bridge";
+import {
+  nativeTvAvailable,
+  TV_CONTROL_EVENT,
+  TV_MENU_SETTINGS,
+  TV_PANEL_EVENT,
+  TV_SETTING_EVENT,
+} from "@/lib/player/native-tv/bridge";
 import { NativeHeroBar } from "./player/native-hero-bar";
 import { PinnedVideoPill } from "./player/pinned-video-pill";
 import { useQueue, useSleepAtEnd, queueIndexOf, setQueuePlaying } from "@/lib/queue";
@@ -608,6 +614,15 @@ function NativePlayerView({
     window.addEventListener(TV_CONTROL_EVENT, onControl);
     return () => window.removeEventListener(TV_CONTROL_EVENT, onControl);
   }, [playNextRef, playPrevRef, tvMetaId]);
+  // The TV app's player menu changes the skip settings (Settings › Intros) in place.
+  useEffect(() => {
+    const onSetting = (e: Event) => {
+      const { key, value } = (e as CustomEvent<{ key: string; value: boolean }>).detail;
+      if (TV_MENU_SETTINGS.has(key)) update({ [key]: value });
+    };
+    window.addEventListener(TV_SETTING_EVENT, onSetting);
+    return () => window.removeEventListener(TV_SETTING_EVENT, onSetting);
+  }, [update]);
 
   usePlaybackPresence({ src, snap, season, episode, liveGuideOpen: liveOverlay.open });
   useCastReturnPublish({

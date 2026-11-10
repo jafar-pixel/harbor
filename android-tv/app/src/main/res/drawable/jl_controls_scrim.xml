@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Darkens the top (title) and bottom (bar) of the picture while the controls show. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:gravity="top" android:height="220dp">
+        <shape><gradient android:angle="270" android:startColor="#A6000000" android:endColor="#00000000" /></shape>
+    </item>
+    <item android:gravity="bottom" android:height="320dp">
+        <shape><gradient android:angle="90" android:startColor="#B3000000" android:endColor="#00000000" /></shape>
+    </item>
+</layer-list>
