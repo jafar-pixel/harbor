@@ -615,6 +615,28 @@ class NativePlayer(
     }
 
     /** Releases the decoder without telling the page (the activity is going away). */
+    /** One line for a crash report: what was playing and how. */
+    fun crashSummary(): String {
+        val p = player ?: return "off"
+        val v = p.videoFormat
+        val video = v?.let {
+            listOfNotNull(
+                if (it.width > 0) "${it.width}×${it.height}" else null,
+                videoCodecName(it),
+                hdrName(it),
+            ).joinToString(" ")
+        }
+        val at = p.currentPosition / 1000
+        val clock = String.format(Locale.US, "%d:%02d:%02d", at / 3600, at / 60 % 60, at % 60)
+        return listOfNotNull(
+            mode.name.lowercase(Locale.ROOT),
+            if (p.isPlaying) "playing" else "paused",
+            video,
+            p.audioFormat?.let { audioCodecName(it) },
+            clock,
+        ).joinToString(" · ")
+    }
+
     fun release() {
         closeMenu()
         handler.removeCallbacks(positionTick)

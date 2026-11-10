@@ -1,6 +1,7 @@
 package com.jlstream.mediavision
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -8,6 +9,7 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
@@ -99,8 +101,10 @@ class MainActivity : AppCompatActivity() {
                 if (view !== web || isFinishing || isDestroyed) return true
                 CrashLog.record(
                     this@MainActivity,
-                    if (detail.didCrash()) "The page crashed."
-                    else "Android closed the page to free memory.",
+                    pageGoneReport(
+                        if (detail.didCrash()) "The page crashed."
+                        else "Android closed the page to free memory.",
+                    ),
                 )
                 nativePlayer.release()
                 recreate()
@@ -109,6 +113,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
                 onAppPage = isAppUrl(url)
+                if (onAppPage) PageTrail.noteScreen(Uri.parse(url).path)
             }
 
             override fun onScaleChanged(view: WebView, oldScale: Float, newScale: Float) {
@@ -136,6 +141,14 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onHideCustomView() = exitFullscreen()
+
+            // The page's errors, for the crash report (PageTrail cuts addresses to their host).
+            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                    PageTrail.noteError(message.message())
+                }
+                return super.onConsoleMessage(message)
+            }
         }
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState)
@@ -244,6 +257,30 @@ class MainActivity : AppCompatActivity() {
 
     private fun historyBack() {
         if (web.canGoBack()) web.goBack() else confirmLeave()
+    }
+
+    /**
+     * What was going on when the page stopped: the screen, the player, the TV's free memory, the
+     * WebView version and the page's last errors, so a photo of the report says enough to fix it.
+     */
+    private fun pageGoneReport(what: String): String {
+        val memory = ActivityManager.MemoryInfo().also {
+            (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(it)
+        }
+        val mb = { bytes: Long -> bytes / (1024 * 1024) }
+        val webView = WebView.getCurrentWebViewPackage()?.versionName ?: "unknown"
+        val errors = PageTrail.recentErrors()
+        return buildList {
+            add(what)
+            add("Screen: ${PageTrail.screen.ifBlank { "/" }}")
+            add("Player: ${nativePlayer.crashSummary()}")
+            add(
+                "Free memory: ${mb(memory.availMem)} of ${mb(memory.totalMem)} MB" +
+                    if (memory.lowMemory) " (low)" else "",
+            )
+            add("WebView $webView")
+            if (errors.isNotEmpty()) add("Last errors:\n" + errors.joinToString("\n") { "• $it" })
+        }.joinToString("\n")
     }
 
     /** Why the app closed last time, so it can be photographed and fixed. */

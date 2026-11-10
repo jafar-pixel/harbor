@@ -234,3 +234,15 @@ its own `fetch()`. When `window.JLNativeFetch?.isAvailable()` is true, the page 
 to five redirects, and returns the status, body and content type with
 `Access-Control-Allow-Origin: *`. Only `GET` from an app page is served, and only `http`/`https`
 targets. A failed connection answers `502`.
+
+## Crash reports
+
+When the app closes unexpectedly (an uncaught error, or the page's renderer stopping), the next
+launch shows why once, so it can be photographed (`CrashLog.kt`). A stopped page reports whether
+it crashed or Android closed it for memory, then:
+
+- the app screen it was on (path only, no query),
+- the player: mode, playing or paused, resolution, codec, HDR type, sound format and position,
+- the TV's free memory, and the WebView version,
+- the page's last four console errors, with every address cut to its host (`PageTrail.kt`), so
+  stream links and tokens never reach the report.
