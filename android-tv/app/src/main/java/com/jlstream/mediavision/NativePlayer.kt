@@ -40,6 +40,8 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.source.LoadEventInfo
+import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.exoplayer.text.TextOutput
 import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.common.audio.AudioProcessor
@@ -227,6 +229,8 @@ class NativePlayer(
 
     /** The decoders playing the video and sound, for Stream info. */
     private var videoDecoder: String? = null
+    /** Whether this stream's first load was checked for an addon's placeholder video. */
+    private var sourceChecked = false
     private var audioDecoder: String? = null
 
     private val songButton = extraButton(R.drawable.tv_ic_song, "Identify song") { identifySong() }
@@ -488,6 +492,7 @@ class NativePlayer(
         p.addListener(listener)
         videoDecoder = null
         audioDecoder = null
+        sourceChecked = false
         p.addAnalyticsListener(object : AnalyticsListener {
             override fun onVideoDecoderInitialized(
                 eventTime: AnalyticsListener.EventTime, decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long,
@@ -496,6 +501,22 @@ class NativePlayer(
             override fun onAudioDecoderInitialized(
                 eventTime: AnalyticsListener.EventTime, decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long,
             ) { audioDecoder = decoderName }
+
+            // The first load's address after redirects: a stream addon whose debrid service
+            // refused the link sends a short "Access denied" video instead of the film. It is
+            // refused as an error rather than played (and taken for the film by the page).
+            override fun onLoadCompleted(
+                eventTime: AnalyticsListener.EventTime, loadEventInfo: LoadEventInfo, mediaLoadData: MediaLoadData,
+            ) {
+                if (sourceChecked) return
+                sourceChecked = true
+                val reason = addonPlaceholder(loadEventInfo.uri.path) ?: return
+                handler.post {
+                    if (player !== p) return@post
+                    p.stop()
+                    send("error", reason)
+                }
+            }
         })
         p.volume = volume
         val item = MediaItem.Builder()
@@ -1212,6 +1233,31 @@ class NativePlayer(
 
         private const val MAX_BUFFER_BYTES = 256 * 1024 * 1024
         private const val SUBTITLE_BATCH_MS = 1_500L
+
+        // Addons (Torrentio, Comet, MediaFusion and others) answer a refused or failed debrid
+        // link with a short video from their own server, under a folder like /videos/ or
+        // /static/, named for the problem (access_denied.mp4, failed_access_v2.mp4, ...).
+        private val PLACEHOLDER_DIR = Regex("/(videos?|static|assets|exceptions|media/errors?)/", RegexOption.IGNORE_CASE)
+        private val PLACEHOLDER_NAME = Regex(
+            "access[_-]?denied|denied|failed|unavailable|limits?[_-]?exceeded|downloading|not[_-]?cached|uncached|" +
+                "expired|invalid|error|exception|blocked|no[_-]?subscription|infringement|too[_-]?big",
+            RegexOption.IGNORE_CASE,
+        )
+        private val VIDEO_FILE = Regex("\\.(mp4|mkv|webm|m4v)$", RegexOption.IGNORE_CASE)
+
+        /** The message for an addon's placeholder video at the address [path], or null for a real stream. */
+        fun addonPlaceholder(path: String?): String? {
+            if (path == null) return null
+            val name = path.substringAfterLast('/')
+            if (!VIDEO_FILE.containsMatchIn(name) || !PLACEHOLDER_DIR.containsMatchIn(path)) return null
+            if (!PLACEHOLDER_NAME.containsMatchIn(name)) return null
+            val denied = Regex("access|denied|subscription|expired|invalid", RegexOption.IGNORE_CASE).containsMatchIn(name)
+            return if (denied) {
+                "Your debrid service refused this stream (access denied). Check your debrid account and key in Settings, then pick a stream again."
+            } else {
+                "The stream addon couldn't get this stream (${name.substringBeforeLast('.')}). Pick another stream."
+            }
+        }
 
         /**
          * The playback buffer's size for an app heap of [maxMemory] bytes: half the heap, at most
