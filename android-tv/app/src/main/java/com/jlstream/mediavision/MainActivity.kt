@@ -281,6 +281,7 @@ class MainActivity : AppCompatActivity() {
                     if (memory.lowMemory) " (low)" else "",
             )
             add("WebView $webView")
+            PageTrail.page.takeIf { it.isNotBlank() }?.let { add("Page: $it") }
             val calls = PageTrail.recentCalls()
             if (calls.isNotEmpty()) add("Last steps: " + calls.joinToString(", "))
             if (errors.isNotEmpty()) add("Last errors:\n" + errors.joinToString("\n") { "• $it" })
@@ -439,6 +440,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         /** The player's own volume, 0 to 1 (README: `setVolume`); the page's volume buttons. */
+        /** What the page is doing, for a crash report (README: `notePage`). */
+        @JavascriptInterface
+        fun notePage(text: String?) {
+            if (onAppPage && text != null) PageTrail.notePage(text)
+        }
+
         @JavascriptInterface
         fun setVolume(volume: Double) = onMain { nativePlayer.setVolume(volume.toFloat()) }
 

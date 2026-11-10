@@ -254,6 +254,9 @@ it crashed or Android closed it for memory, then:
 - the TV's display mode, and the mode before the player switched it for the video (Match frame
   rate),
 - the TV's free memory, and the WebView version,
+- what the page is doing, sent every 5 seconds while the player is attached (`notePage`): its
+  JavaScript heap, how many video elements it has and how many are playing, its frames and
+  element count,
 - the last ten steps between the page and the player (`play`, `setMode full`, `→ ready`…),
 - the page's last four console errors, with every address cut to its host (`PageTrail.kt`), so
   stream links and tokens never reach the report.

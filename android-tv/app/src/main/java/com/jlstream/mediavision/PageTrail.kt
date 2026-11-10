@@ -18,6 +18,14 @@ object PageTrail {
     @Volatile var screen: String = ""
         private set
 
+    /** The page's own last word about itself (memory, videos, frames); see `notePage`. */
+    @Volatile var page: String = ""
+        private set
+
+    fun notePage(text: String) {
+        page = sanitize(text)
+    }
+
     @Synchronized
     fun noteError(message: String) {
         if (ROUTINE.containsMatchIn(message)) return
