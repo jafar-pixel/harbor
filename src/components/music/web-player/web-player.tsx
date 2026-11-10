@@ -120,10 +120,12 @@ export function WebPlayer() {
             <ChevronDown size={26} />
           </button>
           <div className="wp-full-main" ref={main}>
-            {/* The cover, which a playing video replaces: the video is drawn exactly over it
-                (useStageOverSlot). */}
+            {/* The video's place (useStageOverSlot draws it exactly here). The cover shows only
+                until the song starts; once it plays, only the video is seen. */}
             <div className="wp-full-stage-slot" ref={slot} aria-hidden="true">
-              {track.art && <img src={track.art} alt="" />}
+              {track.art && !player.playing && player.position <= 0 && (
+                <img src={track.art} alt="" />
+              )}
             </div>
             <div className="wp-full-info">
               <div className="wp-full-titles">
