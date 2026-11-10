@@ -1,7 +1,7 @@
 {
   "productName": "JL Media Vision",
   "mainBinaryName": "JL Media Vision",
-  "version": "0.9.76",
+  "version": "0.9.82",
   "identifier": "app.jlnetwork.dev",
   "app": {
     "windows": [

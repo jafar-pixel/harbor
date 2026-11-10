@@ -1,9 +1,18 @@
-import { useEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 import {
   AudioWaveform,
   ChevronDown,
   GripVertical,
   ListMusic,
+  ListPlus,
   Maximize2,
   Moon,
   Pause,
@@ -19,7 +28,10 @@ import {
   X,
 } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { isStudioDrag, readStudioDrag, STUDIO_DRAG_TYPE } from "@/lib/music/studio/drag";
+import { trackFromDrag } from "@/lib/music/song-drag";
 import {
+  addToQueue,
   attachPlayer,
   clearUpNext,
   closePlayer,
@@ -27,6 +39,8 @@ import {
   jumpTo,
   moveTrack,
   next,
+  playerState,
+  playNow,
   previous,
   removeAt,
   seek,
@@ -66,8 +80,11 @@ export function WebPlayer() {
   const t = useT();
   const player = usePlayer();
   const stage = useRef<HTMLDivElement>(null);
+  const slot = useRef<HTMLDivElement>(null);
+  const main = useRef<HTMLDivElement>(null);
   const track = player.queue[player.index] ?? null;
   const full = player.view === "full";
+  useStageOverSlot(full && !!track, stage, slot, main);
 
   useEffect(() => {
     if (stage.current) return attachPlayer(stage.current);
@@ -102,8 +119,10 @@ export function WebPlayer() {
           >
             <ChevronDown size={26} />
           </button>
-          <div className="wp-full-main">
-            <div className="wp-full-stage-slot" aria-hidden="true">
+          <div className="wp-full-main" ref={main}>
+            {/* The cover, which a playing video replaces: the video is drawn exactly over it
+                (useStageOverSlot). */}
+            <div className="wp-full-stage-slot" ref={slot} aria-hidden="true">
               {track.art && <img src={track.art} alt="" />}
             </div>
             <div className="wp-full-info">
@@ -187,8 +206,162 @@ export function WebPlayer() {
         </div>
       )}
       {shown && !full && player.queueOpen && <QueuePanel player={player} />}
+      {!full && <DropPads />}
     </div>
   );
+}
+
+function queueIndexOfKey(key: string): number {
+  return playerState().queue.findIndex((q) => q.key === key);
+}
+
+/**
+ * While a song is dragged anywhere in Music, two pads drop in at the top of the screen: drop on
+ * Play now to hear it at once, or on Add to queue to line it up (song-drag.ts).
+ */
+function DropPads() {
+  const t = useT();
+  const [dragging, setDragging] = useState(false);
+  const [over, setOver] = useState<"now" | "queue" | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+  useEffect(() => {
+    if (!flash) return;
+    const timer = window.setTimeout(() => setFlash(null), 1400);
+    return () => window.clearTimeout(timer);
+  }, [flash]);
+
+  useEffect(() => {
+    let depth = 0;
+    const enter = (e: globalThis.DragEvent) => {
+      if (!e.dataTransfer?.types.includes(STUDIO_DRAG_TYPE)) return;
+      depth += 1;
+      setDragging(true);
+    };
+    const leave = (e: globalThis.DragEvent) => {
+      if (!e.dataTransfer?.types.includes(STUDIO_DRAG_TYPE)) return;
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) setDragging(false);
+    };
+    const end = () => {
+      depth = 0;
+      setDragging(false);
+      setOver(null);
+    };
+    window.addEventListener("dragenter", enter);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("dragend", end);
+    window.addEventListener("drop", end);
+    return () => {
+      window.removeEventListener("dragenter", enter);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("dragend", end);
+      window.removeEventListener("drop", end);
+    };
+  }, []);
+
+  if (flash && !dragging)
+    return (
+      <div className="wp-drops" role="status">
+        <div className="wp-drop wp-drop-done">{flash}</div>
+      </div>
+    );
+  if (!dragging) return null;
+  const pad = (id: "now" | "queue", label: string, icon: ReactNode) => (
+    <div
+      className="wp-drop"
+      data-over={over === id}
+      onDragOver={(e) => {
+        if (!isStudioDrag(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+        setOver(id);
+      }}
+      onDragLeave={() => setOver((o) => (o === id ? null : o))}
+      onDrop={(e) => {
+        if (!isStudioDrag(e)) return;
+        e.preventDefault();
+        const drag = readStudioDrag(e);
+        const track = drag ? trackFromDrag(drag) : null;
+        if (!track) return;
+        if (id === "now") playNow(track);
+        else addToQueue([track]);
+        setFlash(id === "now" ? `${t("Playing now")} ✓` : `${t("Added to queue")} ✓`);
+      }}
+    >
+      {icon}
+      <span>{label}</span>
+    </div>
+  );
+  return (
+    <div className="wp-drops" role="group" aria-label={t("Drop a song")}>
+      {pad("now", t("Play now"), <Play size={22} />)}
+      {pad("queue", t("Add to queue"), <ListPlus size={22} />)}
+    </div>
+  );
+}
+
+/**
+ * Full screen keeps the video decks in their own fixed element (moving an embed reloads it), so
+ * it is placed over its slot in the Now Playing column by measuring the slot: the column scrolls,
+ * and the app's size setting zooms the page, so fixed numbers in CSS drift off it and the video
+ * covered the title. Rects are converted to the stage's own CSS pixels through its current box,
+ * which holds under zoom and transforms alike.
+ */
+function useStageOverSlot(
+  active: boolean,
+  stageRef: { current: HTMLDivElement | null },
+  slotRef: { current: HTMLDivElement | null },
+  mainRef: { current: HTMLDivElement | null },
+) {
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    const slot = slotRef.current;
+    const main = mainRef.current;
+    if (!active || !stage || !slot) return;
+    let frame = 0;
+    const place = () => {
+      frame = 0;
+      const box = stage.getBoundingClientRect();
+      const css = getComputedStyle(stage);
+      const width = parseFloat(css.width);
+      const k = width > 0 && box.width > 0 ? box.width / width : 1;
+      const originX = box.left - (parseFloat(css.left) || 0) * k;
+      const originY = box.top - (parseFloat(css.top) || 0) * k;
+      const to = slot.getBoundingClientRect();
+      stage.style.setProperty("--wp-full-x", `${(to.left - originX) / k}px`);
+      stage.style.setProperty("--wp-full-y", `${(to.top - originY) / k}px`);
+      stage.style.setProperty("--wp-full-w", `${to.width / k}px`);
+      stage.style.setProperty("--wp-full-h", `${to.height / k}px`);
+      // Scrolled up, the video slides under the column's top margin (where the close button
+      // is) rather than over it.
+      const edge = main
+        ? main.getBoundingClientRect().top +
+          (parseFloat(getComputedStyle(main).paddingTop) || 0) * k
+        : to.top;
+      const cut = Math.max(0, edge - to.top) / k;
+      stage.style.clipPath = cut > 0 ? `inset(${cut}px 0 0 0)` : "";
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(place);
+    };
+    place();
+    const ro = new ResizeObserver(schedule);
+    ro.observe(slot);
+    main?.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    // The stage slides in from the bar; measure again once it has arrived.
+    stage.addEventListener("transitionend", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+      main?.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      stage.removeEventListener("transitionend", schedule);
+      for (const name of ["--wp-full-x", "--wp-full-y", "--wp-full-w", "--wp-full-h"])
+        stage.style.removeProperty(name);
+      stage.style.clipPath = "";
+    };
+  }, [active, stageRef, slotRef, mainRef]);
 }
 
 /**
@@ -436,11 +609,32 @@ function Extras({ player }: { player: PlayerState }) {
 function QueuePanel({ player, docked = false }: { player: PlayerState; docked?: boolean }) {
   const t = useT();
   const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [leaving, setLeaving] = useState<string | null>(null);
   const upNext = player.queue.length - player.index - 1;
+  // A row dragged within the queue moves; a song dragged in from elsewhere in Music lands here.
   const drop = (e: DragEvent, to: number) => {
     e.preventDefault();
+    e.stopPropagation();
     if (dragFrom !== null) moveTrack(dragFrom, to);
+    else if (isStudioDrag(e)) {
+      const drag = readStudioDrag(e);
+      const track = drag ? trackFromDrag(drag) : null;
+      if (track) {
+        const at = player.queue.length;
+        addToQueue([track]);
+        if (to < at) moveTrack(at, to);
+      }
+    }
     setDragFrom(null);
+  };
+  // The row slides out before it goes.
+  const remove = (key: string) => {
+    setLeaving(key);
+    window.setTimeout(() => {
+      const i = queueIndexOfKey(key);
+      if (i >= 0) removeAt(i);
+      setLeaving(null);
+    }, 180);
   };
   return (
     <aside className="wp-queue" data-docked={docked} aria-label={t("Queue")}>
@@ -470,14 +664,21 @@ function QueuePanel({ player, docked = false }: { player: PlayerState; docked?: 
           )}
         </div>
       </header>
-      <ol>
+      <ol
+        onDragOver={(e) => {
+          if (dragFrom !== null || isStudioDrag(e)) e.preventDefault();
+        }}
+        onDrop={(e) => drop(e, player.queue.length)}
+      >
         {player.queue.map((item, i) => (
           <li
             key={item.key}
             data-current={i === player.index}
             data-played={i < player.index}
+            data-leaving={leaving === item.key || undefined}
             draggable
             onDragStart={() => setDragFrom(i)}
+            onDragEnd={() => setDragFrom(null)}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => drop(e, i)}
           >
@@ -497,7 +698,7 @@ function QueuePanel({ player, docked = false }: { player: PlayerState; docked?: 
               type="button"
               className="wp-icon"
               aria-label={`${t("Remove")} ${item.title}`}
-              onClick={() => removeAt(i)}
+              onClick={() => remove(item.key)}
             >
               <Trash2 size={16} />
             </button>

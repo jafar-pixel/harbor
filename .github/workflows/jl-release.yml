@@ -18,6 +18,10 @@ on:
         description: Build only the Android TV APK; a publish reuses the latest release's Windows installer
         type: boolean
         default: false
+      exe_only:
+        description: Build only the Windows installer; a publish reuses the latest release's Android TV APK
+        type: boolean
+        default: false
   push:
     tags: ["jl-v*"]
     branches: ["claude/determined-planck-b1p158", "codex/jl-release-026"]
@@ -216,7 +220,9 @@ jobs:
     name: Android TV
     needs: settings
     # Desktop feature integration must not rebuild or publish the paused Android release.
-    if: github.ref != 'refs/heads/codex/jl-release-026' && !(github.event_name == 'workflow_dispatch' && inputs.windows_only)
+    # A Windows-only release (EXE fixes) skips the TV build; publish reuses the last APK, so the
+    # TV track (tv/main) stays the only source of the Android TV app.
+    if: github.ref != 'refs/heads/codex/jl-release-026' && !(github.event_name == 'workflow_dispatch' && (inputs.windows_only || inputs.exe_only))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -277,7 +283,8 @@ jobs:
     needs: [windows, android-tv]
     # always() lets a TV-only run publish while the skipped Windows job reports "skipped".
     if: >-
-      always() && needs.android-tv.result == 'success' &&
+      always() &&
+      (needs.android-tv.result == 'success' || (inputs.exe_only && needs.android-tv.result == 'skipped')) &&
       (needs.windows.result == 'success' || (inputs.tv_only && needs.windows.result == 'skipped')) &&
       ((github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'push' && github.ref == 'refs/heads/claude/determined-planck-b1p158' && github.event.head_commit.message == 'Publish JL Media Vision 0.9.42')) && !inputs.windows_only && github.ref != 'refs/heads/codex/jl-release-026'
     runs-on: ubuntu-latest
@@ -304,10 +311,23 @@ jobs:
           sha256sum JL-Media-Vision-Setup-x64.exe > JL-Media-Vision-Setup-x64.exe.sha256
           echo "Reusing JL-Media-Vision-Setup-x64.exe from $latest"
 
+      # A Windows-only release carries the latest published Android TV app forward unchanged.
+      - name: Reuse the latest Android TV app
+        if: ${{ inputs.exe_only }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest=$(gh release view --repo "${{ github.repository }}" --json tagName --jq '.tagName')
+          gh release download "$latest" --repo "${{ github.repository }}" --pattern JL-Media-Vision-TV.apk --clobber
+          test -s JL-Media-Vision-TV.apk
+          sha256sum JL-Media-Vision-TV.apk > JL-Media-Vision-TV.apk.sha256
+          echo "Reusing JL-Media-Vision-TV.apk from $latest"
+
       - name: Verify retained installers
         run: |
           platforms="windows android-tv"
           if [ "${{ inputs.tv_only }}" = "true" ]; then platforms="android-tv"; fi
+          if [ "${{ inputs.exe_only }}" = "true" ]; then platforms="windows"; fi
           for platform in $platforms; do
             if [ "$(cat "$platform-build-commit.txt")" != "${{ github.sha }}" ]; then
               echo "::error::Retained installer was built from a different commit."

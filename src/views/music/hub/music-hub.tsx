@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ListPlus, MoreHorizontal, Play, Search, Settings2, Shuffle, X } from "lucide-react";
+import { Disc3, ListPlus, MoreHorizontal, Play, Search, Settings2, Shuffle, X } from "lucide-react";
 import jlLogo from "@/assets/brand/jl-logo.webp";
 import { useT } from "@/lib/i18n";
 import { useMusicLinks, type MainService } from "@/lib/music/account-link";
@@ -20,7 +20,10 @@ import {
 import { addToQueue, playNext, playTracks, usePlayer } from "@/lib/music/player/store";
 import { useSpotifyWeb } from "@/lib/music/spotify-web/auth";
 import { useYouTubeWeb } from "@/lib/music/youtube-web/auth";
+import { startStudioDrag } from "@/lib/music/studio/drag";
+import { hubDragSong } from "@/lib/music/song-drag";
 import { FoundWhileWatching } from "./found-while-watching";
+import { HubCoverflow, type CoverflowSlide } from "./hub-coverflow";
 import { MusicHubSettings } from "./hub-settings";
 import "./music-hub.css";
 
@@ -53,6 +56,7 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
   const [allLists, setAllLists] = useState(false);
   const [allRecent, setAllRecent] = useState(false);
   const searchRun = useRef(0);
+  const [flowAt, setFlowAt] = useState(0);
 
   useEffect(() => {
     if (!active || (!connected.youtube && !connected.spotify)) return;
@@ -108,6 +112,19 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
   const nothingConnected = !connected.youtube && !connected.spotify;
   const recent = library?.recent ?? [];
   const group = HUB_CATEGORIES.find((g) => g.id === category) ?? HUB_CATEGORIES[0];
+  const playlists = library?.playlists ?? [];
+  // The listener's playlists are the carousel; with fewer than three, liked songs join them.
+  const byPlaylists = playlists.length >= 3;
+  const slides = byPlaylists
+    ? playlists.map((p) => playlistSlide(p, t, playPlaylist, openPlaylist))
+    : mixedSlides(library, t, playPlaylist, openPlaylist);
+  const staged = slides.length >= 3;
+  const shuffleMine = () =>
+    playTracks(
+      [...recent].sort(() => Math.random() - 0.5).map(playerTrack),
+      0,
+      t("Your liked songs"),
+    );
 
   return (
     <div className="hub">
@@ -153,42 +170,91 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
       </header>
       {settingsOpen && <MusicHubSettings onClose={() => setSettingsOpen(false)} />}
 
-      <section className="hub-hero" aria-label={t("Music Hub")}>
-        <div className="hub-hero-text">
-          <p className="hub-eyebrow">{t("By JL Media Vision")}</p>
-          <h3>{t("Sound powers your story")}</h3>
-          <div className="hub-hero-actions">
-            <button
-              type="button"
-              className="hub-cta"
-              disabled={!recent.length}
-              onClick={() =>
-                playTracks(
-                  [...recent].sort(() => Math.random() - 0.5).map(playerTrack),
-                  0,
-                  t("Your liked songs"),
-                )
-              }
-            >
+      {staged ? (
+        <>
+          <div className="hub-stage" data-list={byPlaylists}>
+            {byPlaylists && (
+              <nav className="hub-lists" aria-label={t("Playlists")}>
+                <h3>{t("Playlists")}</h3>
+                <ul>
+                  {playlists.map((p, i) => (
+                    <li key={`${p.service}:${p.id}`}>
+                      <button
+                        type="button"
+                        aria-current={i === flowAt % playlists.length ? "true" : undefined}
+                        onClick={() => setFlowAt(i)}
+                        onDoubleClick={() => playPlaylist(p)}
+                      >
+                        {p.image ? (
+                          <img src={p.image} alt="" loading="lazy" />
+                        ) : (
+                          <span className="hub-lists-noart" aria-hidden="true" />
+                        )}
+                        <span className="hub-lists-text">
+                          <span className="hub-lists-name">{p.name}</span>
+                          <span className="hub-muted">
+                            {SERVICE_LABEL[p.service]} · {p.count}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            )}
+            <HubCoverflow
+              slides={slides}
+              active={byPlaylists ? flowAt : undefined}
+              onActive={byPlaylists ? setFlowAt : undefined}
+            />
+          </div>
+          {library?.errors &&
+            Object.entries(library.errors).map(([sv, e]) => (
+              <p key={sv} className="hub-error">
+                {SERVICE_LABEL[sv as keyof typeof SERVICE_LABEL]}: {e}
+              </p>
+            ))}
+          <div className="hub-flow-actions">
+            <button type="button" className="hub-cta" onClick={shuffleMine}>
               <Shuffle size={18} /> {t("Shuffle my music")}
             </button>
             <button type="button" className="hub-ghost" onClick={onStudio}>
-              {t("Open DJ Studio")}
+              <Disc3 size={18} /> {t("Turntables")}
             </button>
           </div>
-          {(youtube.error || spotify.error) && (
-            <p className="hub-error">{youtube.error || spotify.error}</p>
-          )}
-        </div>
-        <div className="hub-hero-art" aria-hidden="true">
-          <div className="hub-eq">
-            {Array.from({ length: 28 }, (_, i) => (
-              <span key={i} style={{ animationDelay: `${(i % 7) * -0.17}s` }} />
-            ))}
+        </>
+      ) : (
+        <section className="hub-hero" aria-label={t("Music Hub")}>
+          <div className="hub-hero-text">
+            <p className="hub-eyebrow">{t("By JL Media Vision")}</p>
+            <h3>{t("Sound powers your story")}</h3>
+            <div className="hub-hero-actions">
+              <button
+                type="button"
+                className="hub-cta"
+                disabled={!recent.length}
+                onClick={shuffleMine}
+              >
+                <Shuffle size={18} /> {t("Shuffle my music")}
+              </button>
+              <button type="button" className="hub-ghost" onClick={onStudio}>
+                <Disc3 size={18} /> {t("Turntables")}
+              </button>
+            </div>
+            {(youtube.error || spotify.error) && (
+              <p className="hub-error">{youtube.error || spotify.error}</p>
+            )}
           </div>
-          <img src={jlLogo} alt="" className="hub-logo" />
-        </div>
-      </section>
+          <div className="hub-hero-art" aria-hidden="true">
+            <div className="hub-eq">
+              {Array.from({ length: 28 }, (_, i) => (
+                <span key={i} style={{ animationDelay: `${(i % 7) * -0.17}s` }} />
+              ))}
+            </div>
+            <img src={jlLogo} alt="" className="hub-logo" />
+          </div>
+        </section>
+      )}
 
       {error && <p className="hub-error">{error}</p>}
 
@@ -244,7 +310,7 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
             <Settings2 size={14} /> {t("Open Music settings")}
           </button>
         </section>
-      ) : (
+      ) : staged ? null : (
         <section className="hub-section" aria-label={t("Featured playlists")}>
           <div className="hub-section-head">
             <h3>{t("Featured playlists")}</h3>
@@ -354,6 +420,54 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
   );
 }
 
+function playlistSlide(
+  p: HubPlaylist,
+  t: ReturnType<typeof useT>,
+  play: (p: HubPlaylist) => void,
+  open: (p: HubPlaylist) => void,
+): CoverflowSlide {
+  return {
+    key: `list:${p.service}:${p.id}`,
+    image: p.image,
+    title: p.name,
+    subtitle: `${SERVICE_LABEL[p.service]} · ${p.count} ${t("tracks")}`,
+    play: () => play(p),
+    open: () => open(p),
+  };
+}
+
+/**
+ * Cards for a listener with few playlists: their newest liked songs (with artwork) and their
+ * playlists, alternating. A song plays the liked songs from there.
+ */
+function mixedSlides(
+  library: HubLibrary | null,
+  t: ReturnType<typeof useT>,
+  play: (p: HubPlaylist) => void,
+  open: (p: HubPlaylist) => void,
+): CoverflowSlide[] {
+  if (!library) return [];
+  const recent = library.recent;
+  const songs: CoverflowSlide[] = [];
+  recent.forEach((s, i) => {
+    if (!s.image || songs.length >= 6) return;
+    songs.push({
+      key: `song:${s.service}:${s.id}`,
+      image: s.image,
+      title: s.title,
+      subtitle: s.artist,
+      play: () => playTracks(recent.map(playerTrack), i, t("Your liked songs")),
+    });
+  });
+  const lists = library.playlists.map((p) => playlistSlide(p, t, play, open));
+  const out: CoverflowSlide[] = [];
+  for (let i = 0; i < Math.max(songs.length, lists.length); i++) {
+    if (songs[i]) out.push(songs[i]);
+    if (lists[i]) out.push(lists[i]);
+  }
+  return out.slice(0, 9);
+}
+
 function SongTable({ songs, context }: { songs: HubSong[]; context: string }) {
   const t = useT();
   const player = usePlayer();
@@ -373,7 +487,15 @@ function SongTable({ songs, context }: { songs: HubSong[]; context: string }) {
       {songs.map((s, i) => {
         const playing = !!current && current.title === s.title && current.artist === s.artist;
         return (
-          <div key={`${s.id}-${i}`} className="hub-row" role="row" data-playing={playing}>
+          <div
+            key={`${s.id}-${i}`}
+            className="hub-row"
+            role="row"
+            data-playing={playing}
+            draggable
+            title={t("Drag to Play now, the queue, or a DJ Studio deck")}
+            onDragStart={(e) => startStudioDrag(e, { kind: "song", song: hubDragSong(s) })}
+          >
             <button
               type="button"
               role="cell"

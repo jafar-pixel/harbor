@@ -121,12 +121,40 @@ export function addUrl(url: string, title: string, artist = "", art?: string | n
   return item;
 }
 
+/** A decoded-ready song from elsewhere (a YouTube Music song's audio), under its own id. */
+export function addAudio(
+  id: string,
+  file: File,
+  meta: { title: string; artist: string; art?: string | null },
+): CrateItem {
+  const existing = state.crate.find((c) => c.id === id);
+  if (existing) return existing;
+  const item: CrateItem = {
+    id,
+    title: meta.title,
+    artist: meta.artist,
+    file,
+    ...(meta.art ? { art: meta.art } : {}),
+  };
+  set({ crate: [...state.crate, item] });
+  return item;
+}
+
 export function crateItem(id: string): CrateItem | undefined {
   return state.crate.find((c) => c.id === id);
 }
 
 export function enqueue(id: string) {
   if (!state.queue.includes(id)) set({ queue: [...state.queue, id] });
+}
+
+/** Moves a queued song to another place in the queue. */
+export function moveInQueue(from: number, to: number) {
+  const queue = state.queue.slice();
+  const [id] = queue.splice(from, 1);
+  if (id === undefined) return;
+  queue.splice(Math.max(0, Math.min(to, queue.length)), 0, id);
+  set({ queue });
 }
 
 export function dequeue(id: string) {
