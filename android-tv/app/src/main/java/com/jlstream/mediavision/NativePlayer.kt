@@ -34,6 +34,7 @@ import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -450,12 +451,16 @@ class NativePlayer(
             .setConnectTimeoutMs(15_000)
             .setReadTimeoutMs(30_000)
         // More buffer than the default: IPTV servers stall, and a longer lead rides most stalls out.
+        // Media3 also caps the buffer by size (about 140 MB), which a 4K remux at 80-100 Mb/s
+        // fills in 11-14 seconds; with the large heap (AndroidManifest) it holds more.
         val load = DefaultLoadControl.Builder()
             .setBufferDurationsMs(20_000, 50_000, 2_500, 5_000)
+            .setTargetBufferBytes(bufferBytesFor(Runtime.getRuntime().maxMemory()))
             .build()
         val p = ExoPlayer.Builder(activity)
             .setMediaSourceFactory(DefaultMediaSourceFactory(http))
             .setLoadControl(load)
+            .setBandwidthMeter(DefaultBandwidthMeter.getSingletonInstance(activity))
             .setRenderersFactory(renderersFactory())
             .setTrackSelector(trackSelector())
             .setHandleAudioBecomingNoisy(true)
@@ -835,6 +840,10 @@ class NativePlayer(
             ).joinToString(" · ")
         }
         audioDecoder?.let { lines += "Sound decoder: $it" }
+        lines += String.format(Locale.US, "Buffered ahead: %d s", (p.totalBufferedDuration / 1000).coerceAtLeast(0))
+        DefaultBandwidthMeter.getSingletonInstance(activity).bitrateEstimate.takeIf { it > 0 }?.let {
+            lines += String.format(Locale.US, "Network: %.0f Mb/s (estimate)", it / 1_000_000.0)
+        }
         lines += "Audio passthrough: " + if (options.audioPassthrough) "On" else "Off"
         lines += "Tunneled playback: " + if (options.tunneling) "On" else "Off"
         DisplayModes.display(activity)?.mode?.let { m ->
@@ -1181,6 +1190,18 @@ class NativePlayer(
             MimeTypes.AUDIO_FLAC -> "FLAC"
             MimeTypes.AUDIO_MPEG -> "MP3"
             else -> f.sampleMimeType?.substringAfter('/')
+        }
+
+        private const val MAX_BUFFER_BYTES = 256 * 1024 * 1024
+
+        /**
+         * The playback buffer's size for an app heap of [maxMemory] bytes: half the heap, at most
+         * 256 MB, and never below Media3's own (C.LENGTH_UNSET keeps that).
+         */
+        fun bufferBytesFor(maxMemory: Long): Int {
+            val half = maxMemory / 2
+            return if (half <= DefaultLoadControl.DEFAULT_MUXED_BUFFER_SIZE) C.LENGTH_UNSET
+            else minOf(half, MAX_BUFFER_BYTES.toLong()).toInt()
         }
 
         private fun bitrateName(bps: Int): String? =

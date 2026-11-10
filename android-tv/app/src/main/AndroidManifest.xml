@@ -13,6 +13,7 @@
         android:banner="@drawable/banner"
         android:icon="@mipmap/ic_launcher"
         android:label="JL Media Vision"
+        android:largeHeap="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.JL"
         android:usesCleartextTraffic="true">
