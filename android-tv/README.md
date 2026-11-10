@@ -171,7 +171,8 @@ is the current choice.
   clock, which follows the audio sink (`DelayedAudioSink`). Audio timing is off with tunneled
   playback, where the TV's decoder syncs the picture itself. See `SyncOffsets.kt`.
 - **Stream info**: resolution, frame rate, codec and HDR type, bitrate, sound format, the
-  decoders in use, passthrough and tunneling, and the TV's current display mode.
+  decoders in use, passthrough and tunneling, the TV's current display mode, how many seconds are
+  buffered ahead, and the network speed Media3 measures.
 - **More player options**: leaves `full` as Back does (`exit-full`), so the page's own controls
   can be reached.
 
@@ -234,3 +235,25 @@ its own `fetch()`. When `window.JLNativeFetch?.isAvailable()` is true, the page 
 to five redirects, and returns the status, body and content type with
 `Access-Control-Allow-Origin: *`. Only `GET` from an app page is served, and only `http`/`https`
 targets. A failed connection answers `502`.
+
+## Buffering
+
+Media3 caps its buffer by size as well as time (about 140 MB by default), which a 4K UHD remux at
+80-100 Mb/s fills in 11-14 seconds. The app asks for Android's large heap (`android:largeHeap`, as
+Jellyfin's Android TV app does) and sets the buffer to half the heap, at most 256 MB
+(`NativePlayer.bufferBytesFor`), so it holds roughly twice as much of a remux.
+
+## Crash reports
+
+When the app closes unexpectedly (an uncaught error, or the page's renderer stopping), the next
+launch shows why once, so it can be photographed (`CrashLog.kt`). A stopped page reports whether
+it crashed or Android closed it for memory, then:
+
+- the app screen it was on (path only, no query),
+- the player: mode, playing or paused, resolution, codec, HDR type, sound format and position,
+- the TV's display mode, and the mode before the player switched it for the video (Match frame
+  rate),
+- the TV's free memory, and the WebView version,
+- the last ten steps between the page and the player (`play`, `setMode full`, `→ ready`…),
+- the page's last four console errors, with every address cut to its host (`PageTrail.kt`), so
+  stream links and tokens never reach the report.

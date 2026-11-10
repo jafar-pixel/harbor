@@ -1,6 +1,7 @@
 package com.jlstream.mediavision
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -8,6 +9,7 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
@@ -99,8 +101,10 @@ class MainActivity : AppCompatActivity() {
                 if (view !== web || isFinishing || isDestroyed) return true
                 CrashLog.record(
                     this@MainActivity,
-                    if (detail.didCrash()) "The page crashed."
-                    else "Android closed the page to free memory.",
+                    pageGoneReport(
+                        if (detail.didCrash()) "The page crashed."
+                        else "Android closed the page to free memory.",
+                    ),
                 )
                 nativePlayer.release()
                 recreate()
@@ -109,6 +113,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
                 onAppPage = isAppUrl(url)
+                if (onAppPage) PageTrail.noteScreen(Uri.parse(url).path)
             }
 
             override fun onScaleChanged(view: WebView, oldScale: Float, newScale: Float) {
@@ -136,6 +141,14 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onHideCustomView() = exitFullscreen()
+
+            // The page's errors, for the crash report (PageTrail cuts addresses to their host).
+            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                    PageTrail.noteError(message.message())
+                }
+                return super.onConsoleMessage(message)
+            }
         }
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState)
@@ -149,6 +162,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun dispatchPlayerEvent(detail: JSONObject) {
         if (!isAppUrl(web.url)) return
+        detail.optString("type").takeIf { it.isNotEmpty() && it != "position" }?.let { PageTrail.noteCall("→ $it") }
         web.evaluateJavascript("window.dispatchEvent(new CustomEvent('jl-native-player', {detail: $detail}))", null)
     }
 
@@ -246,6 +260,33 @@ class MainActivity : AppCompatActivity() {
         if (web.canGoBack()) web.goBack() else confirmLeave()
     }
 
+    /**
+     * What was going on when the page stopped: the screen, the player, the TV's free memory, the
+     * WebView version and the page's last errors, so a photo of the report says enough to fix it.
+     */
+    private fun pageGoneReport(what: String): String {
+        val memory = ActivityManager.MemoryInfo().also {
+            (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(it)
+        }
+        val mb = { bytes: Long -> bytes / (1024 * 1024) }
+        val webView = WebView.getCurrentWebViewPackage()?.versionName ?: "unknown"
+        val errors = PageTrail.recentErrors()
+        return buildList {
+            add(what)
+            add("Screen: ${PageTrail.screen.ifBlank { "/" }}")
+            add("Player: ${nativePlayer.crashSummary()}")
+            add("TV mode: ${nativePlayer.displaySummary()}")
+            add(
+                "Free memory: ${mb(memory.availMem)} of ${mb(memory.totalMem)} MB" +
+                    if (memory.lowMemory) " (low)" else "",
+            )
+            add("WebView $webView")
+            val calls = PageTrail.recentCalls()
+            if (calls.isNotEmpty()) add("Last steps: " + calls.joinToString(", "))
+            if (errors.isNotEmpty()) add("Last errors:\n" + errors.joinToString("\n") { "• $it" })
+        }.joinToString("\n")
+    }
+
     /** Why the app closed last time, so it can be photographed and fixed. */
     private fun showLastCrash(report: String) {
         AlertDialog.Builder(this)
@@ -307,6 +348,7 @@ class MainActivity : AppCompatActivity() {
             val uri = Uri.parse(url)
             if ((uri.scheme != "https" && uri.scheme != "http") || uri.host.isNullOrEmpty()) return false
             val headers = parseHeaders(headersJson)
+            PageTrail.noteCall("play")
             onMain { nativePlayer.play(url, headers, title.orEmpty(), startMs) }
             return true
         }
@@ -322,6 +364,7 @@ class MainActivity : AppCompatActivity() {
                 "hidden" -> NativePlayer.Mode.HIDDEN
                 else -> return
             }
+            PageTrail.noteCall("setMode $mode")
             onMain { nativePlayer.setMode(next) }
         }
 
@@ -329,6 +372,7 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun setOptions(json: String?) {
             val options = NativePlayer.Options.parse(json) ?: return
+            PageTrail.noteCall("setOptions")
             onMain { nativePlayer.options = options }
         }
 
@@ -351,6 +395,7 @@ class MainActivity : AppCompatActivity() {
          */
         @JavascriptInterface
         fun addSubtitleText(vtt: String?, language: String?, label: String?, select: Boolean): Boolean {
+            PageTrail.noteCall("addSubtitleText ${(vtt?.length ?: 0) / 1024} KB")
             if (!onAppPage || vtt.isNullOrBlank() || vtt.length > MAX_SUBTITLE_CHARS) return false
             onMain { nativePlayer.addSubtitleText(vtt, language, label, select) }
             return true
@@ -358,7 +403,10 @@ class MainActivity : AppCompatActivity() {
 
         /** Subtitles on or off (README: `setSubtitlesEnabled`). */
         @JavascriptInterface
-        fun setSubtitlesEnabled(on: Boolean) = onMain { nativePlayer.setSubtitlesEnabled(on) }
+        fun setSubtitlesEnabled(on: Boolean) {
+            PageTrail.noteCall("setSubtitlesEnabled $on")
+            onMain { nativePlayer.setSubtitlesEnabled(on) }
+        }
 
         /** Subtitle timing in seconds, positive for later (README: `setSubtitleDelay`). */
         @JavascriptInterface
@@ -385,7 +433,10 @@ class MainActivity : AppCompatActivity() {
         fun seek(ms: Long) = onMain { nativePlayer.seek(ms) }
 
         @JavascriptInterface
-        fun stop() = onMain { nativePlayer.stop() }
+        fun stop() {
+            PageTrail.noteCall("stop")
+            onMain { nativePlayer.stop() }
+        }
 
         /** The player's own volume, 0 to 1 (README: `setVolume`); the page's volume buttons. */
         @JavascriptInterface
