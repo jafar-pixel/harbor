@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ListPlus, MoreHorizontal, Play, Search, Settings2, Shuffle, X } from "lucide-react";
+import { Disc3, ListPlus, MoreHorizontal, Play, Search, Settings2, Shuffle, X } from "lucide-react";
 import jlLogo from "@/assets/brand/jl-logo.webp";
 import { useT } from "@/lib/i18n";
 import { useMusicLinks, type MainService } from "@/lib/music/account-link";
@@ -20,6 +20,8 @@ import {
 import { addToQueue, playNext, playTracks, usePlayer } from "@/lib/music/player/store";
 import { useSpotifyWeb } from "@/lib/music/spotify-web/auth";
 import { useYouTubeWeb } from "@/lib/music/youtube-web/auth";
+import { startStudioDrag } from "@/lib/music/studio/drag";
+import { hubDragSong } from "@/lib/music/song-drag";
 import { FoundWhileWatching } from "./found-while-watching";
 import { HubCoverflow, type CoverflowSlide } from "./hub-coverflow";
 import { MusicHubSettings } from "./hub-settings";
@@ -217,7 +219,7 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
               <Shuffle size={18} /> {t("Shuffle my music")}
             </button>
             <button type="button" className="hub-ghost" onClick={onStudio}>
-              {t("Open DJ Studio")}
+              <Disc3 size={18} /> {t("Turntables")}
             </button>
           </div>
         </>
@@ -236,7 +238,7 @@ export function MusicHub({ active, onStudio }: { active: boolean; onStudio: () =
                 <Shuffle size={18} /> {t("Shuffle my music")}
               </button>
               <button type="button" className="hub-ghost" onClick={onStudio}>
-                {t("Open DJ Studio")}
+                <Disc3 size={18} /> {t("Turntables")}
               </button>
             </div>
             {(youtube.error || spotify.error) && (
@@ -485,7 +487,15 @@ function SongTable({ songs, context }: { songs: HubSong[]; context: string }) {
       {songs.map((s, i) => {
         const playing = !!current && current.title === s.title && current.artist === s.artist;
         return (
-          <div key={`${s.id}-${i}`} className="hub-row" role="row" data-playing={playing}>
+          <div
+            key={`${s.id}-${i}`}
+            className="hub-row"
+            role="row"
+            data-playing={playing}
+            draggable
+            title={t("Drag to Play now, the queue, or a DJ Studio deck")}
+            onDragStart={(e) => startStudioDrag(e, { kind: "song", song: hubDragSong(s) })}
+          >
             <button
               type="button"
               role="cell"

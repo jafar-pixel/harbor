@@ -1,4 +1,5 @@
 import type { DragEvent } from "react";
+import type { AutoSong } from "../automix/playlists";
 import type { VideoSong } from "./video-decks";
 
 /**
@@ -8,7 +9,9 @@ import type { VideoSong } from "./video-decks";
 export type StudioDrag =
   | { kind: "crate"; id: string }
   | { kind: "url"; url: string; title: string; artist: string; art: string | null }
-  | { kind: "video"; song: VideoSong };
+  | { kind: "video"; song: VideoSong }
+  /** A song from your YouTube Music or Spotify playlists (the playlist mixer). */
+  | { kind: "song"; song: AutoSong };
 
 export const STUDIO_DRAG_TYPE = "application/x-jl-studio-song";
 
@@ -37,6 +40,22 @@ export function readStudioDrag(e: DragEvent): StudioDrag | null {
         art: typeof v.art === "string" ? v.art : null,
       };
     const song = v.song as Record<string, unknown> | undefined;
+    if (v.kind === "song" && song && typeof song.title === "string")
+      return {
+        kind: "song",
+        song: {
+          title: song.title,
+          artist: typeof song.artist === "string" ? song.artist : "",
+          image: typeof song.image === "string" ? song.image : null,
+          uri: typeof song.uri === "string" ? song.uri : undefined,
+          videoId:
+            typeof song.videoId === "string" && /^[A-Za-z0-9_-]{11}$/.test(song.videoId)
+              ? song.videoId
+              : undefined,
+          bpm: typeof song.bpm === "number" ? song.bpm : undefined,
+          key: typeof song.key === "string" ? song.key : undefined,
+        },
+      };
     if (v.kind === "video" && song && /^[A-Za-z0-9_-]{11}$/.test(String(song.videoId)))
       return {
         kind: "video",
