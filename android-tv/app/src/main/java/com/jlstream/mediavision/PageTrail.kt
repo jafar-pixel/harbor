@@ -10,6 +10,8 @@ object PageTrail {
     private const val MAX_CHARS = 140
     private val URL = Regex("""\b([a-z][a-z0-9+.-]*)://([^/\s'"<>)]+)[^\s'"<>)]*""", RegexOption.IGNORE_CASE)
     private val errors = ArrayDeque<String>()
+    private val calls = ArrayDeque<String>()
+    private const val KEEP_CALLS = 10
 
     @Volatile var screen: String = ""
         private set
@@ -29,6 +31,17 @@ object PageTrail {
 
     @Synchronized
     fun recentErrors(): List<String> = errors.toList()
+
+    /** A step between the page and the player ("play", "setMode full", "→ ready"), newest last. */
+    @Synchronized
+    fun noteCall(step: String) {
+        if (calls.lastOrNull() == step) return
+        calls.addLast(step.take(40))
+        while (calls.size > KEEP_CALLS) calls.removeFirst()
+    }
+
+    @Synchronized
+    fun recentCalls(): List<String> = calls.toList()
 
     fun sanitize(text: String): String =
         URL.replace(text.replace(Regex("""\s+"""), " ").trim()) { "${it.groupValues[1]}://${it.groupValues[2]}/…" }

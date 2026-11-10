@@ -162,6 +162,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun dispatchPlayerEvent(detail: JSONObject) {
         if (!isAppUrl(web.url)) return
+        detail.optString("type").takeIf { it.isNotEmpty() && it != "position" }?.let { PageTrail.noteCall("→ $it") }
         web.evaluateJavascript("window.dispatchEvent(new CustomEvent('jl-native-player', {detail: $detail}))", null)
     }
 
@@ -280,6 +281,8 @@ class MainActivity : AppCompatActivity() {
                     if (memory.lowMemory) " (low)" else "",
             )
             add("WebView $webView")
+            val calls = PageTrail.recentCalls()
+            if (calls.isNotEmpty()) add("Last steps: " + calls.joinToString(", "))
             if (errors.isNotEmpty()) add("Last errors:\n" + errors.joinToString("\n") { "• $it" })
         }.joinToString("\n")
     }
@@ -345,6 +348,7 @@ class MainActivity : AppCompatActivity() {
             val uri = Uri.parse(url)
             if ((uri.scheme != "https" && uri.scheme != "http") || uri.host.isNullOrEmpty()) return false
             val headers = parseHeaders(headersJson)
+            PageTrail.noteCall("play")
             onMain { nativePlayer.play(url, headers, title.orEmpty(), startMs) }
             return true
         }
@@ -360,6 +364,7 @@ class MainActivity : AppCompatActivity() {
                 "hidden" -> NativePlayer.Mode.HIDDEN
                 else -> return
             }
+            PageTrail.noteCall("setMode $mode")
             onMain { nativePlayer.setMode(next) }
         }
 
@@ -367,6 +372,7 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun setOptions(json: String?) {
             val options = NativePlayer.Options.parse(json) ?: return
+            PageTrail.noteCall("setOptions")
             onMain { nativePlayer.options = options }
         }
 
@@ -389,6 +395,7 @@ class MainActivity : AppCompatActivity() {
          */
         @JavascriptInterface
         fun addSubtitleText(vtt: String?, language: String?, label: String?, select: Boolean): Boolean {
+            PageTrail.noteCall("addSubtitleText ${(vtt?.length ?: 0) / 1024} KB")
             if (!onAppPage || vtt.isNullOrBlank() || vtt.length > MAX_SUBTITLE_CHARS) return false
             onMain { nativePlayer.addSubtitleText(vtt, language, label, select) }
             return true
@@ -396,7 +403,10 @@ class MainActivity : AppCompatActivity() {
 
         /** Subtitles on or off (README: `setSubtitlesEnabled`). */
         @JavascriptInterface
-        fun setSubtitlesEnabled(on: Boolean) = onMain { nativePlayer.setSubtitlesEnabled(on) }
+        fun setSubtitlesEnabled(on: Boolean) {
+            PageTrail.noteCall("setSubtitlesEnabled $on")
+            onMain { nativePlayer.setSubtitlesEnabled(on) }
+        }
 
         /** Subtitle timing in seconds, positive for later (README: `setSubtitleDelay`). */
         @JavascriptInterface
@@ -423,7 +433,10 @@ class MainActivity : AppCompatActivity() {
         fun seek(ms: Long) = onMain { nativePlayer.seek(ms) }
 
         @JavascriptInterface
-        fun stop() = onMain { nativePlayer.stop() }
+        fun stop() {
+            PageTrail.noteCall("stop")
+            onMain { nativePlayer.stop() }
+        }
 
         /** The player's own volume, 0 to 1 (README: `setVolume`); the page's volume buttons. */
         @JavascriptInterface

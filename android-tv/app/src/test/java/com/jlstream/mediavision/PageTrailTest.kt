@@ -20,6 +20,16 @@ class PageTrailTest {
     }
 
     @Test
+    fun keepsTheLastTenStepsWithoutRepeats() {
+        repeat(12) { PageTrail.noteCall("step $it") }
+        PageTrail.noteCall("step 11")
+        val steps = PageTrail.recentCalls()
+        assertEquals(10, steps.size)
+        assertEquals("step 2", steps.first())
+        assertEquals("step 11", steps.last())
+    }
+
+    @Test
     fun screenDropsItsQuery() {
         PageTrail.noteScreen("/search?q=private words")
         assertEquals("/search", PageTrail.screen)
