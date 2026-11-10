@@ -4,10 +4,12 @@ import { useT } from "@/lib/i18n";
 
 export type CoverflowSlide = {
   key: string;
-  image: string;
+  image: string | null;
   title: string;
   subtitle: string;
   play: () => void;
+  /** Shows what is inside (a playlist's songs); the centre card's title opens it. */
+  open?: () => void;
 };
 
 const ADVANCE_MS = 6000;
@@ -30,21 +32,31 @@ const reducedMotion = () =>
  * centre one with its title and a play button, the rest fanned out behind it. It moves on by
  * itself unless the pointer or focus is on it (or the viewer asked for less motion).
  */
-export function HubCoverflow({ slides }: { slides: CoverflowSlide[] }) {
+export function HubCoverflow({
+  slides,
+  active: shown,
+  onActive,
+}: {
+  slides: CoverflowSlide[];
+  /** The centre card when a list beside the carousel picks it; the carousel keeps its own otherwise. */
+  active?: number;
+  onActive?: (index: number) => void;
+}) {
   const t = useT();
-  const [active, setActive] = useState(0);
+  const [own, setOwn] = useState(0);
   const [held, setHeld] = useState(false);
   const count = slides.length;
-  const at = count ? active % count : 0;
+  const at = count ? (shown ?? own) % count : 0;
+  const setActive = (i: number) => (onActive ?? setOwn)(i);
 
   useEffect(() => {
     if (held || count < 2 || reducedMotion()) return;
-    const timer = window.setTimeout(() => setActive((a) => (a + 1) % count), ADVANCE_MS);
+    const timer = window.setTimeout(() => (onActive ?? setOwn)((at + 1) % count), ADVANCE_MS);
     return () => window.clearTimeout(timer);
-  }, [active, held, count]);
+  }, [at, held, count, onActive]);
 
   if (!count) return null;
-  const go = (step: number) => setActive((a) => (((a + step) % count) + count) % count);
+  const go = (step: number) => setActive((((at + step) % count) + count) % count);
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "ArrowLeft") go(-1);
     else if (e.key === "ArrowRight") go(1);
@@ -79,11 +91,28 @@ export function HubCoverflow({ slides }: { slides: CoverflowSlide[] }) {
               style={{ "--d": d, "--ad": Math.abs(d) } as CSSProperties}
               data-far={far}
             >
-              <img src={s.image} alt="" loading={Math.abs(d) <= 1 ? "eager" : "lazy"} />
+              {s.image ? (
+                <img src={s.image} alt="" loading={Math.abs(d) <= 1 ? "eager" : "lazy"} />
+              ) : (
+                <span className="hub-flow-noart" aria-hidden="true">
+                  {s.title.slice(0, 1)}
+                </span>
+              )}
               {centre ? (
                 <div className="hub-flow-caption">
                   <div className="hub-flow-text">
-                    <strong>{s.title}</strong>
+                    {s.open ? (
+                      <button
+                        type="button"
+                        className="hub-flow-open"
+                        title={t("Show songs")}
+                        onClick={s.open}
+                      >
+                        {s.title}
+                      </button>
+                    ) : (
+                      <strong>{s.title}</strong>
+                    )}
                     <span>{s.subtitle}</span>
                   </div>
                   <button
@@ -120,11 +149,17 @@ export function HubCoverflow({ slides }: { slides: CoverflowSlide[] }) {
           >
             <ChevronLeft size={20} />
           </button>
-          <div className="hub-flow-dots" aria-hidden="true">
-            {slides.map((s, i) => (
-              <span key={s.key} data-on={i === at} />
-            ))}
-          </div>
+          {count <= 12 ? (
+            <div className="hub-flow-dots" aria-hidden="true">
+              {slides.map((s, i) => (
+                <span key={s.key} data-on={i === at} />
+              ))}
+            </div>
+          ) : (
+            <span className="hub-flow-count">
+              {at + 1} / {count}
+            </span>
+          )}
           <button
             type="button"
             className="hub-flow-arrow"
