@@ -236,6 +236,24 @@ to five redirects, and returns the status, body and content type with
 `Access-Control-Allow-Origin: *`. Only `GET` from an app page is served, and only `http`/`https`
 targets. A failed connection answers `502`.
 
+## Player controls
+
+Full screen uses this app's own control layout (`res/layout/exo_player_control_view.xml`, which
+replaces Media3's and keeps every id it looks up): a glass bar along the bottom with the seek bar
+across its top in the theme's `accent` (time played left, time left right), the viewer's buttons
+(Settings › Player layout) with the desktop player's Lucide icons (`res/drawable/jl_ic_*`), and
+the title and stream labels top left. Left and right skip 10 seconds, as on the desktop.
+
+The gear (always last) and the remote's menu button open the **Player menu**, a glass panel down
+the right side: audio and subtitle tracks, subtitle and audio timing, speed, picture fit, the
+skip settings (Settings › Intros: skip intros, recaps and credits automatically, show the skip
+button; a change is sent as a `setting` event and saved by the page), stream info, and more
+player options.
+
+`setSkipButton(json)` shows the page's skip button over the video, JSON `{label, toSec}` (skip
+to that second) or `{label, action: "next"}` (next episode); `""` hides it. OK on the remote
+presses it while it shows.
+
 ## Buffering
 
 Media3 caps its buffer by size as well as time (about 140 MB by default), which a 4K UHD remux at

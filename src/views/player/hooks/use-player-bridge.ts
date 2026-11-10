@@ -160,6 +160,11 @@ export function usePlayerBridge(params: {
           return {
             ...nativeTvOptions(now),
             controls: tvLayout(theme),
+            // The theme's accent, for the TV player's seek bar and highlights.
+            accent:
+              getComputedStyle(document.documentElement)
+                .getPropertyValue("--color-accent")
+                .trim() || undefined,
             info: tvInfoLine(
               [playing.title, playing.subtitle].filter(Boolean).join(" · "),
               ref?.title ?? ref?.parsedTitle ?? ref?.resolvedFilename,

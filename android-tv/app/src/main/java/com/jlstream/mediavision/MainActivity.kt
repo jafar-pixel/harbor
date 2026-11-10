@@ -440,6 +440,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         /** The player's own volume, 0 to 1 (README: `setVolume`); the page's volume buttons. */
+        /** The skip button over the video (README: `setSkipButton`); "" hides it. */
+        @JavascriptInterface
+        fun setSkipButton(json: String?) {
+            if (onAppPage) onMain { nativePlayer.setSkipButton(json.orEmpty().take(500)) }
+        }
+
         /** What the page is doing, for a crash report (README: `notePage`). */
         @JavascriptInterface
         fun notePage(text: String?) {
