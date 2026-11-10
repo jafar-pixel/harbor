@@ -637,6 +637,24 @@ class NativePlayer(
         ).joinToString(" · ")
     }
 
+    /**
+     * The TV's display mode for a crash report, and the mode it was in before the player
+     * switched it for the video (Match frame rate), when it did.
+     */
+    fun displaySummary(): String {
+        val display = DisplayModes.display(activity) ?: return "unknown"
+        val name = { m: Display.Mode ->
+            String.format(Locale.US, "%d×%d %.3g Hz", m.physicalWidth, m.physicalHeight, m.refreshRate)
+        }
+        val now = name(display.mode)
+        val before = savedDisplayModeId?.let { id -> display.supportedModes.firstOrNull { it.modeId == id } }
+        return when {
+            savedDisplayModeId == null -> "$now (not switched)"
+            before != null -> "$now (switched from ${name(before)})"
+            else -> "$now (switched for the video)"
+        }
+    }
+
     fun release() {
         closeMenu()
         handler.removeCallbacks(positionTick)

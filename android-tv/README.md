@@ -243,6 +243,8 @@ it crashed or Android closed it for memory, then:
 
 - the app screen it was on (path only, no query),
 - the player: mode, playing or paused, resolution, codec, HDR type, sound format and position,
+- the TV's display mode, and the mode before the player switched it for the video (Match frame
+  rate),
 - the TV's free memory, and the WebView version,
 - the page's last four console errors, with every address cut to its host (`PageTrail.kt`), so
   stream links and tokens never reach the report.

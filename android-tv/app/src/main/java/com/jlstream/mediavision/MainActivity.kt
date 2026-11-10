@@ -274,6 +274,7 @@ class MainActivity : AppCompatActivity() {
             add(what)
             add("Screen: ${PageTrail.screen.ifBlank { "/" }}")
             add("Player: ${nativePlayer.crashSummary()}")
+            add("TV mode: ${nativePlayer.displaySummary()}")
             add(
                 "Free memory: ${mb(memory.availMem)} of ${mb(memory.totalMem)} MB" +
                     if (memory.lowMemory) " (low)" else "",
