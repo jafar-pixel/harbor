@@ -332,14 +332,12 @@ function useStageOverSlot(
       stage.style.setProperty("--wp-full-y", `${(to.top - originY) / k}px`);
       stage.style.setProperty("--wp-full-w", `${to.width / k}px`);
       stage.style.setProperty("--wp-full-h", `${to.height / k}px`);
-      // Scrolled up, the video slides under the column's top margin (where the close button
-      // is) rather than over it.
-      const edge = main
-        ? main.getBoundingClientRect().top +
-          (parseFloat(getComputedStyle(main).paddingTop) || 0) * k
-        : to.top;
-      const cut = Math.max(0, edge - to.top) / k;
-      stage.style.clipPath = cut > 0 ? `inset(${cut}px 0 0 0)` : "";
+      // The column scrolls inside its own box (below the close button): the video is cut at
+      // the box's edges, exactly where the cover under it is cut.
+      const area = main?.getBoundingClientRect();
+      const top = area ? Math.max(0, area.top - to.top) / k : 0;
+      const bottom = area ? Math.max(0, to.bottom - area.bottom) / k : 0;
+      stage.style.clipPath = top > 0 || bottom > 0 ? `inset(${top}px 0 ${bottom}px 0)` : "";
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(place);
