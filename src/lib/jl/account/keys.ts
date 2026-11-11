@@ -25,6 +25,8 @@ export const SYNCED_SETTING_KEYS = [
   "iptvPlaylists",
   "dmmCastLinks",
   "anthropicKey",
+  "sportsAreaState",
+  "sportsAreaCity",
 ] as const;
 
 export type SyncedSettingKey = (typeof SYNCED_SETTING_KEYS)[number];
@@ -37,7 +39,11 @@ export type KeyBase = Partial<Record<SyncedSettingKey, string>>;
  * (get_family_secrets returns "setting:" secrets only), so a family owner's Anthropic key is
  * never sent to, or billed by, the family's other members.
  */
-const OWN_ONLY: ReadonlySet<SyncedSettingKey> = new Set(["anthropicKey"]);
+const OWN_ONLY: ReadonlySet<SyncedSettingKey> = new Set([
+  "anthropicKey",
+  "sportsAreaState",
+  "sportsAreaCity",
+]);
 
 export const secretName = (key: SyncedSettingKey) =>
   OWN_ONLY.has(key) ? `own:${key}` : `setting:${key}`;

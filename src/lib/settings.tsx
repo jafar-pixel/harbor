@@ -16,6 +16,7 @@ import { effectiveTmdbLanguage, setTmdbLanguage } from "@/lib/providers/tmdb/tmd
 import { setPosterBaseUrl } from "@/lib/providers/rpdb";
 import { setMdblistBatchKey } from "@/lib/providers/mdblist-batch";
 import { setClaudeAccount } from "@/lib/claude";
+import { setAgentArea } from "@/lib/sports/agent/store";
 import { setUiLanguage } from "@/lib/i18n";
 import { makeSafeTauriUnlisten } from "@/lib/tauri-unlisten";
 import { STORAGE_KEY } from "./settings/defaults";
@@ -300,6 +301,10 @@ export function SettingsProvider({
   useEffect(() => {
     setClaudeAccount(settings.anthropicKey, settings.aiSearchModel);
   }, [settings.anthropicKey, settings.aiSearchModel]);
+
+  useEffect(() => {
+    setAgentArea(settings.sportsAreaState ?? "", settings.sportsAreaCity ?? "");
+  }, [settings.sportsAreaState, settings.sportsAreaCity]);
 
   useEffect(() => {
     if (typeof document === "undefined" || !("fonts" in document)) return;

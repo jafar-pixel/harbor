@@ -3,6 +3,7 @@ import { createEventChannelMatcher } from "./event-match";
 import { yieldToBrowser } from "@/lib/yield-to-browser";
 import { deviceMaxHeight } from "./device-height";
 import { channelHealth, type ChannelHealth } from "@/lib/iptv/channel-health";
+import { agentEdit, agentLabel, channelAreaFit, networkKey } from "./agent/store";
 import { hasArabic, normalizeArabic } from "@/lib/iptv/rtl";
 import type { IptvChannel, EpgProgram } from "@/lib/iptv/types";
 import type { LeagueDef, SportsGame, SportsSide } from "@/lib/sports/espn";
@@ -53,6 +54,12 @@ export type ChannelMatch = {
   fit: number;
   /** It failed to play here and hasn't worked since (channel-health.ts). */
   failing: boolean;
+  /** The viewer pinned it in the Sports agent. */
+  pinned?: boolean;
+  /** The viewer's own local station for a game on ABC, CBS, FOX or NBC. */
+  local?: boolean;
+  /** Another region's copy of ABC, CBS, FOX or NBC: below feeds named after the game. */
+  elsewhere?: boolean;
 };
 
 export type PreparedChannel = {
@@ -115,6 +122,9 @@ export function qualityFit(quality: number | null, maxHeight: number): number {
       return 0;
   }
 }
+
+/** Networks whose channels are local stations with regional programming. */
+const REGIONAL_KEYS = new Set(["abc", "cbs", "fox", "nbc"]);
 
 /** "ESPN+" and "ESPN Plus" are their own services, not the ESPN channel. */
 const PLUS_RE = /\+|\bplus\b/i;
@@ -282,7 +292,15 @@ export function buildSportsChannelIndex(channels: readonly IptvChannel[]): Sport
       SPORTY_RE.test(p.norm) ||
       SPORTY_RE.test(p.groupPad) ||
       SPORTY_RE.test(channel.name.toLowerCase());
-    if (!sporty && !/\b(?:vs?\.?|versus)\s/i.test(channel.name)) continue;
+    // Local stations and networks the Sports agent knows are kept too (a game on NBC can be on
+    // the viewer's own NBC station, whose name has nothing sporty in it).
+    const known = agentLabel(channel.name);
+    if (
+      !sporty &&
+      !/\b(?:vs?\.?|versus)\s/i.test(channel.name) &&
+      !(known && known.kind !== "other" && known.kind !== "event")
+    )
+      continue;
     out.push(p);
   }
   const index: SportsChannelIndex = { channels: out, scanned: channels.length };
@@ -457,7 +475,11 @@ export function matchChannelsForGame(
   const maxHeight = opts.maxHeight ?? deviceMaxHeight();
   const health = opts.health ?? channelHealth;
 
+  const gameNets = new Set(listings.filter((l) => !l.plus).map((l) => networkKey(l.norm)));
+  const regionalGame = [...gameNets].some((k) => REGIONAL_KEYS.has(k));
   for (const p of index.channels) {
+    // Channels the viewer hid in the Sports agent are never offered.
+    if (agentEdit(p.channel.name) === "hide") continue;
     const attached = attachedIds.has(p.channel.id);
     const guide = (index.programs?.get(p.channel.id) ?? []).find(
       (program) =>
@@ -493,8 +515,24 @@ export function matchChannelsForGame(
 
     score += scoreNetworks(p, game.league, group, leagueRegion, reasons);
     const listingScore = scoreListings(p, listings, reasons);
-    const broadcast = broadcastOf(p, listings);
+    // The network by name, or as the Sports agent knows it (rules or Claude), or the viewer's own
+    // local station when the game is on ABC, CBS, FOX or NBC.
+    const label = agentLabel(p.channel.name);
+    const agentNet = label?.network ? networkKey(label.network) : "";
+    const yours =
+      regionalGame &&
+      (label?.kind === "local" || label?.kind === "team") &&
+      gameNets.has(agentNet) &&
+      channelAreaFit(p.channel.name) > 0;
+    const broadcast =
+      broadcastOf(p, listings) ??
+      (label?.kind === "network" && gameNets.has(agentNet)
+        ? (listings.find((l) => networkKey(l.norm) === agentNet) ?? null)
+        : null) ??
+      (yours ? (listings.find((l) => networkKey(l.norm) === agentNet) ?? null) : null);
     if (broadcast) reasons.push({ kind: "broadcast", label: broadcast.norm });
+    if (yours) reasons.push({ kind: "region", label: "Your area" });
+    const elsewhere = regionalGame && !!broadcast && !yours;
     // The game's own network always counts in full, however the provider spells it.
     score += broadcast ? Math.max(listingScore, W_LISTING_EXACT) : listingScore;
 
@@ -515,7 +553,7 @@ export function matchChannelsForGame(
       confidence: Math.round(confidence * 100) / 100,
       tier: failing
         ? "possible"
-        : attached || broadcast || event.both || event.numberMatch
+        : attached || (broadcast && !elsewhere) || event.both || event.numberMatch
           ? "exact"
           : tierOf(Math.min(confidence, 0.84), false),
       attached,
@@ -523,6 +561,10 @@ export function matchChannelsForGame(
       quality: p.quality ?? channelQuality(p.channel.name),
       fit: qualityFit(p.quality ?? channelQuality(p.channel.name), maxHeight),
       failing,
+      pinned: agentEdit(p.channel.name) === "pin",
+      local: yours,
+      // Some other copy of ABC, CBS, FOX or NBC: often another region's programming.
+      elsewhere,
     });
   }
 
@@ -532,11 +574,14 @@ export function matchChannelsForGame(
 
 export function compareChannelMatches(a: ChannelMatch, b: ChannelMatch): number {
   if (a.failing !== b.failing) return a.failing ? 1 : -1;
+  if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
   if (a.attached !== b.attached) return a.attached ? -1 : 1;
   // The network carrying the game first, then a guide or channel name that names the game.
   const specificity = (match: ChannelMatch) =>
     match.reasons.some((r) => r.kind === "broadcast")
-      ? 4
+      ? match.elsewhere
+        ? 1
+        : 4
       : match.reasons.some((r) => r.kind === "event" && r.label === "TV guide matchup")
         ? 3
         : match.reasons.some((r) => r.kind === "event" && r.label === "Event matchup")
@@ -545,6 +590,7 @@ export function compareChannelMatches(a: ChannelMatch, b: ChannelMatch): number 
             ? 1
             : 0;
   if (specificity(a) !== specificity(b)) return specificity(b) - specificity(a);
+  if (!!a.local !== !!b.local) return a.local ? -1 : 1;
   if (a.fit !== b.fit) return b.fit - a.fit;
   if (b.score !== a.score) return b.score - a.score;
   return a.label.localeCompare(b.label);

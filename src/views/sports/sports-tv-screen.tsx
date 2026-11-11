@@ -10,6 +10,10 @@ import { MultiPlayer } from "@/views/multiview/multi-player";
 import { useNativeSmallTv } from "@/lib/player/native-tv/small-screen";
 import { TvVolumeControls, useTvVolume } from "@/views/live/tv-volume";
 import type { SportsTvTuned } from "./sports-tv-tuner";
+import { channelHealth, recordChannelResult } from "@/lib/iptv/channel-health";
+
+/** A channel that shows no picture by then has failed; the screen moves to the game's next one. */
+const START_TIMEOUT_MS = 20_000;
 
 /** How long the overlay stays up after the mouse last moved over a playing screen. */
 const OVERLAY_IDLE_MS = 2500;
@@ -56,6 +60,33 @@ export function SportsTvScreen({
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
   }, [nativeTv.playing]);
+  // The Sports agent's failover: remember whether this channel plays here, and when it fails
+  // (an error, or no picture in time) move to the game's next channel by itself.
+  const [failedHere, setFailedHere] = useState(false);
+  useEffect(() => setFailedHere(false), [channel?.id]);
+  const moveOn = () => {
+    if (!channel || !tuned) return;
+    recordChannelResult(channel.url, false);
+    const next = tuned.channels.findIndex(
+      (c, i) => i > sourceIdx && channelHealth(c.url) !== "failing",
+    );
+    if (next > 0) setSourceIdx(next);
+  };
+  useEffect(() => {
+    if (playing && channel) recordChannelResult(channel.url, true);
+  }, [playing, channel?.url]);
+  useEffect(() => {
+    if (nativeTv.failed || failedHere) moveOn();
+  }, [nativeTv.failed, failedHere]);
+  useEffect(() => {
+    if (!showVideo || !channel) return;
+    const timer = window.setTimeout(() => {
+      if (!playingRef.current) moveOn();
+    }, START_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [showVideo, channel?.id]);
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
   const picked = !!channel && isPicked(picks, channel.id);
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   // The overlay hides while the game plays and the mouse is still, and comes back on movement.
@@ -119,7 +150,10 @@ export function SportsTvScreen({
             exclusive
             cover
             onPlaying={() => setPlaying(true)}
-            onError={() => setPlaying(false)}
+            onError={() => {
+              setPlaying(false);
+              setFailedHere(true);
+            }}
           />
         </div>
       )}

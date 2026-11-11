@@ -77,7 +77,7 @@ const CHANNELS = [
   ch("snp-backup", "US: SportsNet Philadelphia Backup", "USA Regional", "snp.us"),
 ];
 
-test("event channels match by kickoff and a shared team; Spanish feed goes after the network", () => {
+test("event channels match by kickoff and a shared team; Spanish feed goes last", () => {
   const index = buildSportsChannelIndex(CHANNELS, null, NOW);
   const game: SportsGame = {
     id: "1",
@@ -92,9 +92,10 @@ test("event channels match by kickoff and a shared team; Spanish feed goes after
   const found = channelsForGame(game, index, NOW);
   assert.deepEqual(
     found.map((c) => [c.channel.id, c.via, c.alternate]),
+    // ABC is local stations with regional games, so the feed named after the game leads.
     [
-      ["abc", "network", false],
       ["e1", "event", false],
+      ["abc", "network", false],
       ["e2", "event", true],
     ],
   );
@@ -239,7 +240,8 @@ test("a game's event feeds lead with the best picture", () => {
   } as SportsGame;
   assert.deepEqual(
     channelsForGame(game, index, NOW).map((c) => c.channel.id),
-    ["fhd", "abc", "sd"],
+    // On ABC (local stations) every feed named after the game leads, best picture first.
+    ["fhd", "sd", "abc"],
   );
 });
 
@@ -345,4 +347,40 @@ test("a 4K/8K group lifts its untagged event slots above another provider's plai
   assert.equal(channelQualityOf(pass), 40);
   assert.equal(channelQualityOf(plain), 10);
   assert.equal(channelQualityOf(ch("q", "US: FOX FHD 60FPS", "US| 8K Sports")), 45);
+});
+
+test("an NBA game on NBC plays the feed named after it, not a local NBC station", () => {
+  // Real names from the viewer's providers (links removed).
+  const index = buildSportsChannelIndex(
+    [
+      ch("nbc", "USA NBC HD", "|NA| USA NBC"),
+      ch("wnbc", "USA NBC 4 WNBC New York", "|NA| USA NBC"),
+      ch(
+        "ppv",
+        "US: NBA PASS PPV 6 - Oklahoma City Thunder v Portland Trail Blazers",
+        "|NA| USA NBA",
+      ),
+      ch("other", "US: NBA PASS PPV 5 - Orlando Magic v Sacramento Kings", "|NA| USA NBA"),
+      ch("espn", "USA ESPN UHD", "Sports • General"),
+    ],
+    null,
+    NOW,
+  );
+  const game: SportsGame = {
+    id: "okc-por",
+    league: "NBA",
+    state: "in",
+    detail: "",
+    away: side("Oklahoma City Thunder", { location: "Oklahoma City", nickname: "Thunder" }),
+    home: side("Portland Trail Blazers", { location: "Portland", nickname: "Trail Blazers" }),
+    startMs: NOW.getTime() - 60 * 60000,
+    network: "NBC",
+  };
+  const found = channelsForGame(game, index, NOW);
+  assert.equal(found[0]?.channel.id, "ppv");
+  assert.equal(found[0]?.via, "event");
+  assert.ok(!found.some((c) => c.channel.id === "other"));
+  // On a national cable network the network's own channel still leads.
+  const onEspn = channelsForGame({ ...game, id: "okc-por-espn", network: "ESPN" }, index, NOW);
+  assert.equal(onEspn[0]?.channel.id, "espn");
 });

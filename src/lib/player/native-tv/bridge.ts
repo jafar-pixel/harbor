@@ -135,7 +135,13 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       // Live TV's channel list or the stream picker is open. The picture carries on under the
       // page so the list shows over it (Live TV and most channels); HDR and Dolby Vision can't
       // go under the page, so they hide while the list is open and the sound carries on.
-      const under = typeof p.canShowUnderPage === "function" && p.canShowUnderPage();
+      // An app build that throws here must not take the page down: hide the video instead.
+      let under = false;
+      try {
+        under = typeof p.canShowUnderPage === "function" && p.canShowUnderPage();
+      } catch {
+        under = false;
+      }
       setVideoUnder(under);
       p.setMode(under ? "under" : "hidden");
       return;

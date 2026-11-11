@@ -379,6 +379,8 @@ export const DEFAULT: Settings = {
   aiSearchProvider: "openrouter",
   aiGroqKey: "",
   anthropicKey: "",
+  sportsAreaState: "",
+  sportsAreaCity: "",
   jinaKey: "",
   aiWebSearch: false,
   playerD3d11Flip: true,
