@@ -10,6 +10,7 @@ import { useNativeSmallTv } from "@/lib/player/native-tv/small-screen";
 import { TvVolumeControls, useTvVolume } from "../tv-volume";
 import { fmtLeft } from "./now-format";
 import { hydrationKey, type NowItem } from "./use-live-home";
+import { GameArt, useChannelGame } from "./channel-art";
 
 export function LiveHero({
   items,
@@ -66,7 +67,9 @@ export function LiveHero({
   // does; the spotlight stops rotating once it plays, so streams don't open every few seconds.
   const box = useRef<HTMLElement>(null);
   const nativeOn = !!active?.channel.url && pageVisible && pageActive && !player;
-  const nativeTv = useNativeSmallTv(box, nativeOn ? active!.channel : null, nativeOn, sound);
+  // The picture fills the whole box on the Shield (no strip under it); OK opens full screen,
+  // which has volume and the channel's options.
+  const nativeTv = useNativeSmallTv(box, nativeOn ? active!.channel : null, nativeOn, sound, 0);
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
   }, [nativeTv.playing]);
@@ -87,8 +90,17 @@ export function LiveHero({
     <section
       ref={box}
       onDoubleClick={() => watch(channel)}
+      // The remote reaches the screen itself on the TV app; OK puts the channel on full screen.
+      tabIndex={nativeTv.native ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!nativeTv.native || (e.key !== "Enter" && e.key !== " ")) return;
+        e.preventDefault();
+        watch(channel);
+      }}
+      onClick={() => nativeTv.native && watch(channel)}
       aria-label={t("Your TV: {name}", { name: channel.name })}
-      className={`group relative aspect-video max-h-[72vh] w-full min-w-0 cursor-pointer overflow-hidden rounded-lg ${
+      // A true 16:9 screen on the TV app (no height cap, which made it wide and short).
+      className={`group relative aspect-video w-full min-w-0 cursor-pointer overflow-hidden rounded-lg outline-none focus-visible:ring-4 focus-visible:ring-white/85 ${nativeTv.native ? "" : "max-h-[72vh]"} ${
         // The glass theme clears bg-canvas; on the Shield the box is the TV screen, so it stays black.
         nativeTv.native ? "bg-black" : "bg-canvas"
       }`}
@@ -219,6 +231,7 @@ function HeroBackdrop({
 }) {
   const [artErr, setArtErr] = useState(false);
   const [logoErr, setLogoErr] = useState(false);
+  const game = useChannelGame(item.channel.id);
   const backdrop = hydrated?.background || item.current?.iconUrl || null;
   const art = backdrop && !artErr ? backdrop : null;
   const logo = item.channel.logo && !logoErr ? item.channel.logo : null;
@@ -227,7 +240,9 @@ function HeroBackdrop({
       className="absolute inset-0 transition-opacity duration-700"
       style={{ opacity: visible ? 1 : 0 }}
     >
-      {art ? (
+      {game ? (
+        <GameArt game={game} variant="hero" />
+      ) : art ? (
         <img
           src={art}
           alt=""

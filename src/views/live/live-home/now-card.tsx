@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Tv } from "lucide-react";
 import { Play } from "@/components/icons/play-filled";
 import type { Meta } from "@/lib/cinemeta";
 import { useT } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
 import { channelNumber, fmtLeft } from "./now-format";
 import type { NowItem } from "./use-live-home";
+import { useAmbientTarget } from "./ambient";
+import { ChannelArt, programPicture, useChannelGame } from "./channel-art";
 
 export function NowCard({
   item,
@@ -18,47 +19,28 @@ export function NowCard({
 }) {
   const t = useT();
   const { channel, current, progress } = item;
-  const [artErr, setArtErr] = useState(false);
   const [logoErr, setLogoErr] = useState(false);
-  const backdrop = hydrated?.background || current?.iconUrl || null;
-  const art = backdrop && !artErr ? backdrop : null;
+  const game = useChannelGame(channel.id);
+  const backdrop = programPicture(item, hydrated);
+  // The logo goes in the caption once a picture (not the logo itself) fills the card.
+  const art = !!game || !!backdrop;
   const logo = channel.logo && !logoErr ? channel.logo : null;
   const chno = channelNumber(channel.attrs);
   const left = current ? fmtLeft(current.endMs, Date.now(), t) : null;
+  const ambient = useAmbientTarget(`ch:${channel.id}`, () => (
+    <ChannelArt item={item} hydrated={hydrated} />
+  ));
 
   return (
     <button
       type="button"
       data-art={backdrop || channel.logo || ""}
       onClick={() => onPlay(channel)}
+      {...ambient}
       aria-label={t("Play {name}", { name: channel.name })}
-      className="group/now relative flex aspect-[16/9] w-full flex-col justify-end overflow-hidden rounded-lg border border-edge-soft/55 bg-elevated text-start transition-all duration-200 hover:border-edge hover:shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)]"
+      className="group group/now relative flex aspect-[16/9] w-full flex-col justify-end overflow-hidden rounded-lg border border-edge-soft/55 bg-elevated text-start transition-all duration-200 hover:border-edge hover:shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)]"
     >
-      {art ? (
-        <img
-          src={art}
-          alt=""
-          draggable={false}
-          loading="lazy"
-          onError={() => setArtErr(true)}
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover/now:scale-[1.04]"
-        />
-      ) : logo ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-surface/70 p-7">
-          <img
-            src={logo}
-            alt=""
-            draggable={false}
-            loading="lazy"
-            onError={() => setLogoErr(true)}
-            className="max-h-[64%] max-w-[78%] object-contain transition-transform duration-300 group-hover/now:scale-[1.05]"
-          />
-        </div>
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-surface/70 text-ink-subtle">
-          <Tv size={34} strokeWidth={1.5} />
-        </div>
-      )}
+      <ChannelArt item={item} hydrated={hydrated} zoom />
       <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/35 to-transparent" />
 
       <span className="absolute start-3 top-3 flex h-[22px] items-center gap-1.5 rounded-full bg-canvas/90 px-2.5 text-[10.5px] font-bold uppercase tracking-[0.16em] text-danger backdrop-blur">
@@ -84,7 +66,11 @@ export function NowCard({
           <span className="truncate">{channel.name}</span>
         </div>
         <div dir="auto" className="truncate text-[14.5px] font-semibold leading-tight text-ink">
-          {current?.title || hydrated?.name || channel.group || t("Live channel")}
+          {current?.title ||
+            hydrated?.name ||
+            (game ? `${game.away.name} at ${game.home.name}` : null) ||
+            channel.group ||
+            t("Live channel")}
         </div>
         {progress != null && (
           <div className="mt-1 flex items-center gap-2">
@@ -94,7 +80,9 @@ export function NowCard({
                 style={{ width: `${progress * 100}%` }}
               />
             </div>
-            {left && <span className="shrink-0 text-[10.5px] font-medium text-ink-subtle">{left}</span>}
+            {left && (
+              <span className="shrink-0 text-[10.5px] font-medium text-ink-subtle">{left}</span>
+            )}
           </div>
         )}
       </div>
