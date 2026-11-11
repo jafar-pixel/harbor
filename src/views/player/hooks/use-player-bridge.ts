@@ -159,9 +159,9 @@ export function usePlayerBridge(params: {
           const ref = playing.streamRef;
           return {
             ...nativeTvOptions(now),
-            // Live channels add Today's games to the bar (the player's games overlay). Live TV
-            // channels count even when the stream itself isn't flagged live, as in the overlay.
-            controls: [...tvLayout(theme), ...(isLivePlaybackSrc(playing) ? ["today-games"] : [])],
+            // Every video gets the "While you watch" drawer on the bar (watch-drawer.tsx); the
+            // remote's Down opens it too.
+            controls: [...tvLayout(theme), "today-games"],
             // The theme's accent, for the TV player's seek bar and highlights.
             accent:
               getComputedStyle(document.documentElement)
