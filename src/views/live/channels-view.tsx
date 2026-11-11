@@ -269,9 +269,7 @@ function Preview({
     armed === channel.id && active && pageVisible && !player && !FAILED.has(channel.id);
   // On the Shield the TV app's own player plays the preview, and Full screen is the same stream.
   const box = useRef<HTMLDivElement>(null);
-  // The picture fills the whole box on the Shield (no strip for the volume buttons, which the
-  // remote couldn't reach); OK opens full screen, which has volume.
-  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo, sound, 0);
+  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo, sound);
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
   }, [nativeTv.playing]);
@@ -288,18 +286,7 @@ function Preview({
     >
       <div
         ref={box}
-        tabIndex={nativeTv.native ? 0 : undefined}
-        role={nativeTv.native ? "button" : undefined}
-        aria-label={
-          nativeTv.native ? t("Watch {name} full screen", { name: channel.name }) : undefined
-        }
-        onKeyDown={(e) => {
-          if (!nativeTv.native || (e.key !== "Enter" && e.key !== " ")) return;
-          e.preventDefault();
-          watch();
-        }}
-        onClick={() => nativeTv.native && watch()}
-        className="relative aspect-video overflow-hidden rounded-2xl border border-edge-soft bg-black shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)] outline-none focus-visible:ring-4 focus-visible:ring-white/85"
+        className="relative aspect-video overflow-hidden rounded-2xl border border-edge-soft bg-black shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)]"
       >
         {art ? (
           <img

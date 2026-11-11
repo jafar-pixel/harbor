@@ -7,11 +7,10 @@ import { DetailTab } from "./library-panel/detail-tab";
 import { ProvidersTab } from "./library-panel/providers-tab";
 import { AiTab } from "./library-panel/ai-tab";
 import { LibraryTab } from "./library-panel/library-tab";
-import { LiveTvTab } from "./library-panel/live-tv-tab";
 
 export type LibraryKey = "tmdb" | "omdb" | "rpdb" | "fanart" | "tvdb";
 
-type Tab = "home" | "cards" | "detail" | "providers" | "ai" | "library" | "livetv";
+type Tab = "home" | "cards" | "detail" | "providers" | "ai" | "library";
 
 export function LibraryPanel({
   tmdbDraft,
@@ -49,7 +48,6 @@ export function LibraryPanel({
     { id: "providers" as const, label: t("Metadata") },
     { id: "ai" as const, label: t("Search") },
     { id: "library" as const, label: t("Library") },
-    { id: "livetv" as const, label: t("Live TV") },
   ];
   useSubTabs(tabs, tab, (id) => setTab(id as Tab));
   return (
@@ -76,7 +74,6 @@ export function LibraryPanel({
         )}
         {tab === "ai" && <AiTab />}
         {tab === "library" && <LibraryTab />}
-        {tab === "livetv" && <LiveTvTab />}
       </div>
     </>
   );
