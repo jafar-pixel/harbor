@@ -395,33 +395,6 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun setPreferredAudioLanguage(lang: String?) = onMain { nativePlayer.setPreferredAudioLanguage(lang) }
 
-        /**
-         * A subtitle the page downloaded and parsed, as WebVTT text (README: `addSubtitleText`);
-         * false off an app page or for an implausibly large file.
-         */
-        @JavascriptInterface
-        fun addSubtitleText(vtt: String?, language: String?, label: String?, select: Boolean): Boolean {
-            PageTrail.noteCall("addSubtitleText ${(vtt?.length ?: 0) / 1024} KB")
-            if (!onAppPage || vtt.isNullOrBlank() || vtt.length > MAX_SUBTITLE_CHARS) return false
-            onMain { nativePlayer.addSubtitleText(vtt, language, label, select) }
-            return true
-        }
-
-        /** Subtitles on or off (README: `setSubtitlesEnabled`). */
-        @JavascriptInterface
-        fun setSubtitlesEnabled(on: Boolean) {
-            PageTrail.noteCall("setSubtitlesEnabled $on")
-            onMain { nativePlayer.setSubtitlesEnabled(on) }
-        }
-
-        /** Subtitle timing in seconds, positive for later (README: `setSubtitleDelay`). */
-        @JavascriptInterface
-        fun setSubtitleDelay(sec: Double) = onMain { nativePlayer.setSubtitleDelay(sec) }
-
-        /** Audio timing in seconds, positive for later (README: `setAudioDelay`). */
-        @JavascriptInterface
-        fun setAudioDelay(sec: Double) = onMain { nativePlayer.setAudioDelay(sec) }
-
         /** A short message over the full-screen video (README: `showMessage`); ignored outside `full`. */
         @JavascriptInterface
         fun showMessage(text: String?) {
@@ -445,12 +418,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         /** The player's own volume, 0 to 1 (README: `setVolume`); the page's volume buttons. */
-        /** The skip button over the video (README: `setSkipButton`); "" hides it. */
-        @JavascriptInterface
-        fun setSkipButton(json: String?) {
-            if (onAppPage) onMain { nativePlayer.setSkipButton(json.orEmpty().take(500)) }
-        }
-
         /** What the page is doing, for a crash report (README: `notePage`). */
         @JavascriptInterface
         fun notePage(text: String?) {
@@ -484,7 +451,6 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         /** A long film's subtitles are well under 1 MB; anything far larger isn't a subtitle. */
-        private const val MAX_SUBTITLE_CHARS = 8_000_000
 
         // Where the web app lives now and after the domain swap.
         val APP_HOSTS = setOf("jl-media-vision.vercel.app", "watch.jl-stream.com")

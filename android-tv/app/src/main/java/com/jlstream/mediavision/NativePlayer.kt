@@ -59,7 +59,6 @@ import androidx.media3.ui.PlayerControlView
 import androidx.media3.ui.PlayerView
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 import java.util.Locale
 
 /**
@@ -243,10 +242,6 @@ class NativePlayer(
 
     private val speeds = floatArrayOf(1f, 1.25f, 1.5f, 2f, 0.5f, 0.75f)
 
-    /** The playing item without side-loaded subtitles, and the subtitles the page added to it. */
-    private var baseItem: MediaItem? = null
-    private val sideSubtitles = ArrayList<MediaItem.SubtitleConfiguration>()
-    private val sideSubtitleKeys = HashSet<String>()
     private var selector: DefaultTrackSelector? = null
 
     /** Audio and subtitle timing; see [SyncOffsets]. Audio timing stays for the next video, as in mpv. */
@@ -257,24 +252,6 @@ class NativePlayer(
     /** Whether this stream's first load was checked for an addon's placeholder video. */
     private var sourceChecked = false
     private var audioDecoder: String? = null
-
-    /** The skip button over the video (Skip intro, Skip credits, Next episode); see [setSkipButton]. */
-    private var skipAction: (() -> Unit)? = null
-    private val skipView = TextView(activity).apply {
-        visibility = View.GONE
-        isFocusable = true
-        setTextColor(Color.WHITE)
-        textSize = 20f
-        val padH = (28 * activity.resources.displayMetrics.density).toInt()
-        val padV = (14 * activity.resources.displayMetrics.density).toInt()
-        setPadding(padH, padV, padH, padV)
-        background = GradientDrawable().apply {
-            cornerRadius = 999f
-            setColor(Color.argb(200, 12, 16, 30))
-            setStroke((2 * activity.resources.displayMetrics.density).toInt(), Color.argb(150, 255, 255, 255))
-        }
-        setOnClickListener { skipAction?.invoke() }
-    }
 
     private val songButton = extraButton(R.drawable.jl_ic_song, "Identify song") { identifySong() }
 
@@ -295,12 +272,6 @@ class NativePlayer(
         // Time left at the end of the seek bar (res/layout/exo_player_control_view.xml).
         view.findViewById<PlayerControlView>(androidx.media3.ui.R.id.exo_controller)
             ?.setProgressUpdateListener { position, _ -> showTimeLeft(position) }
-        view.overlayFrameLayout?.addView(skipView, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.END,
-        ).apply {
-            val m = (48 * activity.resources.displayMetrics.density).toInt()
-            setMargins(m, m, m, m * 3)
-        })
         view.setShowNextButton(false)
         view.setShowPreviousButton(false)
         view.setShowRewindButton(true)
@@ -399,94 +370,6 @@ class NativePlayer(
     private fun openPanel() {
         view.hideController()
         send("panel")
-    }
-
-    /**
-     * A subtitle the page found (an addon's or a subtitle site's, downloaded and parsed by the page
-     * as on the desktop) joins the playing video as a WebVTT track. Media3 adds side-loaded
-     * subtitles only when the item is prepared, so the item is set again at the same position.
-     */
-/**
-     * The page's skip button (Settings › Intros), drawn over the video: JSON {label, toSec} skips
-     * to that second, {label, action: "next"} asks the page for the next episode, "" hides it.
-     */
-    fun setSkipButton(json: String) {
-        val o = try { if (json.isBlank()) null else JSONObject(json) } catch (_: Exception) { null }
-        val label = o?.optString("label").orEmpty()
-        if (o == null || label.isBlank() || !options.skipButton || mode != Mode.FULL) {
-            if (skipView.hasFocus()) view.requestFocus()
-            skipView.visibility = View.GONE
-            skipAction = null
-            return
-        }
-        val toSec = o.optDouble("toSec", -1.0)
-        val next = o.optString("action") == "next"
-        skipAction = {
-            skipView.visibility = View.GONE
-            if (next) control("next-episode")
-            else if (toSec >= 0) seek((toSec * 1000).toLong())
-        }
-        skipView.text = label
-        skipView.visibility = View.VISIBLE
-    }
-
-    /** OK on the remote presses the skip button while it shows and the bar is hidden. */
-    fun pressSkipIfShown(): Boolean {
-        val action = skipAction ?: return false
-        if (skipView.visibility != View.VISIBLE) return false
-        action()
-        return true
-    }
-
-    fun addSubtitleText(vtt: String, language: String?, label: String?, select: Boolean): Boolean {
-        if (player == null || baseItem == null) return false
-        val lang = language?.takeIf { it.isNotBlank() }
-        // The same subtitle again (the page restores and auto-picks the same one): just show it.
-        val key = "${vtt.length}:${vtt.hashCode()}"
-        if (key in sideSubtitleKeys) {
-            if (select) setSubtitlesEnabled(true, lang)
-            return true
-        }
-        val dir = File(activity.cacheDir, "subtitles").apply { mkdirs() }
-        if (sideSubtitles.isEmpty()) dir.listFiles()?.forEach { it.delete() }
-        val file = File(dir, "sub-${sideSubtitles.size}-${System.currentTimeMillis()}.vtt")
-        try {
-            file.writeText(vtt)
-        } catch (_: Exception) {
-            return false
-        }
-        sideSubtitleKeys += key
-        sideSubtitles += MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(file))
-            .setMimeType(MimeTypes.TEXT_VTT)
-            .setLanguage(lang)
-            .setLabel(label?.takeIf { it.isNotBlank() } ?: lang ?: "Subtitles")
-            .setId("jl-sub-${sideSubtitles.size}")
-            .setSelectionFlags(if (select) C.SELECTION_FLAG_DEFAULT else 0)
-            .build()
-        if (select) setSubtitlesEnabled(true, lang)
-        // Each change of side-loaded subtitles reloads the stream; subtitles the page adds in a
-        // burst (as a video starts) are taken in one reload instead of one each.
-        handler.removeCallbacks(applySideSubtitles)
-        handler.postDelayed(applySideSubtitles, SUBTITLE_BATCH_MS)
-        return true
-    }
-
-    private val applySideSubtitles = Runnable {
-        val p = player ?: return@Runnable
-        val base = baseItem ?: return@Runnable
-        val at = p.currentPosition
-        val playing = p.playWhenReady
-        p.setMediaItem(base.buildUpon().setSubtitleConfigurations(ArrayList(sideSubtitles)).build(), at)
-        p.prepare()
-        p.playWhenReady = playing
-    }
-
-    /** Subtitles on or off (the page's subtitle menu and its Off item); [language] is preferred when on. */
-    fun setSubtitlesEnabled(on: Boolean, language: String? = null) {
-        val s = selector ?: return
-        val params = s.buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !on)
-        if (on && language != null) params.setPreferredTextLanguage(language)
-        s.setParameters(params.build())
     }
 
     /** The viewer's subtitle size, colours and style (Settings › Subtitles), as on the desktop. */
@@ -655,9 +538,6 @@ class NativePlayer(
             .setMediaMetadata(MediaMetadata.Builder().setTitle(title).build())
             .apply { if (looksLikeHls(Uri.parse(url))) setMimeType(MimeTypes.APPLICATION_M3U8) }
             .build()
-        baseItem = item
-        sideSubtitles.clear()
-        sideSubtitleKeys.clear()
         applySubtitleStyle()
         if (startMs > 0) p.setMediaItem(item, startMs) else p.setMediaItem(item)
         p.prepare()
@@ -857,10 +737,7 @@ class NativePlayer(
 
     fun release() {
         closeMenu()
-        skipView.visibility = View.GONE
-        skipAction = null
         handler.removeCallbacks(positionTick)
-        handler.removeCallbacks(applySideSubtitles)
         view.player = null
         player?.removeListener(listener)
         player?.release()
@@ -909,8 +786,7 @@ class NativePlayer(
         if (down) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER ->
-                    // OK presses Skip intro / Next episode while it shows; otherwise play or pause.
-                    if (event.repeatCount == 0 && !pressSkipIfShown()) { togglePause(); view.showController() }
+                    if (event.repeatCount == 0) { togglePause(); view.showController() }
                 KeyEvent.KEYCODE_DPAD_LEFT -> seekBy(-SEEK_STEP_MS)
                 KeyEvent.KEYCODE_DPAD_RIGHT -> seekBy(SEEK_STEP_MS)
                 // Down goes straight to other games, shows and movies; what's on keeps playing.
@@ -977,12 +853,6 @@ class NativePlayer(
         }
         entries += MenuEntry(checked(false, "Speed: " + speedName(p.playbackParameters.speed))) { showMessage(nextSpeed()); openMenuSoon() }
         entries += MenuEntry(checked(false, "Picture: " + aspectName())) { showMessage(nextAspect()); openMenuSoon() }
-        entries += MenuEntry(checked(options.skipIntro, "Skip intros automatically")) { toggleSkip("autoSkipIntro") }
-        entries += MenuEntry(checked(options.skipRecap, "Skip recaps automatically")) { toggleSkip("autoSkipRecap") }
-        entries += MenuEntry(checked(options.skipOutro, "Skip credits automatically")) { toggleSkip("autoSkipOutro") }
-        entries += MenuEntry(checked(options.skipButton, "Show the skip button")) { toggleSkip("showSkipButton") }
-        entries += MenuEntry(checked(false, "Subtitle timing: ${SyncOffsets.describe(SyncOffsets.toSec(sync.subtitleUs))}")) { openTiming(subtitles = true) }
-        entries += MenuEntry(checked(false, "Audio timing: ${SyncOffsets.describe(SyncOffsets.toSec(sync.audioUs))}")) { openTiming(subtitles = false) }
         entries += MenuEntry(checked(false, "Stream info")) { openStreamInfo() }
         entries += MenuEntry(checked(false, "More player options")) { exitFull() }
         val labels = Array<CharSequence>(entries.size) { entries[it].label }
@@ -997,61 +867,6 @@ class NativePlayer(
         }
         menu = dialog
         dialog.show()
-    }
-
-    /** Subtitle or audio timing (the page's sets go through [setSubtitleDelay] and [setAudioDelay]). */
-    fun setSubtitleDelay(sec: Double) {
-        sync.subtitleUs = SyncOffsets.toUs(sec)
-    }
-
-    fun setAudioDelay(sec: Double) {
-        sync.audioUs = SyncOffsets.toUs(sec)
-    }
-
-    /**
-     * Earlier and later in tenths of a second, as the desktop's timing rows; the dialog stays
-     * open while the viewer adjusts, and the page saves the subtitle timing for this title.
-     */
-    private fun openTiming(subtitles: Boolean) {
-        if (player == null) return
-        if (!subtitles && options.tunneling) {
-            showMessage("Audio timing needs Tunneled playback off in Video tuning.")
-            return
-        }
-        val current = { SyncOffsets.toSec(if (subtitles) sync.subtitleUs else sync.audioUs) }
-        val value = TextView(activity).apply {
-            textSize = 28f
-            gravity = Gravity.CENTER
-            val pad = (24 * activity.resources.displayMetrics.density).toInt()
-            setPadding(pad, pad, pad, pad)
-        }
-        val what = if (subtitles) "Subtitles" else "Sound"
-        val show = { value.text = "$what: ${SyncOffsets.describe(current())}" }
-        show()
-        val dialog = AlertDialog.Builder(activity)
-            .setTitle(if (subtitles) "Subtitle timing" else "Audio timing")
-            .setView(value)
-            .setNegativeButton("Earlier", null)
-            .setNeutralButton("Reset", null)
-            .setPositiveButton("Later", null)
-            .create()
-        val set = { sec: Double ->
-            if (subtitles) setSubtitleDelay(sec) else setAudioDelay(sec)
-            show()
-            emit(
-                JSONObject().put("type", "sync")
-                    .put("subDelaySec", SyncOffsets.toSec(sync.subtitleUs))
-                    .put("audioDelaySec", SyncOffsets.toSec(sync.audioUs)),
-            )
-        }
-        dialog.setOnShowListener {
-            // Set here rather than on the builder, so a press adjusts without closing the dialog.
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener { set(current() - SyncOffsets.STEP_SEC) }
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener { set(current() + SyncOffsets.STEP_SEC) }
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener { set(0.0) }
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.requestFocus()
-        }
-        showDialog(dialog)
     }
 
     /** What is playing and how: resolution, HDR, codecs, sound, decoders and the TV's mode. */
@@ -1109,26 +924,6 @@ private fun speedName(speed: Float): String =
         AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> "Zoom"
         AspectRatioFrameLayout.RESIZE_MODE_FILL -> "Stretch"
         else -> "Fit"
-    }
-
-    /** A skip setting from the menu: kept here and saved by the page (Settings › Intros). */
-    private fun toggleSkip(key: String) {
-        val o = options
-        options = when (key) {
-            "autoSkipIntro" -> o.copy(skipIntro = !o.skipIntro)
-            "autoSkipRecap" -> o.copy(skipRecap = !o.skipRecap)
-            "autoSkipOutro" -> o.copy(skipOutro = !o.skipOutro)
-            else -> o.copy(skipButton = !o.skipButton)
-        }
-        val value = when (key) {
-            "autoSkipIntro" -> options.skipIntro
-            "autoSkipRecap" -> options.skipRecap
-            "autoSkipOutro" -> options.skipOutro
-            else -> options.skipButton
-        }
-        if (key == "showSkipButton" && !value) setSkipButton("")
-        emit(JSONObject().put("type", "setting").put("key", key).put("value", value))
-        openMenuSoon()
     }
 
     /** Opens the menu again once the one just picked from has closed, so a change is seen at once. */
@@ -1501,7 +1296,6 @@ private fun speedName(speed: Float): String =
         }
 
         private const val MAX_BUFFER_BYTES = 256 * 1024 * 1024
-        private const val SUBTITLE_BATCH_MS = 1_500L
 
         // Addons (Torrentio, Comet, MediaFusion and others) answer a refused or failed debrid
         // link with a short video from their own server, under a folder like /videos/ or

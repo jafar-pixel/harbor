@@ -47,10 +47,6 @@ if (player?.isAvailable()) {
 | `audioTracks(): string`                           | The playing stream's audio tracks, as a JSON array (see [Audio tracks](#audio-tracks)). `"[]"` before the tracks are known, after `stop()`, or off an app page.                                                                                                                                                                                                           |
 | `setPreferredAudioLanguage(lang)`                 | Plays audio in `lang` (an ISO 639 code such as `"en"` or `"eng"`) when the stream has it, replacing any earlier audio choice; `""` goes back to the default pick. It stays in force for later `play` calls until `stop()`.                                                                                                                                                |
 | `showMessage(text)`                               | Shows `text` (up to 200 characters) as a toast over the video in `full`, where the page can't be seen. Ignored in `hero` and `hidden`.                                                                                                                                                                                                                                    |
-| `addSubtitleText(vtt, language, label, select)`   | Adds a subtitle to the playing video as WebVTT text. The page downloads and reads it as the desktop does (addons, subtitle sites, logins, zips, encodings; `native-tv/subtitles.ts`). The item is set again at the same position, as Media3 adds side-loaded subtitles only on prepare. `select` turns it on. False off an app page or over 8 million characters.         |
-| `setSubtitlesEnabled(on)`                         | Subtitles on or off, keeping the tracks.                                                                                                                                                                                                                                                                                                                                  |
-| `setSubtitleDelay(sec)`                           | Subtitle timing in seconds; positive shows them later.                                                                                                                                                                                                                                                                                                                    |
-| `setAudioDelay(sec)`                              | Audio timing in seconds; positive plays the sound later. No effect with tunneled playback.                                                                                                                                                                                                                                                                                |
 
 `setOptions`, `capabilities`, `audioTracks`, `setPreferredAudioLanguage` and `showMessage` are newer than the
 first app builds, so the page checks `typeof player.setOptions === "function"` (and so on) before
@@ -245,14 +241,8 @@ across its top in the theme's `accent` (time played left, time left right), the 
 the title and stream labels top left. Left and right skip 10 seconds, as on the desktop.
 
 The gear (always last) and the remote's menu button open the **Player menu**, a glass panel down
-the right side: audio and subtitle tracks, subtitle and audio timing, speed, picture fit, the
-skip settings (Settings › Intros: skip intros, recaps and credits automatically, show the skip
-button; a change is sent as a `setting` event and saved by the page), stream info, and more
-player options.
-
-`setSkipButton(json)` shows the page's skip button over the video, JSON `{label, toSec}` (skip
-to that second) or `{label, action: "next"}` (next episode); `""` hides it. OK on the remote
-presses it while it shows.
+the right side: audio and subtitle tracks (the ones in the stream), speed, picture fit, stream
+info, and more player options.
 
 ## Overlays over live video
 
