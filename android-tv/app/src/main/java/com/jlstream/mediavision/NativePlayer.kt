@@ -665,6 +665,7 @@ class NativePlayer(
         view.player = p
         player = p
         currentUrl = url
+        refreshUnderPage()
         handler.removeCallbacks(positionTick)
         handler.postDelayed(positionTick, 1000)
         applyMode()
@@ -729,7 +730,20 @@ class NativePlayer(
     }
 
     /** Whether the playing video can go under the page (not HDR or Dolby Vision). */
-    fun canShowUnderPage(): Boolean = player != null && !isHdr()
+    /**
+     * Whether the video can play under the page's overlays: playing and not HDR or Dolby Vision.
+     * The page asks from the WebView's bridge thread, and ExoPlayer may only be used on the main
+     * thread (it throws otherwise, which crashed the page whenever an overlay opened), so the
+     * answer is worked out on the main thread as the format changes and only read here.
+     */
+    @Volatile private var underPageOk = false
+
+    fun canShowUnderPage(): Boolean = underPageOk
+
+    /** Main thread: refreshes [underPageOk] from the player's current video format. */
+    private fun refreshUnderPage() {
+        underPageOk = player != null && !isHdr()
+    }
 
     private fun isHdr(): Boolean {
         val f = player?.videoFormat ?: return false
@@ -852,6 +866,7 @@ class NativePlayer(
         player?.release()
         player = null
         currentUrl = null
+        underPageOk = false
         audioTracksJson = "[]"
     }
 
@@ -1301,6 +1316,7 @@ private fun speedName(speed: Float): String =
 
         // The video's size and frame rate are known by its first decoded frame.
         override fun onVideoSizeChanged(videoSize: VideoSize) {
+            refreshUnderPage()
             if (videoSize.width > 0 && videoSize.height > 0) matchDisplayMode()
         }
 
@@ -1311,6 +1327,7 @@ private fun speedName(speed: Float): String =
         }
 
         override fun onTracksChanged(tracks: Tracks) {
+            refreshUnderPage()
             val audio = audioTracks(tracks)
             audioTracksJson = audio.toString()
             send("tracks", audioTracks = audio)
