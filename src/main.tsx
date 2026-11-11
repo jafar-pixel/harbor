@@ -18,6 +18,7 @@ import { PipApp } from "@/views/pip";
 import { VideoPipApp } from "@/views/video-pip";
 import "@/lib/awards-history-eager";
 import "@/index.css";
+import { installPressFeedback } from "@/lib/press-feedback";
 import "flag-icons/css/flag-icons.min.css";
 import { startTaskbarProgress } from "@/lib/download/taskbar-progress";
 import { completeBetaReturnPreferences } from "@/lib/updater/beta-return";
@@ -25,6 +26,9 @@ import { captureSharedLink } from "@/lib/shared-link";
 import { captureSpotifyCallback } from "@/lib/music/spotify-web/auth";
 import { captureYouTubeCallback } from "@/lib/music/youtube-web/auth";
 import { watchForStaleBuild } from "@/lib/stale-build";
+
+// The remote's OK shows on buttons (see lib/press-feedback.ts).
+installPressFeedback();
 
 watchForStaleBuild();
 captureSharedLink();
