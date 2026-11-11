@@ -15,6 +15,7 @@ import { KeyField, Section, ToggleRow } from "./shared";
 import { SportsArtSection } from "./sports-art-panel";
 import { SharedSportsArtSection } from "./shared-sports-art-section";
 import { SportPrioritiesEditor } from "./sports-priorities";
+import { SportsAgentSection } from "./sports-agent-section";
 
 type PluginField =
   | "sportsTopGames"
@@ -63,6 +64,7 @@ export function SportsPanel() {
       >
         <SportPrioritiesEditor />
       </Section>
+      <SportsAgentSection />
       <Section
         title={t("Sports keys")}
         subtitle={t(

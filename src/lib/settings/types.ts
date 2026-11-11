@@ -471,6 +471,9 @@ export type Settings = {
   aiGroqKey: string;
   /** The listener's own Anthropic key: Claude for AI search and Ask JL / the AI DJ. */
   anthropicKey: string;
+  /** Settings › Sports › Your area: picks the viewer's own local stations. Empty for everyone. */
+  sportsAreaState: string;
+  sportsAreaCity: string;
   jinaKey: string;
   aiWebSearch: boolean;
   playerD3d11Flip: boolean;

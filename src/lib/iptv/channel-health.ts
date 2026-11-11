@@ -84,6 +84,11 @@ export function channelHealth(url: string, now = Date.now()): ChannelHealth {
   return healthOf(load()[healthKey(url)], now);
 }
 
+/** Changes whenever any channel's record changes; game pickers key their caches on it. */
+export function channelHealthVersion(): number {
+  return version;
+}
+
 /** Re-renders when any channel's record changes. */
 export function useChannelHealthVersion(): number {
   return useSyncExternalStore(

@@ -50,13 +50,15 @@ export function useNativeSmallTv(
   sound: { volume: number; muted: boolean },
   /** The strip under the video kept for the page's own controls; 0 lets the video fill the box. */
   barPx: number = NATIVE_HERO_BAR_PX + 16,
-): { native: boolean; playing: boolean; fullScreen: () => boolean } {
+): { native: boolean; playing: boolean; failed: boolean; fullScreen: () => boolean } {
   const native = nativeTvAvailable();
   const [playing, setPlaying] = useState(false);
+  const [failed, setFailed] = useState(false);
   const token = useRef(Symbol("small-tv"));
 
   useEffect(() => {
     setPlaying(false);
+    setFailed(false);
     const p = nativeTvPlayer();
     if (!native || !p || !active || !channel?.url) return;
     const me = token.current;
@@ -106,6 +108,7 @@ export function useNativeSmallTv(
       const d = (e as CustomEvent<{ type?: string }>).detail;
       if (owner !== me) return;
       if (d?.type === "playing") setPlaying(true);
+      if (d?.type === "error") setFailed(true);
       // Back in full screen: the TV app already returns to the box; place it again.
       if (d?.type === "exit-full" || d?.type === "ready" || d?.type === "stopped") {
         forget();
@@ -141,6 +144,8 @@ export function useNativeSmallTv(
   return {
     native,
     playing,
+    /** The TV app reported that this channel failed to play. */
+    failed,
     /** Hands this box over to the full player the caller opens next; always false. */
     fullScreen: () => {
       if (owner === token.current) startHandoff();

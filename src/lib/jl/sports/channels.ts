@@ -2,6 +2,14 @@ import type { EpgIndex, IptvChannel } from "../../iptv/types.ts";
 import type { SportsGame, SportsSide } from "../../sports/espn.ts";
 import { parseEventChannel, teamKey, type ParsedEvent } from "./event-parse.ts";
 import { createEventChannelMatcher } from "../../sports/event-match.ts";
+import {
+  agentEdit,
+  agentLabel,
+  agentVersion,
+  channelAreaFit,
+  networkKey,
+} from "../../sports/agent/store.ts";
+import { channelHealth, channelHealthVersion } from "../../iptv/channel-health.ts";
 
 /**
  * "Which of my channels has this game?" against the customer's own playlist, on the device:
@@ -343,6 +351,9 @@ export function channelsForGame(
     game.network ?? "",
     (game.broadcasts ?? []).join("|"),
     game.state === "in" ? Math.floor(now.getTime() / LIVE_GUIDE_BUCKET_MS) : "",
+    // The Sports agent's sorting, the viewer's edits and area, and which feeds failed here.
+    agentVersion(),
+    channelHealthVersion(),
   ].join(":");
   const cache = cacheFor(gameCache, index);
   let found = cache.get(key);
@@ -383,6 +394,52 @@ function namedEventChannels(game: SportsGame, index: SportsChannelIndex): GameCh
     .map((n) => ({ channel: n.channel, via: "event" as const, alternate: false }));
 }
 
+type AgentChannels = {
+  version: number;
+  /** Channels the agent knows as a network, by networkKey of the schedule's name. */
+  byNetwork: Map<string, IptvChannel[]>;
+  /** Local stations and team channels in the viewer's area, by network, best fit first. */
+  local: Map<string, IptvChannel[]>;
+};
+const agentCache = new WeakMap<SportsChannelIndex, AgentChannels>();
+
+/** The Sports agent's view of this index (agent/store.ts), rebuilt when the agent changes. */
+function agentChannels(index: SportsChannelIndex): AgentChannels {
+  const version = agentVersion();
+  const hit = agentCache.get(index);
+  if (hit && hit.version === version) return hit;
+  const byNetwork = new Map<string, IptvChannel[]>();
+  const local = new Map<string, Array<{ channel: IptvChannel; fit: number }>>();
+  for (const { channel } of [...index.named, ...index.events]) {
+    const label = agentLabel(channel.name);
+    if (!label?.network) continue;
+    const key = networkKey(label.network);
+    if (label.kind === "network") {
+      const list = byNetwork.get(key);
+      if (list) list.push(channel);
+      else byNetwork.set(key, [channel]);
+    } else if (label.kind === "local" || label.kind === "team") {
+      const fit = channelAreaFit(channel.name);
+      if (!fit) continue;
+      const list = local.get(key) ?? [];
+      list.push({ channel, fit });
+      local.set(key, list);
+    }
+  }
+  const out: AgentChannels = {
+    version,
+    byNetwork,
+    local: new Map(
+      [...local].map(([k, list]) => [
+        k,
+        list.sort((a, b) => b.fit - a.fit || byQuality(a.channel, b.channel)).map((x) => x.channel),
+      ]),
+    ),
+  };
+  agentCache.set(index, out);
+  return out;
+}
+
 function matchGameChannels(game: SportsGame, index: SportsChannelIndex, now: Date): GameChannel[] {
   // A channel named after the game beats the network's: a network such as NBC is hundreds of
   // local stations, and the one picked by name is often showing its own region's programming.
@@ -392,7 +449,16 @@ function matchGameChannels(game: SportsGame, index: SportsChannelIndex, now: Dat
   const networks = [
     ...new Set([game.network, ...(game.broadcasts ?? [])].filter((name): name is string => !!name)),
   ];
-  const network = networks.flatMap((name) => networkChannels(name, index));
+  const agent = agentChannels(index);
+  // The viewer's own local station for a game on ABC, CBS, FOX or NBC (Settings › Your area).
+  const local = networks.flatMap((name) => agent.local.get(networkKey(name)) ?? []);
+  const localIds = new Set(local.map((c) => c.id));
+  const network = [
+    ...local,
+    ...networks.flatMap((name) => networkChannels(name, index)),
+    // Channels the agent (rules or Claude) knows as this network, however the provider names them.
+    ...networks.flatMap((name) => agent.byNetwork.get(networkKey(name)) ?? []),
+  ];
   // The game's own feeds (event channels and the network it airs on) lead; a guide match is
   // often another country's broadcast of it.
   const onAir = new Set([...events.map((c) => c.channel.id), ...network.map((c) => c.id)]);
@@ -400,6 +466,9 @@ function matchGameChannels(game: SportsGame, index: SportsChannelIndex, now: Dat
   // the game is surer than the network's name; a national cable network (ESPN, TNT) is the game.
   const regional = networks.some((n) => REGIONAL_NETWORK.test(n.trim()));
   const gameFirst = (c: GameChannel) => (regional && c.via === "event" ? 0 : 1);
+  const pinned = (c: GameChannel) => (agentEdit(c.channel.name) === "pin" ? 0 : 1);
+  const failing = (c: GameChannel) => (channelHealth(c.channel.url) === "failing" ? 1 : 0);
+  const yours = (c: GameChannel) => (localIds.has(c.channel.id) ? 0 : 1);
   const ordered: GameChannel[] = [
     ...events.filter((c) => !c.alternate),
     ...network.map((channel) => ({ channel, via: "network" as const, alternate: false })),
@@ -408,8 +477,11 @@ function matchGameChannels(game: SportsGame, index: SportsChannelIndex, now: Dat
   ];
   ordered.sort(
     (a, b) =>
+      failing(a) - failing(b) ||
+      pinned(a) - pinned(b) ||
       Number(a.alternate) - Number(b.alternate) ||
       gameFirst(a) - gameFirst(b) ||
+      yours(a) - yours(b) ||
       Number(!onAir.has(a.channel.id)) - Number(!onAir.has(b.channel.id)) ||
       foreignFeed(a.channel) - foreignFeed(b.channel) ||
       byQuality(a.channel, b.channel) ||
@@ -421,6 +493,8 @@ function matchGameChannels(game: SportsGame, index: SportsChannelIndex, now: Dat
   const out: GameChannel[] = [];
   for (const c of ordered) {
     if (seen.has(c.channel.id) || (anyBetter && isSdChannel(c.channel.name))) continue;
+    // Channels the viewer hid in the Sports agent are never offered.
+    if (agentEdit(c.channel.name) === "hide") continue;
     seen.add(c.channel.id);
     out.push(c);
     if (out.length >= MAX_CHANNELS) break;
