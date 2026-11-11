@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { nativeTvAvailable, TV_CONTROL_EVENT } from "@/lib/player/native-tv/bridge";
-import { BellRing, Star, Tv, X } from "lucide-react";
+import { BellRing, List, Star, Tv, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
 import { isPicked, toggleTodayPick, useTodayPicks } from "@/lib/iptv/today-picks";
@@ -19,11 +19,14 @@ export function TodayPicksPanel({
   channelId,
   chromeVisible,
   onSwitch,
+  onAllChannels,
 }: {
   src: PlayerSrc;
   channelId: string | null;
   chromeVisible: boolean;
   onSwitch: (channel: IptvChannel, program?: string) => void;
+  /** Opens the full channel guide (the player's live list) in place of this one. */
+  onAllChannels: () => void;
 }) {
   const t = useT();
   const picks = useTodayPicks();
@@ -66,8 +69,19 @@ export function TodayPicksPanel({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    // The TV remote's Back closes the list, never the game playing behind it (the player's own
+    // Back handler would leave the player).
+    const onLocalBack = (e: Event) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      setOpen(false);
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("harbor:local-back", onLocalBack, true);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("harbor:local-back", onLocalBack, true);
+    };
   }, [open]);
   if (!channelId) return null;
 
@@ -125,6 +139,17 @@ export function TodayPicksPanel({
       >
         <Star size={15} fill={starred ? "currentColor" : "none"} />
         {starred ? t("Remove this channel from today") : t("Add this channel to today")}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(false);
+          onAllChannels();
+        }}
+        className="mx-3 mt-2 flex h-10 items-center justify-center gap-2 rounded-full bg-white/10 text-[13px] font-semibold transition-colors hover:bg-white/20"
+      >
+        <List size={15} />
+        {t("All channels")}
       </button>
       <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3">
         {liveToday.length > 0 && (
