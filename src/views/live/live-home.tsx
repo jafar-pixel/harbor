@@ -21,7 +21,9 @@ import { NowNextBar, SurfList } from "./live-home/surf-list";
 import { NowCard } from "./live-home/now-card";
 import { AmbientBackdrop } from "./live-home/ambient";
 import { ChannelArt, ChannelGamesContext, channelGameMap } from "./live-home/channel-art";
-import { ChannelsTopRow, SportsTopRow, WeeklyTopRow } from "./live-home/top-ten";
+import { AgentPicksRow, ChannelsTopRow, SportsTopRow, WeeklyTopRow } from "./live-home/top-ten";
+import { liveGenreRows } from "@/lib/agents/live/rows";
+import { useLiveAgentVersion } from "@/lib/agents/live/store";
 import { fmtClock } from "./live-home/now-format";
 import {
   buildNowItem,
@@ -169,6 +171,18 @@ export function LiveHome({
   }, [statsVersion, channels, sourceId, epg, tvgCounts, nowMs]);
   const { settings } = useSettings();
 
+  // The Live TV agent's rows: what's on now, by kind of channel.
+  const liveAgentVersion = useLiveAgentVersion();
+  const genreRails = useMemo((): ChannelRail[] => {
+    void liveAgentVersion;
+    return liveGenreRows(channels).map((r) => ({
+      key: `genre:${r.genre}`,
+      title: t(GENRE_TITLE[r.genre] ?? r.genre),
+      group: null,
+      channels: r.channels,
+    }));
+  }, [channels, liveAgentVersion, t]);
+
   // The backdrop rests on the channel on Your TV until the remote moves to something else.
   const ambientItem = tuned ?? heroItems[0] ?? null;
   const ambientFallback = useMemo(
@@ -257,6 +271,13 @@ export function LiveHome({
           <ChannelsTopRow items={topChannelItems} onPlay={tune} onPreview={preview} />
           <WeeklyTopRow kind="movie" tmdbKey={settings.tmdbKey} />
           <WeeklyTopRow kind="series" tmdbKey={settings.tmdbKey} />
+          <AgentPicksRow kind="movie" tmdbKey={settings.tmdbKey} />
+          <AgentPicksRow kind="series" tmdbKey={settings.tmdbKey} />
+          {genreRails.map((rail) => (
+            <LazyRail key={rail.key}>
+              <RailRow rail={rail} {...railProps} />
+            </LazyRail>
+          ))}
           {(jlSports.top.length > 0 ||
             jlSports.teamSlides.length > 0 ||
             jlSports.playerSlides.length > 0) && (
@@ -288,6 +309,18 @@ export function LiveHome({
     </ChannelGamesContext.Provider>
   );
 }
+
+const GENRE_TITLE: Record<string, string> = {
+  news: "News on now",
+  kids: "Kids on now",
+  movies: "Movie channels on now",
+  entertainment: "Entertainment on now",
+  documentary: "Documentaries on now",
+  lifestyle: "Home, food & travel on now",
+  music: "Music on now",
+  spanish: "En español ahora",
+  faith: "Faith on now",
+};
 
 function LazyRail({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);

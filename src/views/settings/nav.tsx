@@ -4025,6 +4025,21 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     ],
   },
   {
+    label: "AI agents",
+    section: "library",
+    tab: "ai",
+    anchorTitle: "AI agents",
+    keywords: [
+      "agent",
+      "live tv agent",
+      "movies agent",
+      "shows agent",
+      "picks for tonight",
+      "sort channels",
+      "channel genres",
+    ],
+  },
+  {
     label: "TMDB · catalogs and rails",
     section: "library",
     tab: "providers",

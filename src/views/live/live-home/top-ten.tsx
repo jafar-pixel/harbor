@@ -7,6 +7,9 @@ import type { IptvChannel } from "@/lib/iptv/types";
 import type { SportsGame } from "@/lib/sports/espn";
 import { useView } from "@/lib/view";
 import { useWeeklyTop } from "@/lib/weekly-top";
+import { claudeAccount } from "@/lib/claude";
+import { useAgentPicks } from "@/lib/agents/picks";
+import { useContinueWatching } from "@/lib/continue-watching";
 import { useChannelHydration } from "../hooks/use-channel-hydration";
 import { useAmbientTarget } from "./ambient";
 import { useRestTune } from "./rest-tune";
@@ -30,7 +33,8 @@ function RankTile({
 }: {
   /** Names the tile for the ambient backdrop. */
   id: string;
-  rank: number;
+  /** Shown in large type; a pick without a rank shows none. */
+  rank?: number;
   title: string;
   sub?: string | null;
   live?: boolean;
@@ -52,7 +56,7 @@ function RankTile({
         rest.onFocus();
       }}
       onBlur={rest.onBlur}
-      aria-label={`${rank}. ${title}`}
+      aria-label={rank ? `${rank}. ${title}` : title}
       className="group relative flex aspect-[16/9] w-full overflow-hidden rounded-lg border border-edge-soft/55 bg-elevated text-start outline-none transition-all duration-200 hover:border-edge focus-visible:ring-2 focus-visible:ring-white/85"
     >
       {art}
@@ -65,13 +69,15 @@ function RankTile({
         </span>
       )}
       <div className="relative z-10 mt-auto flex w-full items-end gap-3 p-3">
-        <span
-          aria-hidden
-          className="font-display text-[72px] font-black leading-[0.8] tracking-tighter text-transparent tabular-nums"
-          style={{ WebkitTextStroke: "2px rgba(255,255,255,0.92)" }}
-        >
-          {rank}
-        </span>
+        {rank != null && (
+          <span
+            aria-hidden
+            className="font-display text-[72px] font-black leading-[0.8] tracking-tighter text-transparent tabular-nums"
+            style={{ WebkitTextStroke: "2px rgba(255,255,255,0.92)" }}
+          >
+            {rank}
+          </span>
+        )}
         <span className="min-w-0 flex-1 pb-0.5">
           <span dir="auto" className="block truncate text-[14.5px] font-semibold text-white">
             {title}
@@ -205,6 +211,42 @@ export function ChannelsTopRow({
           art={<ChannelArt item={it} hydrated={hydrations.get(hydrationKey(it)) ?? null} zoom />}
           onClick={() => onPlay(it.channel)}
           onRest={() => onPreview(it.channel)}
+        />
+      ))}
+    </Row>
+  );
+}
+
+/**
+ * The Movies & Shows agent's row: Claude's ten for tonight from this week's popular titles, with
+ * a line on why for each. Only with the viewer's own Anthropic key.
+ */
+export function AgentPicksRow({ kind, tmdbKey }: { kind: "movie" | "series"; tmdbKey: string }) {
+  const t = useT();
+  const { openMeta } = useView();
+  const cw = useContinueWatching(undefined, 20);
+  const watching = useMemo(() => cw.map((c) => c.name).filter(Boolean), [cw]);
+  const { picks } = useAgentPicks(kind, claudeAccount(), tmdbKey, watching);
+  if (!picks.length) return null;
+  return (
+    <Row
+      title={
+        kind === "movie"
+          ? t("Claude's movie picks for tonight")
+          : t("Claude's show picks for tonight")
+      }
+      shape="landscape"
+      min={320}
+      scrollKey={`live-home:picks:${kind}`}
+    >
+      {picks.map(({ meta, why }) => (
+        <RankTile
+          key={meta.id}
+          id={`meta:${meta.id}`}
+          title={meta.name}
+          sub={why || meta.releaseInfo}
+          art={<MetaArt meta={meta} />}
+          onClick={() => openMeta(meta)}
         />
       ))}
     </Row>
