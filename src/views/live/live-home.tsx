@@ -9,6 +9,8 @@ import { flagUrl } from "@/lib/iptv/country-detect";
 import { clearCountries, toggleCountry, useCountryPrefs } from "@/lib/iptv/country-prefs";
 import { useFavorites } from "@/lib/iptv/favorites";
 import { useView } from "@/lib/view";
+import { useSettings } from "@/lib/settings";
+import { topChannels, useChannelStatsVersion } from "@/lib/iptv/channel-stats";
 import { useChannelHydration } from "./hooks/use-channel-hydration";
 import { CountryBar } from "./live-home/country-bar";
 import { JlSportsHero } from "./live-home/jl-sports/sports-hero";
@@ -17,6 +19,9 @@ import { useJlSportsDialogs } from "./live-home/jl-sports/use-jl-sports-dialogs"
 import { LiveHero } from "./live-home/live-hero";
 import { NowNextBar, SurfList } from "./live-home/surf-list";
 import { NowCard } from "./live-home/now-card";
+import { AmbientBackdrop } from "./live-home/ambient";
+import { ChannelArt, ChannelGamesContext, channelGameMap } from "./live-home/channel-art";
+import { ChannelsTopRow, SportsTopRow, WeeklyTopRow } from "./live-home/top-ten";
 import { fmtClock } from "./live-home/now-format";
 import {
   buildNowItem,
@@ -106,76 +111,127 @@ export function LiveHome({
     ];
   }, [rails, guide, spotlight, epg, tvgCounts, nowMs, t]);
 
+  // Fan art: which game each channel carries, for every card, the surfer and Your TV.
+  const channelGames = useMemo(() => channelGameMap(jlSports.top), [jlSports.top]);
+  const surfHydrations = useChannelHydration(
+    useMemo(() => {
+      const set = new Set<string>();
+      for (const tab of surfTabs)
+        for (const it of tab.items.slice(0, 40))
+          if (isHydratableChannel(it.channel)) set.add(hydrationKey(it));
+      return [...set];
+    }, [surfTabs]),
+  );
+
+  // The viewer's most-watched channels (this device), for "Your Top 10 channels".
+  const statsVersion = useChannelStatsVersion();
+  const topChannelItems = useMemo(() => {
+    void statsVersion;
+    const byId = new Map(channels.map((c) => [c.id, c]));
+    return topChannels(10, sourceId)
+      .map((s) => byId.get(s.id))
+      .filter((c): c is IptvChannel => !!c)
+      .map((c) => buildNowItem(c, epg, tvgCounts, nowMs));
+  }, [statsVersion, channels, sourceId, epg, tvgCounts, nowMs]);
+  const { settings } = useSettings();
+
+  // The backdrop rests on the channel on Your TV until the remote moves to something else.
+  const ambientItem = tuned ?? heroItems[0] ?? null;
+  const ambientFallback = useMemo(
+    () =>
+      ambientItem
+        ? {
+            key: `ch:${ambientItem.channel.id}`,
+            art: (
+              <ChannelArt
+                item={ambientItem}
+                hydrated={heroHydrations.get(hydrationKey(ambientItem)) ?? null}
+              />
+            ),
+          }
+        : null,
+    [ambientItem, heroHydrations],
+  );
+
   const railProps = { sourceId, epg, nowMs, tvgCounts, onPlay: tune, onOpenCategory };
 
   return (
-    <div className="flex flex-col gap-8 pb-12">
-      <div className="flex flex-col gap-3">
-        <div className="flex items-baseline gap-2.5 ps-[9px]">
-          <h1 className="font-display text-[30px] font-medium leading-none tracking-tight text-ink">
-            {t("Your TV")}
-          </h1>
-          <span className="text-[16px] text-ink-subtle">
-            {t("at {time}", { time: fmtClock(nowMs) })}
-          </span>
-          <span className="ms-auto hidden text-[13px] text-ink-subtle md:inline">
-            {t("Rest on a channel to put it on. Select it again to watch full screen.")}
-          </span>
-        </div>
-        {/* The TV deck: Your TV with what's on now and next, and the channel surfer beside it. */}
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(320px,1fr)]">
-          <div className="flex min-w-0 flex-col gap-3">
-            {heroItems.length > 0 && (
-              <LiveHero
-                items={heroItems}
-                nowMs={nowMs}
-                hydrations={heroHydrations}
-                active={active}
-                onPlay={onPlay}
-              />
-            )}
-            <NowNextBar item={tuned ?? heroItems[0] ?? null} nowMs={nowMs} />
-          </div>
-          <div className="relative min-h-[360px]">
-            <div className="lg:absolute lg:inset-0">
-              <SurfList
-                tabs={surfTabs}
-                tunedId={tuned?.channel.id ?? null}
-                nowMs={nowMs}
-                onTune={tune}
-              />
+    <ChannelGamesContext.Provider value={channelGames}>
+      <AmbientBackdrop fallback={ambientFallback}>
+        <div className="flex flex-col gap-8 pb-12">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-baseline gap-2.5 ps-[9px]">
+              <h1 className="font-display text-[30px] font-medium leading-none tracking-tight text-ink">
+                {t("Your TV")}
+              </h1>
+              <span className="text-[16px] text-ink-subtle">
+                {t("at {time}", { time: fmtClock(nowMs) })}
+              </span>
+              <span className="ms-auto hidden text-[13px] text-ink-subtle md:inline">
+                {t("Rest on a channel to put it on. Select it again to watch full screen.")}
+              </span>
+            </div>
+            {/* The TV deck: Your TV with what's on now and next, and the channel surfer beside it. */}
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(320px,1fr)]">
+              <div className="flex min-w-0 flex-col gap-3">
+                {heroItems.length > 0 && (
+                  <LiveHero
+                    items={heroItems}
+                    nowMs={nowMs}
+                    hydrations={heroHydrations}
+                    active={active}
+                    onPlay={onPlay}
+                  />
+                )}
+                <NowNextBar item={tuned ?? heroItems[0] ?? null} nowMs={nowMs} />
+              </div>
+              <div className="relative min-h-[360px]">
+                <div className="lg:absolute lg:inset-0">
+                  <SurfList
+                    tabs={surfTabs}
+                    tunedId={tuned?.channel.id ?? null}
+                    nowMs={nowMs}
+                    hydrations={surfHydrations}
+                    onTune={tune}
+                  />
+                </div>
+              </div>
             </div>
           </div>
+          <ContinueAnywhereRow scrollKey="live-home:continue" />
+          <SportsTopRow games={jlSports.top} onWatch={tune} onOpenGame={openMatchDetail} />
+          <ChannelsTopRow items={topChannelItems} onPlay={tune} />
+          <WeeklyTopRow kind="movie" tmdbKey={settings.tmdbKey} />
+          <WeeklyTopRow kind="series" tmdbKey={settings.tmdbKey} />
+          {(jlSports.top.length > 0 ||
+            jlSports.teamSlides.length > 0 ||
+            jlSports.playerSlides.length > 0) && (
+            <JlSportsHero
+              top={jlSports.top}
+              teamSlides={jlSports.teamSlides}
+              playerSlides={jlSports.playerSlides}
+              actions={jlDialogs.actions}
+              onOpenGame={openMatchDetail}
+            />
+          )}
+          {rails.map((rail) => (
+            <RailRow key={rail.key} rail={rail} {...railProps} />
+          ))}
+          <CountryBar
+            countries={countries}
+            selected={countryPrefs.selected}
+            onToggle={(code) => toggleCountry(sourceId, code)}
+            onClear={() => clearCountries(sourceId)}
+          />
+          {categoryRails.map((rail) => (
+            <LazyRail key={rail.key}>
+              <RailRow rail={rail} {...railProps} />
+            </LazyRail>
+          ))}
+          {jlDialogs.dialogs}
         </div>
-      </div>
-      <ContinueAnywhereRow scrollKey="live-home:continue" />
-      {(jlSports.top.length > 0 ||
-        jlSports.teamSlides.length > 0 ||
-        jlSports.playerSlides.length > 0) && (
-        <JlSportsHero
-          top={jlSports.top}
-          teamSlides={jlSports.teamSlides}
-          playerSlides={jlSports.playerSlides}
-          actions={jlDialogs.actions}
-          onOpenGame={openMatchDetail}
-        />
-      )}
-      {rails.map((rail) => (
-        <RailRow key={rail.key} rail={rail} {...railProps} />
-      ))}
-      <CountryBar
-        countries={countries}
-        selected={countryPrefs.selected}
-        onToggle={(code) => toggleCountry(sourceId, code)}
-        onClear={() => clearCountries(sourceId)}
-      />
-      {categoryRails.map((rail) => (
-        <LazyRail key={rail.key}>
-          <RailRow rail={rail} {...railProps} />
-        </LazyRail>
-      ))}
-      {jlDialogs.dialogs}
-    </div>
+      </AmbientBackdrop>
+    </ChannelGamesContext.Provider>
   );
 }
 

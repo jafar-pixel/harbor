@@ -10,6 +10,7 @@ import { useNativeSmallTv } from "@/lib/player/native-tv/small-screen";
 import { TvVolumeControls, useTvVolume } from "../tv-volume";
 import { fmtLeft } from "./now-format";
 import { hydrationKey, type NowItem } from "./use-live-home";
+import { GameArt, useChannelGame } from "./channel-art";
 
 export function LiveHero({
   items,
@@ -230,6 +231,7 @@ function HeroBackdrop({
 }) {
   const [artErr, setArtErr] = useState(false);
   const [logoErr, setLogoErr] = useState(false);
+  const game = useChannelGame(item.channel.id);
   const backdrop = hydrated?.background || item.current?.iconUrl || null;
   const art = backdrop && !artErr ? backdrop : null;
   const logo = item.channel.logo && !logoErr ? item.channel.logo : null;
@@ -238,7 +240,9 @@ function HeroBackdrop({
       className="absolute inset-0 transition-opacity duration-700"
       style={{ opacity: visible ? 1 : 0 }}
     >
-      {art ? (
+      {game ? (
+        <GameArt game={game} variant="hero" />
+      ) : art ? (
         <img
           src={art}
           alt=""

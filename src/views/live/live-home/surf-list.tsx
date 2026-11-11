@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Clock, Heart, Radio, Tv } from "lucide-react";
+import { Clock, Heart, Radio } from "lucide-react";
+import type { Meta } from "@/lib/cinemeta";
 import { useT } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
-import type { NowItem } from "./use-live-home";
+import { hydrationKey, type NowItem } from "./use-live-home";
+import { ChannelArt } from "./channel-art";
 import { fmtClock } from "./now-format";
 
 /** How long the remote rests on a channel before Your TV switches to it. */
@@ -19,9 +21,12 @@ export function SurfList({
   tabs,
   tunedId,
   nowMs,
+  hydrations,
   onTune,
 }: {
   tabs: SurfTab[];
+  /** Program art for the channels (Cinemeta), by `hydrationKey`. */
+  hydrations: ReadonlyMap<string, Meta | null>;
   tunedId: string | null;
   nowMs: number;
   /** Puts a channel on Your TV; on the channel already there, opens it full screen. */
@@ -92,17 +97,18 @@ export function SurfList({
                   on ? "bg-white/15" : "hover:bg-white/10 focus-visible:bg-white/10"
                 }`}
               >
-                <span className="flex h-11 w-16 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                  {it.channel.logo ? (
-                    <img
-                      src={it.channel.logo}
-                      alt=""
-                      loading="lazy"
-                      draggable={false}
-                      className="max-h-8 max-w-[52px] object-contain"
-                    />
-                  ) : (
-                    <Tv size={18} className="text-white/60" />
+                <span className="relative h-[52px] w-[92px] shrink-0 overflow-hidden rounded-lg bg-white/10">
+                  <ChannelArt item={it} hydrated={hydrations.get(hydrationKey(it)) ?? null} />
+                  {it.channel.logo && (
+                    <span className="absolute bottom-1 end-1 flex h-[18px] max-w-[46px] items-center rounded bg-black/60 px-1 backdrop-blur-sm">
+                      <img
+                        src={it.channel.logo}
+                        alt=""
+                        loading="lazy"
+                        draggable={false}
+                        className="max-h-3.5 max-w-full object-contain"
+                      />
+                    </span>
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
