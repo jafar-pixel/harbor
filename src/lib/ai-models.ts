@@ -34,11 +34,12 @@ export const PROVIDER_NAME: Record<AiProvider, string> = {
   groq: "Groq",
 };
 
-export type AiProviderTab = "openrouter" | "groq";
+export type AiProviderTab = "openrouter" | "groq" | "anthropic";
 
 export type SettingsLike = {
   aiSearchKey: string;
   aiGroqKey: string;
+  anthropicKey: string;
   aiSearchProvider: AiProviderTab;
 };
 
@@ -46,28 +47,87 @@ export function keyForProvider(settings: SettingsLike, provider: AiProvider): st
   return provider === "groq" ? settings.aiGroqKey : settings.aiSearchKey;
 }
 
+/** The key for the AI search provider picked in Settings › AI. */
+export function keyForTab(settings: SettingsLike, tab: AiProviderTab): string {
+  return tab === "groq"
+    ? settings.aiGroqKey
+    : tab === "anthropic"
+      ? settings.anthropicKey
+      : settings.aiSearchKey;
+}
+
+/** Whether any AI search provider has a key, so the "Ask AI" buttons can show. */
+export function hasAnyAiKey(settings: SettingsLike): boolean {
+  return !!(
+    settings.aiSearchKey.trim() ||
+    settings.aiGroqKey.trim() ||
+    settings.anthropicKey.trim()
+  );
+}
+
 export function aiIsGroq(settings: { aiSearchProvider: AiProviderTab }): boolean {
   return settings.aiSearchProvider === "groq";
 }
 
 export function aiKey(settings: SettingsLike): string {
-  return settings.aiSearchProvider === "groq" ? settings.aiGroqKey : settings.aiSearchKey;
+  return keyForTab(settings, settings.aiSearchProvider);
 }
 
 export function providerTabFor(modelId: string): AiProviderTab {
+  if (isClaudeModel(modelId)) return "anthropic";
   return providerForModel(modelId) === "groq" ? "groq" : "openrouter";
+}
+
+/** Claude, called with the listener's own Anthropic key (no OpenRouter in between). */
+export const CLAUDE_MODELS: AiModel[] = [
+  { id: "claude-opus-5-5", label: "Claude Opus 5.5", provider: "anthropic", recommended: true },
+  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5", provider: "anthropic" },
+  { id: "claude-haiku-5-5", label: "Claude Haiku 5.5", provider: "anthropic" },
+];
+
+export const DEFAULT_CLAUDE_MODEL = "claude-opus-5-5";
+
+/** Anthropic's own model ids ("claude-..."); OpenRouter's carry a vendor prefix ("anthropic/..."). */
+export function isClaudeModel(modelId: string): boolean {
+  return /^claude-/i.test(modelId.trim());
 }
 
 export const DEFAULT_AI_MODEL = "google/gemma-4-26b-a4b-it:free";
 
 export const AI_MODELS: AiModel[] = [
-  { id: "google/gemma-4-26b-a4b-it:free", label: "Gemma 4 26B", provider: "gemini", free: true, recommended: true },
+  {
+    id: "google/gemma-4-26b-a4b-it:free",
+    label: "Gemma 4 26B",
+    provider: "gemini",
+    free: true,
+    recommended: true,
+  },
   { id: "openai/gpt-oss-20b:free", label: "GPT-OSS 20B", provider: "openai", free: true },
-  { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B", provider: "nvidia", free: true },
-  { id: "nvidia/nemotron-3-nano-30b-a3b:free", label: "Nemotron 3 Nano 30B", provider: "nvidia", free: true },
-  { id: "google/gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite", provider: "gemini", recommended: true },
+  {
+    id: "nvidia/nemotron-3-super-120b-a12b:free",
+    label: "Nemotron 3 Super 120B",
+    provider: "nvidia",
+    free: true,
+  },
+  {
+    id: "nvidia/nemotron-3-nano-30b-a3b:free",
+    label: "Nemotron 3 Nano 30B",
+    provider: "nvidia",
+    free: true,
+  },
+  {
+    id: "google/gemini-3.1-flash-lite",
+    label: "Gemini 3.1 Flash Lite",
+    provider: "gemini",
+    recommended: true,
+  },
   { id: "google/gemini-3.5-flash", label: "Gemini 3.5 Flash", provider: "gemini" },
-  { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", provider: "anthropic", recommended: true },
+  {
+    id: "anthropic/claude-haiku-4.5",
+    label: "Claude Haiku 4.5",
+    provider: "anthropic",
+    recommended: true,
+  },
   { id: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5", provider: "anthropic" },
   { id: "openai/gpt-4o-mini", label: "GPT-4o mini", provider: "openai" },
   { id: "openai/gpt-5.6-sol", label: "GPT-5.6 Sol", provider: "openai" },
@@ -80,14 +140,59 @@ export const AI_MODELS: AiModel[] = [
 ];
 
 export const GROQ_MODELS: AiModel[] = [
-  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B Versatile", provider: "groq", family: "meta", free: true, recommended: true },
-  { id: "meta-llama/llama-4-scout-17b-16e-instruct", label: "Llama 4 Scout 17B", provider: "groq", family: "meta", free: true, recommended: true },
-  { id: "meta-llama/llama-4-maverick-17b-128e-instruct", label: "Llama 4 Maverick 17B", provider: "groq", family: "meta", free: true },
-  { id: "moonshotai/kimi-k2-instruct", label: "Kimi K2 Instruct", provider: "groq", family: "moonshot", free: true },
-  { id: "openai/gpt-oss-120b", label: "GPT-OSS 120B", provider: "groq", family: "openai", free: true, recommended: true },
-  { id: "openai/gpt-oss-20b", label: "GPT-OSS 20B", provider: "groq", family: "openai", free: true },
+  {
+    id: "llama-3.3-70b-versatile",
+    label: "Llama 3.3 70B Versatile",
+    provider: "groq",
+    family: "meta",
+    free: true,
+    recommended: true,
+  },
+  {
+    id: "meta-llama/llama-4-scout-17b-16e-instruct",
+    label: "Llama 4 Scout 17B",
+    provider: "groq",
+    family: "meta",
+    free: true,
+    recommended: true,
+  },
+  {
+    id: "meta-llama/llama-4-maverick-17b-128e-instruct",
+    label: "Llama 4 Maverick 17B",
+    provider: "groq",
+    family: "meta",
+    free: true,
+  },
+  {
+    id: "moonshotai/kimi-k2-instruct",
+    label: "Kimi K2 Instruct",
+    provider: "groq",
+    family: "moonshot",
+    free: true,
+  },
+  {
+    id: "openai/gpt-oss-120b",
+    label: "GPT-OSS 120B",
+    provider: "groq",
+    family: "openai",
+    free: true,
+    recommended: true,
+  },
+  {
+    id: "openai/gpt-oss-20b",
+    label: "GPT-OSS 20B",
+    provider: "groq",
+    family: "openai",
+    free: true,
+  },
   { id: "qwen/qwen3-32b", label: "Qwen 3 32B", provider: "groq", family: "qwen", free: true },
-  { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B Instant", provider: "groq", family: "meta", free: true },
+  {
+    id: "llama-3.1-8b-instant",
+    label: "Llama 3.1 8B Instant",
+    provider: "groq",
+    family: "meta",
+    free: true,
+  },
 ];
 
 const MODEL_MIGRATIONS: Record<string, string> = {
@@ -144,6 +249,7 @@ const PREFIX_PROVIDER: Record<string, AiProvider> = {
 const BARE_GROQ_PREFIXES = ["llama-", "llama3-"];
 
 export function providerForModel(modelId: string): AiProvider {
+  if (isClaudeModel(modelId)) return "anthropic";
   const knownInOpenRouter = AI_MODELS.find((m) => m.id === modelId);
   if (knownInOpenRouter) return knownInOpenRouter.provider;
   const knownInGroq = GROQ_MODELS.find((m) => m.id === modelId);
@@ -157,6 +263,7 @@ export function providerForModel(modelId: string): AiProvider {
 export function modelLabelFor(modelId: string): string {
   return (
     AI_MODELS.find((m) => m.id === modelId)?.label ??
+    CLAUDE_MODELS.find((m) => m.id === modelId)?.label ??
     GROQ_MODELS.find((m) => m.id === modelId)?.label ??
     modelId
   );

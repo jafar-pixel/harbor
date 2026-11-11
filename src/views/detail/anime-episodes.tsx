@@ -45,7 +45,7 @@ import { useTvdbProxyImages } from "./anime-episodes/use-tvdb-proxy-images";
 import { pickTvdbImage } from "@/lib/providers/tvdb-proxy";
 import { TvdbOrderPanel } from "./series-episodes/tvdb-order-panel";
 import { parseKitsuId } from "@/lib/providers/kitsu";
-import { aiIsGroq, aiKey, providerForModel } from "@/lib/ai-models";
+import { aiKey, hasAnyAiKey, providerForModel } from "@/lib/ai-models";
 
 const WINDOW_STEP = 60;
 
@@ -416,7 +416,7 @@ export function AnimeEpisodes({
     displayEpisodes,
     aiKey(settings),
     settings.aiSearchModel,
-    aiIsGroq(settings),
+    settings.aiSearchProvider,
   );
   const filteredEpisodes = useMemo(() => {
     if (aiMode && ai.matched) return displayEpisodes.filter((e) => ai.matched!.has(e.number));
@@ -515,7 +515,7 @@ export function AnimeEpisodes({
               <EpisodeSearchToggle
                 searchActive={searchOpen || query.trim().length > 0}
                 aiMode={aiMode}
-                aiEnabled={!!(settings.aiSearchKey.trim() || settings.aiGroqKey.trim())}
+                aiEnabled={hasAnyAiKey(settings)}
                 aiProvider={aiProvider}
                 onSearch={() => {
                   setSearchOpen((v) => !v);

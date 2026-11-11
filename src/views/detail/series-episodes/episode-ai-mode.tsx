@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import type { Meta } from "@/lib/cinemeta";
 import { ProviderLogo } from "@/components/ai-provider-logo";
-import { aiIsGroq, aiKey, modelLabelFor, providerForModel } from "@/lib/ai-models";
+import { aiKey, modelLabelFor, providerForModel } from "@/lib/ai-models";
 import { aiFindEpisodes, type EpisodeCandidate } from "@/lib/ai-episode-search";
 import { useLocalAwareSeriesPlay } from "@/lib/local-library/use-series-play";
 import { useSettings } from "@/lib/settings";
@@ -61,7 +61,7 @@ export function EpisodeAiMode({
       const refs = await aiFindEpisodes(
         aiKey(settings),
         settings.aiSearchModel,
-        aiIsGroq(settings),
+        settings.aiSearchProvider,
         meta.name,
         candidates,
         q,

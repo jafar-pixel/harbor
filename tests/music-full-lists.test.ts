@@ -128,6 +128,8 @@ test("browse lists ask the search for a full page of 50; single songs still ask 
           return { ok: true, json: async () => ({ results: [] }) };
         },
       },
+      "@/lib/claude": { claudeAccount: () => null },
+      "./claude-dj": { askClaudeDj: async () => ({}) },
     },
     () => ({}),
   );
