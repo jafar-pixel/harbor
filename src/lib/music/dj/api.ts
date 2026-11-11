@@ -1,9 +1,12 @@
+import { claudeAccount } from "@/lib/claude";
 import { jlAccountContext, jlFunction } from "@/lib/jl/account/client";
+import { askClaudeDj } from "./claude-dj";
 import type { DjSong, VideoResult } from "./vibes";
 
 /**
  * The AI DJ's server side on the JL Vision project: music-dj (OpenAI picks the set) and
  * music-search (YouTube videos, cached for every user). Both need a signed-in JL account.
+ * With an Anthropic key saved in Settings › AI, Claude picks the set instead (claude-dj.ts).
  */
 
 export type DjSet = {
@@ -35,7 +38,8 @@ export async function call<T>(name: string, body: unknown): Promise<T> {
 }
 
 export function askDj(ask: DjAsk): Promise<DjSet> {
-  return call<DjSet>("music-dj", ask);
+  const claude = claudeAccount();
+  return claude ? askClaudeDj(claude, ask) : call<DjSet>("music-dj", ask);
 }
 
 const searches = new Map<string, Promise<VideoResult[]>>();

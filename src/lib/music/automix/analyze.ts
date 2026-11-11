@@ -1,4 +1,6 @@
+import { claudeAccount } from "@/lib/claude";
 import { call } from "../dj/api";
+import { analyzeWithClaude } from "../dj/claude-dj";
 import { readMusicPreference, writeMusicPreference } from "../preferences";
 
 /**
@@ -40,9 +42,11 @@ export async function analyzeSongs(songs: Song[]): Promise<Map<string, SongFacts
   const unique = [...new Map(wanted.map((s) => [id(s), s])).values()];
   for (let i = 0; i < unique.length; i += 50) {
     const batch = unique.slice(i, i + 50);
-    const out = await call<{ songs: (Song & SongFacts)[] }>("music-dj", {
-      analyze: batch.map((s) => ({ artist: s.artist, title: s.title })),
-    });
+    const asked = batch.map((s) => ({ artist: s.artist, title: s.title }));
+    const claude = claudeAccount();
+    const out = claude
+      ? { songs: await analyzeWithClaude(claude, asked) }
+      : await call<{ songs: (Song & SongFacts)[] }>("music-dj", { analyze: asked });
     for (const s of out.songs ?? []) cache[id(s)] = { bpm: s.bpm, key: s.key, energy: s.energy };
     // Songs the DJ couldn't place still count as asked.
     for (const s of batch) cache[id(s)] ??= {};

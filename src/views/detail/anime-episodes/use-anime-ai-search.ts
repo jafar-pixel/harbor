@@ -1,13 +1,14 @@
 import { useState } from "react";
 import type { KitsuEpisode } from "@/lib/providers/kitsu";
 import { aiFindEpisodes, type EpisodeCandidate } from "@/lib/ai-episode-search";
+import type { AiProviderTab } from "@/lib/ai-models";
 
 export function useAnimeAiSearch(
   showName: string,
   episodes: KitsuEpisode[],
   key: string,
   model: string,
-  isGroq: boolean,
+  provider: AiProviderTab,
 ) {
   const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
   const [matched, setMatched] = useState<Set<number> | null>(null);
@@ -23,7 +24,7 @@ export function useAnimeAiSearch(
       overview: e.synopsis,
     }));
     try {
-      const refs = await aiFindEpisodes(key, model, isGroq, showName, candidates, q);
+      const refs = await aiFindEpisodes(key, model, provider, showName, candidates, q);
       const nums = new Set<number>();
       for (const r of refs) {
         const ep = episodes.find(
