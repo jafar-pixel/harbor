@@ -1,10 +1,35 @@
-import { fetchAndParseXmltv, indexProgramsByChannel } from "./xmltv";
+import { fetchAndParseXmltv, indexProgramsByChannel, type ProgramFilter } from "./xmltv";
 import { readIptvCache, writeIptvCache } from "./persistent-cache";
 import type { EpgChannelMeta, EpgIndex, EpgProgram } from "./types";
 
 const TTL_MS = 60 * 60 * 1000;
 const DISK_TTL_MS = 12 * 60 * 60 * 1000;
 const PROGRESS_PUBLISH_MS = 300;
+
+/**
+ * The part of a guide that is kept: the guide shows 12 hours back and 36 ahead
+ * (live/guide/guide-utils.ts), so programs outside 14 hours back to 40 ahead are dropped as the
+ * guide is read. A provider's 7-day guide for thousands of channels held whole ran the TV app's
+ * page out of memory (V8 "Ineffective mark-compacts near heap limit" at about 720 MB on a Shield).
+ */
+const KEEP_BACK_MS = 14 * 60 * 60 * 1000;
+const KEEP_AHEAD_MS = 40 * 60 * 60 * 1000;
+
+export function guideWindow(nowMs = Date.now()): ProgramFilter {
+  const from = nowMs - KEEP_BACK_MS;
+  const to = nowMs + KEEP_AHEAD_MS;
+  return (p) => p.endMs > from && p.startMs < to;
+}
+
+/** A saved guide trimmed to the window, so an old copy from disk doesn't bring its other days back. */
+function trimIndex(value: EpgIndex, keep: ProgramFilter): EpgIndex {
+  const byChannel = new Map<string, EpgProgram[]>();
+  for (const [id, list] of value.byChannel) {
+    const kept = list.filter(keep);
+    if (kept.length) byChannel.set(id, kept);
+  }
+  return { ...value, byChannel };
+}
 
 const cache = new Map<string, EpgIndex>();
 const inflight = new Map<string, Promise<EpgIndex>>();
@@ -47,8 +72,9 @@ async function restoreFromDisk(playlistId: string, signature: string) {
   if (!entry) return;
   if (entry.sourceSignature !== signature) return;
   if (Date.now() - entry.savedAt > DISK_TTL_MS) return;
-  const value = entry.value;
-  if (!value || !(value.byChannel instanceof Map) || value.byChannel.size === 0) return;
+  if (!entry.value || !(entry.value.byChannel instanceof Map)) return;
+  const value = trimIndex(entry.value, guideWindow());
+  if (value.byChannel.size === 0) return;
   const current = cache.get(playlistId);
   if (current && current.byChannel.size >= value.byChannel.size) return;
   cache.set(playlistId, value);
@@ -125,7 +151,7 @@ async function doFetchWithFallback(
   let lastMeta: Map<string, EpgChannelMeta> | undefined;
   for (const url of urls) {
     try {
-      const { programs, channelMeta } = await fetchAndParseXmltv(url, onProgress);
+      const { programs, channelMeta } = await fetchAndParseXmltv(url, onProgress, guideWindow());
       if (channelMeta.size > 0) lastMeta = channelMeta;
       if (programs.length === 0) {
         lastErr = new Error("EPG endpoint returned no programs");

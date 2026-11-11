@@ -41,9 +41,17 @@ async function iptvFetch(url: string, signal: AbortSignal): Promise<Response> {
   });
 }
 
+/** Programs a caller keeps; the rest are dropped while the guide is read. */
+export type ProgramFilter = (p: EpgProgram) => boolean;
+
+/** Long descriptions are cut to this; the app shows a few lines at most. */
+const MAX_DESCRIPTION_CHARS = 500;
+
 export async function fetchAndParseXmltv(
   url: string,
   onProgress?: (programs: EpgProgram[], channelMeta: Map<string, EpgChannelMeta>) => void,
+  /** Keep only these programs; a guide's other days are never held in memory. */
+  keep?: ProgramFilter,
 ): Promise<XmltvParseResult> {
   const ac = new AbortController();
   let stallTimer: ReturnType<typeof setTimeout> | null = null;
@@ -67,7 +75,7 @@ export async function fetchAndParseXmltv(
     if (!rawReader) {
       const text = await res.text();
       console.info(`[epg] non-stream body head: ${text.slice(0, 200).replace(/\s+/g, " ")}`);
-      const out = parseXmltv(text);
+      const out = parseXmltv(text, keep);
       console.info(`[epg] parsed ${out.programs.length} programs (non-stream) from ${url}`);
       return out;
     }
@@ -131,7 +139,7 @@ export async function fetchAndParseXmltv(
         console.info(`[epg] body head: ${buffer.slice(0, 200).replace(/\s+/g, " ")}`);
       }
       const prevLen = out.length;
-      buffer = drainBlocks(buffer, out, channelMeta);
+      buffer = drainBlocks(buffer, out, channelMeta, keep);
       const now = Date.now();
       if (now - lastLog > 3000) {
         const mb = (received / 1024 / 1024).toFixed(1);
@@ -142,7 +150,7 @@ export async function fetchAndParseXmltv(
       }
     }
     buffer += decoder.decode();
-    drainBlocks(buffer, out, channelMeta);
+    drainBlocks(buffer, out, channelMeta, keep);
     const totalSec = ((Date.now() - startedAt) / 1000).toFixed(1);
     console.info(
       `[epg] parsed ${out.length} programs, ${channelMeta.size} channel defs, ${(received / 1024 / 1024).toFixed(1)}MB in ${totalSec}s from ${url}`,
@@ -153,10 +161,10 @@ export async function fetchAndParseXmltv(
   }
 }
 
-export function parseXmltv(text: string): XmltvParseResult {
+export function parseXmltv(text: string, keep?: ProgramFilter): XmltvParseResult {
   const programs: EpgProgram[] = [];
   const channelMeta = new Map<string, EpgChannelMeta>();
-  drainBlocks(text, programs, channelMeta);
+  drainBlocks(text, programs, channelMeta, keep);
   return { programs, channelMeta };
 }
 
@@ -164,6 +172,7 @@ function drainBlocks(
   buffer: string,
   out: EpgProgram[],
   channelMeta: Map<string, EpgChannelMeta>,
+  keep?: ProgramFilter,
 ): string {
   // Walk the buffer with a cursor and remember where the next tag of each kind is. Searching the
   // whole remainder for "<channel " before every programme made a large guide quadratic: once the
@@ -188,9 +197,15 @@ function drainBlocks(
     const endIdx = buffer.indexOf("</programme>", closeOpen);
     if (endIdx < 0) return buffer.slice(prIdx);
     const prog = parseProgramme(buffer.slice(prIdx, endIdx + "</programme>".length));
-    if (prog) out.push(prog);
+    if (prog && (!keep || keep(prog))) out.push(prog);
     pos = endIdx + "</programme>".length;
   }
+}
+
+function clip(text: string | null): string | null {
+  return text && text.length > MAX_DESCRIPTION_CHARS
+    ? `${text.slice(0, MAX_DESCRIPTION_CHARS - 1)}…`
+    : text;
 }
 
 function trimLeftover(buffer: string, pos = 0): string {
@@ -217,7 +232,7 @@ function parseProgramme(block: string): EpgProgram | null {
   return {
     channelTvgId: channel,
     title: childText(block, "title") || "Untitled",
-    description: childText(block, "desc"),
+    description: clip(childText(block, "desc")),
     category: childText(block, "category"),
     iconUrl: childAttr(block, "icon", "src"),
     startMs,
