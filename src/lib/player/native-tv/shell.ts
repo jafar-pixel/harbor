@@ -31,19 +31,6 @@ export type NativeTvPlayer = {
   setPreferredAudioLanguage?(lang: string): void;
   /** A short message over the full-screen video, ignored outside full screen; absent from older app builds. */
   showMessage?(text: string): void;
-  /** A subtitle as WebVTT text, added to the playing video; absent from older app builds. */
-  addSubtitleText?(vtt: string, language: string, label: string, select: boolean): boolean;
-  /** Subtitles on or off; absent from older app builds. */
-  setSubtitlesEnabled?(on: boolean): void;
-  /** Subtitle timing in seconds, positive for later; absent from older app builds. */
-  setSubtitleDelay?(sec: number): void;
-  /**
-   * The skip button over the video, as JSON {label, toSec} or {label, action: "next"}; an empty
-   * string hides it. Absent from older app builds.
-   */
-  setSkipButton?(json: string): void;
-  /** Audio timing in seconds, positive for later; absent from older app builds. */
-  setAudioDelay?(sec: number): void;
 };
 
 /** One entry of `audioTracks()` and of the `tracks` event (android-tv/README.md). */
@@ -71,17 +58,6 @@ export type NativeTvOptions = {
   accent?: string;
   /** The title and the stream's labels, shown across the top with the bar. */
   info?: string;
-  /** Settings › Subtitles: size in px at 1080p, colours, and "shadow", "outline" or "box". */
-  subtitles?: {
-    size: number;
-    color: string;
-    edgeColor: string;
-    style: "shadow" | "outline" | "box";
-    boxColor: string;
-    boxOpacity: number;
-  };
-  /** Settings › Intros: what skips by itself, and whether the skip button shows. */
-  skip?: { intro: boolean; recap: boolean; outro: boolean; button: boolean };
 };
 
 export type NativeTvCapabilities = {
@@ -185,16 +161,6 @@ export function nativeTvOptions(s: {
   auddKey?: string;
   songIdAiKey?: string;
   songIdAiModel?: string;
-  subFontSize?: number;
-  subFontColor?: string;
-  subBorderColor?: string;
-  subStyle?: "shadow" | "outline" | "box";
-  subBoxColor?: string;
-  subBoxOpacity?: number;
-  autoSkipIntro?: boolean;
-  autoSkipRecap?: boolean;
-  autoSkipOutro?: boolean;
-  showSkipButton?: boolean;
 }): NativeTvOptions {
   const ai = s.songIdProvider === "ai";
   return {
@@ -207,20 +173,6 @@ export function nativeTvOptions(s: {
       provider: s.songIdProvider,
       key: ((ai ? s.songIdAiKey : s.auddKey) ?? "").trim(),
       model: (s.songIdAiModel ?? "").trim(),
-    },
-    subtitles: {
-      size: s.subFontSize ?? 32,
-      color: s.subFontColor ?? "#FFFFFF",
-      edgeColor: s.subBorderColor ?? "#000000",
-      style: s.subStyle ?? "shadow",
-      boxColor: s.subBoxColor ?? "#000000",
-      boxOpacity: s.subBoxOpacity ?? 0.6,
-    },
-    skip: {
-      intro: s.autoSkipIntro === true,
-      recap: s.autoSkipRecap === true,
-      outro: s.autoSkipOutro === true,
-      button: s.showSkipButton !== false,
     },
   };
 }
