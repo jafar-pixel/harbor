@@ -18,12 +18,13 @@ import {
   type PreparedChannel,
   type SportsChannelIndex,
   type ChannelMatch,
+  buildSportsChannelIndex,
 } from "@/lib/sports/iptv-match";
 import { hostOf } from "@/lib/sports/stream-resolver";
 import { setGameFeeds } from "@/lib/sports/game-feeds";
 import { useView } from "@/lib/view";
 import { useAllPlaylists } from "@/views/live/hooks/use-all-playlists";
-import { loadPlaylist } from "@/lib/iptv/store";
+import { getCachedPlaylist, loadPlaylist, subscribePlaylists } from "@/lib/iptv/store";
 import { AddStreamDialog, useStreamPlayer } from "./add-stream-dialog";
 import { setAttachedStream, toggleAttachedChannel, useAttachments } from "./source-store";
 import { fixtureLabelOf, useChannelPlayer } from "./watch-flow";
@@ -42,6 +43,29 @@ function flatten(playlists: Map<string, IptvPlaylist>): IptvChannel[] {
 }
 
 const EMPTY_INDEX: SportsChannelIndex = { channels: [], scanned: 0 };
+
+/** Games already started by themselves this session (WatchSources `autoPlay`). */
+const autoStartedGames = new Set<string>();
+
+/**
+ * The channels already loaded in the app (Live TV and the Sports Hub load the active source), so
+ * a game page can match straight away instead of waiting for every source to load and be
+ * indexed, which can take minutes on the TV app with two large providers.
+ */
+function useLoadedChannelIndex(): SportsChannelIndex {
+  const sources = usePlaylists();
+  const [version, setVersion] = useState(0);
+  useEffect(() => subscribePlaylists(() => setVersion((v) => v + 1)), []);
+  return useMemo(() => {
+    void version;
+    const channels: IptvChannel[] = [];
+    for (const source of sources) {
+      const playlist = getCachedPlaylist(source.id);
+      if (playlist && !playlist.loading) channels.push(...playlist.channels);
+    }
+    return channels.length ? buildSportsChannelIndex(channels) : EMPTY_INDEX;
+  }, [sources, version]);
+}
 
 export function useSportsChannelIndex(): SportsChannelIndex & {
   loading: boolean;
@@ -130,6 +154,8 @@ type WatchSourcesProps = {
   game: SportsGame;
   index?: SportsChannelIndex;
   broadcastNames?: readonly string[];
+  /** A live game opened from a poster starts on its best channel as soon as one is found. */
+  autoPlay?: boolean;
 };
 
 export function WatchSources(props: WatchSourcesProps) {
@@ -139,14 +165,16 @@ export function WatchSources(props: WatchSourcesProps) {
   return <ActiveWatchSources {...props} />;
 }
 
-function ActiveWatchSources({ game, index, broadcastNames }: WatchSourcesProps) {
+function ActiveWatchSources({ game, index, broadcastNames, autoPlay }: WatchSourcesProps) {
   const t = useT();
   const { setView } = useView();
   const playStream = useStreamPlayer();
   const playChannel = useChannelPlayer();
   const sources = usePlaylists();
   const own = useSportsChannelIndex();
-  const active = index ?? own;
+  const loaded = useLoadedChannelIndex();
+  // Match against what is already loaded until every source has been indexed.
+  const active = index ?? (own.loading && loaded.channels.length ? loaded : own);
   const attachments = useAttachments();
   const attachedIds = useMemo(
     () => attachments.channels[game.league] ?? [],
@@ -208,6 +236,14 @@ function ActiveWatchSources({ game, index, broadcastNames }: WatchSourcesProps) 
     } else if (sources.length) setPicking(true);
     else setView("live");
   };
+  // Live and a sure channel found: start it once, as if Play had been pressed.
+  // Once per game per session, so coming back to the page after watching doesn't restart it.
+  const sure = !!stream || (!!selected && (selected.tier === "exact" || selected.attached));
+  useEffect(() => {
+    if (!autoPlay || game.state !== "in" || !sure || autoStartedGames.has(game.id)) return;
+    autoStartedGames.add(game.id);
+    play();
+  }, [autoPlay, game.state, game.id, sure]);
   return (
     <section ref={anchor} className="sh-watch-panel">
       <div className="sh-watch-heading">
@@ -235,7 +271,9 @@ function ActiveWatchSources({ game, index, broadcastNames }: WatchSourcesProps) 
           {t("Event has not started. This opens the channel’s current broadcast.")}
         </p>
       )}
-      {(matching || own.loading) && <small role="status">{t("Checking your channels…")}</small>}
+      {(matching || (own.loading && !matches.length)) && (
+        <small role="status">{t("Checking your channels…")}</small>
+      )}
       <div className="sh-watch-selected">
         <span>
           {stream
