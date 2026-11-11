@@ -5,10 +5,8 @@ import { useT } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
 import { hydrationKey, type NowItem } from "./use-live-home";
 import { ChannelArt } from "./channel-art";
+import { REST_TUNE_MS } from "./rest-tune";
 import { fmtClock } from "./now-format";
-
-/** How long the remote rests on a channel before Your TV switches to it. */
-const PREVIEW_DWELL_MS = 900;
 
 export type SurfTab = { key: string; label: string; items: NowItem[] };
 
@@ -90,7 +88,7 @@ export function SurfList({
                   // Surfing: the channel goes on Your TV once the remote rests on it.
                   window.clearTimeout(dwell.current);
                   if (!on)
-                    dwell.current = window.setTimeout(() => onTune(it.channel), PREVIEW_DWELL_MS);
+                    dwell.current = window.setTimeout(() => onTune(it.channel), REST_TUNE_MS);
                 }}
                 onBlur={() => window.clearTimeout(dwell.current)}
                 className={`flex w-full items-center gap-3 rounded-xl p-2 text-start transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white/85 ${

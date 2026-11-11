@@ -6,16 +6,20 @@ import type { IptvChannel } from "@/lib/iptv/types";
 import { channelNumber, fmtLeft } from "./now-format";
 import type { NowItem } from "./use-live-home";
 import { useAmbientTarget } from "./ambient";
+import { useRestTune } from "./rest-tune";
 import { ChannelArt, programPicture, useChannelGame } from "./channel-art";
 
 export function NowCard({
   item,
   hydrated,
   onPlay,
+  onRest,
 }: {
   item: NowItem;
   hydrated?: Meta | null;
   onPlay: (ch: IptvChannel) => void;
+  /** Resting on the card with the remote previews the channel on Your TV. */
+  onRest?: (ch: IptvChannel) => void;
 }) {
   const t = useT();
   const { channel, current, progress } = item;
@@ -30,13 +34,19 @@ export function NowCard({
   const ambient = useAmbientTarget(`ch:${channel.id}`, () => (
     <ChannelArt item={item} hydrated={hydrated} />
   ));
+  const rest = useRestTune(onRest ? () => onRest(channel) : null);
 
   return (
     <button
       type="button"
       data-art={backdrop || channel.logo || ""}
       onClick={() => onPlay(channel)}
-      {...ambient}
+      onMouseEnter={ambient.onMouseEnter}
+      onFocus={() => {
+        ambient.onFocus();
+        rest.onFocus();
+      }}
+      onBlur={rest.onBlur}
       aria-label={t("Play {name}", { name: channel.name })}
       className="group group/now relative flex aspect-[16/9] w-full flex-col justify-end overflow-hidden rounded-lg border border-edge-soft/55 bg-elevated text-start transition-all duration-200 hover:border-edge hover:shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)]"
     >

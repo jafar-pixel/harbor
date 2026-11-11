@@ -3,8 +3,8 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 /**
  * Live TV Home's ambient fan art: whatever the remote rests on (a channel, a game, a movie)
  * fills the screen behind the page, fading from one to the next, like a TV home screen. The art
- * is sharp at the top end and fades into the page toward the start and the bottom, so text stays
- * readable without a flat colour behind it.
+ * is sharp at the top end and melts away toward the start and the bottom (a mask, not a colour
+ * over it), so the viewer's own theme backdrop shows through around it.
  */
 
 type Ambient = { key: string; art: React.ReactNode };
@@ -53,10 +53,6 @@ export function AmbientBackdrop({
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-[5] overflow-hidden">
         {layers.prev && <AmbientLayer key={`p:${layers.prev.key}`} art={layers.prev.art} leaving />}
         {layers.cur && <AmbientLayer key={`c:${layers.cur.key}`} art={layers.cur.art} />}
-        {/* Fade into the page toward the start and the bottom, and a soft vignette. */}
-        <div className="absolute inset-0 bg-gradient-to-r from-canvas via-canvas/75 to-canvas/10 rtl:bg-gradient-to-l" />
-        <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/60 to-transparent" />
-        <div className="absolute inset-0 shadow-[inset_0_0_220px_rgba(0,0,0,0.55)]" />
       </div>
       {children}
     </AmbientContext.Provider>
@@ -73,10 +69,18 @@ function AmbientLayer({ art, leaving = false }: { art: React.ReactNode; leaving?
     const id = window.requestAnimationFrame(() => setOn(true));
     return () => window.cancelAnimationFrame(id);
   }, [leaving]);
+  const rtl = typeof document !== "undefined" && document.dir === "rtl";
+  const fade = `linear-gradient(to ${rtl ? "right" : "left"}, #000 30%, transparent 100%), linear-gradient(to top, transparent 0%, #000 60%)`;
   return (
     <div
       className="absolute inset-y-0 end-0 w-[78%] transition-opacity duration-700 ease-out"
-      style={{ opacity: on ? 0.9 : 0 }}
+      style={{
+        opacity: on ? 0.8 : 0,
+        maskImage: fade,
+        WebkitMaskImage: fade,
+        maskComposite: "intersect",
+        WebkitMaskComposite: "source-in",
+      }}
     >
       <div className="relative h-full w-full">{art}</div>
     </div>

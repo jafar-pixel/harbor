@@ -9,6 +9,7 @@ import { useView } from "@/lib/view";
 import { useWeeklyTop } from "@/lib/weekly-top";
 import { useChannelHydration } from "../hooks/use-channel-hydration";
 import { useAmbientTarget } from "./ambient";
+import { useRestTune } from "./rest-tune";
 import { ChannelArt, GameArt } from "./channel-art";
 import { hydrationKey, type NowItem } from "./use-live-home";
 
@@ -25,6 +26,7 @@ function RankTile({
   live,
   art,
   onClick,
+  onRest,
 }: {
   /** Names the tile for the ambient backdrop. */
   id: string;
@@ -34,14 +36,22 @@ function RankTile({
   live?: boolean;
   art: React.ReactNode;
   onClick: () => void;
+  /** Resting on the tile with the remote previews its channel on Your TV. */
+  onRest?: () => void;
 }) {
   const t = useT();
   const ambient = useAmbientTarget(id, () => art);
+  const rest = useRestTune(onRest ?? null);
   return (
     <button
       type="button"
       onClick={onClick}
-      {...ambient}
+      onMouseEnter={ambient.onMouseEnter}
+      onFocus={() => {
+        ambient.onFocus();
+        rest.onFocus();
+      }}
+      onBlur={rest.onBlur}
       aria-label={`${rank}. ${title}`}
       className="group relative flex aspect-[16/9] w-full overflow-hidden rounded-lg border border-edge-soft/55 bg-elevated text-start outline-none transition-all duration-200 hover:border-edge focus-visible:ring-2 focus-visible:ring-white/85"
     >
@@ -122,10 +132,13 @@ export function WeeklyTopRow({ kind, tmdbKey }: { kind: "movie" | "series"; tmdb
 export function SportsTopRow({
   games,
   onWatch,
+  onPreview,
   onOpenGame,
 }: {
   games: readonly { game: SportsGame; channels: readonly { channel: IptvChannel }[] }[];
   onWatch: (ch: IptvChannel) => void;
+  /** Puts a channel on Your TV without opening it (the remote resting on a tile). */
+  onPreview: (ch: IptvChannel) => void;
   onOpenGame: (game: SportsGame) => void;
 }) {
   const t = useT();
@@ -148,6 +161,7 @@ export function SportsTopRow({
           live={game.state === "in"}
           art={<GameArt game={game} />}
           onClick={() => (channels[0] ? onWatch(channels[0].channel) : onOpenGame(game))}
+          onRest={channels[0] ? () => onPreview(channels[0].channel) : undefined}
         />
       ))}
     </Row>
@@ -158,9 +172,11 @@ export function SportsTopRow({
 export function ChannelsTopRow({
   items,
   onPlay,
+  onPreview,
 }: {
   items: NowItem[];
   onPlay: (ch: IptvChannel) => void;
+  onPreview: (ch: IptvChannel) => void;
 }) {
   const t = useT();
   const top = items.slice(0, 10);
@@ -188,6 +204,7 @@ export function ChannelsTopRow({
           live
           art={<ChannelArt item={it} hydrated={hydrations.get(hydrationKey(it)) ?? null} zoom />}
           onClick={() => onPlay(it.channel)}
+          onRest={() => onPreview(it.channel)}
         />
       ))}
     </Row>
