@@ -46,7 +46,10 @@ export function SportsTvScreen({
   const showVideo = !!channel?.url && active && pageVisible && !player;
   // On the Shield the TV app's own player plays in this box, and full screen is the same stream.
   const box = useRef<HTMLDivElement>(null);
-  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo, sound);
+  // On the Shield the picture fills the whole box (no strip under it): the game's title and
+  // score are in the card below, and OK opens the full player, which has volume, the star and
+  // the game's other feeds.
+  const nativeTv = useNativeSmallTv(box, showVideo ? channel : null, showVideo, sound, 0);
   const watch = (c: IptvChannel) => {
     if (!nativeTv.fullScreen()) onWatch(c);
   };
@@ -73,11 +76,21 @@ export function SportsTvScreen({
   return (
     <div
       ref={box}
+      // The remote reaches the screen itself on the TV app; OK puts the game on full screen.
+      tabIndex={nativeTv.native && channel ? 0 : undefined}
+      role={nativeTv.native && channel ? "button" : undefined}
+      aria-label={nativeTv.native && channel && tuned ? `${t("Watch")}: ${tuned.title}` : undefined}
+      onKeyDown={(e) => {
+        if (!nativeTv.native || !channel || (e.key !== "Enter" && e.key !== " ")) return;
+        e.preventDefault();
+        watch(channel);
+      }}
+      onClick={() => nativeTv.native && channel && watch(channel)}
       onDoubleClick={() => channel && watch(channel)}
       onMouseMove={wake}
       onMouseLeave={() => setIdle(true)}
       onFocus={wake}
-      className={`relative h-full min-h-0 w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] ${overlayHidden ? "cursor-none" : "cursor-pointer"}`}
+      className={`relative h-full min-h-0 w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] outline-none focus-visible:ring-4 focus-visible:ring-white/85 ${overlayHidden ? "cursor-none" : "cursor-pointer"}`}
     >
       {channel?.logo ? (
         <img
@@ -120,7 +133,7 @@ export function SportsTvScreen({
           {t("None of your providers lists a channel for this game yet.")}
         </p>
       )}
-      {tuned && (
+      {tuned && !nativeTv.native && (
         <div
           className={`absolute inset-x-0 bottom-0 flex flex-col gap-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-14 transition-opacity duration-300 ${overlayHidden ? "pointer-events-none opacity-0" : "opacity-100"}`}
         >

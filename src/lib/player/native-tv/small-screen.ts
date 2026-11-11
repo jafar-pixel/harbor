@@ -48,6 +48,8 @@ export function useNativeSmallTv(
   channel: IptvChannel | null,
   active: boolean,
   sound: { volume: number; muted: boolean },
+  /** The strip under the video kept for the page's own controls; 0 lets the video fill the box. */
+  barPx: number = NATIVE_HERO_BAR_PX + 16,
 ): { native: boolean; playing: boolean; fullScreen: () => boolean } {
   const native = nativeTvAvailable();
   const [playing, setPlaying] = useState(false);
@@ -73,7 +75,7 @@ export function useNativeSmallTv(
       const el = box.current;
       if (!el || owner !== me) return;
       const r = el.getBoundingClientRect();
-      const h = r.height - NATIVE_HERO_BAR_PX - 16;
+      const h = r.height - barPx;
       // Shown while any of the box is on screen: Your TV's box can run past the bottom edge.
       const onScreen = r.bottom > 0 && r.top < window.innerHeight && r.width > 0 && h > 0;
       const now = Date.now();
@@ -129,7 +131,7 @@ export function useNativeSmallTv(
         else p.stop();
       }
     };
-  }, [native, active, channel?.id, channel?.url]);
+  }, [native, active, channel?.id, channel?.url, barPx]);
 
   const level = sound.muted ? 0 : sound.volume;
   useEffect(() => {

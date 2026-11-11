@@ -88,6 +88,7 @@ export function SportsHubHome({
   onPersonalize: () => void;
 }) {
   const t = useT();
+  const tvApp = nativeTvAvailable();
   const locale = useUiLanguage();
   const chips = useMemo(() => hubChips(selected, HUB_LEAGUES), [selected]);
   const feedKeys = useMemo(() => hubFeedLeagues(chips, HUB_LEAGUES), [chips]);
@@ -275,7 +276,9 @@ export function SportsHubHome({
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">
         <div className="flex min-w-0 flex-col gap-4">
-          <div className="h-[clamp(300px,46vh,560px)]">
+          {/* The TV app's screen is a true 16:9 TV, so the picture fills it; elsewhere the box
+              keeps its height and its controls sit over the picture. */}
+          <div className={tvApp ? "aspect-video w-full" : "h-[clamp(300px,46vh,560px)]"}>
             <SportsTvScreen
               tuned={tuned}
               active={active}
