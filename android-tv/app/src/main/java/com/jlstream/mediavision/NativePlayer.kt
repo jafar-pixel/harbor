@@ -339,6 +339,7 @@ class NativePlayer(
         "audio-menu" -> extraButton(R.drawable.jl_ic_audio, "Audio") { openMenu() }
         "subtitle-menu" -> extraButton(R.drawable.jl_ic_subtitles, "Subtitles") { openMenu() }
         "menu" -> extraButton(R.drawable.jl_ic_menu, "Player menu") { openMenu() }
+        "today-games" -> extraButton(R.drawable.jl_ic_games, "Today's games") { control("today-games") }
         "speed-menu" -> extraButton(R.drawable.jl_ic_speed, "Playback speed") { showMessage(nextSpeed()) }
         "prev-episode" -> extraButton(R.drawable.jl_ic_prev, "Previous episode") { control("prev-episode") }
         "next-episode" -> extraButton(R.drawable.jl_ic_next, "Next episode") { control("next-episode") }
