@@ -1,6 +1,7 @@
 import type { EpgIndex, IptvChannel } from "../../iptv/types.ts";
 import type { SportsGame, SportsSide } from "../../sports/espn.ts";
 import { parseEventChannel, teamKey, type ParsedEvent } from "./event-parse.ts";
+import { createEventChannelMatcher } from "../../sports/event-match.ts";
 
 /**
  * "Which of my channels has this game?" against the customer's own playlist, on the device:
@@ -352,8 +353,42 @@ export function channelsForGame(
   return found;
 }
 
+/** Channel names that read like a game ("Thunder v Trail Blazers", "Ravens at Chargers"). */
+const REGIONAL_NETWORK = /^(?:ABC|CBS|FOX|NBC)$/i;
+const MATCHUP_RE = /\b(?:VS?\.?|VERSUS|AT)\s|\s@\s/;
+const matchupCache = new WeakMap<SportsChannelIndex, SportsChannelIndex["named"]>();
+
+function matchupNamed(index: SportsChannelIndex): SportsChannelIndex["named"] {
+  let list = matchupCache.get(index);
+  if (!list) {
+    list = index.named.filter((n) => MATCHUP_RE.test(n.upper));
+    matchupCache.set(index, list);
+  }
+  return list;
+}
+
+/**
+ * Channels named after this game, for every sport: provider event feeds such as "US: NBA PASS
+ * PPV 6 - Oklahoma City Thunder v Portland Trail Blazers" or "NCAAF 21: 3:30PM Pittsburgh at
+ * Notre Dame" (the parsed event channels above cover football only). Both teams must be named
+ * in the same game, by full name, school or city, or code (sports/event-match.ts).
+ */
+function namedEventChannels(game: SportsGame, index: SportsChannelIndex): GameChannel[] {
+  const evidence = createEventChannelMatcher(game);
+  return matchupNamed(index)
+    .filter((n) => {
+      const e = evidence(n.channel.name);
+      return e.both && !e.conflict;
+    })
+    .map((n) => ({ channel: n.channel, via: "event" as const, alternate: false }));
+}
+
 function matchGameChannels(game: SportsGame, index: SportsChannelIndex, now: Date): GameChannel[] {
-  const events = eventChannels(game, index).sort((a, b) => byQuality(a.channel, b.channel));
+  // A channel named after the game beats the network's: a network such as NBC is hundreds of
+  // local stations, and the one picked by name is often showing its own region's programming.
+  const events = [...eventChannels(game, index), ...namedEventChannels(game, index)].sort((a, b) =>
+    byQuality(a.channel, b.channel),
+  );
   const networks = [
     ...new Set([game.network, ...(game.broadcasts ?? [])].filter((name): name is string => !!name)),
   ];
@@ -361,6 +396,10 @@ function matchGameChannels(game: SportsGame, index: SportsChannelIndex, now: Dat
   // The game's own feeds (event channels and the network it airs on) lead; a guide match is
   // often another country's broadcast of it.
   const onAir = new Set([...events.map((c) => c.channel.id), ...network.map((c) => c.id)]);
+  // ABC, CBS, FOX and NBC are local stations with regional programming, so a feed named after
+  // the game is surer than the network's name; a national cable network (ESPN, TNT) is the game.
+  const regional = networks.some((n) => REGIONAL_NETWORK.test(n.trim()));
+  const gameFirst = (c: GameChannel) => (regional && c.via === "event" ? 0 : 1);
   const ordered: GameChannel[] = [
     ...events.filter((c) => !c.alternate),
     ...network.map((channel) => ({ channel, via: "network" as const, alternate: false })),
@@ -370,6 +409,7 @@ function matchGameChannels(game: SportsGame, index: SportsChannelIndex, now: Dat
   ordered.sort(
     (a, b) =>
       Number(a.alternate) - Number(b.alternate) ||
+      gameFirst(a) - gameFirst(b) ||
       Number(!onAir.has(a.channel.id)) - Number(!onAir.has(b.channel.id)) ||
       foreignFeed(a.channel) - foreignFeed(b.channel) ||
       byQuality(a.channel, b.channel) ||
