@@ -56,6 +56,46 @@ export function getCachedEpg(playlistId: string): EpgIndex | null {
   return cache.get(playlistId) ?? null;
 }
 
+/** How long a guide nothing shows stays in memory (navigation back and forth keeps it). */
+const RELEASE_AFTER_MS = 20_000;
+const users = new Map<string, number>();
+const releaseTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+/**
+ * A screen showing this playlist's guide. Once no screen does, the guide leaves memory after a
+ * short while; the copy saved on the device stays, so coming back restores it without a
+ * download. A provider's guide for thousands of channels held after Live TV closed left a movie
+ * played afterwards without memory on the TV (the page was killed, and the TV killed other
+ * apps). Returns the release.
+ */
+export function retainEpg(playlistId: string): () => void {
+  users.set(playlistId, (users.get(playlistId) ?? 0) + 1);
+  const pending = releaseTimers.get(playlistId);
+  if (pending) {
+    clearTimeout(pending);
+    releaseTimers.delete(playlistId);
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    const left = (users.get(playlistId) ?? 1) - 1;
+    if (left > 0) {
+      users.set(playlistId, left);
+      return;
+    }
+    users.delete(playlistId);
+    releaseTimers.set(
+      playlistId,
+      setTimeout(() => {
+        releaseTimers.delete(playlistId);
+        if (users.has(playlistId) || inflight.has(playlistId)) return;
+        cache.delete(playlistId);
+      }, RELEASE_AFTER_MS),
+    );
+  };
+}
+
 export function clearEpg(playlistId?: string) {
   if (playlistId) {
     cache.delete(playlistId);

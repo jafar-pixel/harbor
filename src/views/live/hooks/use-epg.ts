@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCachedEpg, loadEpg, subscribeEpg } from "@/lib/iptv/epg-store";
+import { getCachedEpg, loadEpg, retainEpg, subscribeEpg } from "@/lib/iptv/epg-store";
 import { deriveEpgUrls } from "@/lib/iptv/m3u";
 import { findCurrent } from "@/lib/iptv/xmltv";
 import type { EpgIndex, EpgProgram, IptvPlaylistSource } from "@/lib/iptv/types";
@@ -31,6 +31,8 @@ export function useEpg(
       return;
     }
     let cancelled = false;
+    // Held while this screen shows the guide; it leaves memory once no screen does.
+    const release = retainEpg(source.id);
     setError(null);
     setLoading(true);
     loadEpg({ playlistId: source.id, urls })
@@ -52,6 +54,8 @@ export function useEpg(
     return () => {
       cancelled = true;
       unsub();
+      release();
+      setIndex(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source?.id, source?.url, source?.epgUrl, extraKey]);
