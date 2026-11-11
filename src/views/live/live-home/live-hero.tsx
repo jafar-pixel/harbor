@@ -10,7 +10,6 @@ import { useNativeSmallTv } from "@/lib/player/native-tv/small-screen";
 import { TvVolumeControls, useTvVolume } from "../tv-volume";
 import { fmtLeft } from "./now-format";
 import { hydrationKey, type NowItem } from "./use-live-home";
-import { GameArt, useChannelGame } from "./channel-art";
 
 export function LiveHero({
   items,
@@ -112,7 +111,7 @@ export function LiveHero({
       // A true 16:9 screen on the TV app (no height cap, which made it wide and short).
       className={`group aspect-video min-w-0 cursor-pointer overflow-hidden rounded-lg outline-none focus-visible:ring-4 focus-visible:ring-white/85 ${
         mini
-          ? "fixed end-6 top-6 z-40 w-[min(30vw,480px)] shadow-[0_24px_60px_-12px_rgba(0,0,0,0.85)] ring-1 ring-white/20"
+          ? "fixed end-6 top-6 z-40 w-[min(30vw,480px)] animate-[harbor-fade-in_180ms_ease-out_both] shadow-[0_24px_60px_-12px_rgba(0,0,0,0.85)] ring-1 ring-white/20"
           : `relative w-full ${nativeTv.native ? "" : "max-h-[72vh]"}`
       } ${
         // The glass theme clears bg-canvas; on the Shield the box is the TV screen, so it stays black.
@@ -160,7 +159,7 @@ export function LiveHero({
 
       {mini ? (
         <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 p-3 pb-3.5">
-          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-danger" />
+          <span className="h-2 w-2 shrink-0 rounded-full bg-danger" />
           <span dir="auto" className="min-w-0 flex-1 truncate text-[14px] font-semibold text-ink">
             {title}
           </span>
@@ -197,7 +196,7 @@ export function LiveHero({
                   watch(channel);
                 }}
                 onDoubleClick={(e) => e.stopPropagation()}
-                className="jl-cta flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-black"
+                className="jl-cta flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-black transition-transform duration-150 active:scale-[0.96] data-[pressed]:scale-[0.96]"
               >
                 <Play size={16} fill="currentColor" /> {t("Watch")}
               </button>
@@ -261,7 +260,6 @@ function HeroBackdrop({
 }) {
   const [artErr, setArtErr] = useState(false);
   const [logoErr, setLogoErr] = useState(false);
-  const game = useChannelGame(item.channel.id);
   const backdrop = hydrated?.background || item.current?.iconUrl || null;
   const art = backdrop && !artErr ? backdrop : null;
   const logo = item.channel.logo && !logoErr ? item.channel.logo : null;
@@ -270,9 +268,7 @@ function HeroBackdrop({
       className="absolute inset-0 transition-opacity duration-700"
       style={{ opacity: visible ? 1 : 0 }}
     >
-      {game ? (
-        <GameArt game={game} variant="hero" />
-      ) : art ? (
+      {art ? (
         <img
           src={art}
           alt=""
