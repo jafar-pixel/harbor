@@ -65,7 +65,8 @@ import java.util.Locale
 /**
  * ExoPlayer drawn over the WebView, driven by the web app through [MainActivity]'s
  * `window.JLNativePlayer` bridge. Every method runs on the main thread.
- *  - FULL: fills the screen; the remote controls playback, and Down opens the "Audio & options" menu.
+ *  - FULL: fills the screen; the remote controls playback. On a live channel Down opens the
+ *    page's Today's games list over the picture; otherwise the arrows bring up the bar.
  *  - HERO: placed in the page's sticky hero area (a rect the page sends); the WebView keeps the remote.
  *  - HIDDEN: not drawn; playback carries on until the page pauses or stops it.
  * Video is picked up to the TV's largest display mode (4K on a 4K set) and drawn on the default
@@ -868,6 +869,10 @@ class NativePlayer(
                     if (event.repeatCount == 0 && !pressSkipIfShown()) { togglePause(); view.showController() }
                 KeyEvent.KEYCODE_DPAD_LEFT -> seekBy(-SEEK_STEP_MS)
                 KeyEvent.KEYCODE_DPAD_RIGHT -> seekBy(SEEK_STEP_MS)
+                // Live: Down goes straight to the other games, and the game keeps playing.
+                KeyEvent.KEYCODE_DPAD_DOWN ->
+                    if (event.repeatCount == 0 && options.controls?.contains("today-games") == true) control("today-games")
+                    else view.showController()
                 else -> view.showController()
             }
         }

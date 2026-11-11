@@ -505,6 +505,7 @@ export const PlayerOverlayLayers = memo(function PlayerOverlayLayers(p: PlayerOv
           channelId={p.liveOverlay.currentChannelId}
           chromeVisible={p.showChrome}
           onSwitch={p.liveOverlay.switchChannel}
+          onAllChannels={() => p.liveOverlay.setOpen(true)}
         />
       )}
       <StreamSwitcher
