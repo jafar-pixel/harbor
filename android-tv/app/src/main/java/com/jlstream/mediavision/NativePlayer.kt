@@ -486,7 +486,7 @@ class NativePlayer(
         // fills in 11-14 seconds; with the large heap (AndroidManifest) it holds more.
         val load = DefaultLoadControl.Builder()
             .setBufferDurationsMs(20_000, 50_000, 2_500, 5_000)
-            .setTargetBufferBytes(bufferBytesFor(Runtime.getRuntime().maxMemory()))
+            .setTargetBufferBytes(bufferBytesFor(Runtime.getRuntime().maxMemory(), deviceRamBytes()))
             .build()
         val p = ExoPlayer.Builder(activity)
             .setMediaSourceFactory(DefaultMediaSourceFactory(http))
@@ -581,6 +581,16 @@ class NativePlayer(
     }
 
     /** Switches the display to suit the video while in FULL; see [DisplayModes.bestFor]. */
+    /** The TV's total RAM (0 if Android doesn't say), for the buffer's size. */
+    private fun deviceRamBytes(): Long = try {
+        val info = android.app.ActivityManager.MemoryInfo()
+        (activity.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager)
+            .getMemoryInfo(info)
+        info.totalMem
+    } catch (_: Exception) {
+        0L
+    }
+
     fun matchDisplayMode() {
         if (!options.matchFrameRate || mode != Mode.FULL) return
         val format = player?.videoFormat ?: return
@@ -1296,6 +1306,14 @@ private fun speedName(speed: Float): String =
         }
 
         private const val MAX_BUFFER_BYTES = 256 * 1024 * 1024
+        /**
+         * The cap on TVs with under 4 GB of RAM (a Shield has 3 GB). With a 256 MB buffer, the
+         * app's page and the TV's own services, a Shield ran out of memory during a movie and
+         * Android killed the TV's other apps and services (seen with adb). 160 MB is still above
+         * Media3's own size: about 15 seconds of a 4K remux.
+         */
+        private const val SMALL_TV_BUFFER_BYTES = 160 * 1024 * 1024
+        private const val SMALL_TV_RAM_BYTES = 4L * 1024 * 1024 * 1024
 
         // Addons (Torrentio, Comet, MediaFusion and others) answer a refused or failed debrid
         // link with a short video from their own server, under a folder like /videos/ or
@@ -1323,13 +1341,15 @@ private fun speedName(speed: Float): String =
         }
 
         /**
-         * The playback buffer's size for an app heap of [maxMemory] bytes: half the heap, at most
-         * 256 MB, and never below Media3's own (C.LENGTH_UNSET keeps that).
+         * The playback buffer's size for an app heap of [maxMemory] bytes on a TV with [deviceRam]
+         * bytes of RAM: half the heap, at most 256 MB (160 MB under 4 GB of RAM), and never below
+         * Media3's own (C.LENGTH_UNSET keeps that).
          */
-        fun bufferBytesFor(maxMemory: Long): Int {
+        fun bufferBytesFor(maxMemory: Long, deviceRam: Long = 0L): Int {
             val half = maxMemory / 2
+            val cap = if (deviceRam in 1 until SMALL_TV_RAM_BYTES) SMALL_TV_BUFFER_BYTES else MAX_BUFFER_BYTES
             return if (half <= DefaultLoadControl.DEFAULT_MUXED_BUFFER_SIZE) C.LENGTH_UNSET
-            else minOf(half, MAX_BUFFER_BYTES.toLong()).toInt()
+            else minOf(half, cap.toLong()).toInt()
         }
 
         private fun bitrateName(bps: Int): String? =
