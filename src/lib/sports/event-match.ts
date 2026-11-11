@@ -34,6 +34,16 @@ export function createEventChannelMatcher(game: SportsGame) {
         ]
       : [];
   const sides = [game.home, game.away].map((side) => words(side.name));
+  // Channels write teams the short way: the school or city ("Duke", "Michigan State") or the
+  // scoreboard code ("DUKE", "MSU"), as well as the full name ("Duke Blue Devils").
+  const aliases = [game.home, game.away].map((side) => {
+    const out: string[] = [];
+    const location = words(side.location ?? "").join(" ");
+    if (location && !(location.split(" ").length === 1 && common.has(location))) out.push(location);
+    const abbr = normalize(side.abbr ?? "");
+    if (abbr.length >= 3 && !/^\d+$/.test(abbr)) out.push(abbr);
+    return out;
+  });
   const eventNumber = /\bufc\s*(\d{3,4})\b/i.exec(title)?.[1];
   const eventDay = new Date(game.startMs);
   const eventDayMs = Date.UTC(
@@ -41,19 +51,40 @@ export function createEventChannelMatcher(game: SportsGame) {
     eventDay.getUTCMonth(),
     eventDay.getUTCDate(),
   );
-  return (channelName: string) => {
-    const channel = normalize(channelName);
+  const sidesIn = (text: string) => {
+    const channel = normalize(text);
     const sideHits = sides.map(
       (tokens, index) =>
         hasPhrase(channel, tokens.join(" ")) ||
         (tokens.length > 0 &&
           !common.has(tokens.at(-1)!) &&
           tokens.at(-1) !== sides[1 - index].at(-1) &&
-          hasPhrase(channel, tokens.at(-1)!)),
+          hasPhrase(channel, tokens.at(-1)!)) ||
+        aliases[index].some((alias) => hasPhrase(channel, alias)),
     );
     const pairHit =
       titlePair.length === 2 && titlePair.every((token) => token && hasPhrase(channel, token));
-    const both = pairHit || sideHits.every(Boolean);
+    return { both: pairHit || sideHits.every(Boolean), any: sideHits.some(Boolean) };
+  };
+  return (channelName: string) => {
+    // A feed that lists the night's games names the one it carries in brackets after them:
+    // "ESPN+ 133 | ...: FLA vs. FSU • MSU vs. DUKE (FLA vs. FSU) (2026-11-10 19:05)". That game
+    // decides the match, and a feed carrying another game is not this one.
+    const carried = [...channelName.matchAll(/\(([^()]*)\)/g)]
+      .map((m) => m[1])
+      .filter((inner) => /\b(?:vs?\.?|versus)\s|\s@\s/i.test(inner))
+      .at(-1);
+    let both: boolean;
+    let otherGame = false;
+    if (carried) {
+      const hit = sidesIn(carried);
+      both = hit.both;
+      otherGame = !hit.any;
+    } else {
+      // Otherwise both teams must be named in the same listing, not across two games.
+      const listings = channelName.split(/\s[•|·]\s/);
+      both = listings.some((part) => sidesIn(part).both);
+    }
     const channelNumber = /\bufc\s*(\d{3,4})\b/i.exec(channelName)?.[1];
     const numberMatch = !!eventNumber && eventNumber === channelNumber;
     const numberConflict = !!eventNumber && !!channelNumber && eventNumber !== channelNumber;
@@ -64,7 +95,7 @@ export function createEventChannelMatcher(game: SportsGame) {
     return {
       both,
       numberMatch,
-      conflict: numberConflict || dateConflict || replay,
+      conflict: numberConflict || dateConflict || replay || otherGame,
       score: both ? 120 : numberMatch ? 95 : 0,
     };
   };

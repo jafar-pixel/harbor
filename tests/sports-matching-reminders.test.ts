@@ -141,3 +141,73 @@ test("successful notification destination is not retried when its peer failed", 
     ["telegram"],
   );
 });
+
+test("a slate feed matches by its bracketed game and short team names", () => {
+  const game: SportsGame = {
+    ...fight,
+    league: "NCAAM",
+    startMs: Date.parse("2026-11-10T21:00:00Z"),
+    home: { ...fight.home, name: "Duke Blue Devils", abbr: "DUKE", location: "Duke" },
+    away: {
+      ...fight.away,
+      name: "Michigan State Spartans",
+      abbr: "MSU",
+      location: "Michigan State",
+    },
+    context: undefined,
+  };
+  const carries = eventChannelEvidence(
+    game,
+    "US (ESPN+ 135) | NCAA Men's Basketball: #5 MSU vs. #2 DUKE • WYO vs. UNC (#5 MSU vs. #2 DUKE) (2026-11-10 19:05:40)",
+  );
+  assert.equal(carries.both, true);
+  assert.equal(carries.conflict, false);
+  // Lists Duke's game but carries Florida at Florida State.
+  const other = eventChannelEvidence(
+    game,
+    "US (ESPN+ 133) | NCAA Men's Basketball: #1 FLA vs. FSU • #5 MSU vs. #2 DUKE (#1 FLA vs. FSU) (2026-11-10 19:05:30)",
+  );
+  assert.equal(other.both, false);
+  assert.equal(other.conflict, true);
+  // Both teams must be in the same listing, not across two games.
+  assert.equal(eventChannelEvidence(game, "Slate: DUKE vs. UNC • MSU vs. FSU").both, false);
+  assert.equal(eventChannelEvidence(game, "ESPN+ 7: Michigan State at Duke").both, true);
+  assert.equal(eventChannelEvidence(game, "Duke Energy Weather").both, false);
+});
+
+test("the Duke game picks the feed that carries it, ahead of the slate feeds", () => {
+  const game: SportsGame = {
+    ...fight,
+    league: "mens-college-basketball",
+    startMs: Date.parse("2026-11-10T21:00:00Z"),
+    home: { ...fight.home, name: "Duke Blue Devils", abbr: "DUKE", location: "Duke" },
+    away: {
+      ...fight.away,
+      name: "Michigan State Spartans",
+      abbr: "MSU",
+      location: "Michigan State",
+    },
+    context: undefined,
+  };
+  const names = [
+    "US (ESPN+ 133) | NCAA Men's Basketball: #1 FLA vs. FSU • #5 MSU vs. #2 DUKE (#1 FLA vs. FSU) (2026-11-10 19:05:30)",
+    "US (ESPN+ 134) | NCAA Men's Basketball: #1 FLA vs. FSU • #5 MSU vs. #2 DUKE • WYO vs. UNC (#1 FLA vs. FSU) (2026-11-10 19:05:35)",
+    "US (ESPN+ 135) | NCAA Men's Basketball: #5 MSU vs. #2 DUKE • WYO vs. UNC (#5 MSU vs. #2 DUKE) (2026-11-10 19:05:40)",
+    "USA ESPN+ 133: NCAA Men's Basketball: #1 FLA vs. FSU • #5 MSU vs. #2 DUKE (#1 FLA vs. FSU) (2026-11-10 19:05:30)",
+  ];
+  const channels: IptvChannel[] = names.map((name, i) => ({
+    id: `c${i}`,
+    tvgId: null,
+    name,
+    logo: null,
+    group: "ESPN+",
+    url: `http://example.test/${i}`,
+    catchupSource: null,
+    durationSec: null,
+    attrs: {},
+  }));
+  const matches = matchChannelsForGame(game, buildSportsChannelIndex(channels));
+  assert.equal(matches[0]?.channel.id, "c2");
+  assert.equal(matches[0]?.tier, "exact");
+  assert.ok(!matches.some((m) => m.channel.id === "c0" || m.channel.id === "c3"));
+});
