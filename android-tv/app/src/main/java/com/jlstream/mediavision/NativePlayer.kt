@@ -65,8 +65,8 @@ import java.util.Locale
 /**
  * ExoPlayer drawn over the WebView, driven by the web app through [MainActivity]'s
  * `window.JLNativePlayer` bridge. Every method runs on the main thread.
- *  - FULL: fills the screen; the remote controls playback. On a live channel Down opens the
- *    page's Today's games list over the picture; otherwise the arrows bring up the bar.
+ *  - FULL: fills the screen; the remote controls playback. Down opens the page's "While you
+ *    watch" drawer (other games, shows and movies) over the picture; Up and OK bring up the bar.
  *  - HERO: placed in the page's sticky hero area (a rect the page sends); the WebView keeps the remote.
  *  - HIDDEN: not drawn; playback carries on until the page pauses or stops it.
  * Video is picked up to the TV's largest display mode (4K on a 4K set) and drawn on the default
@@ -340,7 +340,7 @@ class NativePlayer(
         "audio-menu" -> extraButton(R.drawable.jl_ic_audio, "Audio") { openMenu() }
         "subtitle-menu" -> extraButton(R.drawable.jl_ic_subtitles, "Subtitles") { openMenu() }
         "menu" -> extraButton(R.drawable.jl_ic_menu, "Player menu") { openMenu() }
-        "today-games" -> extraButton(R.drawable.jl_ic_games, "Today's games") { control("today-games") }
+        "today-games" -> extraButton(R.drawable.jl_ic_games, "While you watch") { control("today-games") }
         "speed-menu" -> extraButton(R.drawable.jl_ic_speed, "Playback speed") { showMessage(nextSpeed()) }
         "prev-episode" -> extraButton(R.drawable.jl_ic_prev, "Previous episode") { control("prev-episode") }
         "next-episode" -> extraButton(R.drawable.jl_ic_next, "Next episode") { control("next-episode") }
@@ -869,7 +869,7 @@ class NativePlayer(
                     if (event.repeatCount == 0 && !pressSkipIfShown()) { togglePause(); view.showController() }
                 KeyEvent.KEYCODE_DPAD_LEFT -> seekBy(-SEEK_STEP_MS)
                 KeyEvent.KEYCODE_DPAD_RIGHT -> seekBy(SEEK_STEP_MS)
-                // Live: Down goes straight to the other games, and the game keeps playing.
+                // Down goes straight to other games, shows and movies; what's on keeps playing.
                 KeyEvent.KEYCODE_DPAD_DOWN ->
                     if (event.repeatCount == 0 && options.controls?.contains("today-games") == true) control("today-games")
                     else view.showController()

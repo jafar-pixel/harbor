@@ -32,6 +32,7 @@ import { useSkipSegments, useAdSegments } from "@/lib/skip-intro";
 import { withinAdWindow } from "@/lib/ad-report/window";
 import { isLocalUrl } from "@/lib/player/local-url";
 import { isLivePlaybackSrc } from "@/lib/player/live-src";
+import { useLiveFailover } from "./player/hooks/use-live-failover";
 import { ScoreTickerOverlay } from "./live/live-home/jl-sports/score-ticker";
 import { hasPlaybackStartedForStallCheck, stallWaitMs } from "@/lib/player/stall-wait";
 import { useAuth } from "@/lib/auth";
@@ -745,6 +746,14 @@ function NativePlayerView({
   ) {
     playbackStartedRef.current = true;
   }
+  // Live channels: learn which ones play here, and move a failing game feed to the next one.
+  useLiveFailover({
+    src,
+    status: snap.status,
+    started: playbackStartedRef.current,
+    channelId: liveOverlay.currentChannelId,
+    switchChannel: liveOverlay.switchChannel,
+  });
   useEffect(() => {
     if (snap.status !== "error" || autoAdvancedRef.current) return;
     if (!src.autoFired || playbackStartedRef.current || src.isLive || inRoom) return;

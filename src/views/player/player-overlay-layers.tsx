@@ -18,7 +18,7 @@ import { BpTenFootLayer } from "./bp-ten-foot";
 import { CastLayer } from "./cast-layer";
 import { DragClickStage } from "./drag-click-stage";
 import { JlLiveField } from "./jl-live-field";
-import { TodayPicksPanel } from "./today-picks-panel";
+import { WatchDrawer } from "./watch-drawer";
 import { LiveLayer } from "./live-layer";
 import { LoaderLayer } from "./loader-layer";
 import { PanelsLayer } from "./panels-layer";
@@ -499,13 +499,14 @@ export const PlayerOverlayLayers = memo(function PlayerOverlayLayers(p: PlayerOv
         channelName={p.src.meta.name ?? p.src.title}
       />
       <JlLiveField channelId={p.liveOverlay.currentChannelId} chromeVisible={p.showChrome} />
-      {p.liveOverlay.isLive && !p.liveOverlay.open && (
-        <TodayPicksPanel
+      {!p.liveOverlay.open && (
+        <WatchDrawer
           src={p.src}
           channelId={p.liveOverlay.currentChannelId}
+          live={p.liveOverlay.isLive}
           chromeVisible={p.showChrome}
           onSwitch={p.liveOverlay.switchChannel}
-          onAllChannels={() => p.liveOverlay.setOpen(true)}
+          onAllChannels={p.liveOverlay.isLive ? () => p.liveOverlay.setOpen(true) : undefined}
         />
       )}
       <StreamSwitcher

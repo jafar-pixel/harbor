@@ -1,6 +1,8 @@
 import { detectCountry, detectCountryFromGroup } from "@/lib/iptv/country-detect";
 import { createEventChannelMatcher } from "./event-match";
 import { yieldToBrowser } from "@/lib/yield-to-browser";
+import { deviceMaxHeight } from "./device-height";
+import { channelHealth, type ChannelHealth } from "@/lib/iptv/channel-health";
 import { hasArabic, normalizeArabic } from "@/lib/iptv/rtl";
 import type { IptvChannel, EpgProgram } from "@/lib/iptv/types";
 import type { LeagueDef, SportsGame, SportsSide } from "@/lib/sports/espn";
@@ -32,7 +34,8 @@ export type MatchReasonKind =
   | "listing"
   | "network"
   | "region"
-  | "event";
+  | "event"
+  | "broadcast";
 export type MatchReason = { kind: MatchReasonKind; label: string };
 export type MatchTier = "exact" | "likely" | "possible";
 
@@ -44,6 +47,12 @@ export type ChannelMatch = {
   tier: MatchTier;
   attached: boolean;
   reasons: MatchReason[];
+  /** The picture height the channel's name claims (2160 for "4K"/"UHD"), or null. */
+  quality: number | null;
+  /** How well that quality suits this screen; higher is better. */
+  fit: number;
+  /** It failed to play here and hasn't worked since (channel-health.ts). */
+  failing: boolean;
 };
 
 export type PreparedChannel = {
@@ -59,6 +68,7 @@ export type PreparedChannel = {
   regionLabel: string;
   networks: string[];
   number: number | null;
+  quality?: number | null;
 };
 
 export type SportsChannelIndex = {
@@ -71,7 +81,43 @@ export type MatchOptions = {
   attachedIds?: readonly string[];
   broadcastNames?: readonly string[];
   limit?: number;
+  /** The screen's tallest picture (deviceMaxHeight); picks 4K copies on a 4K TV, FHD on others. */
+  maxHeight?: number;
+  /** Whether each channel plays here; defaults to what this device has learnt. */
+  health?: (url: string) => ChannelHealth;
 };
+
+/** The quality a channel name claims: "ESPN UHD" 2160, "ESPN FHD" 1080, "ESPN SD" 480. */
+export function channelQuality(name: string): number | null {
+  if (/\b(?:4k|uhd|2160p?)\b/i.test(name)) return 2160;
+  if (/\b(?:fhd|1080[pi]?)\b/i.test(name)) return 1080;
+  if (/\b(?:hd|lhd|720p?)\b/i.test(name)) return 720;
+  if (/\b(?:sd|576[pi]?|480[pi]?)\b/i.test(name)) return 480;
+  return null;
+}
+
+/**
+ * Prefer the best copy the screen can show: on a 4K TV 4K, then FHD; elsewhere FHD first and
+ * 4K last (it would only be scaled down, at four times the data).
+ */
+export function qualityFit(quality: number | null, maxHeight: number): number {
+  const fourK = maxHeight >= 2000;
+  switch (quality) {
+    case 2160:
+      return fourK ? 5 : 1;
+    case 1080:
+      return 4;
+    case 720:
+      return 3;
+    case null:
+      return 2;
+    default:
+      return 0;
+  }
+}
+
+/** "ESPN+" and "ESPN Plus" are their own services, not the ESPN channel. */
+const PLUS_RE = /\+|\bplus\b/i;
 
 const W_TEAM_BOTH = 60;
 const W_TEAM_ONE = 26;
@@ -217,6 +263,7 @@ function prepare(channel: IptvChannel): PreparedChannel {
     regionLabel: country?.name ?? prefixRegion ?? "",
     networks,
     number: numberOf(norm),
+    quality: channelQuality(channel.name),
   };
 }
 
@@ -243,7 +290,7 @@ export function buildSportsChannelIndex(channels: readonly IptvChannel[]): Sport
   return index;
 }
 
-type Listing = { norm: string; brand: string; number: number | null };
+type Listing = { norm: string; brand: string; number: number | null; plus: boolean };
 
 function listingsOf(names: readonly string[]): Listing[] {
   const out: Listing[] = [];
@@ -255,6 +302,7 @@ function listingsOf(names: readonly string[]): Listing[] {
       norm,
       brand: compact.replace(/\d+/g, ""),
       number: numberOf(norm),
+      plus: PLUS_RE.test(raw),
     });
   }
   return out;
@@ -331,6 +379,61 @@ function scoreListings(p: PreparedChannel, listings: Listing[], reasons: MatchRe
   return 0;
 }
 
+/**
+ * The channel is the network carrying the game ("US: ESPN FHD" for an ESPN game), not a feed
+ * that only names the game. ESPN+ and other "plus" services never count as their network.
+ */
+function broadcastOf(p: PreparedChannel, listings: Listing[]): Listing | null {
+  if (PLUS_RE.test(stripPrefix(p.channel.name).rest)) return null;
+  const core = channelCore(p.norm);
+  const compact = core.replace(/ /g, "");
+  for (const listing of listings) {
+    if (listing.plus) continue;
+    const names = [
+      listing.norm.replace(/ /g, ""),
+      ...(NETWORK_ALIASES[listing.brand + (listing.number ?? "")] ?? []),
+    ];
+    // "ESPN 1" is ESPN itself; "ESPN 2" is not.
+    if (names.some((n) => n === compact || (listing.number == null && `${n}1` === compact)))
+      return listing;
+  }
+  return null;
+}
+
+/**
+ * A channel's name without what providers add around the network: a country written without a
+ * separator ("USA ESPN UHD"), a category tag ("SP - ESPN 1 HD", "NFL - NFL NETWORK HD") and feed
+ * tags ("(backup)", "LQ", "East").
+ */
+export function channelCore(norm: string): string {
+  let core = norm;
+  for (let i = 0; i < 3; i++) core = core.replace(LEAD_TAG_RE, "").replace(REPEATED_TAG_RE, "$1 ");
+  for (let i = 0; i < 3; i++) core = core.replace(TAIL_TAG_RE, "");
+  return core.trim();
+}
+
+const LEAD_TAG_RE = /^(?:usa|us|uk|ca|can|au|mx|ie|na|sp)\s+/;
+/** A league tag in front of a network named after it: "nfl nfl network" is "nfl network". */
+const REPEATED_TAG_RE = /^(nfl|nba|nhl|mlb|mls|sec|acc)\s+\1\s+/;
+const TAIL_TAG_RE = /\s+(?:east|west|lhd|lq|backup|main|alt|usa|us)$/;
+
+/** The schedule's short network names and how channels spell them out (compact, no spaces). */
+const NETWORK_ALIASES: Record<string, string[]> = {
+  fs1: ["foxsports1"],
+  fs2: ["foxsports2"],
+  cbssn: ["cbssportsnetwork", "cbssports"],
+  btn: ["bigtennetwork", "b1g"],
+  secn: ["secnetwork", "espnsecnetwork"],
+  accn: ["accnetwork", "espnaccn"],
+  espnu: ["espnu"],
+  nfln: ["nflnetwork"],
+  nbatv: ["nbatv"],
+  nhln: ["nhlnetwork"],
+  mlbn: ["mlbnetwork"],
+  golf: ["golfchannel", "nbcgolf"],
+  tennis: ["tennischannel", "tennis"],
+};
+
 function tierOf(confidence: number, attached: boolean): MatchTier {
   if (attached || confidence >= 0.85) return "exact";
   return confidence >= 0.5 ? "likely" : "possible";
@@ -351,6 +454,8 @@ export function matchChannelsForGame(
   const listings = listingsOf(opts.broadcastNames ?? game.broadcasts ?? []);
   const out: ChannelMatch[] = [];
   const evidenceFor = createEventChannelMatcher(game);
+  const maxHeight = opts.maxHeight ?? deviceMaxHeight();
+  const health = opts.health ?? channelHealth;
 
   for (const p of index.channels) {
     const attached = attachedIds.has(p.channel.id);
@@ -387,7 +492,11 @@ export function matchChannelsForGame(
     }
 
     score += scoreNetworks(p, game.league, group, leagueRegion, reasons);
-    score += scoreListings(p, listings, reasons);
+    const listingScore = scoreListings(p, listings, reasons);
+    const broadcast = broadcastOf(p, listings);
+    if (broadcast) reasons.push({ kind: "broadcast", label: broadcast.norm });
+    // The game's own network always counts in full, however the provider spells it.
+    score += broadcast ? Math.max(listingScore, W_LISTING_EXACT) : listingScore;
 
     const regionFit = regionStrength(p.region, leagueRegion);
     if (regionFit > 0) {
@@ -397,17 +506,23 @@ export function matchChannelsForGame(
 
     if (!attached && score < FLOOR) continue;
     const confidence = attached ? 1 : Math.max(0, Math.min(1, score / SATURATION));
+    // A channel that failed here and hasn't worked since is never picked for the viewer.
+    const failing = health(p.channel.url) === "failing";
     out.push({
       channel: p.channel,
       label: p.label,
       score,
       confidence: Math.round(confidence * 100) / 100,
-      tier:
-        attached || event.both || event.numberMatch
+      tier: failing
+        ? "possible"
+        : attached || broadcast || event.both || event.numberMatch
           ? "exact"
           : tierOf(Math.min(confidence, 0.84), false),
       attached,
       reasons: attached ? [{ kind: "attached", label: leagueLabel }, ...reasons] : reasons,
+      quality: p.quality ?? channelQuality(p.channel.name),
+      fit: qualityFit(p.quality ?? channelQuality(p.channel.name), maxHeight),
+      failing,
     });
   }
 
@@ -416,16 +531,21 @@ export function matchChannelsForGame(
 }
 
 export function compareChannelMatches(a: ChannelMatch, b: ChannelMatch): number {
+  if (a.failing !== b.failing) return a.failing ? 1 : -1;
   if (a.attached !== b.attached) return a.attached ? -1 : 1;
+  // The network carrying the game first, then a guide or channel name that names the game.
   const specificity = (match: ChannelMatch) =>
-    match.reasons.some((r) => r.kind === "event" && r.label === "TV guide matchup")
-      ? 3
-      : match.reasons.some((r) => r.kind === "event" && r.label === "Event matchup")
-        ? 2
-        : match.reasons.some((r) => r.kind === "event")
-          ? 1
-          : 0;
+    match.reasons.some((r) => r.kind === "broadcast")
+      ? 4
+      : match.reasons.some((r) => r.kind === "event" && r.label === "TV guide matchup")
+        ? 3
+        : match.reasons.some((r) => r.kind === "event" && r.label === "Event matchup")
+          ? 2
+          : match.reasons.some((r) => r.kind === "event")
+            ? 1
+            : 0;
   if (specificity(a) !== specificity(b)) return specificity(b) - specificity(a);
+  if (a.fit !== b.fit) return b.fit - a.fit;
   if (b.score !== a.score) return b.score - a.score;
   return a.label.localeCompare(b.label);
 }
