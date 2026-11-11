@@ -385,19 +385,54 @@ function scoreListings(p: PreparedChannel, listings: Listing[], reasons: MatchRe
  */
 function broadcastOf(p: PreparedChannel, listings: Listing[]): Listing | null {
   if (PLUS_RE.test(stripPrefix(p.channel.name).rest)) return null;
-  // Providers write the country without a separator ("USA ESPN UHD") and add feed tags.
-  const core = p.norm
-    .replace(BARE_COUNTRY_RE, "")
-    .replace(/ (?:east|west|lhd|backup|main)$/, "")
-    .trim();
+  const core = channelCore(p.norm);
+  const compact = core.replace(/ /g, "");
   for (const listing of listings) {
-    if (!listing.plus && core === listing.norm) return listing;
+    if (listing.plus) continue;
+    const names = [
+      listing.norm.replace(/ /g, ""),
+      ...(NETWORK_ALIASES[listing.brand + (listing.number ?? "")] ?? []),
+    ];
+    // "ESPN 1" is ESPN itself; "ESPN 2" is not.
+    if (names.some((n) => n === compact || (listing.number == null && `${n}1` === compact)))
+      return listing;
   }
   return null;
 }
 
-/** A country written before a channel without a separator: "USA ESPN", "UK Sky Sports". */
-const BARE_COUNTRY_RE = /^(?:usa|us|uk|ca|can|au|mx|ie)\s+/;
+/**
+ * A channel's name without what providers add around the network: a country written without a
+ * separator ("USA ESPN UHD"), a category tag ("SP - ESPN 1 HD", "NFL - NFL NETWORK HD") and feed
+ * tags ("(backup)", "LQ", "East").
+ */
+export function channelCore(norm: string): string {
+  let core = norm;
+  for (let i = 0; i < 3; i++) core = core.replace(LEAD_TAG_RE, "").replace(REPEATED_TAG_RE, "$1 ");
+  for (let i = 0; i < 3; i++) core = core.replace(TAIL_TAG_RE, "");
+  return core.trim();
+}
+
+const LEAD_TAG_RE = /^(?:usa|us|uk|ca|can|au|mx|ie|na|sp)\s+/;
+/** A league tag in front of a network named after it: "nfl nfl network" is "nfl network". */
+const REPEATED_TAG_RE = /^(nfl|nba|nhl|mlb|mls|sec|acc)\s+\1\s+/;
+const TAIL_TAG_RE = /\s+(?:east|west|lhd|lq|backup|main|alt|usa|us)$/;
+
+/** The schedule's short network names and how channels spell them out (compact, no spaces). */
+const NETWORK_ALIASES: Record<string, string[]> = {
+  fs1: ["foxsports1"],
+  fs2: ["foxsports2"],
+  cbssn: ["cbssportsnetwork", "cbssports"],
+  btn: ["bigtennetwork", "b1g"],
+  secn: ["secnetwork", "espnsecnetwork"],
+  accn: ["accnetwork", "espnaccn"],
+  espnu: ["espnu"],
+  nfln: ["nflnetwork"],
+  nbatv: ["nbatv"],
+  nhln: ["nhlnetwork"],
+  mlbn: ["mlbnetwork"],
+  golf: ["golfchannel", "nbcgolf"],
+  tennis: ["tennischannel", "tennis"],
+};
 
 function tierOf(confidence: number, attached: boolean): MatchTier {
   if (attached || confidence >= 0.85) return "exact";
@@ -457,9 +492,11 @@ export function matchChannelsForGame(
     }
 
     score += scoreNetworks(p, game.league, group, leagueRegion, reasons);
-    score += scoreListings(p, listings, reasons);
+    const listingScore = scoreListings(p, listings, reasons);
     const broadcast = broadcastOf(p, listings);
     if (broadcast) reasons.push({ kind: "broadcast", label: broadcast.norm });
+    // The game's own network always counts in full, however the provider spells it.
+    score += broadcast ? Math.max(listingScore, W_LISTING_EXACT) : listingScore;
 
     const regionFit = regionStrength(p.region, leagueRegion);
     if (regionFit > 0) {

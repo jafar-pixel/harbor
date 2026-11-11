@@ -349,3 +349,64 @@ test("the viewer's own provider names: USA ESPN in four qualities beats ESPN+ an
   const onHd = matchChannelsForGame(game, index, { maxHeight: 1080 });
   assert.equal(onHd[0].channel.name, "USA ESPN HD");
 });
+
+test("the second provider's names: SP - ESPN 1 HD is ESPN, short schedule names match", () => {
+  const base: SportsGame = {
+    ...fight,
+    league: "nfl",
+    startMs: Date.parse("2026-11-10T21:00:00Z"),
+    home: { ...fight.home, name: "Los Angeles Chargers", abbr: "LAC", location: "Los Angeles" },
+    away: { ...fight.away, name: "Baltimore Ravens", abbr: "BAL", location: "Baltimore" },
+    context: undefined,
+  };
+  // Real names from the viewer's second provider (links removed).
+  const names = [
+    "SP - ESPN 1 HD",
+    "SP - ESPN 2 HD",
+    "SP - ESPN U HD",
+    "SP - ESPN (ACCN) HD",
+    "SP - FOX SPORTS 1 USA HD",
+    "SP - CBS SPORTS HD",
+    "SP - BIG TEN NETWORK HD",
+    "SP - NBA TV HD",
+    "NFL - NFL NETWORK HD",
+    "NFL - NFL REDZONE LQ",
+  ];
+  const channels: IptvChannel[] = names.map((name, i) => ({
+    id: `c${i}`,
+    tvgId: null,
+    name,
+    logo: null,
+    group: "|NA| USA SPORTS",
+    url: `http://example.test/${i}`,
+    catchupSource: null,
+    durationSec: null,
+    attrs: {},
+  }));
+  const index = buildSportsChannelIndex(channels);
+  const networkOf = (broadcasts: string[]) =>
+    matchChannelsForGame({ ...base, broadcasts }, index, { maxHeight: 2160 })
+      .filter((m) => m.reasons.some((r) => r.kind === "broadcast"))
+      .map((m) => m.channel.name);
+  assert.deepEqual(networkOf(["ESPN"]), ["SP - ESPN 1 HD"]);
+  assert.deepEqual(networkOf(["ESPN2"]), ["SP - ESPN 2 HD"]);
+  assert.deepEqual(networkOf(["ESPNU"]), ["SP - ESPN U HD"]);
+  assert.deepEqual(networkOf(["ACCN"]), ["SP - ESPN (ACCN) HD"]);
+  assert.deepEqual(networkOf(["FS1"]), ["SP - FOX SPORTS 1 USA HD"]);
+  assert.deepEqual(networkOf(["CBSSN"]), ["SP - CBS SPORTS HD"]);
+  assert.deepEqual(networkOf(["BTN"]), ["SP - BIG TEN NETWORK HD"]);
+  assert.deepEqual(networkOf(["NBA TV"]), ["SP - NBA TV HD"]);
+  assert.deepEqual(networkOf(["NFL Network"]), ["NFL - NFL NETWORK HD"]);
+  // An event slot naming the game is an exact pick too.
+  const slot: IptvChannel = {
+    ...channels[0],
+    id: "slot",
+    name: "NFL | 13 -MNF 8:15PM Ravens at Chargers",
+  };
+  const withSlot = matchChannelsForGame(
+    { ...base, broadcasts: ["ESPN"] },
+    buildSportsChannelIndex([slot, ...channels]),
+    { maxHeight: 2160 },
+  );
+  assert.equal(withSlot.find((m) => m.channel.id === "slot")?.tier, "exact");
+});
