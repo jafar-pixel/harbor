@@ -24,6 +24,7 @@ export const SYNCED_SETTING_KEYS = [
   "cfbdKey",
   "iptvPlaylists",
   "dmmCastLinks",
+  "anthropicKey",
 ] as const;
 
 export type SyncedSettingKey = (typeof SYNCED_SETTING_KEYS)[number];
@@ -31,12 +32,24 @@ export type KeyValues = Partial<Record<SyncedSettingKey, string>>;
 /** Hash of each value as last agreed with the account. */
 export type KeyBase = Partial<Record<SyncedSettingKey, string>>;
 
-export const secretName = (key: SyncedSettingKey) => `setting:${key}`;
+/**
+ * Keys only their owner uses. They are saved as "own:" secrets, which family sharing never reads
+ * (get_family_secrets returns "setting:" secrets only), so a family owner's Anthropic key is
+ * never sent to, or billed by, the family's other members.
+ */
+const OWN_ONLY: ReadonlySet<SyncedSettingKey> = new Set(["anthropicKey"]);
+
+export const secretName = (key: SyncedSettingKey) =>
+  OWN_ONLY.has(key) ? `own:${key}` : `setting:${key}`;
 
 export function settingKeyFromSecret(name: string): SyncedSettingKey | null {
-  if (!name.startsWith("setting:")) return null;
-  const key = name.slice("setting:".length);
-  return (SYNCED_SETTING_KEYS as readonly string[]).includes(key) ? (key as SyncedSettingKey) : null;
+  const prefix = name.startsWith("setting:") ? "setting:" : name.startsWith("own:") ? "own:" : "";
+  if (!prefix) return null;
+  const key = name.slice(prefix.length);
+  if (OWN_ONLY.has(key as SyncedSettingKey) !== (prefix === "own:")) return null;
+  return (SYNCED_SETTING_KEYS as readonly string[]).includes(key)
+    ? (key as SyncedSettingKey)
+    : null;
 }
 
 /** FNV-1a; the base only needs to tell values apart, and keeps no secret on disk. */

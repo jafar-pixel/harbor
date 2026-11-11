@@ -312,7 +312,11 @@ function parseStoredSettings(raw: string | null): Settings {
       parsed.gameArtworkCoverIcon = DEFAULT.gameArtworkCoverIcon;
     if (parsed.gameAgeRatingAgency !== "ESRB" && parsed.gameAgeRatingAgency !== "PEGI")
       parsed.gameAgeRatingAgency = DEFAULT.gameAgeRatingAgency;
-    if (parsed.aiSearchProvider !== "groq" && parsed.aiSearchProvider !== "openrouter") {
+    if (
+      parsed.aiSearchProvider !== "groq" &&
+      parsed.aiSearchProvider !== "openrouter" &&
+      parsed.aiSearchProvider !== "anthropic"
+    ) {
       parsed.aiSearchProvider = parsed.aiSearchModel
         ? providerTabFor(parsed.aiSearchModel)
         : "openrouter";

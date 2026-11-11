@@ -3,7 +3,9 @@ import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
 import {
   AI_MODELS,
+  CLAUDE_MODELS,
   DEFAULT_AI_MODEL,
+  DEFAULT_CLAUDE_MODEL,
   GROQ_MODELS,
   migrateModelId,
   providerTabFor,
@@ -11,13 +13,14 @@ import {
 import { pruneToCatalog, useGroqCatalog, useOpenRouterCatalog } from "@/lib/ai-live-models";
 import openrouterLogo from "@/assets/ai-logos/openrouter.png";
 import groqLogo from "@/assets/ai-logos/groq.png";
+import anthropicLogo from "@/assets/ai-logos/anthropic.png";
 import jinaLogo from "@/assets/ai-logos/jina.png";
 import { AiModelSelect } from "./ai-model-select";
 import { Globe, Sparkles } from "./icons";
 import { ExtLink, KeyField, Section, Segmented, ToggleRow } from "./shared";
 import { SettingRow } from "./kit";
 
-type ProviderTab = "openrouter" | "groq";
+type ProviderTab = "openrouter" | "groq" | "anthropic";
 
 export function AiSearchSection() {
   const { settings, update } = useSettings();
@@ -25,10 +28,12 @@ export function AiSearchSection() {
   const keyDrafts = {
     openrouter: useState(settings.aiSearchKey),
     groq: useState(settings.aiGroqKey),
+    anthropic: useState(settings.anthropicKey),
   };
   const [savedFlags, setSavedFlags] = useState<Record<ProviderTab, boolean>>({
     openrouter: false,
     groq: false,
+    anthropic: false,
   });
   const timer = useRef<number | null>(null);
   const flash = (tab: ProviderTab) => {
@@ -39,6 +44,7 @@ export function AiSearchSection() {
 
   const [openrouterKey, setOpenrouterKey] = keyDrafts.openrouter;
   const [groqKey, setGroqKey] = keyDrafts.groq;
+  const [anthropicKey, setAnthropicKey] = keyDrafts.anthropic;
   const [jinaDraft, setJinaDraft] = useState(settings.jinaKey);
   const [customDraft, setCustomDraft] = useState("");
   const orCatalog = useOpenRouterCatalog();
@@ -46,21 +52,17 @@ export function AiSearchSection() {
   const openRouterModels = pruneToCatalog(AI_MODELS, orCatalog);
   const groqModels = pruneToCatalog(GROQ_MODELS, groqCatalog);
 
-  const tab: ProviderTab = settings.aiSearchProvider === "groq" ? "groq" : "openrouter";
+  const tab: ProviderTab = settings.aiSearchProvider;
+  const defaultFor = (v: ProviderTab) =>
+    v === "groq" ? groqModels[0].id : v === "anthropic" ? DEFAULT_CLAUDE_MODEL : DEFAULT_AI_MODEL;
   const setTab = (v: ProviderTab) => {
     if (v === tab) return;
     const modelIsForTab = providerTabFor(settings.aiSearchModel) === v;
-    const nextModel = modelIsForTab
-      ? settings.aiSearchModel
-      : v === "groq"
-        ? groqModels[0].id
-        : DEFAULT_AI_MODEL;
+    const nextModel = modelIsForTab ? settings.aiSearchModel : defaultFor(v);
     update({ aiSearchProvider: v, aiSearchModel: nextModel });
   };
   const setModel = (id: string) => update({ aiSearchModel: id, aiSearchProvider: tab });
-  const renderedModel = migrateModelId(
-    settings.aiSearchModel || (tab === "groq" ? groqModels[0].id : DEFAULT_AI_MODEL),
-  );
+  const renderedModel = migrateModelId(settings.aiSearchModel || defaultFor(tab));
 
   return (
     <>
@@ -69,7 +71,7 @@ export function AiSearchSection() {
           icon={<Sparkles size={18} strokeWidth={2} />}
           label={t("Provider")}
           desc={t(
-            "Type what you want in plain language and let a model find it. Bring your own API key from either service.",
+            "Type what you want in plain language and let a model find it. Bring your own API key from any of these services.",
           )}
         >
           <Segmented
@@ -78,11 +80,48 @@ export function AiSearchSection() {
             options={[
               { value: "openrouter", label: "OpenRouter" },
               { value: "groq", label: "Groq" },
+              { value: "anthropic", label: "Claude" },
             ]}
           />
         </SettingRow>
 
-        {tab === "openrouter" ? (
+        {tab === "anthropic" ? (
+          <>
+            <KeyField
+              label={t("Claude · your Anthropic key")}
+              placeholder={t("Anthropic API key (sk-ant-...)")}
+              iconSrc={anthropicLogo}
+              value={anthropicKey}
+              onChange={setAnthropicKey}
+              onSave={() => {
+                update({ anthropicKey: anthropicKey.trim() });
+                flash("anthropic");
+              }}
+              saved={savedFlags.anthropic}
+              help={
+                <>
+                  {t(
+                    "Claude runs AI search, episode and game search, and Ask JL in Music. Calls go from this device straight to Anthropic, billed to your key only.",
+                  )}{" "}
+                  {t("Get a key at")}{" "}
+                  <ExtLink href="https://platform.claude.com/settings/keys">
+                    platform.claude.com
+                  </ExtLink>
+                  .{" "}
+                  {t(
+                    "Signed in to JL Media Vision, the key follows your account to the TV, Windows and the web. It is never shared with family members.",
+                  )}
+                </>
+              }
+            />
+            <AiModelSelect
+              value={renderedModel}
+              onChange={(v) => setModel(v)}
+              models={CLAUDE_MODELS}
+              defaultModel={DEFAULT_CLAUDE_MODEL}
+            />
+          </>
+        ) : tab === "openrouter" ? (
           <>
             <KeyField
               label={t("AI Search · natural-language search")}
@@ -156,7 +195,9 @@ export function AiSearchSection() {
           desc={
             tab === "groq"
               ? t("Any model id from console.groq.com/docs/models works here.")
-              : t("Any model id from openrouter.ai/models works here, including :free variants.")
+              : tab === "anthropic"
+                ? t("Any Claude model id from Anthropic works here.")
+                : t("Any model id from openrouter.ai/models works here, including :free variants.")
           }
         >
           <form
@@ -171,7 +212,13 @@ export function AiSearchSection() {
               type="text"
               value={customDraft}
               onChange={(e) => setCustomDraft(e.target.value)}
-              placeholder={tab === "groq" ? "llama-3.3-70b-versatile" : "vendor/model-name:free"}
+              placeholder={
+                tab === "groq"
+                  ? "llama-3.3-70b-versatile"
+                  : tab === "anthropic"
+                    ? DEFAULT_CLAUDE_MODEL
+                    : "vendor/model-name:free"
+              }
               spellCheck={false}
               autoCapitalize="off"
               autoCorrect="off"

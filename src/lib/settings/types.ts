@@ -467,8 +467,10 @@ export type Settings = {
   gameArtworkScreenshots: boolean;
   gameArtworkCoverIcon: boolean;
   aiSearchModel: string;
-  aiSearchProvider: "openrouter" | "groq";
+  aiSearchProvider: "openrouter" | "groq" | "anthropic";
   aiGroqKey: string;
+  /** The listener's own Anthropic key: Claude for AI search and Ask JL / the AI DJ. */
+  anthropicKey: string;
   jinaKey: string;
   aiWebSearch: boolean;
   playerD3d11Flip: boolean;

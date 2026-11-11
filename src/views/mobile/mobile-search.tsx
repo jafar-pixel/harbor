@@ -7,7 +7,7 @@ import { AwardLogo } from "@/components/icons/award-logo";
 import { HarborLoader } from "@/components/harbor-loader";
 import { AiModeButton } from "@/components/search/ai-mode-button";
 import { AiSearchSection } from "@/components/search/ai-search-section";
-import { providerTabFor } from "@/lib/ai-models";
+import { hasAnyAiKey, providerTabFor } from "@/lib/ai-models";
 import { useSearch } from "@/lib/search-context";
 import { useSettings } from "@/lib/settings";
 import { useAuth } from "@/lib/auth";
@@ -100,7 +100,7 @@ export function MobileSearch() {
   const [awardsOpen, setAwardsOpen] = useState(false);
   const [detailMeta, setDetailMeta] = useState<Meta | null>(null);
   const key = settings.tmdbKey;
-  const hasAiKey = !!(settings.aiSearchKey.trim() || settings.aiGroqKey.trim());
+  const hasAiKey = hasAnyAiKey(settings);
 
   const leaveOverlays = () => {
     setCatalog(null);

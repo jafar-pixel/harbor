@@ -49,7 +49,9 @@ export function AiSearchSection({
         <div className="animate-ai-entrance rounded-2xl border border-edge-soft bg-elevated/30 px-5 py-4 text-[13px] leading-relaxed text-ink-muted">
           {settings.aiSearchProvider === "groq"
             ? t("Add your Groq API key in Settings, AI search to use this model.")
-            : t("Add your OpenRouter API key in Settings, AI search to use this model.")}
+            : settings.aiSearchProvider === "anthropic"
+              ? t("Add your Anthropic API key in Settings, AI search to use this model.")
+              : t("Add your OpenRouter API key in Settings, AI search to use this model.")}
         </div>
       </div>
     );
