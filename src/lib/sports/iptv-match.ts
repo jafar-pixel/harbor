@@ -91,7 +91,7 @@ export type MatchOptions = {
 export function channelQuality(name: string): number | null {
   if (/\b(?:4k|uhd|2160p?)\b/i.test(name)) return 2160;
   if (/\b(?:fhd|1080[pi]?)\b/i.test(name)) return 1080;
-  if (/\b(?:hd|720p?)\b/i.test(name)) return 720;
+  if (/\b(?:hd|lhd|720p?)\b/i.test(name)) return 720;
   if (/\b(?:sd|576[pi]?|480[pi]?)\b/i.test(name)) return 480;
   return null;
 }
@@ -385,16 +385,19 @@ function scoreListings(p: PreparedChannel, listings: Listing[], reasons: MatchRe
  */
 function broadcastOf(p: PreparedChannel, listings: Listing[]): Listing | null {
   if (PLUS_RE.test(stripPrefix(p.channel.name).rest)) return null;
+  // Providers write the country without a separator ("USA ESPN UHD") and add feed tags.
+  const core = p.norm
+    .replace(BARE_COUNTRY_RE, "")
+    .replace(/ (?:east|west|lhd|backup|main)$/, "")
+    .trim();
   for (const listing of listings) {
-    if (listing.plus) continue;
-    if (
-      p.norm === listing.norm ||
-      new RegExp(`^${listing.norm} (?:east|west|us|usa)$`).test(p.norm)
-    )
-      return listing;
+    if (!listing.plus && core === listing.norm) return listing;
   }
   return null;
 }
+
+/** A country written before a channel without a separator: "USA ESPN", "UK Sky Sports". */
+const BARE_COUNTRY_RE = /^(?:usa|us|uk|ca|can|au|mx|ie)\s+/;
 
 function tierOf(confidence: number, attached: boolean): MatchTier {
   if (attached || confidence >= 0.85) return "exact";

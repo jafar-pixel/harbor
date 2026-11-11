@@ -297,3 +297,55 @@ test("a channel that failed here is never auto-picked and goes last", () => {
   assert.equal(matches.at(-1)!.failing, true);
   assert.notEqual(matches.at(-1)!.tier, "exact");
 });
+
+test("the viewer's own provider names: USA ESPN in four qualities beats ESPN+ and ESPN 2", () => {
+  const game: SportsGame = {
+    ...fight,
+    league: "mens-college-basketball",
+    startMs: Date.parse("2026-11-10T21:00:00Z"),
+    home: { ...fight.home, name: "Duke Blue Devils", abbr: "DUKE", location: "Duke" },
+    away: {
+      ...fight.away,
+      name: "Michigan State Spartans",
+      abbr: "MSU",
+      location: "Michigan State",
+    },
+    broadcasts: ["ESPN"],
+    context: undefined,
+  };
+  // Real names from the viewer's playlist (links removed).
+  const names = [
+    "USA ESPN+ 018: Football: NFL Live (2026-08-19 16:00:00)",
+    "USA ESPN NEWS HD",
+    "USA ESPN SD",
+    "USA ESPN HD",
+    "USA ESPN 2",
+    "USA ESPN U HD",
+    "USA ESPN UHD",
+    "USA ESPN HD (backup)",
+    "USA ESPN Deportes",
+  ];
+  const channels: IptvChannel[] = names.map((name, i) => ({
+    id: `c${i}`,
+    tvgId: null,
+    name,
+    logo: null,
+    group: "Sports • General",
+    url: `http://example.test/${i}`,
+    catchupSource: null,
+    durationSec: null,
+    attrs: {},
+  }));
+  const index = buildSportsChannelIndex(channels);
+  const broadcast = (m: { reasons: { kind: string }[] }) =>
+    m.reasons.some((r) => r.kind === "broadcast");
+  const on4k = matchChannelsForGame(game, index, { maxHeight: 2160 });
+  assert.equal(on4k[0].channel.name, "USA ESPN UHD");
+  assert.equal(on4k[0].tier, "exact");
+  assert.deepEqual(
+    on4k.filter(broadcast).map((m) => m.channel.name),
+    ["USA ESPN UHD", "USA ESPN HD", "USA ESPN HD (backup)", "USA ESPN SD"],
+  );
+  const onHd = matchChannelsForGame(game, index, { maxHeight: 1080 });
+  assert.equal(onHd[0].channel.name, "USA ESPN HD");
+});
