@@ -16,6 +16,7 @@ import { useT } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
 import { isPicked, toggleTodayPick, useTodayPicks } from "@/lib/iptv/today-picks";
 import { useLiveToday } from "@/lib/jl/sports/live-today-store";
+import { useGameFeeds } from "@/lib/sports/game-feeds";
 import { cinemetaEnabled, topMovies, topSeries, type Meta } from "@/lib/cinemeta";
 import { useContinueWatching } from "@/lib/continue-watching";
 import {
@@ -297,6 +298,12 @@ function GamesTab({
   onAllChannels?: () => void;
 }) {
   const t = useT();
+  const feeds = useGameFeeds();
+  // Other feeds found for the game on now, when it was started from Sports.
+  const otherFeeds =
+    feeds && feeds.channels.some((c) => c.id === channelId)
+      ? feeds.channels.filter((c) => c.id !== channelId)
+      : [];
   const current: IptvChannel | null = channelId
     ? {
         id: channelId,
@@ -338,6 +345,37 @@ function GamesTab({
           )}
         </div>
       )}
+      {otherFeeds.length > 0 && <SectionTitle>{t("Other feeds for this game")}</SectionTitle>}
+      {otherFeeds.map((channel) => (
+        <button
+          key={channel.id}
+          type="button"
+          data-watch-row
+          onClick={() => onSwitch(channel, feeds!.label)}
+          className={rowClass()}
+        >
+          <span className="flex h-12 w-16 shrink-0 items-center justify-center rounded-xl bg-white/10">
+            {channel.logo ? (
+              <img
+                src={channel.logo}
+                alt=""
+                draggable={false}
+                className="max-h-9 max-w-[56px] object-contain"
+              />
+            ) : (
+              <Tv size={18} className="text-white/60" />
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span dir="auto" className="block truncate text-[14px] font-semibold">
+              {channel.name}
+            </span>
+            <span className="block truncate text-[12px] text-white/65">
+              {t("Same game · switch feed")}
+            </span>
+          </span>
+        </button>
+      ))}
       {liveToday.length > 0 && <SectionTitle>{t("Live Today")}</SectionTitle>}
       {liveToday.map((r) => {
         const playing = r.channel!.id === channelId;

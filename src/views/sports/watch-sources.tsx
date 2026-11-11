@@ -20,6 +20,7 @@ import {
   type ChannelMatch,
 } from "@/lib/sports/iptv-match";
 import { hostOf } from "@/lib/sports/stream-resolver";
+import { setGameFeeds } from "@/lib/sports/game-feeds";
 import { useView } from "@/lib/view";
 import { useAllPlaylists } from "@/views/live/hooks/use-all-playlists";
 import { loadPlaylist } from "@/lib/iptv/store";
@@ -191,8 +192,13 @@ function ActiveWatchSources({ game, index, broadcastNames }: WatchSourcesProps) 
     matches.find((m) => m.tier === "exact" || m.attached);
   const play = () => {
     if (stream) playStream(stream, fixtureLabel);
-    else if (selected) playChannel(selected.channel, fixtureLabel);
-    else if (matches.length) setExpanded(true);
+    else if (selected) {
+      setGameFeeds(fixtureLabel, [
+        selected.channel,
+        ...matches.map((m) => m.channel).filter((c) => c.id !== selected.channel.id),
+      ]);
+      playChannel(selected.channel, fixtureLabel);
+    } else if (matches.length) setExpanded(true);
     else if (hasAddonSources) {
       addonAnchor.current?.scrollIntoView({ block: "nearest" });
       (

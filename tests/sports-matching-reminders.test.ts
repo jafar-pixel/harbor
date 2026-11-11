@@ -211,3 +211,53 @@ test("the Duke game picks the feed that carries it, ahead of the slate feeds", (
   assert.equal(matches[0]?.tier, "exact");
   assert.ok(!matches.some((m) => m.channel.id === "c0" || m.channel.id === "c3"));
 });
+
+test("the game's own network comes first, in the quality the screen can show", () => {
+  const game: SportsGame = {
+    ...fight,
+    league: "mens-college-basketball",
+    startMs: Date.parse("2026-11-10T21:00:00Z"),
+    home: { ...fight.home, name: "Duke Blue Devils", abbr: "DUKE", location: "Duke" },
+    away: {
+      ...fight.away,
+      name: "Michigan State Spartans",
+      abbr: "MSU",
+      location: "Michigan State",
+    },
+    broadcasts: ["ESPN"],
+    context: undefined,
+  };
+  const names = [
+    "US (ESPN+ 135) | NCAA Men's Basketball: #5 MSU vs. #2 DUKE • WYO vs. UNC (#5 MSU vs. #2 DUKE) (2026-11-10 19:05:40)",
+    "US: ESPN+",
+    "US: ESPN SD",
+    "US: ESPN FHD",
+    "US: ESPN UHD",
+    "US: ESPN 2 FHD",
+  ];
+  const channels: IptvChannel[] = names.map((name, i) => ({
+    id: `c${i}`,
+    tvgId: null,
+    name,
+    logo: null,
+    group: "USA Sports",
+    url: `http://example.test/${i}`,
+    catchupSource: null,
+    durationSec: null,
+    attrs: {},
+  }));
+  const index = buildSportsChannelIndex(channels);
+  const on4k = matchChannelsForGame(game, index, { maxHeight: 2160 });
+  assert.deepEqual(
+    on4k.slice(0, 3).map((m) => m.channel.name),
+    ["US: ESPN UHD", "US: ESPN FHD", "US: ESPN SD"],
+  );
+  assert.equal(on4k[0].tier, "exact");
+  const onHd = matchChannelsForGame(game, index, { maxHeight: 1080 });
+  assert.equal(onHd[0].channel.name, "US: ESPN FHD");
+  assert.equal(onHd[1].channel.name, "US: ESPN UHD");
+  // ESPN+ and ESPN 2 are not the ESPN channel.
+  for (const m of on4k)
+    if (/ESPN\+|ESPN 2/.test(m.channel.name))
+      assert.ok(!m.reasons.some((r) => r.kind === "broadcast"), m.channel.name);
+});
