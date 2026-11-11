@@ -2,6 +2,7 @@ import { detectCountry, detectCountryFromGroup } from "@/lib/iptv/country-detect
 import { createEventChannelMatcher } from "./event-match";
 import { yieldToBrowser } from "@/lib/yield-to-browser";
 import { deviceMaxHeight } from "./device-height";
+import { channelHealth, type ChannelHealth } from "@/lib/iptv/channel-health";
 import { hasArabic, normalizeArabic } from "@/lib/iptv/rtl";
 import type { IptvChannel, EpgProgram } from "@/lib/iptv/types";
 import type { LeagueDef, SportsGame, SportsSide } from "@/lib/sports/espn";
@@ -50,6 +51,8 @@ export type ChannelMatch = {
   quality: number | null;
   /** How well that quality suits this screen; higher is better. */
   fit: number;
+  /** It failed to play here and hasn't worked since (channel-health.ts). */
+  failing: boolean;
 };
 
 export type PreparedChannel = {
@@ -80,6 +83,8 @@ export type MatchOptions = {
   limit?: number;
   /** The screen's tallest picture (deviceMaxHeight); picks 4K copies on a 4K TV, FHD on others. */
   maxHeight?: number;
+  /** Whether each channel plays here; defaults to what this device has learnt. */
+  health?: (url: string) => ChannelHealth;
 };
 
 /** The quality a channel name claims: "ESPN UHD" 2160, "ESPN FHD" 1080, "ESPN SD" 480. */
@@ -412,6 +417,7 @@ export function matchChannelsForGame(
   const out: ChannelMatch[] = [];
   const evidenceFor = createEventChannelMatcher(game);
   const maxHeight = opts.maxHeight ?? deviceMaxHeight();
+  const health = opts.health ?? channelHealth;
 
   for (const p of index.channels) {
     const attached = attachedIds.has(p.channel.id);
@@ -460,19 +466,23 @@ export function matchChannelsForGame(
 
     if (!attached && score < FLOOR) continue;
     const confidence = attached ? 1 : Math.max(0, Math.min(1, score / SATURATION));
+    // A channel that failed here and hasn't worked since is never picked for the viewer.
+    const failing = health(p.channel.url) === "failing";
     out.push({
       channel: p.channel,
       label: p.label,
       score,
       confidence: Math.round(confidence * 100) / 100,
-      tier:
-        attached || broadcast || event.both || event.numberMatch
+      tier: failing
+        ? "possible"
+        : attached || broadcast || event.both || event.numberMatch
           ? "exact"
           : tierOf(Math.min(confidence, 0.84), false),
       attached,
       reasons: attached ? [{ kind: "attached", label: leagueLabel }, ...reasons] : reasons,
       quality: p.quality ?? channelQuality(p.channel.name),
       fit: qualityFit(p.quality ?? channelQuality(p.channel.name), maxHeight),
+      failing,
     });
   }
 
@@ -481,6 +491,7 @@ export function matchChannelsForGame(
 }
 
 export function compareChannelMatches(a: ChannelMatch, b: ChannelMatch): number {
+  if (a.failing !== b.failing) return a.failing ? 1 : -1;
   if (a.attached !== b.attached) return a.attached ? -1 : 1;
   // The network carrying the game first, then a guide or channel name that names the game.
   const specificity = (match: ChannelMatch) =>

@@ -261,3 +261,39 @@ test("the game's own network comes first, in the quality the screen can show", (
     if (/ESPN\+|ESPN 2/.test(m.channel.name))
       assert.ok(!m.reasons.some((r) => r.kind === "broadcast"), m.channel.name);
 });
+
+test("a channel that failed here is never auto-picked and goes last", () => {
+  const game: SportsGame = {
+    ...fight,
+    league: "mens-college-basketball",
+    startMs: Date.parse("2026-11-10T21:00:00Z"),
+    home: { ...fight.home, name: "Duke Blue Devils", abbr: "DUKE", location: "Duke" },
+    away: {
+      ...fight.away,
+      name: "Michigan State Spartans",
+      abbr: "MSU",
+      location: "Michigan State",
+    },
+    broadcasts: ["ESPN"],
+    context: undefined,
+  };
+  const channels: IptvChannel[] = ["US: ESPN UHD", "US: ESPN FHD"].map((name, i) => ({
+    id: `c${i}`,
+    tvgId: null,
+    name,
+    logo: null,
+    group: "USA Sports",
+    url: `http://example.test/${i}`,
+    catchupSource: null,
+    durationSec: null,
+    attrs: {},
+  }));
+  const matches = matchChannelsForGame(game, buildSportsChannelIndex(channels), {
+    maxHeight: 2160,
+    health: (url) => (url.endsWith("/0") ? "failing" : "unknown"),
+  });
+  assert.equal(matches[0].channel.name, "US: ESPN FHD");
+  assert.equal(matches[0].tier, "exact");
+  assert.equal(matches.at(-1)!.failing, true);
+  assert.notEqual(matches.at(-1)!.tier, "exact");
+});
