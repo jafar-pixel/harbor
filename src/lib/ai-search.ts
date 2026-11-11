@@ -1,6 +1,7 @@
 import { searchCinemeta } from "./search";
 import {
   DEFAULT_AI_MODEL,
+  type AiProviderTab,
   migrateModelId,
   supportsJsonSchema,
   supportsSampling,
@@ -8,6 +9,15 @@ import {
 import { meta as fetchFullMeta, type Meta } from "./cinemeta";
 
 import { releaseText } from "@/lib/release-info";
+import { AiSearchError, friendlyAiError } from "./ai-errors";
+import { claudeText } from "./claude";
+
+export {
+  AiSearchError,
+  friendlyAiError,
+  type AiErrorDescriptor,
+  type AiErrorMessageKey,
+} from "./ai-errors";
 import { HARBOR_API_BASE } from "@/lib/config/endpoints";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -29,44 +39,10 @@ export type AiResult = {
   episodeTitle?: string;
 };
 
-export type AiErrorMessageKey =
-  | "Your API key was rejected. Check it in Settings, AI search."
-  | "Your account is out of credits for this model. Pick a free model or top up."
-  | "This model no longer exists at the provider. Pick another model (hold the AI button)."
-  | "That request was too big for this model. Pick a model with a larger context."
-  | "The model is rate-limited right now. Try again in a moment or switch models."
-  | "The model replied with nothing usable. Try another model (hold the AI button) or rephrase."
-  | "AI search failed ({status})."
-  | "AI search failed.";
-
-export type AiErrorDescriptor = {
-  messageKey: AiErrorMessageKey;
-  values?: { status: number };
-  detail?: string;
-};
-
-export class AiSearchError extends Error {
-  readonly messageKey: AiErrorMessageKey;
-  readonly values?: { status: number };
-  readonly detail?: string;
-
-  constructor({ messageKey, values, detail }: AiErrorDescriptor) {
-    const sourceMessage = values
-      ? messageKey.replace("{status}", String(values.status))
-      : messageKey;
-    super(detail ? `${sourceMessage} ${detail}` : sourceMessage);
-    this.name = "AiSearchError";
-    this.messageKey = messageKey;
-    this.values = values;
-    this.detail = detail;
-  }
-}
-
 const SYSTEM_PROMPT =
   'You are a film and TV discovery engine for a media app. The user describes what they want to watch in natural language. Reply with ONLY a JSON array (no prose, no markdown code fences) of up to 12 specific, real movies or TV shows that best match, most relevant first. Each element is an object: {"title": string, "year": number, "type": "movie" or "series"}. If the user is clearly asking about a SPECIFIC EPISODE (by plot, scene, character, quote, or meme, for example \'the seinfeld one about the puffy shirt\'), return that show as the first result and add its "season" and "episode" numbers plus "episodeTitle", like {"title": "South Park", "type": "series", "season": 13, "episode": 5, "episodeTitle": "Fishsticks"}. Use your own knowledge of the show to pick the exact episode. Use the original or most internationally recognized title. When live web context is provided below, treat it as authoritative ground truth for fact-grounded queries (people\'s filmographies, box office, recency, regional titles, memes, current seasons/episodes): use it as your primary source and cite the exact title/year it mentions rather than guessing from training data.';
 
-const SCHEMA_NOTE =
-  'Return the array under a top-level "results" key, as {"results": [ ... ]}.';
+const SCHEMA_NOTE = 'Return the array under a top-level "results" key, as {"results": [ ... ]}.';
 
 const SUGGESTION_SCHEMA = {
   type: "json_schema",
@@ -99,15 +75,54 @@ const SUGGESTION_SCHEMA = {
   },
 } as const;
 
+/** The same answer as SUGGESTION_SCHEMA, in the form Claude's structured outputs take. */
+const CLAUDE_SUGGESTION_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["results"],
+  properties: {
+    results: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["title", "year", "type", "season", "episode", "episodeTitle"],
+        properties: {
+          title: { type: "string" },
+          year: { anyOf: [{ type: "integer" }, { type: "null" }] },
+          type: { type: "string", enum: ["movie", "series"] },
+          season: { anyOf: [{ type: "integer" }, { type: "null" }] },
+          episode: { anyOf: [{ type: "integer" }, { type: "null" }] },
+          episodeTitle: { anyOf: [{ type: "string" }, { type: "null" }] },
+        },
+      },
+    },
+  },
+};
+
 export async function aiSuggest(
   key: string,
   model: string,
-  isGroq: boolean,
+  provider: AiProviderTab,
   query: string,
   webContext?: string,
 ): Promise<AiSuggestion[]> {
   const q = query.trim();
   if (!key.trim() || !q) return [];
+  const systemPrompt = webContext?.trim()
+    ? `${SYSTEM_PROMPT}\n\nLive web context for this query (use it when relevant, fall back to your own knowledge otherwise):\n${webContext}`
+    : SYSTEM_PROMPT;
+  if (provider === "anthropic") {
+    const content = await claudeText({
+      key,
+      model,
+      system: `${systemPrompt}\n\n${SCHEMA_NOTE}`,
+      user: q,
+      schema: CLAUDE_SUGGESTION_SCHEMA,
+    });
+    return parseSuggestions(content);
+  }
+  const isGroq = provider === "groq";
   const url = isGroq ? GROQ_URL : OPENROUTER_URL;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${key.trim()}`,
@@ -117,9 +132,6 @@ export async function aiSuggest(
     headers["HTTP-Referer"] = HARBOR_API_BASE;
     headers["X-Title"] = "JL Media Vision";
   }
-  const systemPrompt = webContext?.trim()
-    ? `${SYSTEM_PROMPT}\n\nLive web context for this query (use it when relevant, fall back to your own knowledge otherwise):\n${webContext}`
-    : SYSTEM_PROMPT;
   const resolved = migrateModelId(model.trim()) || DEFAULT_AI_MODEL;
   const schema = supportsJsonSchema(resolved);
   const res = await fetch(url, {
@@ -159,40 +171,6 @@ export async function aiSuggest(
     });
   }
   return parseSuggestions(content);
-}
-
-export function friendlyAiError(status: number, detail = ""): AiErrorDescriptor {
-  const rawDetail = detail.slice(0, 140).trim();
-  const error =
-    status === 401
-      ? { messageKey: "Your API key was rejected. Check it in Settings, AI search." as const }
-      : status === 402
-        ? {
-            messageKey:
-              "Your account is out of credits for this model. Pick a free model or top up." as const,
-          }
-        : status === 404
-          ? {
-              messageKey:
-                "This model no longer exists at the provider. Pick another model (hold the AI button)." as const,
-            }
-          : status === 413
-            ? {
-                messageKey:
-                  "That request was too big for this model. Pick a model with a larger context." as const,
-              }
-            : status === 429
-              ? {
-                  messageKey:
-                    "The model is rate-limited right now. Try again in a moment or switch models." as const,
-                }
-              : status
-                ? {
-                    messageKey: "AI search failed ({status})." as const,
-                    values: { status },
-                  }
-                : { messageKey: "AI search failed." as const };
-  return rawDetail ? { ...error, detail: rawDetail } : error;
 }
 
 export function extractJsonArray(raw: string): string | null {

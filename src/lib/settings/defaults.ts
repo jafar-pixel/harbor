@@ -378,6 +378,7 @@ export const DEFAULT: Settings = {
   aiSearchModel: "",
   aiSearchProvider: "openrouter",
   aiGroqKey: "",
+  anthropicKey: "",
   jinaKey: "",
   aiWebSearch: false,
   playerD3d11Flip: true,

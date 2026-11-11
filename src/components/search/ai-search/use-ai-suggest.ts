@@ -7,7 +7,7 @@ import {
   type AiResult,
 } from "@/lib/ai-search";
 import { useSettings } from "@/lib/settings";
-import { aiIsGroq, aiKey } from "@/lib/ai-models";
+import { aiKey } from "@/lib/ai-models";
 import { enrichWithContent } from "@/lib/jina-search";
 
 export type AiStatus = "idle" | "loading" | "done" | "error";
@@ -53,7 +53,7 @@ export function useAiSuggest(query: string, runSignal = 0) {
       const suggestions = await aiSuggest(
         activeKey,
         settings.aiSearchModel,
-        aiIsGroq(settings),
+        settings.aiSearchProvider,
         query,
         webContext,
       );

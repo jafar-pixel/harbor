@@ -15,6 +15,7 @@ import { loadBgImage, saveBgImage } from "@/lib/theme-storage";
 import { effectiveTmdbLanguage, setTmdbLanguage } from "@/lib/providers/tmdb/tmdb-client";
 import { setPosterBaseUrl } from "@/lib/providers/rpdb";
 import { setMdblistBatchKey } from "@/lib/providers/mdblist-batch";
+import { setClaudeAccount } from "@/lib/claude";
 import { setUiLanguage } from "@/lib/i18n";
 import { makeSafeTauriUnlisten } from "@/lib/tauri-unlisten";
 import { STORAGE_KEY } from "./settings/defaults";
@@ -295,6 +296,10 @@ export function SettingsProvider({
   useEffect(() => {
     setMdblistBatchKey(settings.mdblistKey);
   }, [settings.mdblistKey]);
+
+  useEffect(() => {
+    setClaudeAccount(settings.anthropicKey, settings.aiSearchModel);
+  }, [settings.anthropicKey, settings.aiSearchModel]);
 
   useEffect(() => {
     if (typeof document === "undefined" || !("fonts" in document)) return;
