@@ -196,6 +196,8 @@ class NativePlayer(
     /** The hero rect in CSS pixels (x, y, w, h), or null when the page hasn't sent one. */
     private var heroRect: DoubleArray? = null
     private var readySent = false
+    /** The stream the player has loaded, so asking for it again keeps it rather than reconnecting. */
+    private var currentUrl: String? = null
     /** The window's preferredDisplayModeId before playback changed it; null while unchanged. */
     private var savedDisplayModeId: Int? = null
 
@@ -560,6 +562,21 @@ class NativePlayer(
     }
 
     fun play(url: String, headers: Map<String, String>, title: String, startMs: Long) {
+        // A small TV handing over to full screen asks for the stream it is already playing.
+        // Reconnecting would drop the picture, and many IPTV accounts allow one connection, so
+        // the new one was often refused and the viewer had to press Watch again.
+        val current = player
+        if (current != null && keepsStream(currentUrl, url, startMs, current.playbackState)) {
+            buildRow()
+            infoLine.text = options.info
+            applyAccent()
+            songButton.visibility = if (options.songIdEnabled) View.VISIBLE else View.GONE
+            applyMode()
+            readySent = true
+            send("ready")
+            if (current.isPlaying) send("playing")
+            return
+        }
         release()
         readySent = false
         songCapture.clear()
@@ -647,6 +664,7 @@ class NativePlayer(
         p.playWhenReady = true
         view.player = p
         player = p
+        currentUrl = url
         handler.removeCallbacks(positionTick)
         handler.postDelayed(positionTick, 1000)
         applyMode()
@@ -833,6 +851,7 @@ class NativePlayer(
         player?.removeListener(listener)
         player?.release()
         player = null
+        currentUrl = null
         audioTracksJson = "[]"
     }
 
@@ -861,7 +880,17 @@ class NativePlayer(
             // The remote's menu (≡) button: audio and subtitle tracks.
             KeyEvent.KEYCODE_MENU -> { if (down && event.repeatCount == 0) openMenu(); return true }
         }
-        if (view.isControllerFullyVisible) return false
+        if (view.isControllerFullyVisible) {
+            // Down from the bar's bottom row (nothing below it in the player) opens "While you
+            // watch", as it does with the bar hidden, instead of doing nothing.
+            if (event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN && down && event.repeatCount == 0 &&
+                options.controls?.contains("today-games") == true && !canMoveDownInBar()
+            ) {
+                control("today-games")
+                return true
+            }
+            return false
+        }
         if (down) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER ->
@@ -877,6 +906,18 @@ class NativePlayer(
             }
         }
         return true
+    }
+
+    /** Whether Down moves the remote's focus to another control inside the player bar. */
+    private fun canMoveDownInBar(): Boolean {
+        val focused = activity.currentFocus ?: return false
+        val next = focused.focusSearch(View.FOCUS_DOWN) ?: return false
+        var v: View? = next
+        while (v != null) {
+            if (v === view) return true
+            v = v.parent as? View
+        }
+        return false
     }
 
     /** A short message over the video; shown only in FULL, where the page's own notices are hidden. */
@@ -1360,6 +1401,14 @@ private fun speedName(speed: Float): String =
     }
 
     companion object {
+        /**
+         * Whether a play request is for the stream already loaded and still alive, so it can be
+         * kept: same address, no start position asked for, and not ended or failed.
+         */
+        fun keepsStream(loaded: String?, wanted: String, startMs: Long, state: Int): Boolean =
+            loaded != null && loaded == wanted && startMs <= 0 &&
+                state != Player.STATE_IDLE && state != Player.STATE_ENDED
+
         private const val SEEK_STEP_MS = 10_000L
 
         /** The bar before the page sends a layout (older app pages). */
