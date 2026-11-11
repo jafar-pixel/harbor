@@ -4025,6 +4025,22 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     ],
   },
   {
+    label: "Live TV provider",
+    section: "library",
+    tab: "livetv",
+    anchorTitle: "Live TV",
+    keywords: [
+      "live tv",
+      "iptv",
+      "provider",
+      "playlist",
+      "m3u",
+      "xtream",
+      "refresh channels",
+      "add playlist",
+    ],
+  },
+  {
     label: "AI agents",
     section: "library",
     tab: "ai",

@@ -1,5 +1,4 @@
 import { X } from "lucide-react";
-import { Search } from "@/components/icons/search-icon";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePlaylistMutations } from "./live/hooks/use-playlist-mutations";
 import { useLiveActions } from "./live/hooks/use-live-actions";
@@ -7,72 +6,37 @@ import { useT } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
 import { usePlaylists } from "@/lib/iptv/playlists-store";
 import { useScrollMemory, useView } from "@/lib/view";
-import { FAVORITES_GROUP_KEY, useFavorites } from "@/lib/iptv/favorites";
+import { useFavorites } from "@/lib/iptv/favorites";
 import { clearPlaylistCache, getCachedPlaylist } from "@/lib/iptv/store";
-import { readActiveId, toPlaylistSource, writeActiveId } from "@/lib/iptv/active-source";
-import { pushActivityHint } from "@/lib/discord/activity-hint";
+import {
+  ACTIVE_SOURCE_EVENT,
+  readActiveId,
+  REFRESH_SOURCE_EVENT,
+  toPlaylistSource,
+  writeActiveId,
+} from "@/lib/iptv/active-source";
 import type { IptvChannel, IptvPlaylistSource } from "@/lib/iptv/types";
-import { CategorySidebar } from "./live/category-sidebar";
-import { ChannelGrid, EmptyResult, ErrorBlock } from "./live/channel-grid";
-import { GridSkeleton, GuideSkeleton } from "./live/skeletons";
+import { ErrorBlock } from "./live/channel-grid";
+import { GridSkeleton } from "./live/skeletons";
 import { PlaylistEmpty } from "./live/playlist-empty";
-import { SourcePicker } from "./live/source-picker";
 import { LiveHome } from "./live/live-home";
-import { TopNetworksRows } from "./live/top-networks-rows";
-import { GuideView } from "./live/guide/guide-view";
-import { GuideGamesView } from "./live/guide/guide-games-view";
 import { useAllPlaylists } from "./live/hooks/use-all-playlists";
 import { useChannelPipeline } from "./live/hooks/use-channel-pipeline";
 import { useEpg, useNowTick } from "./live/hooks/use-epg";
 import { useXtreamEpgFallback } from "./live/hooks/use-xtream-epg-fallback";
 import { useIptvPlaylist } from "./live/hooks/use-iptv-playlist";
-import { MultiviewView } from "./multiview";
-import { ChannelsView } from "./live/channels-view";
-import { GuideGamesToggle, ViewModeToggle, type ViewMode } from "./live/view-mode-toggle";
-import { isWindowsDesktop } from "@/lib/platform";
 
-const MODE_KEY = "harbor.iptv.viewMode";
-const GAMES_KEY = "jl.guide.games";
 const EMPTY_CHANNELS: IptvChannel[] = [];
 
-function readMode(): ViewMode {
-  try {
-    const v = localStorage.getItem(MODE_KEY);
-    if (v === "grid") return "grid";
-    if (v === "guide") return "guide";
-    if (v === "channels") return "channels";
-    if (v === "multiview" && isWindowsDesktop()) return "multiview";
-    return "home";
-  } catch {
-    return "home";
-  }
-}
-
-function writeMode(m: ViewMode) {
-  try {
-    localStorage.setItem(MODE_KEY, m);
-  } catch {}
-}
-
-function readGamesOn(): boolean {
-  try {
-    return localStorage.getItem(GAMES_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeGamesOn(on: boolean) {
-  try {
-    if (on) localStorage.setItem(GAMES_KEY, "1");
-    else localStorage.removeItem(GAMES_KEY);
-  } catch {}
-}
-
+/**
+ * Live TV is one page: Your TV, the channel box beside it and the rows below (live-home.tsx).
+ * There's no toolbar; the provider, refresh and playlists are managed in Settings › Live TV,
+ * which tells this page through ACTIVE_SOURCE_EVENT and REFRESH_SOURCE_EVENT.
+ */
 export function LiveView({ active }: { active: boolean }) {
   const t = useT();
   const { settings } = useSettings();
-  const { openMeta, setView } = useView();
+  const { setView } = useView();
   const sources = usePlaylists();
 
   const [activeId, setActiveId] = useState<string | null>(() => readActiveId());
@@ -90,6 +54,12 @@ export function LiveView({ active }: { active: boolean }) {
       writeActiveId(fallback);
     }
   }, [sources, activeId]);
+  // Settings › Live TV picks the provider.
+  useEffect(() => {
+    const onActive = () => setActiveId(readActiveId());
+    window.addEventListener(ACTIVE_SOURCE_EVENT, onActive);
+    return () => window.removeEventListener(ACTIVE_SOURCE_EVENT, onActive);
+  }, []);
 
   const activeSource: IptvPlaylistSource | null = useMemo(() => {
     if (!activeId) return null;
@@ -105,82 +75,48 @@ export function LiveView({ active }: { active: boolean }) {
       : cachedForActive && cachedForActive.id === activeId
         ? cachedForActive
         : null;
+  // Settings › Live TV › Refresh.
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+  useEffect(() => {
+    const onRefresh = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      if (!id || id !== activeId) return;
+      clearPlaylistCache(id);
+      refreshRef.current();
+    };
+    window.addEventListener(REFRESH_SOURCE_EVENT, onRefresh);
+    return () => window.removeEventListener(REFRESH_SOURCE_EVENT, onRefresh);
+  }, [activeId]);
+
   const epgOnlyUrls = useMemo(
     () => sources.filter((s) => s.kind === "epg").map((s) => s.epgUrl || s.url),
     [sources],
   );
-  const {
-    index: baseEpg,
-    loading: epgLoading,
-    error: epgError,
-  } = useEpg(active ? activeSource : null, epgOnlyUrls);
+  const { index: baseEpg, error: epgError } = useEpg(active ? activeSource : null, epgOnlyUrls);
   const [epgErrorHidden, setEpgErrorHidden] = useState<string | null>(null);
   const epgErrorShown = epgError && epgError !== epgErrorHidden ? epgError : null;
   const epg = useXtreamEpgFallback(activeSource, playlist?.channels ?? EMPTY_CHANNELS, baseEpg);
   const nowMs = useNowTick(30_000);
 
   const favorites = useFavorites();
-  const favoritesCountRef = useRef(favorites.count);
-  favoritesCountRef.current = favorites.count;
-  const [group, setGroup] = useState<string | null>(() =>
-    favoritesCountRef.current > 0 ? FAVORITES_GROUP_KEY : null,
-  );
-  const [query, setQuery] = useState("");
-  const [mode, setModeState] = useState<ViewMode>(() => readMode());
-  const setMode = useCallback((m: ViewMode) => {
-    setModeState(m);
-    writeMode(m);
-  }, []);
-  const [gamesOn, setGamesOnState] = useState(() => readGamesOn());
-  const setGamesOn = useCallback((on: boolean) => {
-    setGamesOnState(on);
-    writeGamesOn(on);
-  }, []);
-  const showGames = mode === "guide" && gamesOn;
-  const goLiveHome = useCallback(() => {
-    setMode("home");
-    setQuery("");
-    setGroup(favoritesCountRef.current > 0 ? FAVORITES_GROUP_KEY : null);
-  }, [setMode]);
+
   useEffect(() => {
     if (!active) return;
     const onLocalBack = (e: Event) => {
       if (sources.length === 0) {
         e.preventDefault();
         setView("home");
-        return;
       }
-      if (
-        mode === "home" &&
-        !query &&
-        group === (favoritesCountRef.current > 0 ? FAVORITES_GROUP_KEY : null)
-      )
-        return;
-      e.preventDefault();
-      goLiveHome();
     };
     window.addEventListener("harbor:local-back", onLocalBack);
     return () => window.removeEventListener("harbor:local-back", onLocalBack);
-  }, [active, goLiveHome, group, mode, query, setView, sources.length]);
-  const [immersive, setImmersive] = useState(false);
-  useEffect(() => {
-    const onImm = (e: Event) => setImmersive((e as CustomEvent<boolean>).detail === true);
-    window.addEventListener("harbor:immersive", onImm);
-    return () => window.removeEventListener("harbor:immersive", onImm);
-  }, []);
-  useEffect(() => {
-    if (mode !== "multiview" && immersive) setImmersive(false);
-  }, [mode, immersive]);
-  useEffect(() => {
-    setGroup(favoritesCountRef.current > 0 ? FAVORITES_GROUP_KEY : null);
-    setQuery("");
-  }, [activeId]);
+  }, [active, setView, sources.length]);
 
   const region = settings.region || "US";
   const preferredLanguages =
     settings.preferredLanguages.length > 0 ? settings.preferredLanguages : ["English"];
 
-  const inFavorites = group === FAVORITES_GROUP_KEY;
   const allSources = useMemo<IptvPlaylistSource[]>(
     () =>
       sources
@@ -195,47 +131,15 @@ export function LiveView({ active }: { active: boolean }) {
         })),
     [sources],
   );
-  const managedSources = useMemo<IptvPlaylistSource[]>(
-    () =>
-      sources.map((p) => ({
-        id: p.id,
-        name: p.name,
-        url: p.url,
-        epgUrl: p.epgUrl,
-        kind: p.kind,
-        xtream: p.xtream,
-      })),
-    [sources],
-  );
-  const stubSources = useMemo(() => {
-    const ids = new Set<string>();
-    for (const f of favorites.items.values()) if (!f.url) ids.add(f.sourceId);
-    return allSources.filter((s) => ids.has(s.id));
-  }, [favorites.items, allSources]);
+  const allPlaylists = useAllPlaylists(allSources, false);
 
-  const multiview = mode === "multiview";
-  const allPlaylists = useAllPlaylists(
-    multiview ? allSources : stubSources,
-    multiview || (inFavorites && stubSources.length > 0),
-  );
-
-  const {
-    sortedGroups,
-    topRows,
-    showTopRows,
-    regionChannels,
-    shownChannels,
-    mvChannels,
-    visible,
-    counts,
-    groupLogos,
-  } = useChannelPipeline({
+  const { shownChannels } = useChannelPipeline({
     playlist,
     region,
     preferredLanguages,
-    mode,
-    group,
-    query,
+    mode: "home",
+    group: null,
+    query: "",
     favorites,
     allPlaylists,
     allSources,
@@ -245,23 +149,16 @@ export function LiveView({ active }: { active: boolean }) {
     setActiveId(id);
     writeActiveId(id);
   }, []);
-
-  const { addPlaylist, removePlaylist, editPlaylist, reorderPlaylist, movePlaylistTop } =
-    usePlaylistMutations({ activeId, setActiveId: selectActive, refresh });
-
-  const { handlePlay, handlePlayCatchup, exportPlaylist } = useLiveActions({
-    epg,
+  const { addPlaylist } = usePlaylistMutations({
     activeId,
-    playlist,
+    setActiveId: selectActive,
+    refresh,
   });
+
+  const { handlePlay } = useLiveActions({ epg, activeId, playlist });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   useScrollMemory("live", scrollRef, active);
-
-  useEffect(() => {
-    if (!active || mode !== "guide") return;
-    return pushActivityHint({ details: "Browsing the TV guide", state: "Live TV" });
-  }, [active, mode]);
 
   if (sources.length === 0) {
     return (
@@ -272,112 +169,8 @@ export function LiveView({ active }: { active: boolean }) {
   }
 
   return (
-    <main
-      data-rail-flush
-      data-live-page
-      className={`relative flex min-h-0 flex-1 ${immersive ? "pt-0" : "pt-20"}`}
-    >
-      {playlist &&
-        sortedGroups.length > 0 &&
-        mode !== "multiview" &&
-        mode !== "home" &&
-        !showGames &&
-        state.kind !== "error" && (
-          <CategorySidebar
-            groups={sortedGroups}
-            active={group}
-            onSelect={setGroup}
-            counts={counts}
-            groupLogos={groupLogos}
-            favoritesCount={favorites.count}
-            sourceId={activeId ?? ""}
-          />
-        )}
+    <main data-rail-flush data-live-page className="relative flex min-h-0 flex-1 pt-20">
       <div className="flex min-w-0 flex-1 flex-col">
-        {!immersive && (
-          <header className="relative z-[40] flex shrink-0 flex-wrap items-center gap-2.5 border-b border-edge-soft/40 bg-surface px-6 py-2.5">
-            <SourcePicker
-              sources={managedSources}
-              activeId={activeId}
-              exportEnabled={!!playlist?.channels.length}
-              onSelect={(id) => {
-                setActiveId(id);
-                writeActiveId(id);
-              }}
-              onAdd={addPlaylist}
-              onEdit={editPlaylist}
-              onRemove={removePlaylist}
-              onMove={reorderPlaylist}
-              onMoveTop={movePlaylistTop}
-              onRefresh={() => {
-                if (activeId) clearPlaylistCache(activeId);
-                refresh();
-              }}
-              onExport={exportPlaylist}
-              fetchedAt={playlist?.fetchedAt ?? null}
-              channelCount={playlist?.channels.length ?? null}
-              loading={state.kind === "loading"}
-            />
-            {mode === "multiview" ? (
-              <div className="flex h-11 flex-1 min-w-[220px] items-center px-1 text-[13px] text-ink-subtle">
-                {t("Pick channels into the grid below. Audio follows the highlighted tile.")}
-              </div>
-            ) : showGames ? (
-              <div className="flex h-11 flex-1 min-w-[220px] items-center px-1 text-[13px] text-ink-subtle">
-                {t("Games on your channels, live now or starting in the next 4 hours.")}
-              </div>
-            ) : (
-              <div className="flex h-11 flex-1 min-w-[220px] items-center gap-2.5 rounded-xl border border-edge-soft/55 bg-elevated px-3.5">
-                <Search size={15} strokeWidth={2} className="text-ink-subtle" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    if (e.target.value && mode === "home") setMode("channels");
-                  }}
-                  placeholder={
-                    playlist
-                      ? t("Search {n} channels", { n: playlist.channels.length })
-                      : t("Search channels")
-                  }
-                  className="flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-subtle focus:outline-none"
-                />
-                {query && (
-                  <button
-                    onClick={() => setQuery("")}
-                    className="text-[12.5px] font-medium text-ink-subtle transition-colors hover:text-ink"
-                  >
-                    {t("Clear")}
-                  </button>
-                )}
-              </div>
-            )}
-            {mode !== "multiview" && (
-              <GuideGamesToggle
-                on={showGames}
-                onChange={(on) => {
-                  if (on) setMode("guide");
-                  setGamesOn(on);
-                }}
-              />
-            )}
-            <ViewModeToggle
-              mode={mode}
-              favoritesOn={inFavorites}
-              onMoviesShows={() => setView("vod")}
-              onChange={(m) => {
-                // Channels shows every channel; Favorites is the same view over favourites.
-                if (m === "channels" && inFavorites) setGroup(null);
-                setMode(m);
-              }}
-              onFavorites={() => {
-                setGroup(FAVORITES_GROUP_KEY);
-                setMode("channels");
-              }}
-            />
-          </header>
-        )}
         {epgErrorShown && !epg && (
           <div className="mx-6 mt-2 flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 py-2 pe-2 ps-4 text-[12.5px] text-ink-muted">
             <span className="font-semibold text-danger">{t("EPG failed:")}</span>
@@ -395,120 +188,35 @@ export function LiveView({ active }: { active: boolean }) {
             </button>
           </div>
         )}
-        {mode === "multiview" ? (
-          <div className="flex min-h-0 flex-1 flex-col pt-2">
-            <MultiviewView
-              channels={mvChannels}
-              epg={epg}
-              active={active}
-              sources={allSources}
-              playlists={allPlaylists}
-              loading={allSources.length > 0 && allPlaylists.size < allSources.length}
+        <div
+          ref={scrollRef}
+          className="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-[calc(1.5rem+var(--env-fab-room,0px))]"
+        >
+          {state.kind === "error" ? (
+            <ErrorBlock
+              message={state.message}
+              onRetry={() => {
+                if (activeId) clearPlaylistCache(activeId);
+                refresh();
+              }}
             />
-          </div>
-        ) : (
-          <div
-            ref={scrollRef}
-            className={`min-h-0 flex-1 ${
-              mode === "guide"
-                ? "flex flex-col overflow-hidden"
-                : "overflow-y-auto px-6 pt-5 pb-[calc(1.5rem+var(--env-fab-room,0px))]"
-            }`}
-          >
-            {state.kind === "error" ? (
-              <ErrorBlock
-                message={state.message}
-                onRetry={() => {
-                  if (activeId) clearPlaylistCache(activeId);
-                  refresh();
-                }}
+          ) : state.kind === "loading" && !playlist ? (
+            <GridSkeleton />
+          ) : (
+            playlist && (
+              <LiveHome
+                channels={shownChannels}
+                epg={epg}
+                nowMs={nowMs}
+                sourceId={activeId ?? ""}
+                region={region}
+                favorites={favorites}
+                active={active}
+                onPlay={handlePlay}
               />
-            ) : state.kind === "loading" ? (
-              mode === "guide" ? (
-                <GuideSkeleton />
-              ) : (
-                <GridSkeleton />
-              )
-            ) : (
-              <>
-                {mode === "home" && playlist && (
-                  <LiveHome
-                    channels={shownChannels}
-                    epg={epg}
-                    nowMs={nowMs}
-                    sourceId={activeId ?? ""}
-                    region={region}
-                    favorites={favorites}
-                    active={active}
-                    onPlay={handlePlay}
-                    onOpenCategory={(g) => {
-                      setGroup(g);
-                      setMode("grid");
-                    }}
-                  />
-                )}
-                {showGames && playlist && (
-                  <GuideGamesView
-                    channels={shownChannels}
-                    epg={epg}
-                    nowMs={nowMs}
-                    onPlay={handlePlay}
-                  />
-                )}
-                {mode !== "home" && !showGames && playlist && visible.length === 0 && (
-                  <EmptyResult
-                    onClear={() => {
-                      setQuery("");
-                      setGroup(null);
-                    }}
-                  />
-                )}
-                {visible.length > 0 && mode === "grid" && (
-                  <div className="flex flex-col gap-6">
-                    {showTopRows && (
-                      <TopNetworksRows
-                        rows={topRows}
-                        channels={regionChannels}
-                        onPlay={handlePlay}
-                      />
-                    )}
-                    <ChannelGrid
-                      channels={visible}
-                      onPlay={handlePlay}
-                      onInfo={(meta) => openMeta(meta, { liveContext: true })}
-                      epg={epg}
-                      nowMs={nowMs}
-                      resetKey={`${activeId}|${group ?? ""}|${query}`}
-                    />
-                  </div>
-                )}
-                {visible.length > 0 && mode === "channels" && (
-                  <ChannelsView
-                    channels={visible}
-                    epg={epg}
-                    nowMs={nowMs}
-                    active={active}
-                    favorites={favorites}
-                    onPlay={handlePlay}
-                    resetKey={`${activeId}|${group ?? ""}|${query}`}
-                    sourceId={activeId ?? ""}
-                  />
-                )}
-                {visible.length > 0 && mode === "guide" && !showGames && (
-                  <GuideView
-                    channels={visible}
-                    epg={epg}
-                    epgLoading={epgLoading}
-                    nowMs={nowMs}
-                    onPlay={handlePlay}
-                    onPlayCatchup={handlePlayCatchup}
-                    resetKey={`${activeId}|${group ?? ""}|${query}`}
-                  />
-                )}
-              </>
-            )}
-          </div>
-        )}
+            )
+          )}
+        </div>
       </div>
     </main>
   );
