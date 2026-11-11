@@ -34,6 +34,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -606,7 +607,11 @@ class NativePlayer(
             .setTargetBufferBytes(bufferBytesFor(Runtime.getRuntime().maxMemory()))
             .build()
         val p = ExoPlayer.Builder(activity)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(http))
+            // DefaultDataSource sends http(s) through `http` (headers, timeouts as set above) and
+            // reads local files itself: the subtitles the page adds are saved as files, and an
+            // HTTP-only source failed on them ("FileURLConnection cannot be cast to
+            // HttpURLConnection"), so every movie or show with subtitles never started.
+            .setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(activity, http)))
             .setLoadControl(load)
             .setBandwidthMeter(DefaultBandwidthMeter.getSingletonInstance(activity))
             .setRenderersFactory(renderersFactory())
