@@ -159,7 +159,8 @@ export function usePlayerBridge(params: {
           const ref = playing.streamRef;
           return {
             ...nativeTvOptions(now),
-            controls: tvLayout(theme),
+            // Live channels add Today's games to the bar (the player's games overlay).
+            controls: [...tvLayout(theme), ...(playing.isLive ? ["today-games"] : [])],
             // The theme's accent, for the TV player's seek bar and highlights.
             accent:
               getComputedStyle(document.documentElement)

@@ -91,7 +91,9 @@ export const NATIVE_HERO_BAR_PX = 56;
 /** The TV app's Change stream button: the player opens its channel list or stream switcher. */
 export const TV_PANEL_EVENT = "harbor:tv-panel";
 /** Set on <html> while that list is open: the video steps aside until it closes. */
-const tvPanelOpen = () => document.documentElement.dataset.tvPanel === "1";
+const tvPanelOpen = () =>
+  document.documentElement.dataset.tvPanel === "1" ||
+  document.documentElement.dataset.tvGames === "1";
 
 /** Marks the page see-through over the video (index.css `data-tv-video-under`). */
 const setVideoUnder = (under: boolean) => {
@@ -280,7 +282,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       panelObserver = new MutationObserver(schedulePlace);
       panelObserver.observe(document.documentElement, {
         attributes: true,
-        attributeFilter: ["data-tv-panel"],
+        attributeFilter: ["data-tv-panel", "data-tv-games"],
       });
       const stage = el.closest("[data-harbor-player]");
       if (stage) {

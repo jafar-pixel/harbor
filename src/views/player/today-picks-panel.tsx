@@ -1,10 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { nativeTvAvailable, TV_CONTROL_EVENT } from "@/lib/player/native-tv/bridge";
 import { BellRing, Star, Tv, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import type { IptvChannel } from "@/lib/iptv/types";
 import { isPicked, toggleTodayPick, useTodayPicks } from "@/lib/iptv/today-picks";
 import { useLiveToday } from "@/lib/jl/sports/live-today-store";
 import type { PlayerSrc } from "@/lib/view";
+
+/** How long the list stays up on the TV with no key pressed. */
+const TV_GAMES_IDLE_MS = 10_000;
 
 /**
  * Today's games beside a live channel, like Next Episodes beside a show: the channels the viewer
@@ -26,6 +30,37 @@ export function TodayPicksPanel({
   // Today's games from the Sports Hub, with scores; only the ones a provider carries can switch.
   const liveToday = useLiveToday().filter((r) => r.channel);
   const [open, setOpen] = useState(false);
+  const panel = useRef<HTMLElement>(null);
+  // TV app: its player bar's Today's games button opens the list, which shows over the live
+  // picture (native-tv/bridge.ts `data-tv-games`) and hides after a few idle seconds.
+  useEffect(() => {
+    if (!nativeTvAvailable()) return;
+    const onControl = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === "today-games") setOpen(true);
+    };
+    window.addEventListener(TV_CONTROL_EVENT, onControl);
+    return () => window.removeEventListener(TV_CONTROL_EVENT, onControl);
+  }, []);
+  useEffect(() => {
+    if (!open || !nativeTvAvailable()) return;
+    const root = document.documentElement;
+    root.dataset.tvGames = "1";
+    // The remote starts on the list's first game (the page has the remote while it is open).
+    window.requestAnimationFrame(() =>
+      panel.current?.querySelector<HTMLElement>("button:not([aria-label])")?.focus(),
+    );
+    let timer = window.setTimeout(() => setOpen(false), TV_GAMES_IDLE_MS);
+    const restart = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setOpen(false), TV_GAMES_IDLE_MS);
+    };
+    window.addEventListener("keydown", restart, true);
+    return () => {
+      delete root.dataset.tvGames;
+      window.clearTimeout(timer);
+      window.removeEventListener("keydown", restart, true);
+    };
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -50,7 +85,8 @@ export function TodayPicksPanel({
   const starred = isPicked(picks, channelId);
 
   if (!open) {
-    if (!chromeVisible) return null;
+    // On the TV the player bar's own Today's games button opens the list.
+    if (!chromeVisible || nativeTvAvailable()) return null;
     return (
       <button
         type="button"
@@ -66,6 +102,7 @@ export function TodayPicksPanel({
 
   return (
     <aside
+      ref={panel}
       aria-label={t("Today's games")}
       className="pointer-events-auto absolute bottom-28 end-4 top-20 z-[150] flex w-[340px] max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/75 text-white shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] backdrop-blur-xl animate-menu-pop"
     >
