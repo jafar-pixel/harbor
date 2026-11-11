@@ -18,9 +18,15 @@ export function LiveHero({
   hydrations,
   active: pageActive = true,
   onAmbient,
+  mini = false,
   onPlay,
 }: {
   items: NowItem[];
+  /**
+   * Pinned: the page has scrolled past Your TV, so it rides along as a small screen in the top
+   * corner, still playing the same stream, while the viewer explores the rows.
+   */
+  mini?: boolean;
   nowMs: number;
   hydrations: Map<string, Meta | null>;
   /** Live TV is on screen; the preview stops while it isn't. */
@@ -70,6 +76,10 @@ export function LiveHero({
   // The picture fills the whole box on the Shield (no strip under it); OK opens full screen,
   // which has volume and the channel's options.
   const nativeTv = useNativeSmallTv(box, nativeOn ? active!.channel : null, nativeOn, sound, 0);
+  // The box moved without a scroll step: have the TV app's video follow it now.
+  useEffect(() => {
+    window.dispatchEvent(new Event("resize"));
+  }, [mini]);
   useEffect(() => {
     if (nativeTv.playing) setPlaying(true);
   }, [nativeTv.playing]);
@@ -100,7 +110,11 @@ export function LiveHero({
       onClick={() => nativeTv.native && watch(channel)}
       aria-label={t("Your TV: {name}", { name: channel.name })}
       // A true 16:9 screen on the TV app (no height cap, which made it wide and short).
-      className={`group relative aspect-video w-full min-w-0 cursor-pointer overflow-hidden rounded-lg outline-none focus-visible:ring-4 focus-visible:ring-white/85 ${nativeTv.native ? "" : "max-h-[72vh]"} ${
+      className={`group aspect-video min-w-0 cursor-pointer overflow-hidden rounded-lg outline-none focus-visible:ring-4 focus-visible:ring-white/85 ${
+        mini
+          ? "fixed end-6 top-6 z-40 w-[min(30vw,480px)] shadow-[0_24px_60px_-12px_rgba(0,0,0,0.85)] ring-1 ring-white/20"
+          : `relative w-full ${nativeTv.native ? "" : "max-h-[72vh]"}`
+      } ${
         // The glass theme clears bg-canvas; on the Shield the box is the TV screen, so it stays black.
         nativeTv.native ? "bg-black" : "bg-canvas"
       }`}
@@ -133,48 +147,64 @@ export function LiveHero({
           />
         </div>
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/35 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-r from-canvas/65 via-transparent to-transparent" />
+      {mini ? (
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent" />
+      ) : (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/35 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-canvas/65 via-transparent to-transparent" />
+        </>
+      )}
 
-      {channel.logo && <ChannelBug logo={channel.logo} />}
+      {channel.logo && !mini && <ChannelBug logo={channel.logo} />}
 
-      <div
-        key={channel.id}
-        className="absolute inset-x-0 bottom-0 flex flex-col gap-2.5 p-8 pb-7"
-        style={{ animation: "harbor-fade-in 420ms cubic-bezier(0.32,0.72,0.24,1) both" }}
-      >
-        <div className="flex items-center gap-3 text-[13px] font-semibold">
-          <span className="flex h-[24px] items-center rounded-md bg-danger px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white">
-            {t("Live")}
+      {mini ? (
+        <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 p-3 pb-3.5">
+          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-danger" />
+          <span dir="auto" className="min-w-0 flex-1 truncate text-[14px] font-semibold text-ink">
+            {title}
           </span>
-          {left && (
-            <span className="flex items-center gap-1.5 text-ink">
-              <RotateCcw size={14} strokeWidth={2.4} />
-              {left}
-            </span>
-          )}
+          <span className="shrink-0 truncate text-[12px] text-ink-muted">{channel.name}</span>
         </div>
-        <h2 className="max-w-[88%] font-display text-[40px] font-semibold leading-[1.04] tracking-tight text-ink line-clamp-2">
-          {title}
-        </h2>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {meta && <div className="text-[14px] font-medium text-ink-muted">{meta}</div>}
-          <div className="ms-auto flex items-center gap-3">
-            <TvVolumeControls />
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                watch(channel);
-              }}
-              onDoubleClick={(e) => e.stopPropagation()}
-              className="jl-cta flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-black"
-            >
-              <Play size={16} fill="currentColor" /> {t("Watch")}
-            </button>
+      ) : (
+        <div
+          key={channel.id}
+          className="absolute inset-x-0 bottom-0 flex flex-col gap-2.5 p-8 pb-7"
+          style={{ animation: "harbor-fade-in 420ms cubic-bezier(0.32,0.72,0.24,1) both" }}
+        >
+          <div className="flex items-center gap-3 text-[13px] font-semibold">
+            <span className="flex h-[24px] items-center rounded-md bg-danger px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white">
+              {t("Live")}
+            </span>
+            {left && (
+              <span className="flex items-center gap-1.5 text-ink">
+                <RotateCcw size={14} strokeWidth={2.4} />
+                {left}
+              </span>
+            )}
+          </div>
+          <h2 className="max-w-[88%] font-display text-[40px] font-semibold leading-[1.04] tracking-tight text-ink line-clamp-2">
+            {title}
+          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {meta && <div className="text-[14px] font-medium text-ink-muted">{meta}</div>}
+            <div className="ms-auto flex items-center gap-3">
+              <TvVolumeControls />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  watch(channel);
+                }}
+                onDoubleClick={(e) => e.stopPropagation()}
+                className="jl-cta flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-black"
+              >
+                <Play size={16} fill="currentColor" /> {t("Watch")}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {progress != null && (
         <div className="absolute inset-x-0 bottom-0 h-[5px] bg-black/35">
@@ -182,7 +212,7 @@ export function LiveHero({
         </div>
       )}
 
-      {items.length > 1 && (
+      {items.length > 1 && !mini && (
         <div className="absolute end-6 top-6 z-10 flex gap-2">
           {items.map((_, i) => (
             <button

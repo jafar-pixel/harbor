@@ -21,7 +21,9 @@ import { NowNextBar, SurfList } from "./live-home/surf-list";
 import { NowCard } from "./live-home/now-card";
 import { AmbientBackdrop } from "./live-home/ambient";
 import { ChannelArt, ChannelGamesContext, channelGameMap } from "./live-home/channel-art";
-import { ChannelsTopRow, SportsTopRow, WeeklyTopRow } from "./live-home/top-ten";
+import { AgentPicksRow, ChannelsTopRow, SportsTopRow, WeeklyTopRow } from "./live-home/top-ten";
+import { liveGenreRows } from "@/lib/agents/live/rows";
+import { useLiveAgentVersion } from "@/lib/agents/live/store";
 import { fmtClock } from "./live-home/now-format";
 import {
   buildNowItem,
@@ -87,7 +89,41 @@ export function LiveHome({
       if (!(nativeTvAvailable() && requestSmallTvFull())) onPlay(ch);
     } else setTunedId(ch.id);
   };
+  const preview = (ch: IptvChannel) => setTunedId(ch.id);
   const heroItems = useMemo(() => (tuned ? [tuned] : spotlight), [tuned, spotlight]);
+
+  // Your TV is pinned: once the page scrolls past it, it rides along as a small screen in the
+  // top corner (the same player, so the stream carries on) while the viewer explores the rows.
+  // Resting on a channel or a game's tile (preview) puts it on that screen.
+  const heroSlot = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(false);
+  const hasHero = heroItems.length > 0;
+  useEffect(() => {
+    const el = heroSlot.current;
+    if (!el || !active) {
+      setPinned(false);
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([e]) => setPinned(!!e && e.intersectionRatio < 0.35 && e.boundingClientRect.top < 0),
+      { threshold: [0, 0.35, 1] },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [active, hasHero]);
+  // While pinned, rows the remote moves to stop below the small screen instead of under it.
+  useEffect(() => {
+    if (!pinned) return;
+    let scroller: HTMLElement | null = heroSlot.current?.parentElement ?? null;
+    while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY))
+      scroller = scroller.parentElement;
+    const target = scroller ?? document.documentElement;
+    const before = target.style.scrollPaddingTop;
+    target.style.scrollPaddingTop = "min(19vw, 300px)";
+    return () => {
+      target.style.scrollPaddingTop = before;
+    };
+  }, [pinned]);
 
   const heroHydrations = useChannelHydration(
     useMemo(() => {
@@ -135,6 +171,18 @@ export function LiveHome({
   }, [statsVersion, channels, sourceId, epg, tvgCounts, nowMs]);
   const { settings } = useSettings();
 
+  // The Live TV agent's rows: what's on now, by kind of channel.
+  const liveAgentVersion = useLiveAgentVersion();
+  const genreRails = useMemo((): ChannelRail[] => {
+    void liveAgentVersion;
+    return liveGenreRows(channels).map((r) => ({
+      key: `genre:${r.genre}`,
+      title: t(GENRE_TITLE[r.genre] ?? r.genre),
+      group: null,
+      channels: r.channels,
+    }));
+  }, [channels, liveAgentVersion, t]);
+
   // The backdrop rests on the channel on Your TV until the remote moves to something else.
   const ambientItem = tuned ?? heroItems[0] ?? null;
   const ambientFallback = useMemo(
@@ -153,7 +201,15 @@ export function LiveHome({
     [ambientItem, heroHydrations],
   );
 
-  const railProps = { sourceId, epg, nowMs, tvgCounts, onPlay: tune, onOpenCategory };
+  const railProps = {
+    sourceId,
+    epg,
+    nowMs,
+    tvgCounts,
+    onPlay: tune,
+    onRest: preview,
+    onOpenCategory,
+  };
 
   return (
     <ChannelGamesContext.Provider value={channelGames}>
@@ -168,20 +224,27 @@ export function LiveHome({
                 {t("at {time}", { time: fmtClock(nowMs) })}
               </span>
               <span className="ms-auto hidden text-[13px] text-ink-subtle md:inline">
-                {t("Rest on a channel to put it on. Select it again to watch full screen.")}
+                {t("Rest on a channel to put it on Your TV. Select it again to watch full screen.")}
               </span>
             </div>
             {/* The TV deck: Your TV with what's on now and next, and the channel surfer beside it. */}
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(320px,1fr)]">
               <div className="flex min-w-0 flex-col gap-3">
-                {heroItems.length > 0 && (
-                  <LiveHero
-                    items={heroItems}
-                    nowMs={nowMs}
-                    hydrations={heroHydrations}
-                    active={active}
-                    onPlay={onPlay}
-                  />
+                {hasHero && (
+                  // Holds Your TV's place while it is pinned, so the page doesn't jump.
+                  <div
+                    ref={heroSlot}
+                    className={`relative aspect-video w-full ${nativeTvAvailable() ? "" : "max-h-[72vh]"}`}
+                  >
+                    <LiveHero
+                      items={heroItems}
+                      nowMs={nowMs}
+                      hydrations={heroHydrations}
+                      active={active}
+                      mini={pinned}
+                      onPlay={onPlay}
+                    />
+                  </div>
                 )}
                 <NowNextBar item={tuned ?? heroItems[0] ?? null} nowMs={nowMs} />
               </div>
@@ -199,10 +262,22 @@ export function LiveHome({
             </div>
           </div>
           <ContinueAnywhereRow scrollKey="live-home:continue" />
-          <SportsTopRow games={jlSports.top} onWatch={tune} onOpenGame={openMatchDetail} />
-          <ChannelsTopRow items={topChannelItems} onPlay={tune} />
+          <SportsTopRow
+            games={jlSports.top}
+            onWatch={tune}
+            onPreview={preview}
+            onOpenGame={openMatchDetail}
+          />
+          <ChannelsTopRow items={topChannelItems} onPlay={tune} onPreview={preview} />
           <WeeklyTopRow kind="movie" tmdbKey={settings.tmdbKey} />
           <WeeklyTopRow kind="series" tmdbKey={settings.tmdbKey} />
+          <AgentPicksRow kind="movie" tmdbKey={settings.tmdbKey} />
+          <AgentPicksRow kind="series" tmdbKey={settings.tmdbKey} />
+          {genreRails.map((rail) => (
+            <LazyRail key={rail.key}>
+              <RailRow rail={rail} {...railProps} />
+            </LazyRail>
+          ))}
           {(jlSports.top.length > 0 ||
             jlSports.teamSlides.length > 0 ||
             jlSports.playerSlides.length > 0) && (
@@ -235,6 +310,18 @@ export function LiveHome({
   );
 }
 
+const GENRE_TITLE: Record<string, string> = {
+  news: "News on now",
+  kids: "Kids on now",
+  movies: "Movie channels on now",
+  entertainment: "Entertainment on now",
+  documentary: "Documentaries on now",
+  lifestyle: "Home, food & travel on now",
+  music: "Music on now",
+  spanish: "En español ahora",
+  faith: "Faith on now",
+};
+
 function LazyRail({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState(false);
@@ -265,6 +352,7 @@ function RailRow({
   nowMs,
   tvgCounts,
   onPlay,
+  onRest,
   onOpenCategory,
 }: {
   rail: ChannelRail;
@@ -273,6 +361,7 @@ function RailRow({
   nowMs: number;
   tvgCounts: Map<string, number>;
   onPlay: (ch: IptvChannel) => void;
+  onRest: (ch: IptvChannel) => void;
   onOpenCategory: (group: string) => void;
 }) {
   const items = useMemo(
@@ -311,6 +400,7 @@ function RailRow({
           item={it}
           hydrated={hydrations.get(hydrationKey(it)) ?? null}
           onPlay={onPlay}
+          onRest={onRest}
         />
       ))}
     </Row>

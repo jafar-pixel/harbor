@@ -57,6 +57,46 @@ export function weeklyTop(kind: WeeklyKind, tmdbKey: string, nowMs = Date.now())
   return p;
 }
 
+const pools = new Map<string, Promise<Meta[]>>();
+
+async function loadPool(kind: WeeklyKind, tmdbKey: string): Promise<Meta[]> {
+  if (tmdbKey) {
+    try {
+      const path = kind === "movie" ? "trending/movie/week" : "trending/tv/week";
+      const pages = await Promise.all(
+        ["1", "2", "3"].map((page) =>
+          kind === "movie"
+            ? get<Page<RawMovie>>(tmdbKey, path, { page }).then((r) =>
+                (r?.results ?? []).map((m) => movieMeta(m)),
+              )
+            : get<Page<RawSeries>>(tmdbKey, path, { page }).then((r) =>
+                (r?.results ?? []).map((x) => seriesMeta(x)),
+              ),
+        ),
+      );
+      const out = pages.flat();
+      if (out.length) return out;
+    } catch {
+      /* fall back to Cinemeta */
+    }
+  }
+  return (kind === "movie" ? topMovies() : topSeries()).catch(() => [] as Meta[]);
+}
+
+/** A wider pool of this week's popular titles (about 60), for the Movies & Shows agent. */
+export function weeklyPool(kind: WeeklyKind, tmdbKey: string, nowMs = Date.now()): Promise<Meta[]> {
+  const key = `${kind}:${weekOf(nowMs)}:${tmdbKey ? "tmdb" : "cinemeta"}`;
+  let p = pools.get(key);
+  if (!p) {
+    p = loadPool(kind, tmdbKey);
+    pools.set(key, p);
+    void p.then((r) => {
+      if (!r.length) pools.delete(key);
+    });
+  }
+  return p;
+}
+
 export function useWeeklyTop(kind: WeeklyKind, tmdbKey: string): Meta[] {
   const [list, setList] = useState<Meta[]>([]);
   useEffect(() => {
