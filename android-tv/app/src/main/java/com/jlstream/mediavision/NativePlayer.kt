@@ -880,7 +880,17 @@ class NativePlayer(
             // The remote's menu (≡) button: audio and subtitle tracks.
             KeyEvent.KEYCODE_MENU -> { if (down && event.repeatCount == 0) openMenu(); return true }
         }
-        if (view.isControllerFullyVisible) return false
+        if (view.isControllerFullyVisible) {
+            // Down from the bar's bottom row (nothing below it in the player) opens "While you
+            // watch", as it does with the bar hidden, instead of doing nothing.
+            if (event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN && down && event.repeatCount == 0 &&
+                options.controls?.contains("today-games") == true && !canMoveDownInBar()
+            ) {
+                control("today-games")
+                return true
+            }
+            return false
+        }
         if (down) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER ->
@@ -896,6 +906,18 @@ class NativePlayer(
             }
         }
         return true
+    }
+
+    /** Whether Down moves the remote's focus to another control inside the player bar. */
+    private fun canMoveDownInBar(): Boolean {
+        val focused = activity.currentFocus ?: return false
+        val next = focused.focusSearch(View.FOCUS_DOWN) ?: return false
+        var v: View? = next
+        while (v != null) {
+            if (v === view) return true
+            v = v.parent as? View
+        }
+        return false
     }
 
     /** A short message over the video; shown only in FULL, where the page's own notices are hidden. */
