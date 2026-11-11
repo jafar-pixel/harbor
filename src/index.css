@@ -7852,3 +7852,9 @@ html[data-theme-layout="stremio"] .jl-sports-bleed {
     color: var(--team-outline, #ffffff);
   }
 }
+
+/* The remote's OK on a button (lib/press-feedback.ts): a brief brighten, so the press shows. */
+:is(button, [role="button"], [role="tab"], a[href], summary)[data-pressed] {
+  filter: brightness(1.25);
+  transition: filter 90ms ease-out;
+}

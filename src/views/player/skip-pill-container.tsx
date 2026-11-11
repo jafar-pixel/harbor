@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePlaybackPosition } from "@/lib/player/playback-clock";
-import { nativeTvPlayer } from "@/lib/player/native-tv/shell";
-import { useT } from "@/lib/i18n";
 import { SkipPill } from "@/components/player/skip-pill";
 import { BpSkipPill } from "@/views/big-picture/player/bp-skip-pill";
 import { activeSegment, type SkipSegment } from "@/lib/skip-intro";
@@ -130,34 +128,6 @@ export function SkipPillContainer({
     buttonKey != null && (buttonKey === autoHiddenKey || dismissedKeys.has(buttonKey));
   const displaySkip = settings.showSkipButton && !skipHidden ? realActiveSkip : null;
   const activeSkip = displaySkip ?? syntheticOutro;
-
-  // The TV app draws its player over the page, so its own skip button carries this one: the
-  // same segment and timing, and "Next episode" near the end of an episode.
-  const t = useT();
-  const nativeSkip =
-    !visible || !activeSkip
-      ? ""
-      : activeSkip === syntheticOutro
-        ? JSON.stringify({ label: t("Next episode"), action: "next" })
-        : JSON.stringify({
-            label:
-              activeSkip.kind === "intro"
-                ? t("Skip intro")
-                : activeSkip.kind === "recap"
-                  ? t("Skip recap")
-                  : activeSkip.kind === "ad"
-                    ? t("Skip ad")
-                    : hasNextEpDisplay
-                      ? t("Next episode")
-                      : t("Skip credits"),
-            ...(activeSkip.kind === "outro" && hasNextEpDisplay
-              ? { action: "next" }
-              : { toSec: activeSkip.endSec }),
-          });
-  useEffect(() => {
-    nativeTvPlayer()?.setSkipButton?.(nativeSkip);
-  }, [nativeSkip]);
-  useEffect(() => () => nativeTvPlayer()?.setSkipButton?.(""), []);
 
   const shared = {
     segment: activeSkip,
