@@ -5,7 +5,12 @@ import {
   type PlayerSource,
   type TrackInfo,
 } from "../bridge";
-import { nativeTvPlayer as native, type NativeAudioTrack, type NativeTvOptions } from "./shell";
+import {
+  nativeTvPlayer as native,
+  type NativeAudioTrack,
+  type NativeTvOptions,
+  type NativeTvPlayer,
+} from "./shell";
 
 export { nativeTvAvailable } from "./shell";
 
@@ -120,6 +125,16 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
 
   const docked = () => !!host?.closest("[data-hero-docked]");
 
+  /** Whether the playing video may sit under the page: not for HDR or Dolby Vision. */
+  const mayGoUnder = (p: NativeTvPlayer): boolean => {
+    // An app build that throws here must not take the page down: keep the video on top.
+    try {
+      return typeof p.canShowUnderPage === "function" && p.canShowUnderPage();
+    } catch {
+      return false;
+    }
+  };
+
   // Full player: the native view fills the screen. Docked: it takes the hero box above the
   // web control bar.
   const place = () => {
@@ -130,13 +145,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       // Live TV's channel list or the stream picker is open. The picture carries on under the
       // page so the list shows over it (Live TV and most channels); HDR and Dolby Vision can't
       // go under the page, so they hide while the list is open and the sound carries on.
-      // An app build that throws here must not take the page down: hide the video instead.
-      let under = false;
-      try {
-        under = typeof p.canShowUnderPage === "function" && p.canShowUnderPage();
-      } catch {
-        under = false;
-      }
+      const under = mayGoUnder(p);
       setVideoUnder(under);
       p.setMode(under ? "under" : "hidden");
       return;
@@ -150,7 +159,17 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       // On the TV, Back from full screen moves the video into the hub hero, so the native side
       // needs a hero box to drop into; the docked player sends the real one a frame later.
       p.setRect(0, 80, window.innerWidth, Math.round(window.innerHeight * 0.4));
-      p.setMode("full");
+      // A standard (SDR) video plays full size under the page, so the app's own player controls
+      // show over the picture and take the remote, as on the desktop. HDR and Dolby Vision only
+      // keep their picture on top of the page, so they stay there with the TV app's bar. The
+      // format is known once the first frames decode ("tracks", "first-frame"), so a video starts
+      // on top and moves under the page then.
+      if (mayGoUnder(p)) {
+        setVideoUnder(true);
+        p.setMode("under");
+      } else {
+        p.setMode("full");
+      }
     }
   };
   const schedulePlace = () => {
@@ -170,6 +189,8 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
         break;
       case "first-frame":
         set({ ...timing, firstFrameReady: true });
+        // The video's format is known now: an SDR video moves under the page (see place).
+        schedulePlace();
         break;
       case "playing":
         set({ ...timing, status: "playing", buffering: false });
@@ -206,6 +227,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
         break;
       case "tracks":
         set({ audioTracks: nativeAudioTrackInfo(d.audioTracks) });
+        schedulePlace();
         break;
       case "control":
         if (typeof d.id === "string")

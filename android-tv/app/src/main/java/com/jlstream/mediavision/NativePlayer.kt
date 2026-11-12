@@ -619,7 +619,7 @@ class NativePlayer(
     }
 
     fun matchDisplayMode() {
-        if (!options.matchFrameRate || mode != Mode.FULL) return
+        if (!options.matchFrameRate || (mode != Mode.FULL && mode != Mode.UNDER)) return
         val format = player?.videoFormat ?: return
         val display = DisplayModes.display(activity) ?: return
         val current = display.mode
@@ -659,7 +659,14 @@ class NativePlayer(
 
     /** Main thread: refreshes [underPageOk] from the player's current video format. */
     private fun refreshUnderPage() {
-        underPageOk = player != null && !isHdr()
+        // Only once the video's format is known: before that an HDR or Dolby Vision stream looks
+        // like SDR, and under the page it would lose its HDR picture.
+        val ok = player?.videoFormat != null && !isHdr()
+        if (ok == underPageOk) return
+        underPageOk = ok
+        // An HDR format found while under the page: take the picture off it now, without waiting
+        // for the page to move it back on top.
+        if (!ok && mode == Mode.UNDER) applyMode()
     }
 
     private fun isHdr(): Boolean {
@@ -798,10 +805,23 @@ class NativePlayer(
      */
     fun handleFullKey(event: KeyEvent): Boolean {
         // The menu is a dialog with its own window and takes the remote while it is open.
-        if (mode != Mode.FULL || player == null || menu != null) return false
+        if (player == null || menu != null) return false
         // Let Android or the attached receiver handle hardware volume even with chrome hidden.
         if (event.keyCode in listOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE)) return false
         val down = event.action == KeyEvent.ACTION_DOWN
+        // Under the page (an SDR video with the app's own controls) the page takes the arrows,
+        // OK and Back; the remote's play, pause and seek keys still work the player.
+        if (mode == Mode.UNDER && underPageOk) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { if (down && event.repeatCount == 0) togglePause(); return true }
+                KeyEvent.KEYCODE_MEDIA_PLAY -> { if (down) resume(); return true }
+                KeyEvent.KEYCODE_MEDIA_PAUSE -> { if (down) pause(); return true }
+                KeyEvent.KEYCODE_MEDIA_REWIND -> { if (down) seekBy(-SEEK_STEP_MS); return true }
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { if (down) seekBy(SEEK_STEP_MS); return true }
+            }
+            return false
+        }
+        if (mode != Mode.FULL) return false
         when (event.keyCode) {
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { if (down && event.repeatCount == 0) togglePause(); return true }
             KeyEvent.KEYCODE_MEDIA_PLAY -> { if (down) resume(); return true }
@@ -1060,11 +1080,13 @@ private fun speedName(speed: Float): String =
         val visible = player != null && when (mode) {
             Mode.FULL -> true
             Mode.HERO -> rect != null
-            Mode.UNDER -> !isHdr()
+            Mode.UNDER -> underPageOk
             Mode.HIDDEN -> false
         }
         if (mode != Mode.FULL || !visible) closeMenu()
-        if (mode == Mode.FULL) matchDisplayMode() else restoreDisplayMode()
+        // Under the page is full screen too (an SDR video with the app's own controls over it), so
+        // the TV still switches to the video's frame rate there.
+        if (visible && (mode == Mode.FULL || mode == Mode.UNDER)) matchDisplayMode() else restoreDisplayMode()
         if (mode != Mode.FULL || !visible) leaveFull()
         if (!visible) {
             view.hideController()
@@ -1151,6 +1173,8 @@ private fun speedName(speed: Float): String =
         // The video's size and frame rate are known by its first decoded frame.
         override fun onRenderedFirstFrame() {
             renderedFrame = true
+            // The format is certainly known now; the page asks canShowUnderPage on this event.
+            refreshUnderPage()
             send("first-frame")
         }
 
