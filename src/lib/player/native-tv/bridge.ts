@@ -18,6 +18,7 @@ export { nativeTvAvailable } from "./shell";
 type NativeEvent = {
   type:
     | "ready"
+    | "first-frame"
     | "playing"
     | "paused"
     | "buffering"
@@ -167,8 +168,11 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       case "ready":
         set({ ...timing, status: "ready", buffering: false, errorCode: null, errorMessage: null });
         break;
+      case "first-frame":
+        set({ ...timing, firstFrameReady: true });
+        break;
       case "playing":
-        set({ ...timing, status: "playing", buffering: false, firstFrameReady: true });
+        set({ ...timing, status: "playing", buffering: false });
         break;
       case "paused":
         set({ ...timing, status: "paused" });
