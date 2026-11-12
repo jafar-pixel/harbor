@@ -296,7 +296,7 @@ class NativePlayer(
     private fun buildRow() {
         row.removeAllViews()
         // The player menu (gear) always comes last, so audio, subtitles and the rest are one press away.
-        val ids = ((options.controls ?: DEFAULT_ROW) + "menu").distinctBy { if (it == "back") "stop" else it }
+        val ids = (listOf("pick-another", "volume-down", "volume-up") + (options.controls ?: DEFAULT_ROW) + "menu").distinctBy { if (it == "back") "stop" else it }
         for (id in ids) buttonFor(id)?.let { button ->
             (button.parent as? ViewGroup)?.removeView(button)
             row.addView(button)
@@ -305,7 +305,9 @@ class NativePlayer(
 
     private fun buttonFor(id: String): View? = when (id) {
         // The desktop player's icons (Lucide, res/drawable/jl_ic_*).
-        "pick-another" -> extraButton(R.drawable.jl_ic_streams, "Change stream or channel") { openPanel() }
+        "pick-another" -> actionLabel("Change stream") { openPanel() }
+        "volume-down" -> actionLabel("Volume −") { adjustMediaVolume(android.media.AudioManager.ADJUST_LOWER) }
+        "volume-up" -> actionLabel("Volume +") { adjustMediaVolume(android.media.AudioManager.ADJUST_RAISE) }
         "english-dub" -> extraButton(R.drawable.jl_ic_dub, "English dub") { englishDub() }
         "aspect-menu" -> extraButton(R.drawable.jl_ic_aspect, "Picture fit") { showMessage(nextAspect()) }
         "song-id" -> songButton
@@ -362,6 +364,23 @@ class NativePlayer(
         val next = speeds[(at + 1).mod(speeds.size)]
         p.setPlaybackSpeed(next)
         return if (next == 1f) "Speed: Normal" else "Speed: ${next}×"
+    }
+
+    private fun actionLabel(label: String, action: () -> Unit): View = android.widget.Button(activity).apply {
+        text = label
+        isAllCaps = false
+        isFocusable = true
+        setOnClickListener { action() }
+    }
+
+    private fun adjustMediaVolume(direction: Int) {
+        val audio = activity.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        if (!audio.isVolumeFixed) {
+            audio.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, direction, android.media.AudioManager.FLAG_SHOW_UI)
+        } else {
+            setVolume(volume + if (direction == android.media.AudioManager.ADJUST_RAISE) 0.1f else -0.1f)
+            showMessage("Player volume: " + Math.round(volume * 100) + "%")
+        }
     }
 
     private fun extraButton(icon: Int, label: String, onPress: () -> Unit): ImageButton =
@@ -777,6 +796,8 @@ class NativePlayer(
     fun handleFullKey(event: KeyEvent): Boolean {
         // The menu is a dialog with its own window and takes the remote while it is open.
         if (mode != Mode.FULL || player == null || menu != null) return false
+        // Let Android or the attached receiver handle hardware volume even with chrome hidden.
+        if (event.keyCode in listOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE)) return false
         val down = event.action == KeyEvent.ACTION_DOWN
         when (event.keyCode) {
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { if (down && event.repeatCount == 0) togglePause(); return true }
