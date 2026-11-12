@@ -195,6 +195,7 @@ class NativePlayer(
     /** The hero rect in CSS pixels (x, y, w, h), or null when the page hasn't sent one. */
     private var heroRect: DoubleArray? = null
     private var readySent = false
+    private var renderedFrame = false
     /** The stream the player has loaded, so asking for it again keeps it rather than reconnecting. */
     private var currentUrl: String? = null
     /** The window's preferredDisplayModeId before playback changed it; null while unchanged. */
@@ -481,10 +482,12 @@ class NativePlayer(
             applyMode()
             readySent = true
             send("ready")
+            if (renderedFrame) send("first-frame")
             if (current.isPlaying) send("playing")
             return
         }
         release()
+        renderedFrame = false
         readySent = false
         songCapture.clear()
         buildRow()
@@ -1146,6 +1149,11 @@ private fun speedName(speed: Float): String =
         }
 
         // The video's size and frame rate are known by its first decoded frame.
+        override fun onRenderedFirstFrame() {
+            renderedFrame = true
+            send("first-frame")
+        }
+
         override fun onVideoSizeChanged(videoSize: VideoSize) {
             refreshUnderPage()
             if (videoSize.width > 0 && videoSize.height > 0) matchDisplayMode()
