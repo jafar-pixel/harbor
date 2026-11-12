@@ -149,7 +149,7 @@ export function usePlayerBridge(params: {
           .filter(Boolean)
           .join("\n"),
         getEmbedRect,
-        nativeTv: () => {
+        nativeTv: (loading) => {
           const now = settingsRef.current;
           const playing = srcRef.current;
           const theme =
@@ -170,7 +170,9 @@ export function usePlayerBridge(params: {
                 .trim() || undefined,
             info: tvInfoLine(
               [playing.title, playing.subtitle].filter(Boolean).join(" · "),
-              ref?.title ?? ref?.parsedTitle ?? ref?.resolvedFilename,
+              // A stream swapped in place names itself: the player's own record of the
+              // stream only catches up after it has started.
+              loading.streamName ?? ref?.title ?? ref?.parsedTitle ?? ref?.resolvedFilename,
             ),
           };
         },

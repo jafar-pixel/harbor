@@ -105,6 +105,11 @@ export type PlayerSource = {
   startAtSec?: number;
   isLive?: boolean;
   headers?: Record<string, string>;
+  /**
+   * The stream's name when it differs from the one the player opened with (a stream swapped in
+   * place), for the TV player's title line; other players ignore it.
+   */
+  streamName?: string;
 };
 
 export type PlayerEmbedRect = {

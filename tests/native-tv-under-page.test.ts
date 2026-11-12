@@ -47,7 +47,7 @@ function fakeTv(under: () => boolean) {
   return { modes, dataset, host, flush, emit };
 }
 
-test("an SDR video moves under the page once its format is known", () => {
+test("a video moves under the page once the TV app knows its format", () => {
   let known = false;
   const tv = fakeTv(() => known);
   const bridge = createNativeTvBridge();
@@ -64,14 +64,12 @@ test("an SDR video moves under the page once its format is known", () => {
   assert.equal(tv.dataset.tvVideoUnder, undefined);
 });
 
-test("HDR and Dolby Vision always stay on top of the page", () => {
+test("a video whose format isn't known yet stays on top", () => {
   const tv = fakeTv(() => false);
   const bridge = createNativeTvBridge();
   bridge.attach(tv.host);
   tv.flush();
   tv.emit("tracks");
-  tv.flush();
-  tv.emit("first-frame");
   tv.flush();
   assert.ok(tv.modes.length > 0);
   assert.ok(tv.modes.every((m) => m === "full"), `never under: ${tv.modes.join(",")}`);

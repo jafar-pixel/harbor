@@ -659,22 +659,12 @@ class NativePlayer(
 
     /** Main thread: refreshes [underPageOk] from the player's current video format. */
     private fun refreshUnderPage() {
-        // Only once the video's format is known: before that an HDR or Dolby Vision stream looks
-        // like SDR, and under the page it would lose its HDR picture.
-        val ok = player?.videoFormat != null && !isHdr()
+        // Once the video's format is known (and its frame rate matched), every video, HDR and
+        // Dolby Vision included, plays under the page with the app's own player controls.
+        val ok = player?.videoFormat != null
         if (ok == underPageOk) return
         underPageOk = ok
-        // An HDR format found while under the page: take the picture off it now, without waiting
-        // for the page to move it back on top.
         if (!ok && mode == Mode.UNDER) applyMode()
-    }
-
-    private fun isHdr(): Boolean {
-        val f = player?.videoFormat ?: return false
-        if (f.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION) return true
-        if (f.codecs?.startsWith("dvh") == true || f.codecs?.startsWith("dva") == true) return true
-        val transfer = f.colorInfo?.colorTransfer
-        return transfer == C.COLOR_TRANSFER_ST2084 || transfer == C.COLOR_TRANSFER_HLG
     }
 
     fun setMode(next: Mode) {
@@ -1114,7 +1104,8 @@ private fun speedName(speed: Float): String =
             view.isFocusable = true
             view.visibility = View.VISIBLE
             view.requestFocus()
-            view.showController()
+            // No bar while the video starts: it moves under the page, to the app's own controls,
+            // once its first frames decode. A key press still brings this bar up meanwhile.
         } else if (mode == Mode.UNDER) {
             // The page's overlay takes the remote; the picture carries on full size beneath it.
             setUnderPage(true)

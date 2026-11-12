@@ -107,7 +107,9 @@ const setVideoUnder = (under: boolean) => {
 };
 
 /** `options` goes to the app before every play; app builds without `setOptions` ignore it. */
-export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBridge {
+export function createNativeTvBridge(
+  options?: (src: PlayerSource) => NativeTvOptions,
+): PlayerBridge {
   const listeners = new Set<(s: PlayerSnapshot) => void>();
   let snap: PlayerSnapshot = { ...emptySnapshot };
   let host: HTMLElement | null = null;
@@ -125,7 +127,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
 
   const docked = () => !!host?.closest("[data-hero-docked]");
 
-  /** Whether the playing video may sit under the page: not for HDR or Dolby Vision. */
+  /** Whether the playing video may sit under the page (the TV app knows its format). */
   const mayGoUnder = (p: NativeTvPlayer): boolean => {
     // An app build that throws here must not take the page down: keep the video on top.
     try {
@@ -159,11 +161,10 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       // On the TV, Back from full screen moves the video into the hub hero, so the native side
       // needs a hero box to drop into; the docked player sends the real one a frame later.
       p.setRect(0, 80, window.innerWidth, Math.round(window.innerHeight * 0.4));
-      // A standard (SDR) video plays full size under the page, so the app's own player controls
-      // show over the picture and take the remote, as on the desktop. HDR and Dolby Vision only
-      // keep their picture on top of the page, so they stay there with the TV app's bar. The
-      // format is known once the first frames decode ("tracks", "first-frame"), so a video starts
-      // on top and moves under the page then.
+      // The video plays full size under the page, so the app's own player controls show over the
+      // picture and take the remote, as on the desktop. The TV app says when that is ready (its
+      // format known, after the first frames decode: "tracks", "first-frame"); until then the
+      // video starts on top.
       if (mayGoUnder(p)) {
         setVideoUnder(true);
         p.setMode("under");
@@ -189,7 +190,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
         break;
       case "first-frame":
         set({ ...timing, firstFrameReady: true });
-        // The video's format is known now: an SDR video moves under the page (see place).
+        // The video's format is known now: it moves under the page (see place).
         schedulePlace();
         break;
       case "playing":
@@ -336,7 +337,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       place();
       if (options && typeof p.setOptions === "function") {
         try {
-          p.setOptions(JSON.stringify(options()));
+          p.setOptions(JSON.stringify(options(src)));
         } catch {
           /* An app build that cannot take the options plays with its defaults. */
         }
