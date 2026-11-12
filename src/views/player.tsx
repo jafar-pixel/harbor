@@ -605,11 +605,13 @@ function NativePlayerView({
     });
   // The TV app's bar asks for the previous or next episode (NativePlayer "control"), and its
   // menu changed the subtitle timing, which is kept for this title as on the desktop.
+  const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
   const tvMetaId = src.meta.id;
   useEffect(() => {
     const onControl = (e: Event) => {
       const id = (e as CustomEvent<string>).detail;
-      if (id === "next-episode") playNextRef.current?.();
+      if (id === "up-next") setEpisodePanelOpen(true);
+      else if (id === "next-episode") playNextRef.current?.();
       else if (id === "prev-episode") playPrevRef.current?.();
       else if (id === "sub-delay")
         writePlayerPrefs(tvMetaId, { subDelaySec: snapRef.current.subDelaySec });
@@ -705,6 +707,7 @@ function NativePlayerView({
         liveOverlaySetOpenRef.current(false);
         return;
       }
+      if (episodePanelOpen) { setEpisodePanelOpen(false); return; }
       if (switcherOpenRef.current) {
         setSwitcherOpen(false);
         return;
@@ -713,7 +716,7 @@ function NativePlayerView({
     };
     window.addEventListener("harbor:local-back", onLocalBack);
     return () => window.removeEventListener("harbor:local-back", onLocalBack);
-  }, [backFromPlayer, setSwitcherOpen]);
+  }, [backFromPlayer, episodePanelOpen, setSwitcherOpen]);
 
   const playerDocked = src.pipDocked || heroDocked;
   useKeyboardNavigation({
@@ -723,7 +726,7 @@ function NativePlayerView({
     enabled: settings.tvNavigation && settings.playerTvNavigation && !screenLocked && !playerDocked,
     wrap: true,
     // The channel list and stream switcher take the arrows too (the remote's only way around them).
-    arrows: (chromeVisible || liveOverlay.open || switcherOpen) && !pipMode,
+    arrows: (chromeVisible || episodePanelOpen || liveOverlay.open || switcherOpen) && !pipMode,
     onBack: () => {
       void backFromPlayer();
       return true;
@@ -824,7 +827,7 @@ function NativePlayerView({
   // TV app: the full-screen Change stream button (android-tv NativePlayer) opens the channel list
   // (live) or the stream switcher; while one is open the video steps aside so it can be seen and
   // driven with the remote, and comes back full screen once it closes (native-tv/bridge.ts).
-  const tvPanelOpen = switcherOpen || liveOverlay.open;
+  const tvPanelOpen = episodePanelOpen || switcherOpen || liveOverlay.open;
   useEffect(() => {
     if (!nativeTvAvailable()) return;
     window.addEventListener(TV_PANEL_EVENT, pickAnotherOrGuide);
@@ -858,7 +861,7 @@ function NativePlayerView({
     };
   }, [liveListOpen, closeLiveList]);
 
-  const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
+
   const { watchedFor } = usePlayerWatched({
     meta: src.meta,
     authKey,
