@@ -72,7 +72,10 @@ test("a video whose format isn't known yet stays on top", () => {
   tv.emit("tracks");
   tv.flush();
   assert.ok(tv.modes.length > 0);
-  assert.ok(tv.modes.every((m) => m === "full"), `never under: ${tv.modes.join(",")}`);
+  assert.ok(
+    tv.modes.every((m) => m === "full"),
+    `never under: ${tv.modes.join(",")}`,
+  );
   assert.equal(tv.dataset.tvVideoUnder, undefined);
   bridge.detach();
 });

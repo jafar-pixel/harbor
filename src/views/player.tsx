@@ -713,7 +713,10 @@ function NativePlayerView({
         liveOverlaySetOpenRef.current(false);
         return;
       }
-      if (episodePanelOpen) { setEpisodePanelOpen(false); return; }
+      if (episodePanelOpen) {
+        setEpisodePanelOpen(false);
+        return;
+      }
       if (switcherOpenRef.current) {
         setSwitcherOpen(false);
         return;
@@ -866,7 +869,6 @@ function NativePlayerView({
       window.removeEventListener("pointermove", restart, true);
     };
   }, [liveListOpen, closeLiveList]);
-
 
   const { watchedFor } = usePlayerWatched({
     meta: src.meta,
