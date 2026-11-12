@@ -149,7 +149,7 @@ export function usePlayerBridge(params: {
           .filter(Boolean)
           .join("\n"),
         getEmbedRect,
-        nativeTv: () => {
+        nativeTv: (loading) => {
           const now = settingsRef.current;
           const playing = srcRef.current;
           const theme =
@@ -162,7 +162,11 @@ export function usePlayerBridge(params: {
             // Every video gets "Change stream" (the stream list or, for a channel, the channel
             // list) even when the layout hides it, and the "While you watch" drawer
             // (watch-drawer.tsx), which the remote's Down also opens.
-            controls: withChangeStream([...tvLayout(theme), ...(srcRef.current.episode ? ["up-next"] : []), "today-games"]),
+            controls: withChangeStream([
+              ...tvLayout(theme),
+              ...(srcRef.current.episode ? ["up-next"] : []),
+              "today-games",
+            ]),
             // The theme's accent, for the TV player's seek bar and highlights.
             accent:
               getComputedStyle(document.documentElement)
@@ -170,7 +174,9 @@ export function usePlayerBridge(params: {
                 .trim() || undefined,
             info: tvInfoLine(
               [playing.title, playing.subtitle].filter(Boolean).join(" · "),
-              ref?.title ?? ref?.parsedTitle ?? ref?.resolvedFilename,
+              // A stream swapped in place names itself: the player's own record of the
+              // stream only catches up after it has started.
+              loading.streamName ?? ref?.title ?? ref?.parsedTitle ?? ref?.resolvedFilename,
             ),
           };
         },

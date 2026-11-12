@@ -5,7 +5,12 @@ import {
   type PlayerSource,
   type TrackInfo,
 } from "../bridge";
-import { nativeTvPlayer as native, type NativeAudioTrack, type NativeTvOptions } from "./shell";
+import {
+  nativeTvPlayer as native,
+  type NativeAudioTrack,
+  type NativeTvOptions,
+  type NativeTvPlayer,
+} from "./shell";
 
 export { nativeTvAvailable } from "./shell";
 
@@ -18,6 +23,7 @@ export { nativeTvAvailable } from "./shell";
 type NativeEvent = {
   type:
     | "ready"
+    | "first-frame"
     | "playing"
     | "paused"
     | "buffering"
@@ -101,7 +107,9 @@ const setVideoUnder = (under: boolean) => {
 };
 
 /** `options` goes to the app before every play; app builds without `setOptions` ignore it. */
-export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBridge {
+export function createNativeTvBridge(
+  options?: (src: PlayerSource) => NativeTvOptions,
+): PlayerBridge {
   const listeners = new Set<(s: PlayerSnapshot) => void>();
   let snap: PlayerSnapshot = { ...emptySnapshot };
   let host: HTMLElement | null = null;
@@ -119,6 +127,16 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
 
   const docked = () => !!host?.closest("[data-hero-docked]");
 
+  /** Whether the playing video may sit under the page (the TV app knows its format). */
+  const mayGoUnder = (p: NativeTvPlayer): boolean => {
+    // An app build that throws here must not take the page down: keep the video on top.
+    try {
+      return typeof p.canShowUnderPage === "function" && p.canShowUnderPage();
+    } catch {
+      return false;
+    }
+  };
+
   // Full player: the native view fills the screen. Docked: it takes the hero box above the
   // web control bar.
   const place = () => {
@@ -129,13 +147,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       // Live TV's channel list or the stream picker is open. The picture carries on under the
       // page so the list shows over it (Live TV and most channels); HDR and Dolby Vision can't
       // go under the page, so they hide while the list is open and the sound carries on.
-      // An app build that throws here must not take the page down: hide the video instead.
-      let under = false;
-      try {
-        under = typeof p.canShowUnderPage === "function" && p.canShowUnderPage();
-      } catch {
-        under = false;
-      }
+      const under = mayGoUnder(p);
       setVideoUnder(under);
       p.setMode(under ? "under" : "hidden");
       return;
@@ -149,7 +161,16 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       // On the TV, Back from full screen moves the video into the hub hero, so the native side
       // needs a hero box to drop into; the docked player sends the real one a frame later.
       p.setRect(0, 80, window.innerWidth, Math.round(window.innerHeight * 0.4));
-      p.setMode("full");
+      // The video plays full size under the page, so the app's own player controls show over the
+      // picture and take the remote, as on the desktop. The TV app says when that is ready (its
+      // format known, after the first frames decode: "tracks", "first-frame"); until then the
+      // video starts on top.
+      if (mayGoUnder(p)) {
+        setVideoUnder(true);
+        p.setMode("under");
+      } else {
+        p.setMode("full");
+      }
     }
   };
   const schedulePlace = () => {
@@ -167,8 +188,13 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       case "ready":
         set({ ...timing, status: "ready", buffering: false, errorCode: null, errorMessage: null });
         break;
+      case "first-frame":
+        set({ ...timing, firstFrameReady: true });
+        // The video's format is known now: it moves under the page (see place).
+        schedulePlace();
+        break;
       case "playing":
-        set({ ...timing, status: "playing", buffering: false, firstFrameReady: true });
+        set({ ...timing, status: "playing", buffering: false });
         break;
       case "paused":
         set({ ...timing, status: "paused" });
@@ -202,6 +228,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
         break;
       case "tracks":
         set({ audioTracks: nativeAudioTrackInfo(d.audioTracks) });
+        schedulePlace();
         break;
       case "control":
         if (typeof d.id === "string")
@@ -310,7 +337,7 @@ export function createNativeTvBridge(options?: () => NativeTvOptions): PlayerBri
       place();
       if (options && typeof p.setOptions === "function") {
         try {
-          p.setOptions(JSON.stringify(options()));
+          p.setOptions(JSON.stringify(options(src)));
         } catch {
           /* An app build that cannot take the options plays with its defaults. */
         }

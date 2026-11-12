@@ -45,6 +45,7 @@ import { useChromeConfig } from "./player/hooks/use-chrome-config";
 import { useEverPlayed } from "./player/hooks/use-ever-played";
 import { useDrawMode } from "./player/hooks/use-draw-mode";
 import { useChromeVisibility } from "./player/hooks/use-chrome-visibility";
+import { useTvRemoteChrome } from "./player/hooks/use-tv-remote-chrome";
 import { useAutoRetry } from "./player/hooks/use-auto-retry";
 import { useWakeReconnect } from "./player/hooks/use-wake-reconnect";
 import { useEngineStats } from "./player/hooks/use-engine-stats";
@@ -398,6 +399,11 @@ function NativePlayerView({
       setChromeHidden,
       keyboardPauseShowsControls: settings.keyboardPauseShowsControls,
     });
+  useTvRemoteChrome({
+    enabled: nativeTvAvailable() && !heroDocked,
+    chromeVisible,
+    wakeChrome,
+  });
   const {
     enabled: screenLockEnabled,
     locked: screenLocked,
@@ -707,7 +713,10 @@ function NativePlayerView({
         liveOverlaySetOpenRef.current(false);
         return;
       }
-      if (episodePanelOpen) { setEpisodePanelOpen(false); return; }
+      if (episodePanelOpen) {
+        setEpisodePanelOpen(false);
+        return;
+      }
       if (switcherOpenRef.current) {
         setSwitcherOpen(false);
         return;
@@ -860,7 +869,6 @@ function NativePlayerView({
       window.removeEventListener("pointermove", restart, true);
     };
   }, [liveListOpen, closeLiveList]);
-
 
   const { watchedFor } = usePlayerWatched({
     meta: src.meta,

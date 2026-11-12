@@ -143,6 +143,12 @@ export function useStreamSwitcher(params: {
           notWebReady: r.data.notWebReady,
           startAtSec: resumeAt > 5 ? resumeAt : undefined,
           startupProfile: playbackStartupProfile(stream),
+          streamName:
+            stream.title ??
+            stream.parsedTitle ??
+            r.data.filename ??
+            stream.behaviorHints?.filename ??
+            undefined,
         });
         await b.play().catch(() => {});
       } catch (e) {

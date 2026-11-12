@@ -195,6 +195,7 @@ class NativePlayer(
     /** The hero rect in CSS pixels (x, y, w, h), or null when the page hasn't sent one. */
     private var heroRect: DoubleArray? = null
     private var readySent = false
+    private var renderedFrame = false
     /** The stream the player has loaded, so asking for it again keeps it rather than reconnecting. */
     private var currentUrl: String? = null
     /** The window's preferredDisplayModeId before playback changed it; null while unchanged. */
@@ -296,7 +297,7 @@ class NativePlayer(
     private fun buildRow() {
         row.removeAllViews()
         // The player menu (gear) always comes last, so audio, subtitles and the rest are one press away.
-        val ids = ((options.controls ?: DEFAULT_ROW) + "menu").distinctBy { if (it == "back") "stop" else it }
+        val ids = (listOf("pick-another", "volume-down", "volume-up") + (options.controls ?: DEFAULT_ROW) + "menu").distinctBy { if (it == "back") "stop" else it }
         for (id in ids) buttonFor(id)?.let { button ->
             (button.parent as? ViewGroup)?.removeView(button)
             row.addView(button)
@@ -305,7 +306,9 @@ class NativePlayer(
 
     private fun buttonFor(id: String): View? = when (id) {
         // The desktop player's icons (Lucide, res/drawable/jl_ic_*).
-        "pick-another" -> extraButton(R.drawable.jl_ic_streams, "Change stream or channel") { openPanel() }
+        "pick-another" -> actionLabel("Change stream") { openPanel() }
+        "volume-down" -> actionLabel("Volume −") { adjustMediaVolume(android.media.AudioManager.ADJUST_LOWER) }
+        "volume-up" -> actionLabel("Volume +") { adjustMediaVolume(android.media.AudioManager.ADJUST_RAISE) }
         "english-dub" -> extraButton(R.drawable.jl_ic_dub, "English dub") { englishDub() }
         "aspect-menu" -> extraButton(R.drawable.jl_ic_aspect, "Picture fit") { showMessage(nextAspect()) }
         "song-id" -> songButton
@@ -362,6 +365,23 @@ class NativePlayer(
         val next = speeds[(at + 1).mod(speeds.size)]
         p.setPlaybackSpeed(next)
         return if (next == 1f) "Speed: Normal" else "Speed: ${next}×"
+    }
+
+    private fun actionLabel(label: String, action: () -> Unit): View = android.widget.Button(activity).apply {
+        text = label
+        isAllCaps = false
+        isFocusable = true
+        setOnClickListener { action() }
+    }
+
+    private fun adjustMediaVolume(direction: Int) {
+        val audio = activity.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        if (!audio.isVolumeFixed) {
+            audio.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, direction, android.media.AudioManager.FLAG_SHOW_UI)
+        } else {
+            setVolume(volume + if (direction == android.media.AudioManager.ADJUST_RAISE) 0.1f else -0.1f)
+            showMessage("Player volume: " + Math.round(volume * 100) + "%")
+        }
     }
 
     private fun extraButton(icon: Int, label: String, onPress: () -> Unit): ImageButton =
@@ -462,10 +482,12 @@ class NativePlayer(
             applyMode()
             readySent = true
             send("ready")
+            if (renderedFrame) send("first-frame")
             if (current.isPlaying) send("playing")
             return
         }
         release()
+        renderedFrame = false
         readySent = false
         songCapture.clear()
         buildRow()
@@ -597,7 +619,7 @@ class NativePlayer(
     }
 
     fun matchDisplayMode() {
-        if (!options.matchFrameRate || mode != Mode.FULL) return
+        if (!options.matchFrameRate || (mode != Mode.FULL && mode != Mode.UNDER)) return
         val format = player?.videoFormat ?: return
         val display = DisplayModes.display(activity) ?: return
         val current = display.mode
@@ -637,15 +659,12 @@ class NativePlayer(
 
     /** Main thread: refreshes [underPageOk] from the player's current video format. */
     private fun refreshUnderPage() {
-        underPageOk = player != null && !isHdr()
-    }
-
-    private fun isHdr(): Boolean {
-        val f = player?.videoFormat ?: return false
-        if (f.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION) return true
-        if (f.codecs?.startsWith("dvh") == true || f.codecs?.startsWith("dva") == true) return true
-        val transfer = f.colorInfo?.colorTransfer
-        return transfer == C.COLOR_TRANSFER_ST2084 || transfer == C.COLOR_TRANSFER_HLG
+        // Once the video's format is known (and its frame rate matched), every video, HDR and
+        // Dolby Vision included, plays under the page with the app's own player controls.
+        val ok = player?.videoFormat != null
+        if (ok == underPageOk) return
+        underPageOk = ok
+        if (!ok && mode == Mode.UNDER) applyMode()
     }
 
     fun setMode(next: Mode) {
@@ -776,8 +795,23 @@ class NativePlayer(
      */
     fun handleFullKey(event: KeyEvent): Boolean {
         // The menu is a dialog with its own window and takes the remote while it is open.
-        if (mode != Mode.FULL || player == null || menu != null) return false
+        if (player == null || menu != null) return false
+        // Let Android or the attached receiver handle hardware volume even with chrome hidden.
+        if (event.keyCode in listOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE)) return false
         val down = event.action == KeyEvent.ACTION_DOWN
+        // Under the page (an SDR video with the app's own controls) the page takes the arrows,
+        // OK and Back; the remote's play, pause and seek keys still work the player.
+        if (mode == Mode.UNDER && underPageOk) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { if (down && event.repeatCount == 0) togglePause(); return true }
+                KeyEvent.KEYCODE_MEDIA_PLAY -> { if (down) resume(); return true }
+                KeyEvent.KEYCODE_MEDIA_PAUSE -> { if (down) pause(); return true }
+                KeyEvent.KEYCODE_MEDIA_REWIND -> { if (down) seekBy(-SEEK_STEP_MS); return true }
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { if (down) seekBy(SEEK_STEP_MS); return true }
+            }
+            return false
+        }
+        if (mode != Mode.FULL) return false
         when (event.keyCode) {
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { if (down && event.repeatCount == 0) togglePause(); return true }
             KeyEvent.KEYCODE_MEDIA_PLAY -> { if (down) resume(); return true }
@@ -1036,11 +1070,13 @@ private fun speedName(speed: Float): String =
         val visible = player != null && when (mode) {
             Mode.FULL -> true
             Mode.HERO -> rect != null
-            Mode.UNDER -> !isHdr()
+            Mode.UNDER -> underPageOk
             Mode.HIDDEN -> false
         }
         if (mode != Mode.FULL || !visible) closeMenu()
-        if (mode == Mode.FULL) matchDisplayMode() else restoreDisplayMode()
+        // Under the page is full screen too (an SDR video with the app's own controls over it), so
+        // the TV still switches to the video's frame rate there.
+        if (visible && (mode == Mode.FULL || mode == Mode.UNDER)) matchDisplayMode() else restoreDisplayMode()
         if (mode != Mode.FULL || !visible) leaveFull()
         if (!visible) {
             view.hideController()
@@ -1068,7 +1104,8 @@ private fun speedName(speed: Float): String =
             view.isFocusable = true
             view.visibility = View.VISIBLE
             view.requestFocus()
-            view.showController()
+            // No bar while the video starts: it moves under the page, to the app's own controls,
+            // once its first frames decode. A key press still brings this bar up meanwhile.
         } else if (mode == Mode.UNDER) {
             // The page's overlay takes the remote; the picture carries on full size beneath it.
             setUnderPage(true)
@@ -1125,6 +1162,13 @@ private fun speedName(speed: Float): String =
         }
 
         // The video's size and frame rate are known by its first decoded frame.
+        override fun onRenderedFirstFrame() {
+            renderedFrame = true
+            // The format is certainly known now; the page asks canShowUnderPage on this event.
+            refreshUnderPage()
+            send("first-frame")
+        }
+
         override fun onVideoSizeChanged(videoSize: VideoSize) {
             refreshUnderPage()
             if (videoSize.width > 0 && videoSize.height > 0) matchDisplayMode()
