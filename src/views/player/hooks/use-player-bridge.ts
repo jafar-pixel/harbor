@@ -162,7 +162,7 @@ export function usePlayerBridge(params: {
             // Every video gets "Change stream" (the stream list or, for a channel, the channel
             // list) even when the layout hides it, and the "While you watch" drawer
             // (watch-drawer.tsx), which the remote's Down also opens.
-            controls: withChangeStream([...tvLayout(theme), "today-games"]),
+            controls: withChangeStream([...tvLayout(theme), ...(srcRef.current.episode ? ["up-next"] : []), "today-games"]),
             // The theme's accent, for the TV player's seek bar and highlights.
             accent:
               getComputedStyle(document.documentElement)

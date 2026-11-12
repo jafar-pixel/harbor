@@ -315,6 +315,11 @@ class NativePlayer(
         "menu" -> extraButton(R.drawable.jl_ic_menu, "Player menu") { openMenu() }
         "today-games" -> extraButton(R.drawable.jl_ic_games, "While you watch") { control("today-games") }
         "speed-menu" -> extraButton(R.drawable.jl_ic_speed, "Playback speed") { showMessage(nextSpeed()) }
+        "up-next" -> android.widget.Button(activity).apply {
+            text = "Up Next"
+            isAllCaps = false
+            setOnClickListener { control("up-next") }
+        }
         "prev-episode" -> extraButton(R.drawable.jl_ic_prev, "Previous episode") { control("prev-episode") }
         "next-episode" -> extraButton(R.drawable.jl_ic_next, "Next episode") { control("next-episode") }
         else -> null
