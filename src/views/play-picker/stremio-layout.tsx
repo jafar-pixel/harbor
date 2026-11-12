@@ -1,11 +1,11 @@
 import { ChevronDown } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { addonLogoSrc, resolveAddonLogo } from "@/components/addon-logo";
 import type { Addon } from "@/lib/addons";
 import type { ScoredStream } from "@/lib/streams/types";
 import { StremioRow } from "./stremio-row";
 import { FACET_DIMS, facetOptions, matchesFacets, type FacetState } from "./stream-facets";
-import { addonInstanceKey, buildAddonOptions } from "./picker-utils";
+import { addonInstanceKey, buildAddonOptions, streamIdentity } from "./picker-utils";
 import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
 import type { CustomStreamFilter } from "@/lib/streams/custom-filters";
@@ -91,7 +91,10 @@ export function StremioLayout({
   useEffect(() => {
     if (filter !== "all" && addonFiltered.length === 0 && streams.length > 0) setFilter("all");
   }, [filter, addonFiltered.length, streams.length]);
-  const visibleStreams = useMemo(() => {
+  // Rows keep the place they first appeared in: add-ons answer at different times, and re-sorting
+  // the whole list on each answer moved the row the remote was on.
+  const firstSeen = useRef(new Map<string, number>());
+  const sortedStreams = useMemo(() => {
     const filtered = addonFiltered.filter((s) => matchesFacets(s, facet));
     if (filter !== "all") return filtered;
     if (preserveOrder) return filtered;
@@ -116,6 +119,16 @@ export function StremioLayout({
       return 0;
     });
   }, [addonFiltered, facet, filter, addonRank, preserveOrder]);
+  const visibleStreams = useMemo(() => {
+    const seen = firstSeen.current;
+    for (const s of sortedStreams) {
+      const key = streamIdentity(s);
+      if (!seen.has(key)) seen.set(key, seen.size);
+    }
+    return sortedStreams
+      .slice()
+      .sort((a, b) => (seen.get(streamIdentity(a)) ?? 0) - (seen.get(streamIdentity(b)) ?? 0));
+  }, [sortedStreams]);
   const filterLabel =
     filter === "all" ? t("All") : (addonOptions.find((o) => o.id === filter)?.name ?? t("All"));
   const filterLogo = filter === "all" ? null : (addonLogoMap.get(filter) ?? null);

@@ -444,6 +444,17 @@ export function KeyField({
           className="h-11 min-w-0 flex-1 bg-transparent text-[16.5px] tracking-wide text-ink placeholder:text-ink-subtle/55 outline-none"
         />
         {value.length > 0 && (
+          // One press clears the key (it saves a moment later, as typing does); on a TV remote
+          // a long key was otherwise deleted a character at a time.
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="flex h-11 shrink-0 items-center rounded-md px-3 text-[14px] font-semibold text-ink-subtle transition-colors hover:bg-canvas hover:text-danger focus-visible:text-danger active:scale-[0.97]"
+          >
+            {t("Remove")}
+          </button>
+        )}
+        {value.length > 0 && (
           <button
             type="button"
             onClick={() => setReveal((v) => !v)}

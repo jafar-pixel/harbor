@@ -163,9 +163,12 @@ export function buildEpisodePipelineInput(params: {
   const effEpisode = imdbEpAligned ? (episode?.imdbEpisode ?? episode?.episode) : episode?.episode;
   const tmdbMatch = /^tmdb:(?:movie|tv|series):(\d+)$/.exec(meta.id);
   const mediaYear = parseInt(meta.releaseInfo ?? "", 10) || null;
-  // Anime numbering differs between providers, so an episode is never guessed for it.
+  // The viewer's IPTV provider is no longer searched for movies and shows unless a caller asks
+  // (its unlabeled copies were tried before the debrid ones, and its whole catalog was loaded
+  // into memory for each title). Anime numbering differs between providers, so an episode is
+  // never guessed for it.
   const providerQuery =
-    animeReq || params.includeProviderVod === false
+    animeReq || params.includeProviderVod !== true
       ? null
       : {
           type: episode || meta.type === "series" ? ("series" as const) : ("movie" as const),

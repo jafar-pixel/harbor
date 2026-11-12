@@ -95,8 +95,6 @@ import { LocalStreamList } from "./play-picker/local-stream-card";
 import { SubtitleSelectStep } from "./play-picker/subtitle-select-step";
 import { prefetchResumeStart } from "@/lib/player/resume-start";
 import { isLivePlaybackSrc } from "@/lib/player/live-src";
-import { usePlaylists } from "@/lib/iptv/playlists-store";
-import { providerVodSources } from "@/lib/streams/provider-vod";
 import { searchedSourceLabels } from "@/lib/streams/source-order";
 
 const TIER_ORDER: Tier[] = ["4K_DV", "4K_HDR", "4K", "1080p_HDR", "1080p", "720p", "SD", "ROUGH"];
@@ -209,8 +207,8 @@ export function PlayPicker({
     [downloadEntry, localMatches],
   );
   const { addons } = useAddons(authKey, settings);
-  const playlists = usePlaylists();
-  const providerNames = useMemo(() => providerVodSources().map((p) => p.name), [playlists]);
+  // The IPTV provider isn't searched for movies and shows (episode-pipeline-input.ts).
+  const providerNames: string[] = useMemo(() => [], []);
   const searchedSources = useMemo(
     () => searchedSourceLabels(providerNames, (addons ?? []).filter(declaresStream)),
     [providerNames, addons],

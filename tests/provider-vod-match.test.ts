@@ -161,17 +161,19 @@ test("quality labels come from the entry name or category", () => {
   assert.equal(vodQualityLabel("Dune", "English"), null);
 });
 
-test("sources are tried provider first, then Real-Debrid, then TorBox", () => {
+test("sources are tried Real-Debrid and Premiumize first, TorBox and the provider last", () => {
   const provider = { addonId: "jl.provider-vod", url: "http://provider.test/movie/1.mkv" };
   const rd = { addonId: "com.stremio.torrentio.addon", name: "[RD+] Torrentio", url: "x" };
+  const pm = { addonId: "com.stremio.torrentio.addon", name: "[PM+] Torrentio", url: "w" };
   const tb = { addonId: "app.torbox.stremio", name: "TorBox", url: "y" };
   const other = { addonId: "other", name: "Other", url: "z" };
   assert.equal(streamDebridService(rd), "rd");
+  assert.equal(streamDebridService(pm), "pm");
   assert.equal(streamDebridService(tb), "tb");
   assert.equal(streamDebridService(other), null);
   assert.deepEqual(
-    [other, tb, rd, provider].sort((a, b) => sourceOrderRank(a) - sourceOrderRank(b)),
-    [provider, rd, tb, other],
+    [provider, other, tb, pm, rd].sort((a, b) => sourceOrderRank(a) - sourceOrderRank(b)),
+    [pm, rd, other, tb, provider],
   );
   assert.deepEqual(
     searchedSourceLabels(

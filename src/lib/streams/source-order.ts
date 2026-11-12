@@ -19,9 +19,10 @@ type Ranked = {
 
 const RD_TAG_RX = /\[(?:rd|real-?debrid)(?:\+|⚡|✅|⬇|⏳|\]|\s)/i;
 const TB_TAG_RX = /\[(?:tb|trb|torbox)(?:\+|⚡|✅|⬇|⏳|\]|\s)/i;
+const PM_TAG_RX = /\[(?:pm|premiumize)(?:\+|⚡|✅|⬇|⏳|\]|\s)/i;
 
 /** The debrid service a stream plays through, as far as the stream itself says. */
-export function streamDebridService(s: Ranked): "rd" | "tb" | null {
+export function streamDebridService(s: Ranked): "rd" | "pm" | "tb" | null {
   const text = `${s.name ?? ""} ${s.title ?? ""} ${s.description ?? ""}`;
   const url = (s.url ?? "").toLowerCase();
   if (
@@ -33,6 +34,14 @@ export function streamDebridService(s: Ranked): "rd" | "tb" | null {
     url.includes("real-debrid.com")
   ) {
     return "rd";
+  }
+  if (
+    s.inLibrary?.pm === true ||
+    s.cached?.pm === true ||
+    PM_TAG_RX.test(text) ||
+    url.includes("premiumize.me")
+  ) {
+    return "pm";
   }
   if (
     s.addonId === "tb-library" ||
@@ -48,13 +57,16 @@ export function streamDebridService(s: Ranked): "rd" | "tb" | null {
   return null;
 }
 
-/** The order sources are tried in: the viewer's own provider, then Real-Debrid, then TorBox. */
+/**
+ * The order sources are tried in: Real-Debrid and Premiumize, then other sources, then TorBox,
+ * then the viewer's IPTV provider (only searched when a caller asks for it).
+ */
 export function sourceOrderRank(s: Ranked): number {
-  if (isProviderVodStream(s)) return 0;
+  if (isProviderVodStream(s)) return 4;
   const service = streamDebridService(s);
-  if (service === "rd") return 1;
-  if (service === "tb") return 2;
-  return 3;
+  if (service === "rd" || service === "pm") return 1;
+  if (service === "tb") return 3;
+  return 2;
 }
 
 type SearchAddon = { transportUrl: string; manifest: { id: string; name?: string } };

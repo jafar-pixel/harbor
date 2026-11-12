@@ -125,8 +125,9 @@ export function useAutoCandidates(args: {
       const aw = isWatchHub(a) ? 1 : 0;
       const bw = isWatchHub(b) ? 1 : 0;
       if (aw !== bw) return aw - bw;
-      const apv = isProviderVodStream(a) ? 0 : 1;
-      const bpv = isProviderVodStream(b) ? 0 : 1;
+      // The IPTV provider's copies carry no quality and are tried last.
+      const apv = isProviderVodStream(a) ? 1 : 0;
+      const bpv = isProviderVodStream(b) ? 1 : 0;
       if (apv !== bpv) return apv - bpv;
       const ai0 = instantTier(a);
       const bi0 = instantTier(b);
@@ -134,7 +135,7 @@ export function useAutoCandidates(args: {
       const an = a.nameAbsent ? 1 : 0;
       const bn = b.nameAbsent ? 1 : 0;
       if (an !== bn) return an - bn;
-      // Among equally ready copies, Real-Debrid is tried before TorBox, then everything else.
+      // Among equally ready copies, Real-Debrid and Premiumize go first and TorBox last.
       const aso = sourceOrderRank(a);
       const bso = sourceOrderRank(b);
       if (aso !== bso) return aso - bso;
