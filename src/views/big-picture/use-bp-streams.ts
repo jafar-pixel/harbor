@@ -32,8 +32,6 @@ import { buildMatchScores, matchBadge } from "@/lib/together/source-match";
 import type { PlayEpisode } from "@/lib/view";
 import { streamIsCached } from "@/views/play-picker/picker-utils";
 import { declaresStream, useAddons } from "@/views/play-picker/use-addons";
-import { usePlaylists } from "@/lib/iptv/playlists-store";
-import { providerVodSources } from "@/lib/streams/provider-vod";
 import { searchedSourceLabels } from "@/lib/streams/source-order";
 import { useAnimeAltTitles } from "@/views/play-picker/use-anime-alt-titles";
 import { useImdbId } from "@/views/play-picker/use-imdb-id";
@@ -94,8 +92,8 @@ export function useBpStreams(params: { meta: Meta; episode?: PlayEpisode }): BpS
   const { authKey } = useAuth();
   const debrids = useDebridClients();
   const { addons } = useAddons(authKey, settings);
-  const playlists = usePlaylists();
-  const providerNames = useMemo(() => providerVodSources().map((p) => p.name), [playlists]);
+  // The IPTV provider isn't searched for movies and shows (episode-pipeline-input.ts).
+  const providerNames: string[] = useMemo(() => [], []);
   const searchedSources = useMemo(
     () => searchedSourceLabels(providerNames, (addons ?? []).filter(declaresStream)),
     [providerNames, addons],

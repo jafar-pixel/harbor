@@ -159,9 +159,10 @@ export function usePlayerBridge(params: {
           const ref = playing.streamRef;
           return {
             ...nativeTvOptions(now),
-            // Every video gets the "While you watch" drawer on the bar (watch-drawer.tsx); the
-            // remote's Down opens it too.
-            controls: [...tvLayout(theme), "today-games"],
+            // Every video gets "Change stream" (the stream list or, for a channel, the channel
+            // list) even when the layout hides it, and the "While you watch" drawer
+            // (watch-drawer.tsx), which the remote's Down also opens.
+            controls: withChangeStream([...tvLayout(theme), "today-games"]),
             // The theme's accent, for the TV player's seek bar and highlights.
             accent:
               getComputedStyle(document.documentElement)
@@ -221,4 +222,9 @@ export function usePlayerBridge(params: {
   }, [bridgeReady, engine, settings.playerHdrToSdr, settings.playerDisplayPanel, bridgeRef]);
 
   return { snap, engine, bridgeReady, bridgeKey, embedActive, svpActive: svpOn };
+}
+
+/** The TV bar always offers "Change stream", first, whatever the saved layout hides. */
+function withChangeStream(controls: string[]): string[] {
+  return controls.includes("pick-another") ? controls : ["pick-another", ...controls];
 }
