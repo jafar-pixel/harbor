@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock, Heart, Radio, Search, Tv, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { startTyping } from "@/lib/keyboard-navigation";
 import type { EpgIndex, IptvChannel } from "@/lib/iptv/types";
 import { buildNowItem, type NowItem } from "./use-live-home";
 import { fmtClock } from "./now-format";
@@ -50,7 +51,8 @@ export function SurfList({
   const dwell = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(dwell.current), []);
   useEffect(() => {
-    if (searching) input.current?.focus();
+    // OK on Search asked to type: the box opens ready for typing, with the TV's keyboard.
+    if (searching && input.current) startTyping(input.current);
   }, [searching]);
 
   const results = useMemo(() => {

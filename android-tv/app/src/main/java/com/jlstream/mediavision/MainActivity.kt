@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
@@ -75,6 +76,7 @@ class MainActivity : AppCompatActivity() {
         web.requestFocus()
         web.addJavascriptInterface(PlayerBridge(), "JLNativePlayer")
         web.addJavascriptInterface(FetchBridge(), "JLNativeFetch")
+        web.addJavascriptInterface(KeyboardBridge(), "JLKeyboard")
         web.webViewClient = object : WebViewClient() {
             // The app stays in this view; any other site opens in the plain in-app browser.
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -332,6 +334,34 @@ class MainActivity : AppCompatActivity() {
         nativePlayer.release()
         web.destroy()
         super.onDestroy()
+    }
+
+    /**
+     * `window.JLKeyboard`: the page asks for the on-screen keyboard when the viewer starts typing
+     * in a field (OK on a search box) and closes it when they leave the field. Android only opens
+     * it, and only sends a keyboard's keys to the field, when the app asks; a field the page
+     * focuses by itself gets neither.
+     */
+    private inner class KeyboardBridge {
+        @JavascriptInterface
+        fun show() {
+            if (!onAppPage) return
+            runOnUiThread {
+                if (!isAppUrl(web.url)) return@runOnUiThread
+                web.requestFocus()
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.restartInput(web)
+                imm.showSoftInput(web, InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
+
+        @JavascriptInterface
+        fun hide() {
+            runOnUiThread {
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(web.windowToken, 0)
+            }
+        }
     }
 
     /**
