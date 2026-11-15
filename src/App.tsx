@@ -1,3 +1,4 @@
+import { SportsSearchOverlay } from "@/views/sports/sports-search-overlay";
 import { JlAccountWorkspaceBoundary } from "@/components/jl-account-workspace-boundary";
 import { GAMES_IN_NAV } from "@/chrome/nav-items";
 import { GameAccessProvider } from "@/views/games/game-access-context";
@@ -531,6 +532,7 @@ function AppProviders({ onReady }: { onReady?: () => void }) {
                                                     <ProfilePickerModal />
                                                     <CurfewGuard />
                                                     <SearchOverlay />
+                                                    <SportsSearchOverlay />
                                                     <SearchHotkey />
                                                     <LinkOutInterstitial />
                                                     <EmbedViewportRoot />
