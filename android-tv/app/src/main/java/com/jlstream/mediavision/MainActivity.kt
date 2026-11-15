@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
@@ -405,6 +406,12 @@ class MainActivity : AppCompatActivity() {
         site?.let { startActivity(Intent(this, BrowserActivity::class.java).setData(Uri.parse(it))) }
     }
 
+    private fun hasHardwareKeyboard(): Boolean {
+        val config = resources.configuration
+        return config.keyboard == Configuration.KEYBOARD_QWERTY &&
+            config.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO
+    }
+
     private fun tryStart(intent: Intent): Boolean = try {
         startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         true
@@ -429,7 +436,8 @@ class MainActivity : AppCompatActivity() {
                 web.requestFocus()
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.restartInput(web)
-                imm.showSoftInput(web, InputMethodManager.SHOW_IMPLICIT)
+                // A keyboard is plugged in or paired: type on it, no on-screen keyboard over the page.
+                if (!hasHardwareKeyboard()) imm.showSoftInput(web, InputMethodManager.SHOW_IMPLICIT)
             }
         }
 
