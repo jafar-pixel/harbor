@@ -1,0 +1,19 @@
+# The JL Media Vision website (watch.jl-stream.com, mediavision.jl-stream.com) on this server.
+# Listens only on this machine (127.0.0.1:3103); Cloudflare Tunnel brings the public addresses
+# to it. Separate from the dev server (3102) and from anything else on this machine.
+#
+#   docker compose -f compose.web.yaml up -d --build
+services:
+  jl-mediavision-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: jl-mediavision-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3103:3000"
+    env_file:
+      # VITE_JL_SUPABASE_URL and VITE_JL_SUPABASE_ANON_KEY (to check who is signed in).
+      - .env.local
+      # PLAYBACK_RELAY_KEY, PLAYBACK_RELAY_BASE=/secure, PLAYBACK_RELAY_USERS (never committed).
+      - .env.server

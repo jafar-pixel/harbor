@@ -6,7 +6,8 @@
 // Off unless configured, and never open: the caller must be signed in to a JL account listed in
 // PLAYBACK_RELAY_USERS. Settings (Vercel environment):
 //   PLAYBACK_RELAY_KEY    64 hex characters, the same key the relay uses
-//   PLAYBACK_RELAY_BASE   the relay's public address ending in /secure
+//   PLAYBACK_RELAY_BASE   the relay's public address ending in /secure, or "/secure" when the
+//                         relay runs on the same server (server/web-server.ts)
 //   PLAYBACK_RELAY_USERS  comma-separated JL account emails or user ids allowed to use it
 export const config = { runtime: "edge" };
 
@@ -72,7 +73,8 @@ export default async function handler(req: Request): Promise<Response> {
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
-  if (!/^[a-f0-9]{64}$/.test(secret) || !base.startsWith("https://") || allowed.length === 0) {
+  const baseOk = base.startsWith("https://") || /^\/[A-Za-z0-9/_-]+$/.test(base);
+  if (!/^[a-f0-9]{64}$/.test(secret) || !baseOk || allowed.length === 0) {
     return json(404, { error: "not-configured" });
   }
   const user = await signedInUser(req);
