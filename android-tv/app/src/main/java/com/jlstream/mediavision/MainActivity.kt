@@ -346,11 +346,32 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private fun adbDebuggingOn(): Boolean = try {
-        Settings.Global.getInt(contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 ||
-            Settings.Global.getInt(contentResolver, "adb_wifi_enabled", 0) == 1
+    /**
+     * USB or network debugging is on. NVIDIA's Shield turns on network debugging without the usual
+     * settings (both read 0 there), so adb listening on a network port, or Developer options being
+     * on, count too.
+     */
+    private fun adbDebuggingOn(): Boolean {
+        fun global(name: String) = try {
+            Settings.Global.getInt(contentResolver, name, 0) == 1
+        } catch (_: Exception) {
+            false
+        }
+        return global(Settings.Global.ADB_ENABLED) ||
+            global("adb_wifi_enabled") ||
+            global(Settings.Global.DEVELOPMENT_SETTINGS_ENABLED) ||
+            adbTcpPort() > 0
+    }
+
+    /** The port adb listens on over the network (service.adb.tcp.port), or 0. */
+    private fun adbTcpPort(): Int = try {
+        val props = Class.forName("android.os.SystemProperties")
+        val get = props.getMethod("get", String::class.java)
+        listOf("service.adb.tcp.port", "persist.adb.tcp.port")
+            .firstNotNullOfOrNull { (get.invoke(null, it) as? String)?.toIntOrNull()?.takeIf { p -> p > 0 } }
+            ?: 0
     } catch (_: Exception) {
-        false
+        0
     }
 
     /**
