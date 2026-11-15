@@ -2,6 +2,7 @@ import { jlRest, type JlAccountContext } from "./client";
 import { sameValue, syncProfileDocument } from "./document-sync";
 import { applyProfileData, readProfileData, validateProfileData } from "./profile-data";
 import { readSettingsFor, writeSettingsFor } from "@/lib/layout-sync/store";
+import { isPlaceholderName } from "@/lib/profiles";
 import type { Settings } from "@/lib/settings";
 import { createProfileDocumentRemote } from "./profile-data-remote";
 import {
@@ -65,9 +66,12 @@ export async function syncJlProfileData(scope: {
       const metaPatch: Partial<JlProfileMetadata> = {};
       for (const field of ["name", "color"] as const) {
         const value = values[`profile:${field}`];
+        // A device's stand-in name ("Guest 5056") is never sent to the account (readProfileData),
+        // so it can't count as the viewer's own edit: the account's name replaces it.
+        const standIn = field === "name" && isPlaceholderName(metadata.name);
         if (
           typeof value === "string" &&
-          sameValue(metadata[field], expected[`profile:${field}`]) &&
+          (standIn || sameValue(metadata[field], expected[`profile:${field}`])) &&
           value !== metadata[field]
         )
           metaPatch[field] = value;
