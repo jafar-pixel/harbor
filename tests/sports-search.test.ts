@@ -78,3 +78,34 @@ test("channels: sports only, hidden ones left out", () => {
   );
   assert.deepEqual(searchChannels(list, "hgtv", isSports), [], "never a non-sports channel");
 });
+
+test("a big channel list is prepared once, in slices, and searched fast", async () => {
+  const { buildSportsChannelIndex, searchChannelIndex } =
+    await import("../src/lib/sports/sports-search.ts");
+  const ch = (i: number, sports: boolean) => ({
+    id: `c${i}`,
+    tvgId: null,
+    name: sports ? `ESPN ${i}` : `Movie Channel ${i}`,
+    logo: null,
+    group: sports ? "USA Sports" : "Movies",
+    url: "",
+    catchupSource: null,
+    durationSec: null,
+    attrs: {},
+  });
+  const list = Array.from({ length: 20_000 }, (_, i) => ch(i, i % 10 === 0));
+  let yields = 0;
+  const index = await buildSportsChannelIndex(list, (_n, g) => g === "USA Sports", {
+    slice: 1000,
+    yieldTo: async () => {
+      yields += 1;
+    },
+  });
+  assert.equal(index!.length, 2000, "only the sports channels are kept");
+  assert.equal(yields, 19, "the page gets a turn between slices");
+  assert.deepEqual(
+    searchChannelIndex(index!, "espn 100", undefined, 3).map((c) => c.name),
+    ["ESPN 100", "ESPN 1000", "ESPN 10000"],
+  );
+  assert.equal(await buildSportsChannelIndex(list, () => true, { stopped: () => true }), null);
+});

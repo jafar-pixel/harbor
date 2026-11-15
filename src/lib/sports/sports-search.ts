@@ -86,3 +86,64 @@ export function searchChannels(
     .slice(0, limit)
     .map((h) => h.c);
 }
+
+/** A sports channel prepared for searching: its folded name and group, worked out once. */
+export type SportsChannelEntry = { channel: IptvChannel; text: string };
+
+/**
+ * Picks the sports channels out of a playlist once, in small slices so the page keeps answering
+ * the remote while a large list (tens of thousands of channels) is sorted. Each key typed then
+ * searches only this short list. Resolves null when stopped.
+ */
+export async function buildSportsChannelIndex(
+  channels: readonly IptvChannel[],
+  isSports: (name: string, group: string | null) => boolean,
+  options: { slice?: number; yieldTo?: () => Promise<void>; stopped?: () => boolean } = {},
+): Promise<SportsChannelEntry[] | null> {
+  const slice = options.slice ?? 1500;
+  const yieldTo = options.yieldTo ?? (() => new Promise<void>((r) => setTimeout(r, 0)));
+  const out: SportsChannelEntry[] = [];
+  for (let at = 0; at < channels.length; at += slice) {
+    if (options.stopped?.()) return null;
+    const end = Math.min(channels.length, at + slice);
+    for (let i = at; i < end; i++) {
+      const c = channels[i];
+      if (c.name && isSports(c.name, c.group)) {
+        out.push({ channel: c, text: foldSports(`${c.name} ${c.group ?? ""}`) });
+      }
+    }
+    if (end < channels.length) await yieldTo();
+  }
+  return out;
+}
+
+/** Sports channels for a query from a prepared index; channels the viewer hid are left out. */
+export function searchChannelIndex(
+  index: readonly SportsChannelEntry[],
+  query: string,
+  hidden: (name: string) => boolean = () => false,
+  limit = 20,
+): IptvChannel[] {
+  const parts = words(query);
+  if (!parts.length) return [];
+  const whole = foldSports(query);
+  const hits: { c: IptvChannel; s: number }[] = [];
+  for (const { channel, text } of index) {
+    let score = 0;
+    for (const w of parts) {
+      const at = text.indexOf(w);
+      if (at < 0) {
+        score = 0;
+        break;
+      }
+      score += at === 0 || text[at - 1] === " " ? 3 : 1;
+    }
+    if (!score || hidden(channel.name)) continue;
+    if (text === whole) score += 5;
+    hits.push({ c: channel, s: score });
+  }
+  return hits
+    .sort((a, b) => b.s - a.s || a.c.name.localeCompare(b.c.name))
+    .slice(0, limit)
+    .map((h) => h.c);
+}

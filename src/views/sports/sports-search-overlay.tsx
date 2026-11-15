@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Radio, Search, Trophy, Tv, Users, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { readActiveId } from "@/lib/iptv/active-source";
@@ -11,7 +11,12 @@ import { agentEdit } from "@/lib/sports/agent/store";
 import { getLeagueLabel } from "@/lib/sports/espn";
 import { hubLeague } from "@/lib/sports/hub-data";
 import type { SportsGame } from "@/lib/sports/espn-types";
-import { searchChannels, searchGames } from "@/lib/sports/sports-search";
+import {
+  buildSportsChannelIndex,
+  searchChannelIndex,
+  searchGames,
+  type SportsChannelEntry,
+} from "@/lib/sports/sports-search";
 import {
   hubGames,
   setSportsSearchOpen,
@@ -61,13 +66,16 @@ function Panel() {
     };
   }, []);
 
-  const q = query.trim();
-  const channels = useMemo(() => {
-    if (q.length < 2) return [];
-    const id = readActiveId();
-    const list = id ? (getCachedPlaylist(id)?.channels ?? []) : [];
-    return searchChannels(list, q, isSportsChannel, (name) => agentEdit(name) === "hide", 12);
-  }, [q]);
+  // Results follow the typing a beat behind, so the field itself never waits on them.
+  const q = useDeferredValue(query.trim());
+  const index = useSportsChannelIndex();
+  const channels = useMemo(
+    () =>
+      q.length < 2 || !index
+        ? []
+        : searchChannelIndex(index, q, (name) => agentEdit(name) === "hide", 12),
+    [q, index],
+  );
   const games = useMemo(() => (q.length < 2 ? [] : searchGames(hubGames(), q, 10)), [q]);
 
   useEffect(() => {
@@ -301,4 +309,32 @@ function gameWhen(g: SportsGame, t: (s: string) => string): string {
 function leagueName(key: string): string {
   const league = hubLeague(key);
   return league ? getLeagueLabel(league) : key;
+}
+
+/** The playlist's sports channels, prepared once per playlist and kept for the next search. */
+let indexCache: { key: string; index: SportsChannelEntry[] } | null = null;
+
+function useSportsChannelIndex(): SportsChannelEntry[] | null {
+  const [index, setIndex] = useState<SportsChannelEntry[] | null>(null);
+  useEffect(() => {
+    const id = readActiveId();
+    const list = id ? (getCachedPlaylist(id)?.channels ?? []) : [];
+    const key = `${id ?? ""}:${list.length}:${list[0]?.id ?? ""}:${list[list.length - 1]?.id ?? ""}`;
+    if (indexCache?.key === key) {
+      setIndex(indexCache.index);
+      return;
+    }
+    let stopped = false;
+    void buildSportsChannelIndex(list, isSportsChannel, { stopped: () => stopped }).then(
+      (built) => {
+        if (!built || stopped) return;
+        indexCache = { key, index: built };
+        setIndex(built);
+      },
+    );
+    return () => {
+      stopped = true;
+    };
+  }, []);
+  return index;
 }
