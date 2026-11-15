@@ -1,6 +1,11 @@
 import { jlRest, type JlAccountContext } from "./client";
 import { sameValue, syncProfileDocument } from "./document-sync";
-import { applyProfileData, readProfileData, validateProfileData } from "./profile-data";
+import {
+  applyProfileData,
+  profileMetadataValues,
+  readProfileData,
+  validateProfileData,
+} from "./profile-data";
 import { readSettingsFor, writeSettingsFor } from "@/lib/layout-sync/store";
 import type { Settings } from "@/lib/settings";
 import { createProfileDocumentRemote } from "./profile-data-remote";
@@ -63,11 +68,12 @@ export async function syncJlProfileData(scope: {
       if (!writeSettingsFor(scope.localId, patch as Partial<Settings>))
         throw new Error("JL settings could not be applied");
       const metaPatch: Partial<JlProfileMetadata> = {};
+      const current = profileMetadataValues(metadata);
       for (const field of ["name", "color"] as const) {
         const value = values[`profile:${field}`];
         if (
           typeof value === "string" &&
-          sameValue(metadata[field], expected[`profile:${field}`]) &&
+          sameValue(current[`profile:${field}`], expected[`profile:${field}`]) &&
           value !== metadata[field]
         )
           metaPatch[field] = value;

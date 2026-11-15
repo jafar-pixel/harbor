@@ -29,7 +29,10 @@ export function mergeProfileValues(
     ...Object.keys(local),
     ...Object.keys(remote),
   ])) {
-    const localChanged = base === null ? own(local, key) : !sameValue(local[key], base[key]);
+    // A device with a placeholder omits its name. Account profile names cannot be deleted.
+    const localChanged =
+      (key !== "profile:name" || own(local, key)) &&
+      (base === null ? own(local, key) : !sameValue(local[key], base[key]));
     const remoteChanged = base === null ? own(remote, key) : !sameValue(remote[key], base[key]);
     const fromLocal = localChanged && !remoteChanged;
     if (localChanged && remoteChanged && !sameValue(local[key], remote[key])) {

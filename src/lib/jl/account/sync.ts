@@ -233,7 +233,8 @@ export async function autoLinkJlProfile(
     // A device that only has a stand-in name ("Guest 1234") joins the account's one named
     // profile, so it signs in as you instead of a new guest each time.
     const named = profiles.filter((p) => !isStandInName(p.name));
-    if (isStandInName(name) && named.length === 1) linkJlProfile(named[0], context);
+    if ((!name.trim() || isStandInName(name)) && named.length === 1)
+      linkJlProfile(named[0], context);
     return;
   }
   // Never add a stand-in guest profile to the account.
