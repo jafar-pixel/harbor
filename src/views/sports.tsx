@@ -68,6 +68,7 @@ import { replayChannels } from "@/lib/jl/sports/replays";
 import { TV_LEAGUE_LABELS } from "@/lib/jl/sports/tv-leagues";
 import { useJlSportsPage } from "./live/live-home/jl-sports/use-jl-sports-page";
 import { ContinueAnywhereRow } from "@/views/continue/continue-anywhere";
+import { hubPerfShown, hubPerfStart } from "@/lib/sports/hub-perf";
 
 const NO_CHANNELS: IptvChannel[] = [];
 
@@ -274,6 +275,13 @@ function SportsHubView({ active = false }: { active?: boolean }) {
     [board.games, upcoming.games],
   );
   const liveNow = useMemo(() => currentLiveGames(board.games), [board.games]);
+  // A one-time timing report (adb logcat "[sports-perf]" on the TV): evidence for speed work.
+  useEffect(() => {
+    if (active) hubPerfStart();
+  }, [active]);
+  useEffect(() => {
+    if (active && all.length) hubPerfShown(all.length);
+  }, [active, all.length]);
   useEffect(() => syncSportsReminders(all), [all]);
   const next = useMemo(
     () => eventCards(all.filter((g) => g.state === "pre" && g.startMs >= Date.now())),

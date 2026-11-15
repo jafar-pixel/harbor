@@ -7,6 +7,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -49,6 +50,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         CrashLog.install(this)
+        // chrome://inspect on a computer the TV already trusts for adb can look inside the app
+        // (what loads, what is slow); only while the TV's USB or network debugging is on.
+        WebView.setWebContentsDebuggingEnabled(adbDebuggingOn())
         root = FrameLayout(this)
         web = WebView(this)
         root.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -336,6 +340,13 @@ class MainActivity : AppCompatActivity() {
         nativePlayer.release()
         web.destroy()
         super.onDestroy()
+    }
+
+    private fun adbDebuggingOn(): Boolean = try {
+        Settings.Global.getInt(contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 ||
+            Settings.Global.getInt(contentResolver, "adb_wifi_enabled", 0) == 1
+    } catch (_: Exception) {
+        false
     }
 
     /**
