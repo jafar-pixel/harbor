@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -155,6 +156,9 @@ class MainActivity : AppCompatActivity() {
                 if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
                     PageTrail.noteError(message.message())
                 }
+                // The page's timing reports ("[sports-perf] ..."), into adb logcat under "JLPage" on
+                // every Android TV; WebView's own console logging isn't there on all of them.
+                if (message.message().startsWith("[sports-perf]")) Log.i("JLPage", message.message())
                 return super.onConsoleMessage(message)
             }
         }
