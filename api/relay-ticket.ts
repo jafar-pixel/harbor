@@ -9,7 +9,8 @@
 //   PLAYBACK_RELAY_BASE   the relay's public address ending in /secure, or "/secure" when the
 //                         relay runs on the same server (server/web-server.ts)
 //   PLAYBACK_RELAY_USERS  comma-separated JL account emails or user ids allowed to use it, or "*"
-//                         for every signed-in JL account (each with its own provider)
+//                         for every signed-in JL account (each with its own provider), and
+//                         "family:<family id>" for every member of that JL family
 export const config = { runtime: "edge" };
 
 const TTL_MS = 6 * 60 * 60 * 1000;
@@ -66,6 +67,32 @@ async function signedInUser(req: Request): Promise<{ id: string; email: string }
   return user?.id ? { id: user.id, email: (user.email ?? "").toLowerCase() } : null;
 }
 
+/**
+ * The JL family the signed-in person belongs to (or owns), asked with their own sign-in: the
+ * family's id, or "" when they have none or it can't be checked.
+ */
+async function familyOf(req: Request): Promise<string> {
+  const token = /^Bearer\s+(\S+)$/i.exec(req.headers.get("authorization") ?? "")?.[1];
+  const supabaseUrl = env("VITE_JL_SUPABASE_URL");
+  const anonKey = env("VITE_JL_SUPABASE_ANON_KEY");
+  if (!token || !supabaseUrl || !anonKey) return "";
+  const res = await fetch(new URL("/rest/v1/rpc/my_family", supabaseUrl), {
+    method: "POST",
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "Accept-Profile": "media",
+      "Content-Profile": "media",
+    },
+    body: "{}",
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => null);
+  if (!res?.ok) return "";
+  const family = (await res.json().catch(() => null)) as { id?: unknown } | null;
+  return typeof family?.id === "string" ? family.id.toLowerCase() : "";
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== "POST") return json(405, { error: "method" });
   const secret = env("PLAYBACK_RELAY_KEY");
@@ -81,13 +108,16 @@ export default async function handler(req: Request): Promise<Response> {
   const user = await signedInUser(req);
   if (!user) return json(401, { error: "sign-in" });
   const anyone = allowed.includes("*");
-  if (
-    !anyone &&
-    !allowed.includes(user.id.toLowerCase()) &&
-    !(user.email && allowed.includes(user.email))
-  ) {
-    return json(403, { error: "not-allowed" });
+  let ok =
+    anyone ||
+    allowed.includes(user.id.toLowerCase()) ||
+    (!!user.email && allowed.includes(user.email));
+  // The owner's family (the accounts they cloned their setup to) may use it too.
+  if (!ok && allowed.some((a) => a.startsWith("family:"))) {
+    const family = await familyOf(req);
+    ok = !!family && allowed.includes(`family:${family}`);
   }
+  if (!ok) return json(403, { error: "not-allowed" });
 
   const body = (await req.json().catch(() => null)) as { urls?: unknown } | null;
   const urls = Array.isArray(body?.urls) ? body.urls : [];
