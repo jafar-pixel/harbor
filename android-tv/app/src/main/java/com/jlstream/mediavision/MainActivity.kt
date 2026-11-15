@@ -2,6 +2,7 @@ package com.jlstream.mediavision
 
 import android.annotation.SuppressLint
 import android.app.ActivityManager
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -77,6 +78,7 @@ class MainActivity : AppCompatActivity() {
         web.addJavascriptInterface(PlayerBridge(), "JLNativePlayer")
         web.addJavascriptInterface(FetchBridge(), "JLNativeFetch")
         web.addJavascriptInterface(KeyboardBridge(), "JLKeyboard")
+        web.addJavascriptInterface(AppsBridge(), "JLApps")
         web.webViewClient = object : WebViewClient() {
             // The app stays in this view; any other site opens in the plain in-app browser.
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -334,6 +336,46 @@ class MainActivity : AppCompatActivity() {
         nativePlayer.release()
         web.destroy()
         super.onDestroy()
+    }
+
+    /**
+     * `window.JLApps`: "Your apps" opens a subscription app (Netflix, YouTube TV...) on this TV.
+     * JL Media Vision is the hub; the services play in their own apps.
+     */
+    private inner class AppsBridge {
+        @JavascriptInterface
+        fun open(packages: String?, name: String?, url: String?): Boolean {
+            if (!onAppPage) return false
+            val list = packages.orEmpty().split(',').map { it.trim() }
+                .filter { it.matches(Regex("[A-Za-z0-9_.]{3,120}")) }
+            val site = url.orEmpty().takeIf { it.startsWith("https://") }
+            runOnUiThread { launchApp(list, site) }
+            return true
+        }
+    }
+
+    /** The installed app, else its store page (Google Play, then Amazon's), else its website. */
+    private fun launchApp(packages: List<String>, site: String?) {
+        for (pkg in packages) {
+            val intent = packageManager.getLeanbackLaunchIntentForPackage(pkg)
+                ?: packageManager.getLaunchIntentForPackage(pkg)
+                ?: continue
+            if (tryStart(intent)) return
+        }
+        packages.firstOrNull()?.let { pkg ->
+            if (tryStart(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg")))) return
+            if (tryStart(Intent(Intent.ACTION_VIEW, Uri.parse("amzn://apps/android?p=$pkg")))) return
+        }
+        site?.let { startActivity(Intent(this, BrowserActivity::class.java).setData(Uri.parse(it))) }
+    }
+
+    private fun tryStart(intent: Intent): Boolean = try {
+        startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    } catch (_: SecurityException) {
+        false
     }
 
     /**
