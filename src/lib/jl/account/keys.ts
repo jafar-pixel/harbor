@@ -27,6 +27,9 @@ export const SYNCED_SETTING_KEYS = [
   "anthropicKey",
   "sportsAreaState",
   "sportsAreaCity",
+  // The sports, teams and schools the viewer follows (their own stores, not settings).
+  "sportsFavourites",
+  "sportsColleges",
 ] as const;
 
 export type SyncedSettingKey = (typeof SYNCED_SETTING_KEYS)[number];
@@ -43,6 +46,8 @@ const OWN_ONLY: ReadonlySet<SyncedSettingKey> = new Set([
   "anthropicKey",
   "sportsAreaState",
   "sportsAreaCity",
+  "sportsFavourites",
+  "sportsColleges",
 ]);
 
 export const secretName = (key: SyncedSettingKey) =>

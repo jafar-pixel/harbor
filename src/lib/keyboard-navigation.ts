@@ -5,6 +5,7 @@ import { SFX } from "@/lib/sfx";
 import { isModalOverlayOpen, modalOverlayClose } from "@/lib/modal-overlay";
 import { stableCardNavigationRect } from "@/lib/poster-backdrop-expansion";
 import { navOwnsFocus } from "./keyboard-navigation/geometry";
+import { hideTvKeyboard, showTvKeyboard } from "./tv-keyboard";
 
 export type Dir = "up" | "down" | "left" | "right";
 
@@ -847,6 +848,17 @@ function clearSearchNavMode(el: HTMLElement) {
   }
 }
 
+/**
+ * Starts typing in a field the viewer has just asked to type in (OK on a "Search" button that
+ * opens the box): the field goes straight to editing, with the TV's keyboard, instead of waiting
+ * for a second OK.
+ */
+export function startTyping(el: HTMLElement): void {
+  if (activeSearchEditEl && activeSearchEditEl !== el)
+    activeSearchEditEl.removeAttribute("data-search-editing");
+  enterSearchEditMode(el);
+}
+
 function enterSearchEditMode(el: HTMLElement) {
   activeSearchEditEl = el;
   clearSearchNavMode(el);
@@ -866,6 +878,8 @@ function enterSearchEditMode(el: HTMLElement) {
       el.setSelectionRange(len, len);
     } catch {}
   }
+  // The TV app opens its on-screen keyboard (and sends a keyboard's keys) only when asked.
+  showTvKeyboard();
 }
 
 function exitSearchEditMode() {
@@ -874,6 +888,7 @@ function exitSearchEditMode() {
   activeSearchEditEl = null;
   el.removeAttribute("data-search-editing");
   setSearchNavMode(el);
+  hideTvKeyboard();
   if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
     el.blur();
   }
@@ -1328,6 +1343,7 @@ export function useKeyboardNavigation(options: TVNavigationOptions = {}) {
        */
       if (isSearchOverlayAutoText) {
         clearSearchNavMode(active);
+        if (activeSearchEditEl !== active) showTvKeyboard();
         activeSearchEditEl = active;
         active.removeAttribute("data-tv-focused");
         active.setAttribute("data-search-editing", "true");

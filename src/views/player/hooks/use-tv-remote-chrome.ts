@@ -23,7 +23,12 @@ export function useTvRemoteChrome(params: {
     const onKey = (e: KeyboardEvent) => {
       const root = document.documentElement;
       // Only while the video is full screen under the page; lists over it keep their own focus.
-      if (root.dataset.tvVideoUnder !== "1" || root.dataset.tvPanel === "1") return;
+      if (
+        root.dataset.tvVideoUnder !== "1" ||
+        root.dataset.tvPanel === "1" ||
+        root.dataset.tvGames === "1"
+      )
+        return;
       if (!REMOTE_KEYS.has(e.key)) return;
       const wasVisible = visibleRef.current;
       wakeRef.current();

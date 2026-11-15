@@ -1,6 +1,13 @@
 import { useEffect, useRef } from "react";
 import { usePlaylists, readPlaylists, writePlaylists } from "@/lib/iptv/playlists-store";
 import { useSettings, type Settings } from "@/lib/settings";
+import { applyFavouritesFromSync, favouritesForSync, useFavourites } from "@/lib/sports/favourites";
+import {
+  readFollowedColleges,
+  useFollowedColleges,
+  writeFollowedColleges,
+} from "@/lib/jl/sports/college-follows";
+import { isCollege } from "@/lib/jl/sports/colleges";
 import {
   assertJlAccountCurrent,
   jlAccountContext,
@@ -56,6 +63,11 @@ function localValues(settings: Settings): KeyValues {
       // Playlists live in their own store (Live TV and Sports read it), not in settings.
       const lists = readPlaylists();
       out[key] = lists.length ? JSON.stringify(lists) : "";
+    } else if (key === "sportsFavourites") {
+      out[key] = favouritesForSync();
+    } else if (key === "sportsColleges") {
+      const schools = readFollowedColleges();
+      out[key] = schools.length ? JSON.stringify(schools) : "";
     } else {
       out[key] = (settings[key] ?? "").trim();
     }
@@ -72,6 +84,15 @@ function toPatch(values: KeyValues): Partial<Settings> {
         if (Array.isArray(list)) writePlaylists(list as Settings["iptvPlaylists"]);
       } catch {
         /* a damaged value is left out rather than wiping this device's playlists */
+      }
+    } else if (key === "sportsFavourites") {
+      applyFavouritesFromSync(value);
+    } else if (key === "sportsColleges") {
+      try {
+        const list = value ? (JSON.parse(value) as unknown) : [];
+        if (Array.isArray(list) && list.length) writeFollowedColleges(list.filter(isCollege));
+      } catch {
+        /* a damaged value is left out rather than wiping this device's schools */
       }
     } else {
       patch[key] = value;
@@ -192,7 +213,14 @@ export function useJlKeySync(): void {
   latest.current = { settings, update };
   const userId = session?.userId ?? "";
   const playlists = usePlaylists();
-  const fingerprint = JSON.stringify(localValues(settings)) + playlists.length;
+  // Follows live in their own stores; reading them here pushes a change soon after it is made.
+  const follows = useFavourites();
+  const schools = useFollowedColleges();
+  const fingerprint =
+    JSON.stringify(localValues(settings)) +
+    playlists.length +
+    follows.teams.length +
+    schools.length;
 
   useEffect(() => {
     if (!userId) return;
