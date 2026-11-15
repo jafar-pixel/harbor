@@ -1,3 +1,5 @@
+import groovy.json.JsonSlurper
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -6,6 +8,7 @@ plugins {
 // Signing comes from JL_KEYSTORE_* (set by .github/workflows/jl-release.yml). Without them the
 // build falls back to the debug key, which can't update an install signed with the release key.
 val keystoreFile = System.getenv("JL_KEYSTORE_FILE")
+val webPackage = JsonSlurper().parse(rootProject.file("../package.json")) as Map<*, *>
 val runNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "1"
 
 android {
@@ -17,7 +20,7 @@ android {
         minSdk = 24
         targetSdk = 35
         versionCode = runNumber.toInt()
-        versionName = "0.9.103"
+        versionName = webPackage["version"] as String
         // Use the same production app address as phones, tablets and desktop browsers.
         buildConfigField("String", "APP_URL", "\"https://watch.jl-stream.com/\"")
     }
