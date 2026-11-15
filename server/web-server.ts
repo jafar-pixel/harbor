@@ -14,7 +14,12 @@
  *   VITE_JL_SUPABASE_URL, VITE_JL_SUPABASE_ANON_KEY   to check who is signed in (relay tickets)
  *   PLAYBACK_RELAY_KEY           64 hex characters; the relay is off without it
  *   PLAYBACK_RELAY_BASE          "/secure" (this server)
- *   PLAYBACK_RELAY_USERS         JL account emails or user ids allowed to use the relay
+ *   PLAYBACK_RELAY_USERS         JL account emails or user ids allowed to use the relay, or "*"
+ *                                for every signed-in JL account, each with its own provider
+ *   JL_RELAY_ALLOW_HOSTS         home-network providers the relay may still reach ("host" or
+ *                                "host:port", comma-separated); everything else on the home
+ *                                network, and this machine, is refused
+ *   JL_RELAY_MAX_PER_ACCOUNT     provider requests one account may have open at once (default 6)
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createReadStream } from "node:fs";
@@ -23,7 +28,7 @@ import { extname, join, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
 import proxy from "../api/proxy.ts";
 import relayTicket from "../api/relay-ticket.ts";
-import { relay, relayKey } from "./relay.ts";
+import { relay, relayKey, type RelayOptions } from "./relay.ts";
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "127.0.0.1";
@@ -36,6 +41,15 @@ const siteHosts = new Set(
 );
 const appUrl = process.env.JL_APP_URL ?? "https://watch.jl-stream.com/";
 const releases = "https://github.com/jafar-pixel/harbor/releases/latest/download";
+const relayOptions: RelayOptions = {
+  allowHosts: new Set(
+    (process.env.JL_RELAY_ALLOW_HOSTS ?? "")
+      .split(",")
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean),
+  ),
+  maxPerAccount: Math.max(1, Number(process.env.JL_RELAY_MAX_PER_ACCOUNT) || 6),
+};
 const key = await (relayKey(process.env.PLAYBACK_RELAY_KEY?.trim() ?? "") ?? Promise.resolve(null));
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -70,16 +84,18 @@ const TYPES: Record<string, string> = {
   ".xml": "application/xml",
 };
 
-function toRequest(req: IncomingMessage, url: URL): Request {
+function toRequest(req: IncomingMessage, url: URL, res: ServerResponse): Request {
   const headers = new Headers();
   for (const [name, value] of Object.entries(req.headers)) {
     if (value === undefined) continue;
     for (const v of Array.isArray(value) ? value : [value]) headers.append(name, v);
   }
   const hasBody = req.method !== "GET" && req.method !== "HEAD";
+  // The viewer leaving: the response closed before it was sent in full. (The request's own
+  // "close" also fires once its body has been read, which is not the viewer leaving.)
   const abort = new AbortController();
-  req.on("close", () => {
-    if (!req.complete || req.destroyed) abort.abort();
+  res.on("close", () => {
+    if (!res.writableFinished) abort.abort();
   });
   return new Request(url, {
     method: req.method,
@@ -157,11 +173,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     if (path.startsWith("/api-proxy/"))
       url.searchParams.set("__target", path.slice("/api-proxy/".length));
     url.pathname = "/api/proxy";
-    return send(res, await proxy(toRequest(req, url)));
+    return send(res, await proxy(toRequest(req, url, res)));
   }
-  if (path === "/api/relay-ticket") return send(res, await relayTicket(toRequest(req, url)));
+  if (path === "/api/relay-ticket") return send(res, await relayTicket(toRequest(req, url, res)));
   if (path.startsWith("/secure/")) {
-    const answer = await relay(toRequest(req, url), key);
+    const answer = await relay(toRequest(req, url, res), key, relayOptions);
     if (answer) return send(res, answer);
   }
   if (path.startsWith("/api/")) return send(res, new Response("Not found", { status: 404 }));

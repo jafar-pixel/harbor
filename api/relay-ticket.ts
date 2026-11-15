@@ -8,7 +8,8 @@
 //   PLAYBACK_RELAY_KEY    64 hex characters, the same key the relay uses
 //   PLAYBACK_RELAY_BASE   the relay's public address ending in /secure, or "/secure" when the
 //                         relay runs on the same server (server/web-server.ts)
-//   PLAYBACK_RELAY_USERS  comma-separated JL account emails or user ids allowed to use it
+//   PLAYBACK_RELAY_USERS  comma-separated JL account emails or user ids allowed to use it, or "*"
+//                         for every signed-in JL account (each with its own provider)
 export const config = { runtime: "edge" };
 
 const TTL_MS = 6 * 60 * 60 * 1000;
@@ -79,7 +80,12 @@ export default async function handler(req: Request): Promise<Response> {
   }
   const user = await signedInUser(req);
   if (!user) return json(401, { error: "sign-in" });
-  if (!allowed.includes(user.id.toLowerCase()) && !(user.email && allowed.includes(user.email))) {
+  const anyone = allowed.includes("*");
+  if (
+    !anyone &&
+    !allowed.includes(user.id.toLowerCase()) &&
+    !(user.email && allowed.includes(user.email))
+  ) {
     return json(403, { error: "not-allowed" });
   }
 
@@ -94,6 +100,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const key = await crypto.subtle.importKey("raw", hexBytes(secret), "AES-GCM", false, ["encrypt"]);
   const expiresAt = Date.now() + TTL_MS;
-  const tickets = await Promise.all((urls as string[]).map((u) => seal(key, { u, e: expiresAt })));
+  // "s" names the account, so the relay can share its connection fairly between accounts.
+  const tickets = await Promise.all(
+    (urls as string[]).map((u) => seal(key, { u, e: expiresAt, s: user.id })),
+  );
   return json(200, { base, tickets, expiresAt });
 }

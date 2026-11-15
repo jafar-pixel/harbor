@@ -9,6 +9,9 @@
  * variant playlists come back through the relay with tickets of their own.
  */
 
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
+
 const PREFIX = "/secure/";
 const PLAYER_AGENT = "VLC/3.0.20 LibVLC/3.0.20";
 /** How long to wait for a provider to answer before giving up (a stream then runs on). */
@@ -39,9 +42,15 @@ export function relayKey(hex: string): Promise<CryptoKey> | null {
   return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
-export async function sealTicket(key: CryptoKey, url: string, expiresAt: number): Promise<string> {
+export async function sealTicket(
+  key: CryptoKey,
+  url: string,
+  expiresAt: number,
+  account?: string,
+): Promise<string> {
   const nonce = crypto.getRandomValues(new Uint8Array(12));
-  const body = new TextEncoder().encode(JSON.stringify({ u: url, e: expiresAt }));
+  const payload = account ? { u: url, e: expiresAt, s: account } : { u: url, e: expiresAt };
+  const body = new TextEncoder().encode(JSON.stringify(payload));
   const sealed = new Uint8Array(
     await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, key, body),
   );
@@ -56,7 +65,7 @@ export async function openTicket(
   key: CryptoKey,
   ticket: string,
   now = Date.now(),
-): Promise<{ url: string; expiresAt: number } | null> {
+): Promise<{ url: string; expiresAt: number; account: string } | null> {
   const bytes = fromBase64url(ticket);
   if (!bytes || bytes.length < 12 + 16 + 2) return null;
   try {
@@ -65,10 +74,14 @@ export async function openTicket(
       key,
       bytes.subarray(12),
     );
-    const v = JSON.parse(new TextDecoder().decode(plain)) as { u?: unknown; e?: unknown };
+    const v = JSON.parse(new TextDecoder().decode(plain)) as {
+      u?: unknown;
+      e?: unknown;
+      s?: unknown;
+    };
     if (typeof v.u !== "string" || typeof v.e !== "number" || v.e <= now) return null;
     if (!/^https?:\/\/[^/\s]+/i.test(v.u)) return null;
-    return { url: v.u, expiresAt: v.e };
+    return { url: v.u, expiresAt: v.e, account: typeof v.s === "string" ? v.s : "" };
   } catch {
     return null;
   }
@@ -135,8 +148,71 @@ const PASS_HEADERS = [
   "etag",
 ];
 
+export type RelayOptions = {
+  /** Hosts ("host" or "host:port") on the home network the relay may still reach. */
+  allowHosts?: ReadonlySet<string>;
+  /** Lets the relay reach any address, home network included (tests only). */
+  allowPrivate?: boolean;
+  /** Provider requests one account may have open at once. */
+  maxPerAccount?: number;
+};
+
+/**
+ * Whether an address is on a home or internal network (or this machine): the relay serves
+ * accounts other than the owner's, so it must never be a way into the house.
+ */
+export function isPrivateAddress(address: string): boolean {
+  const ip = address.toLowerCase().replace(/^\[|\]$/g, "");
+  if (isIP(ip) === 4) {
+    const [a, b] = ip.split(".").map(Number);
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224
+    );
+  }
+  if (isIP(ip) === 6) {
+    if (ip === "::" || ip === "::1") return true;
+    const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(ip);
+    if (mapped) return isPrivateAddress(mapped[1]);
+    return /^(f[cd]|fe[89ab]|ff)/.test(ip);
+  }
+  return true;
+}
+
+/** Whether a provider address may be fetched: public, or one the owner allowed. */
+export async function reachable(target: URL, options: RelayOptions): Promise<boolean> {
+  if (target.protocol !== "http:" && target.protocol !== "https:") return false;
+  if (options.allowPrivate) return true;
+  const host = target.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (options.allowHosts?.has(host) || options.allowHosts?.has(target.host.toLowerCase())) {
+    return true;
+  }
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local")) return false;
+  if (isIP(host)) return !isPrivateAddress(host);
+  try {
+    const found = await lookup(host, { all: true });
+    return found.length > 0 && found.every((a) => !isPrivateAddress(a.address));
+  } catch {
+    return false;
+  }
+}
+
+const MAX_REDIRECTS = 5;
+const open = new Map<string, number>();
+
 /** Answers GET /secure/<ticket>/<name>; null for any other path. */
-export async function relay(req: Request, key: CryptoKey | null): Promise<Response | null> {
+export async function relay(
+  req: Request,
+  key: CryptoKey | null,
+  options: RelayOptions = {},
+): Promise<Response | null> {
   const url = new URL(req.url);
   if (!url.pathname.startsWith(PREFIX)) return null;
   if (!key) return new Response("Not found", { status: 404 });
@@ -145,6 +221,43 @@ export async function relay(req: Request, key: CryptoKey | null): Promise<Respon
   const opened = await openTicket(key, ticket);
   if (!opened) return new Response("Forbidden", { status: 403 });
 
+  // One account can't take the whole connection: past its share, it waits its turn.
+  const account = opened.account || "owner";
+  const limit = options.maxPerAccount ?? 6;
+  if ((open.get(account) ?? 0) >= limit) {
+    return new Response("Too many streams for this account", {
+      status: 429,
+      headers: { "Retry-After": "2" },
+    });
+  }
+  open.set(account, (open.get(account) ?? 0) + 1);
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    const n = (open.get(account) ?? 1) - 1;
+    if (n > 0) open.set(account, n);
+    else open.delete(account);
+  };
+
+  try {
+    const { response, streaming } = await fetchThrough(req, key, opened, options, release);
+    if (!streaming) release();
+    return response;
+  } catch (error) {
+    release();
+    throw error;
+  }
+}
+
+async function fetchThrough(
+  req: Request,
+  key: CryptoKey,
+  opened: { url: string; expiresAt: number; account: string },
+  options: RelayOptions,
+  release: () => void,
+): Promise<{ response: Response; streaming: boolean }> {
+  const done = (response: Response) => ({ response, streaming: false });
   const headers = new Headers({ "User-Agent": PLAYER_AGENT, Accept: "*/*" });
   const range = req.headers.get("range");
   if (range) headers.set("Range", range);
@@ -152,45 +265,71 @@ export async function relay(req: Request, key: CryptoKey | null): Promise<Respon
   const timer = setTimeout(() => answered.abort(), ANSWER_MS);
   // The viewer leaving (a closed request) stops the provider fetch too.
   req.signal.addEventListener("abort", () => answered.abort(), { once: true });
-  let upstream: Response;
+  let upstream: Response | null = null;
+  let current = new URL(opened.url);
   try {
-    upstream = await fetch(opened.url, {
-      method: req.method,
-      headers,
-      redirect: "follow",
-      signal: answered.signal,
-    });
+    // Redirects are followed by hand, so each hop is checked before it is fetched.
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      if (!(await reachable(current, options))) {
+        return done(new Response("This address can't be relayed", { status: 403 }));
+      }
+      const res = await fetch(current, {
+        method: req.method,
+        headers,
+        redirect: "manual",
+        signal: answered.signal,
+      });
+      const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
+      if (!location) {
+        upstream = res;
+        break;
+      }
+      await res.body?.cancel().catch(() => {});
+      current = new URL(location, current);
+    }
   } catch {
-    return new Response("Provider unreachable", { status: 502 });
+    return done(new Response("Provider unreachable", { status: 502 }));
   } finally {
     clearTimeout(timer);
   }
+  if (!upstream) return done(new Response("Too many redirects", { status: 502 }));
 
+  const finalUrl = current.href;
   const out = new Headers({ "Cache-Control": "no-store" });
   for (const name of PASS_HEADERS) {
     const v = upstream.headers.get(name);
     if (v) out.set(name, v);
   }
   const type = (upstream.headers.get("content-type") ?? "").toLowerCase();
-  const maybeHls =
-    type.includes("mpegurl") || /\.m3u8$/i.test(new URL(upstream.url || opened.url).pathname);
+  const maybeHls = type.includes("mpegurl") || /\.m3u8$/i.test(current.pathname);
   if (maybeHls && upstream.ok && req.method === "GET") {
     const text = await upstream.text();
     if (isHlsPlaylist(text)) {
-      const body = await rewriteHls(text, upstream.url || opened.url, (u) =>
-        sealTicket(key, u, opened.expiresAt),
+      const body = await rewriteHls(text, finalUrl, (u) =>
+        sealTicket(key, u, opened.expiresAt, opened.account || undefined),
       );
       out.delete("content-length");
       out.delete("content-range");
       out.delete("etag");
       out.set("content-type", "application/vnd.apple.mpegurl");
-      return new Response(body, { status: 200, headers: out });
+      return done(new Response(body, { status: 200, headers: out }));
     }
     out.delete("content-length");
-    return new Response(text, { status: upstream.status, headers: out });
+    return done(new Response(text, { status: upstream.status, headers: out }));
   }
-  return new Response(req.method === "HEAD" ? null : upstream.body, {
-    status: upstream.status,
-    headers: out,
-  });
+  if (req.method === "HEAD" || !upstream.body) {
+    await upstream.body?.cancel().catch(() => {});
+    return done(new Response(null, { status: upstream.status, headers: out }));
+  }
+  // The account's share is given back when the stream ends, fails or the viewer leaves.
+  const body = upstream.body.pipeThrough(
+    new TransformStream({
+      flush: release,
+    }),
+  );
+  req.signal.addEventListener("abort", release, { once: true });
+  return {
+    response: new Response(body, { status: upstream.status, headers: out }),
+    streaming: true,
+  };
 }
