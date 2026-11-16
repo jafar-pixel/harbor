@@ -15,3 +15,5 @@ docker-compose.yaml
 .dockerignore
 history.txt
 .env.server
+smart-lists
+smart-data

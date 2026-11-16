@@ -17,3 +17,14 @@ services:
       - .env.local
       # PLAYBACK_RELAY_KEY, PLAYBACK_RELAY_BASE=/secure, PLAYBACK_RELAY_USERS (never committed).
       - .env.server
+    environment:
+      # Smart Lists (server/smart-list.ts): the lists file lives in ./smart-lists on this machine
+      # and is never committed; the trimmed lists are kept in their own volume.
+      JL_SMART_LISTS: /config/smart-lists.json
+      JL_SMART_DATA: /data/smart
+    volumes:
+      - ./smart-lists:/config:ro
+      - jl-smart-data:/data/smart
+
+volumes:
+  jl-smart-data:

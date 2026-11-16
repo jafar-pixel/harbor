@@ -20,15 +20,19 @@
  *                                "host:port", comma-separated); everything else on the home
  *                                network, and this machine, is refused
  *   JL_RELAY_MAX_PER_ACCOUNT     provider requests one account may have open at once (default 6)
+ *   JL_SMART_LISTS               the Smart Lists file (smart-list.ts); Smart Lists are off without it
+ *   JL_SMART_DATA                where trimmed lists are kept (default ./smart-data)
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { extname, join, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
+import { createGunzip } from "node:zlib";
 import proxy from "../api/proxy.ts";
 import relayTicket from "../api/relay-ticket.ts";
 import { relay, relayKey, type RelayOptions } from "./relay.ts";
+import { SmartLists } from "./smart-list.ts";
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "127.0.0.1";
@@ -50,6 +54,9 @@ const relayOptions: RelayOptions = {
   ),
   maxPerAccount: Math.max(1, Number(process.env.JL_RELAY_MAX_PER_ACCOUNT) || 6),
 };
+const smartLists = process.env.JL_SMART_LISTS
+  ? new SmartLists(process.env.JL_SMART_LISTS, resolve(process.env.JL_SMART_DATA ?? "smart-data"))
+  : null;
 const key = await (relayKey(process.env.PLAYBACK_RELAY_KEY?.trim() ?? "") ?? Promise.resolve(null));
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -155,6 +162,80 @@ async function serveFile(res: ServerResponse, full: string, method: string) {
     .pipe(res);
 }
 
+/**
+ * A Smart List's private link: /smart/<token>/playlist.m3u, /epg.xml and /status.json. The token
+ * is the only key (the devices add the link as their M3U and guide), so any other token is "not
+ * found" and the answer may be read from any app page (the TV app's pages are on their own host).
+ */
+async function serveSmartList(res: ServerResponse, path: string, method: string, gzipOk: boolean) {
+  const [, , token = "", name = ""] = path.split("/");
+  const list = smartLists?.byToken(token);
+  if (!list || (method !== "GET" && method !== "HEAD"))
+    return send(res, new Response("Not found", { status: 404 }));
+  const headers = {
+    ...SECURITY_HEADERS,
+    "Access-Control-Allow-Origin": "*",
+    "Cache-Control": "no-store",
+    "X-Robots-Tag": "noindex",
+  };
+  if (name === "status.json") {
+    res.writeHead(200, { ...headers, "Content-Type": "application/json" });
+    return res.end(
+      method === "HEAD" ? undefined : JSON.stringify(await smartLists!.status(list.id)),
+    );
+  }
+  const file =
+    name === "playlist.m3u"
+      ? await smartLists!.file(list, "playlist.m3u")
+      : name === "epg.xml"
+        ? await smartLists!.file(list, "epg.xml.gz")
+        : null;
+  if (!file) {
+    const ready = name === "playlist.m3u" || name === "epg.xml";
+    return send(
+      res,
+      new Response(
+        ready ? "This Smart List is still being built. Try again in a few minutes." : "Not found",
+        {
+          status: ready ? 503 : 404,
+          headers: ready ? { "Retry-After": "120", "Access-Control-Allow-Origin": "*" } : {},
+        },
+      ),
+    );
+  }
+  const modified = new Date(file.mtimeMs).toUTCString();
+  if (name === "playlist.m3u") {
+    res.writeHead(200, {
+      ...headers,
+      "Content-Type": "audio/x-mpegurl; charset=utf-8",
+      "Content-Length": String(file.size),
+      "Last-Modified": modified,
+    });
+  } else if (gzipOk) {
+    res.writeHead(200, {
+      ...headers,
+      "Content-Type": "application/xml; charset=utf-8",
+      "Content-Encoding": "gzip",
+      "Content-Length": String(file.size),
+      "Last-Modified": modified,
+      Vary: "Accept-Encoding",
+    });
+  } else {
+    res.writeHead(200, {
+      ...headers,
+      "Content-Type": "application/xml; charset=utf-8",
+      "Last-Modified": modified,
+      Vary: "Accept-Encoding",
+    });
+  }
+  if (method === "HEAD") return res.end();
+  const body = createReadStream(file.path);
+  body.on("error", () => res.destroy());
+  res.on("close", () => body.destroy());
+  if (name === "epg.xml" && !gzipOk) body.pipe(createGunzip()).pipe(res);
+  else body.pipe(res);
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse) {
   const hostName = (req.headers.host ?? "").split(":")[0].toLowerCase();
   const url = new URL(req.url ?? "/", `http://${hostName || "localhost"}`);
@@ -180,6 +261,13 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     const answer = await relay(toRequest(req, url, res), key, relayOptions);
     if (answer) return send(res, answer);
   }
+  if (path.startsWith("/smart/"))
+    return serveSmartList(
+      res,
+      path,
+      method,
+      /\bgzip\b/.test(String(req.headers["accept-encoding"] ?? "")),
+    );
   if (path.startsWith("/api/")) return send(res, new Response("Not found", { status: 404 }));
   if (method !== "GET" && method !== "HEAD") return send(res, new Response(null, { status: 405 }));
 
@@ -204,4 +292,8 @@ createServer((req, res) => {
   console.log(
     `[web-server] http://${host}:${port} serving ${dist}; relay ${key ? "on" : "off (no PLAYBACK_RELAY_KEY)"}`,
   );
+  if (smartLists) {
+    smartLists.start();
+    void smartLists.load().then(() => console.log(`[web-server] smart lists: ${smartLists.count}`));
+  }
 });

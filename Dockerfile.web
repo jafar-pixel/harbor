@@ -18,6 +18,9 @@ COPY package.json ./
 COPY api ./api
 COPY server ./server
 COPY src/lib/jl/sports/data/colleges.json ./src/lib/jl/sports/data/colleges.json
+# The Smart List server reads playlists with the app's own parser and country detection.
+COPY src/lib/iptv/m3u.ts src/lib/iptv/country-detect.ts src/lib/iptv/types.ts ./src/lib/iptv/
+RUN mkdir -p /data/smart && chown node:node /data/smart
 COPY --from=build /app/dist ./dist
 USER node
 EXPOSE 3000
