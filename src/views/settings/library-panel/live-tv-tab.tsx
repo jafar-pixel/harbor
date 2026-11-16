@@ -9,9 +9,8 @@ import {
   writeActiveId,
 } from "@/lib/iptv/active-source";
 import type { IptvPlaylistSource } from "@/lib/iptv/types";
-import { SourcePicker } from "@/views/live/source-picker";
+import { LiveSources } from "./live-sources";
 import { usePlaylistMutations } from "@/views/live/hooks/use-playlist-mutations";
-import { useLiveActions } from "@/views/live/hooks/use-live-actions";
 import { Section } from "../shared";
 import { SettingRow } from "../kit";
 
@@ -59,12 +58,10 @@ export function LiveTvTab() {
     clearPlaylistCache(shownId);
     requestSourceRefresh(shownId);
   }, [shownId]);
-  const { addPlaylist, removePlaylist, editPlaylist, reorderPlaylist, movePlaylistTop } =
-    usePlaylistMutations({ activeId: shownId, setActiveId: setActive, refresh });
-  const { exportPlaylist } = useLiveActions({
-    epg: null,
+  const { addPlaylist, removePlaylist, editPlaylist } = usePlaylistMutations({
     activeId: shownId,
-    playlist: cached ?? null,
+    setActiveId: setActive,
+    refresh,
   });
 
   return (
@@ -76,26 +73,21 @@ export function LiveTvTab() {
     >
       <SettingRow
         wide
-        label={t("Provider")}
+        label={t("Your sources")}
         desc={t(
-          "Pick the provider, refresh its channels, or add, edit and remove playlists (M3U or Xtream).",
+          "Press a source to watch it. Add, edit or remove playlists (M3U or Xtream), or use your JL Smart List.",
         )}
       >
-        <SourcePicker
+        <LiveSources
           sources={managed}
           activeId={shownId}
-          exportEnabled={!!cached?.channels.length}
+          channelCount={cached?.channels.length ?? null}
+          loading={!!cached?.loading}
           onSelect={(id) => setActive(id)}
           onAdd={addPlaylist}
           onEdit={editPlaylist}
           onRemove={removePlaylist}
-          onMove={reorderPlaylist}
-          onMoveTop={movePlaylistTop}
           onRefresh={refresh}
-          onExport={exportPlaylist}
-          fetchedAt={cached?.fetchedAt ?? null}
-          channelCount={cached?.channels.length ?? null}
-          loading={!!cached?.loading}
         />
       </SettingRow>
     </Section>

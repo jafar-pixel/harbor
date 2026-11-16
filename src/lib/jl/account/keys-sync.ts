@@ -9,6 +9,11 @@ import {
 } from "@/lib/jl/sports/college-follows";
 import { isCollege } from "@/lib/jl/sports/colleges";
 import {
+  readSmartListLink,
+  useSmartListLink,
+  writeSmartListLink,
+} from "@/lib/iptv/smart-list-link";
+import {
   assertJlAccountCurrent,
   jlAccountContext,
   jlRpc,
@@ -68,6 +73,8 @@ function localValues(settings: Settings): KeyValues {
     } else if (key === "sportsColleges") {
       const schools = readFollowedColleges();
       out[key] = schools.length ? JSON.stringify(schools) : "";
+    } else if (key === "smartListLink") {
+      out[key] = readSmartListLink();
     } else {
       out[key] = (settings[key] ?? "").trim();
     }
@@ -94,6 +101,8 @@ function toPatch(values: KeyValues): Partial<Settings> {
       } catch {
         /* a damaged value is left out rather than wiping this device's schools */
       }
+    } else if (key === "smartListLink") {
+      writeSmartListLink(value);
     } else {
       patch[key] = value;
     }
@@ -216,9 +225,12 @@ export function useJlKeySync(): void {
   // Follows live in their own stores; reading them here pushes a change soon after it is made.
   const follows = useFavourites();
   const schools = useFollowedColleges();
+  // Re-renders when the Smart List link changes, so localValues below sees it.
+  const smartList = useSmartListLink();
   const fingerprint =
     JSON.stringify(localValues(settings)) +
     playlists.length +
+    smartList.length +
     follows.teams.length +
     schools.length;
 

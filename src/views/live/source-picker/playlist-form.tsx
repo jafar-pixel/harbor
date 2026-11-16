@@ -16,7 +16,12 @@ export type { PlaylistFormValue, PlaylistKind };
 export const EMPTY_FORM: PlaylistFormValue = EMPTY_PLAYLIST_FORM;
 
 const KINDS: Array<{ id: PlaylistKind; label: string; icon: React.ReactNode; sub: string }> = [
-  { id: "m3u", label: "M3U URL", icon: <Tv size={14} strokeWidth={1.9} />, sub: "Direct .m3u link" },
+  {
+    id: "m3u",
+    label: "M3U URL",
+    icon: <Tv size={14} strokeWidth={1.9} />,
+    sub: "Direct .m3u link",
+  },
   {
     id: "xtream",
     label: "Xtream",
@@ -37,12 +42,15 @@ export function PlaylistForm({
   onCancel,
   onSubmit,
   autoFocusName = true,
+  actionsOnTop = false,
 }: {
   initial: PlaylistFormValue;
   submitLabel: string;
   onCancel: () => void;
   onSubmit: (v: PlaylistFormValue) => void;
   autoFocusName?: boolean;
+  /** Cancel and Save above the fields (full-screen forms), so they never sit off screen. */
+  actionsOnTop?: boolean;
 }) {
   const t = useT();
   const [name, setName] = useState(initial.name);
@@ -78,8 +86,27 @@ export function PlaylistForm({
     });
   };
 
+  const actions = (
+    <div className="flex items-center justify-end gap-2 pt-1">
+      <button
+        onClick={onCancel}
+        className="h-9 rounded-lg px-3 text-[12.5px] font-medium text-ink-muted transition-colors hover:text-ink"
+      >
+        {t("Cancel")}
+      </button>
+      <button
+        disabled={!canSave}
+        onClick={submit}
+        className="h-9 rounded-lg bg-ink px-3 text-[12.5px] font-semibold text-canvas transition-opacity hover:opacity-90 disabled:opacity-40"
+      >
+        {submitLabel}
+      </button>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-3 p-3">
+      {actionsOnTop && actions}
       <Field label={t("Type")}>
         <div className="grid grid-cols-3 gap-1.5">
           {KINDS.map((k) => {
@@ -209,21 +236,7 @@ export function PlaylistForm({
         </>
       )}
 
-      <div className="flex items-center justify-end gap-2 pt-1">
-        <button
-          onClick={onCancel}
-          className="h-9 rounded-lg px-3 text-[12.5px] font-medium text-ink-muted transition-colors hover:text-ink"
-        >
-          {t("Cancel")}
-        </button>
-        <button
-          disabled={!canSave}
-          onClick={submit}
-          className="h-9 rounded-lg bg-ink px-3 text-[12.5px] font-semibold text-canvas transition-opacity hover:opacity-90 disabled:opacity-40"
-        >
-          {submitLabel}
-        </button>
-      </div>
+      {!actionsOnTop && actions}
     </div>
   );
 }
@@ -238,4 +251,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   );
 }
-

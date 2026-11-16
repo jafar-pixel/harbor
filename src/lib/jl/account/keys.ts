@@ -30,6 +30,8 @@ export const SYNCED_SETTING_KEYS = [
   // The sports, teams and schools the viewer follows (their own stores, not settings).
   "sportsFavourites",
   "sportsColleges",
+  // The viewer's JL Smart List link (its own store).
+  "smartListLink",
 ] as const;
 
 export type SyncedSettingKey = (typeof SYNCED_SETTING_KEYS)[number];
@@ -48,6 +50,7 @@ const OWN_ONLY: ReadonlySet<SyncedSettingKey> = new Set([
   "sportsAreaCity",
   "sportsFavourites",
   "sportsColleges",
+  "smartListLink",
 ]);
 
 export const secretName = (key: SyncedSettingKey) =>
