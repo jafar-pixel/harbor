@@ -321,42 +321,75 @@ function useStageOverSlot(
     const main = mainRef.current;
     if (!active || !stage || !slot) return;
     let frame = 0;
+    let tries = 0;
     const place = () => {
       frame = 0;
       const box = stage.getBoundingClientRect();
-      const css = getComputedStyle(stage);
-      const width = parseFloat(css.width);
-      const k = width > 0 && box.width > 0 ? box.width / width : 1;
-      const originX = box.left - (parseFloat(css.left) || 0) * k;
-      const originY = box.top - (parseFloat(css.top) || 0) * k;
       const to = slot.getBoundingClientRect();
-      stage.style.setProperty("--wp-full-x", `${(to.left - originX) / k}px`);
-      stage.style.setProperty("--wp-full-y", `${(to.top - originY) / k}px`);
-      stage.style.setProperty("--wp-full-w", `${to.width / k}px`);
-      stage.style.setProperty("--wp-full-h", `${to.height / k}px`);
+      const style = stage.style;
+      const setW = parseFloat(style.getPropertyValue("--wp-full-w"));
+      const moving = typeof stage.getAnimations === "function" && stage.getAnimations().length > 0;
+      // Screen pixels per CSS pixel of the stage. Under the app's size setting (CSS zoom on the
+      // page) Chrome and Safari report sizes differently, so once the stage has been placed this
+      // is measured from where it actually landed rather than worked out; on an iPhone the
+      // worked-out value drew the video at 80% of its place, in its top-left corner.
+      let k: number;
+      let x: number;
+      let y: number;
+      if (setW > 0 && box.width > 0 && !moving) {
+        k = box.width / setW;
+        x = parseFloat(style.getPropertyValue("--wp-full-x")) + (to.left - box.left) / k;
+        y = parseFloat(style.getPropertyValue("--wp-full-y")) + (to.top - box.top) / k;
+      } else {
+        const css = getComputedStyle(stage);
+        const width = parseFloat(css.width);
+        k = width > 0 && box.width > 0 ? box.width / width : 1;
+        const originX = box.left - (parseFloat(css.left) || 0) * k;
+        const originY = box.top - (parseFloat(css.top) || 0) * k;
+        x = (to.left - originX) / k;
+        y = (to.top - originY) / k;
+      }
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !(k > 0)) return;
+      style.setProperty("--wp-full-x", `${x}px`);
+      style.setProperty("--wp-full-y", `${y}px`);
+      style.setProperty("--wp-full-w", `${to.width / k}px`);
+      style.setProperty("--wp-full-h", `${to.height / k}px`);
       // The column scrolls inside its own box (below the close button): the video is cut at
       // the box's edges, exactly where the cover under it is cut.
       const area = main?.getBoundingClientRect();
       const top = area ? Math.max(0, area.top - to.top) / k : 0;
       const bottom = area ? Math.max(0, to.bottom - area.bottom) / k : 0;
-      stage.style.clipPath = top > 0 || bottom > 0 ? `inset(${top}px 0 ${bottom}px 0)` : "";
+      style.clipPath = top > 0 || bottom > 0 ? `inset(${top}px 0 ${bottom}px 0)` : "";
+      // Check where it landed and correct, a few times at most.
+      const off =
+        Math.abs(to.left - box.left) > 1 ||
+        Math.abs(to.top - box.top) > 1 ||
+        Math.abs(to.width - box.width) > 1;
+      if (off && !moving && tries < 3) {
+        tries += 1;
+        schedule();
+      } else if (!off) tries = 0;
     };
-    const schedule = () => {
+    function schedule() {
       if (!frame) frame = requestAnimationFrame(place);
+    }
+    const reschedule = () => {
+      tries = 0;
+      schedule();
     };
     place();
-    const ro = new ResizeObserver(schedule);
+    const ro = new ResizeObserver(reschedule);
     ro.observe(slot);
-    main?.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
+    main?.addEventListener("scroll", reschedule, { passive: true });
+    window.addEventListener("resize", reschedule);
     // The stage slides in from the bar; measure again once it has arrived.
-    stage.addEventListener("transitionend", schedule);
+    stage.addEventListener("transitionend", reschedule);
     return () => {
       cancelAnimationFrame(frame);
       ro.disconnect();
-      main?.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-      stage.removeEventListener("transitionend", schedule);
+      main?.removeEventListener("scroll", reschedule);
+      window.removeEventListener("resize", reschedule);
+      stage.removeEventListener("transitionend", reschedule);
       for (const name of ["--wp-full-x", "--wp-full-y", "--wp-full-w", "--wp-full-h"])
         stage.style.removeProperty(name);
       stage.style.clipPath = "";

@@ -1,8 +1,9 @@
+import { setSportsSearchOpen } from "@/lib/sports/sports-search-store";
 import { ArrowLeft } from "lucide-react";
 import { WindowControlButton as Control, WindowControlGlyph } from "./window-control-button";
 import { Search } from "@/components/icons/search-icon";
 import { UiIcon } from "@/components/ui-icon";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { BackChrome } from "@/chrome/back-chrome";
 import { HarborMark } from "@/components/icons/harbor-mark";
@@ -13,6 +14,7 @@ import { NotificationCenter } from "@/components/notification-center/notificatio
 import { ThreeLiquidGlassSurface } from "@/components/ThreeLiquidGlassSurface";
 import { RecordingPill } from "@/chrome/recording-pill";
 import { SleepTimerButton } from "@/chrome/sleep-timer-button";
+import { KioskButton } from "@/chrome/kiosk-button";
 import {
   effectiveBinding,
   eventToBinding,
@@ -101,7 +103,12 @@ export function Topbar({ connecting = false }: { connecting?: boolean } = {}) {
   const sidebarHidden = connecting || view === "settings" || onLiveRoot || topKind === "picker";
   const inSettings = view === "settings";
   const hideSearch =
-    view === "music" || view === "games" || view === "addons" || connecting || topKind === "picker" || inSettings;
+    view === "music" ||
+    view === "games" ||
+    view === "addons" ||
+    connecting ||
+    topKind === "picker" ||
+    inSettings;
   const sidebarOffset =
     layout === "stremio"
       ? "ps-[80px]"
@@ -190,6 +197,7 @@ export function Topbar({ connecting = false }: { connecting?: boolean } = {}) {
               {!onLiveRoot && !kid && <TogetherButton />}
             </div>
           )}
+          {!IS_TAURI && <KioskButton />}
           {IS_TAURI && !settings.useNativeTitleBar && !settings.hybridTitleBar && (
             <div className="ms-1 flex shrink-0 items-center gap-2">
               <Control label={t("chrome.minimize")} onClick={minimize}>
@@ -426,7 +434,14 @@ function nameHue(name: string): number {
 }
 
 function SearchPill() {
-  const { setOpen } = useSearch();
+  const { setOpen: setMediaOpen } = useSearch();
+  // In Sports, the search is the hub's own: games, teams, players and sports channels only.
+  const { view } = useView();
+  const inSports = view === "sports";
+  const setOpen = useCallback(
+    (next: boolean) => (inSports ? setSportsSearchOpen(next) : setMediaOpen(next)),
+    [inSports, setMediaOpen],
+  );
   const { settings } = useSettings();
   const t = useT();
   const binding = effectiveBinding("globalSearchFocus", settings.hotkeys ?? {});
@@ -455,7 +470,9 @@ function SearchPill() {
       }
     >
       <Search size={16} strokeWidth={1.75} className="shrink-0 text-ink-subtle" />
-      <span className="flex-1 truncate text-[14px] text-ink-subtle">{t("search.placeholder")}</span>
+      <span className="flex-1 truncate text-[14px] text-ink-subtle">
+        {inSports ? t("Search sports…") : t("search.placeholder")}
+      </span>
       <kbd
         aria-hidden
         className="hidden h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-md border border-edge-soft/70 bg-canvas/60 px-1.5 font-mono text-[11px] font-medium leading-none text-ink-subtle sm:inline-flex"

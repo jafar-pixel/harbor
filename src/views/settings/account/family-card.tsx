@@ -17,6 +17,7 @@ import { useT } from "@/lib/i18n";
 import { TextField } from "@/views/account/fields";
 import { SButton } from "../ui";
 import { FamilyMemberProviders } from "./family-member-providers";
+import { FamilyAddonsShare } from "./family-addons-share";
 
 const NOTE = "text-[13px] leading-relaxed text-ink-muted";
 
@@ -212,6 +213,7 @@ export function FamilyCard() {
           "Everyone in your family uses your Real-Debrid, TorBox and IPTV logins, and sees them in their settings. When you change a key, it changes for them too.",
         )}
       </p>
+      <FamilyAddonsShare />
       <div className="flex max-w-[480px] flex-col gap-3">
         <span className="text-[15px] font-medium text-ink">{t("Add a family member")}</span>
         <p className={NOTE}>

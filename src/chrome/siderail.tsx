@@ -1,3 +1,4 @@
+import { KioskButton } from "@/chrome/kiosk-button";
 import { usePreviewNavCustomization } from "@/lib/theme-preview";
 import { useContextMenu } from "@/lib/context-menu";
 import { useState } from "react";
@@ -202,6 +203,7 @@ export function SideRail() {
             {!collapsed && view !== "live" && (
               <TogetherButton variant="ghost" popoverPlacement="above-left" />
             )}
+            <KioskButton />
           </div>
           <div className={`flex flex-col gap-1 ${collapsed ? "items-center" : ""}`}>
             <SidebarBigPictureEntry collapsed={collapsed} />

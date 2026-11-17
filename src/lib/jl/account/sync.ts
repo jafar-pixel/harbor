@@ -1,3 +1,4 @@
+import { syncFamilyAddons } from "./family-addons";
 import { syncJlAddons } from "./addon-sync-client";
 import { useEffect, useSyncExternalStore } from "react";
 import { activeProfileId } from "@/lib/active-profile-id";
@@ -383,6 +384,11 @@ async function runSync(scope: Scope): Promise<number> {
     profileId: scope.link.profileId,
     assertCurrent: () => assertScope(scope),
   });
+  // The family's shared add-ons (an owner's clone); never holds up the rest of the sync.
+  await syncFamilyAddons({
+    account: scope.account,
+    assertCurrent: () => assertScope(scope),
+  }).catch(() => {});
   const conflicts = await syncJlProfileData({
     account: scope.account,
     localId: scope.localId,

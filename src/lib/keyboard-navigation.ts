@@ -1482,7 +1482,20 @@ export function useKeyboardNavigation(options: TVNavigationOptions = {}) {
     const onFocusIn = (e: FocusEvent) => {
       const field = e.target instanceof HTMLElement ? e.target : null;
       if (inputModality !== "keys" || !field) return;
-      if (field.matches("[data-tv-text-auto]") || activeSearchEditEl === field) return;
+      if (field.matches("[data-tv-text-auto]") && !field.closest("[data-search-overlay]")) return;
+      if (field.matches("[data-tv-text-auto]")) {
+        // A typing surface the viewer just opened (the search overlay): each time it takes focus
+        // is a new round of typing, so the TV's keyboard is asked for again, not only the first time.
+        if (activeSearchEditEl && activeSearchEditEl !== field)
+          activeSearchEditEl.removeAttribute("data-search-editing");
+        activeSearchEditEl = field;
+        clearSearchNavMode(field);
+        field.removeAttribute("data-tv-focused");
+        field.setAttribute("data-search-editing", "true");
+        showTvKeyboard();
+        return;
+      }
+      if (activeSearchEditEl === field) return;
 
       if (!isSearchLikeField(field) || !field.closest("[data-tv-text-field]")) {
         clearTvFocusRing(field);
@@ -1526,6 +1539,28 @@ export function useKeyboardNavigation(options: TVNavigationOptions = {}) {
       // Pointer modality hides navigation rings; preserving focus keeps touch clicks intact.
     };
 
+    /*
+     * The TV app's Back button never arrives as a key: it runs the page's Back handler, which
+     * sends "harbor:local-back". Typing has to end there too, or the field stays marked as being
+     * typed in and the next OK on it never asks for the keyboard again (typing worked only once).
+     */
+    const onLocalBack = (e: Event) => {
+      const el = activeSearchEditEl;
+      if (!el) return;
+      if (!el.isConnected || el.matches("[data-tv-text-auto]")) {
+        // The screen's own Back closes it (the search overlay); typing ends with it.
+        el.removeAttribute("data-search-editing");
+        activeSearchEditEl = null;
+        hideTvKeyboard();
+        return;
+      }
+      // In any other field Back leaves typing first, as Escape does.
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      exitSearchEditMode();
+    };
+
+    window.addEventListener("harbor:local-back", onLocalBack, true);
     window.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("beforeinput", onBeforeInput, true);
     window.addEventListener("focusin", onFocusIn, true);
@@ -1539,6 +1574,7 @@ export function useKeyboardNavigation(options: TVNavigationOptions = {}) {
     window.addEventListener("wheel", onWheel, { capture: true, passive: true });
 
     return () => {
+      window.removeEventListener("harbor:local-back", onLocalBack, true);
       window.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("beforeinput", onBeforeInput, true);
       window.removeEventListener("focusin", onFocusIn, true);

@@ -1,24 +1,15 @@
 import { MediaStartPage } from "@/components/media-start-page";
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  CalendarRange,
-  Globe2,
-  Tv,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarRange, Globe2, Tv } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { FREE_CHANNEL_LISTS, freeChannelPlaylist } from "@/lib/iptv/free-channels";
 import {
   EMPTY_FORM,
   type PlaylistFormValue,
   type PlaylistKind,
 } from "./source-picker/playlist-form";
 
-export function PlaylistEmpty({
-  onSave,
-}: {
-  onSave: (entry: PlaylistFormValue) => void;
-}) {
+export function PlaylistEmpty({ onSave }: { onSave: (entry: PlaylistFormValue) => void }) {
   const [stage, setStage] = useState<"intro" | "form">("intro");
   const actionRef = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
@@ -29,12 +20,51 @@ export function PlaylistEmpty({
     }
   }, [stage]);
   return stage === "intro" ? (
-    <MediaStartPage kind="live" actionRef={actionRef} onSetup={() => setStage("form")} />
+    <>
+      <MediaStartPage kind="live" actionRef={actionRef} onSetup={() => setStage("form")} />
+      <FreeChannels onSave={onSave} />
+    </>
   ) : (
-    <Form onBack={() => {
-      restoreFocus.current = true;
-      setStage("intro");
-    }} onSave={onSave} />
+    <Form
+      onBack={() => {
+        restoreFocus.current = true;
+        setStage("intro");
+      }}
+      onSave={onSave}
+    />
+  );
+}
+
+/** No provider yet: start with free, ad-supported channels (Pluto TV, Samsung TV Plus...). */
+function FreeChannels({ onSave }: { onSave: (entry: PlaylistFormValue) => void }) {
+  const t = useT();
+  return (
+    <section
+      aria-label={t("Free channels")}
+      className="mx-auto mt-6 flex w-full max-w-[960px] flex-col gap-3 px-6 pb-10"
+    >
+      <h2 className="text-[17px] font-semibold tracking-tight text-ink">
+        {t("No provider yet? Start with free channels")}
+      </h2>
+      <p className="text-[13.5px] leading-relaxed text-ink-muted">
+        {t(
+          "Free, ad-supported live TV from the services' own streams, with a guide. It's added as a playlist you can remove any time.",
+        )}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {FREE_CHANNEL_LISTS.map((list) => (
+          <button
+            key={list.id}
+            type="button"
+            onClick={() => onSave(freeChannelPlaylist(list))}
+            className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-[13.5px] font-semibold text-ink outline-none hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <Tv size={15} />
+            {list.name}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -139,9 +169,7 @@ function Form({
           {t("Back")}
         </button>
         <header className="flex flex-col gap-3">
-          <h2
-            className="font-display text-[32px] font-semibold leading-tight tracking-tight text-ink"
-          >
+          <h2 className="font-display text-[32px] font-semibold leading-tight tracking-tight text-ink">
             {t("Connect your provider.")}
           </h2>
           <p className="text-[14.5px] leading-relaxed text-ink-muted">

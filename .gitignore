@@ -128,3 +128,7 @@ gemini.key
 
 # Rotated dev-server logs: *.log covers dev.log but not its .prev rotation.
 dev.log*
+
+# Smart Lists: provider addresses and private links on the server only
+smart-lists/
+smart-data/

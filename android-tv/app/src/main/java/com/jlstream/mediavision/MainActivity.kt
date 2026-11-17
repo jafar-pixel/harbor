@@ -2,10 +2,14 @@ package com.jlstream.mediavision
 
 import android.annotation.SuppressLint
 import android.app.ActivityManager
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -48,6 +52,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         CrashLog.install(this)
+        // chrome://inspect on a computer the TV already trusts for adb can look inside the app
+        // (what loads, what is slow); only while the TV's USB or network debugging is on.
+        WebView.setWebContentsDebuggingEnabled(adbDebuggingOn())
         root = FrameLayout(this)
         web = WebView(this)
         root.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -77,6 +84,7 @@ class MainActivity : AppCompatActivity() {
         web.addJavascriptInterface(PlayerBridge(), "JLNativePlayer")
         web.addJavascriptInterface(FetchBridge(), "JLNativeFetch")
         web.addJavascriptInterface(KeyboardBridge(), "JLKeyboard")
+        web.addJavascriptInterface(AppsBridge(), "JLApps")
         web.webViewClient = object : WebViewClient() {
             // The app stays in this view; any other site opens in the plain in-app browser.
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -149,6 +157,9 @@ class MainActivity : AppCompatActivity() {
                 if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
                     PageTrail.noteError(message.message())
                 }
+                // The page's timing reports ("[sports-perf] ..."), into adb logcat under "JLPage" on
+                // every Android TV; WebView's own console logging isn't there on all of them.
+                if (message.message().startsWith("[sports-perf]")) Log.i("JLPage", message.message())
                 return super.onConsoleMessage(message)
             }
         }
@@ -337,6 +348,80 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
+     * USB or network debugging is on. NVIDIA's Shield turns on network debugging without the usual
+     * settings (both read 0 there), so adb listening on a network port, or Developer options being
+     * on, count too.
+     */
+    private fun adbDebuggingOn(): Boolean {
+        fun global(name: String) = try {
+            Settings.Global.getInt(contentResolver, name, 0) == 1
+        } catch (_: Exception) {
+            false
+        }
+        return global(Settings.Global.ADB_ENABLED) ||
+            global("adb_wifi_enabled") ||
+            global(Settings.Global.DEVELOPMENT_SETTINGS_ENABLED) ||
+            adbTcpPort() > 0
+    }
+
+    /** The port adb listens on over the network (service.adb.tcp.port), or 0. */
+    private fun adbTcpPort(): Int = try {
+        val props = Class.forName("android.os.SystemProperties")
+        val get = props.getMethod("get", String::class.java)
+        listOf("service.adb.tcp.port", "persist.adb.tcp.port")
+            .firstNotNullOfOrNull { (get.invoke(null, it) as? String)?.toIntOrNull()?.takeIf { p -> p > 0 } }
+            ?: 0
+    } catch (_: Exception) {
+        0
+    }
+
+    /**
+     * `window.JLApps`: "Your apps" opens a subscription app (Netflix, YouTube TV...) on this TV.
+     * JL Media Vision is the hub; the services play in their own apps.
+     */
+    private inner class AppsBridge {
+        @JavascriptInterface
+        fun open(packages: String?, name: String?, url: String?): Boolean {
+            if (!onAppPage) return false
+            val list = packages.orEmpty().split(',').map { it.trim() }
+                .filter { it.matches(Regex("[A-Za-z0-9_.]{3,120}")) }
+            val site = url.orEmpty().takeIf { it.startsWith("https://") }
+            runOnUiThread { launchApp(list, site) }
+            return true
+        }
+    }
+
+    /** The installed app, else its store page (Google Play, then Amazon's), else its website. */
+    private fun launchApp(packages: List<String>, site: String?) {
+        for (pkg in packages) {
+            val intent = packageManager.getLeanbackLaunchIntentForPackage(pkg)
+                ?: packageManager.getLaunchIntentForPackage(pkg)
+                ?: continue
+            if (tryStart(intent)) return
+        }
+        packages.firstOrNull()?.let { pkg ->
+            if (tryStart(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg")))) return
+            if (tryStart(Intent(Intent.ACTION_VIEW, Uri.parse("amzn://apps/android?p=$pkg")))) return
+        }
+        site?.let { startActivity(Intent(this, BrowserActivity::class.java).setData(Uri.parse(it))) }
+    }
+
+    private fun hasHardwareKeyboard(): Boolean {
+        val config = resources.configuration
+        return config.keyboard == Configuration.KEYBOARD_QWERTY &&
+            config.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO
+    }
+
+    private fun tryStart(intent: Intent): Boolean = try {
+        startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    } catch (_: SecurityException) {
+        false
+    }
+
+    /**
      * `window.JLKeyboard`: the page asks for the on-screen keyboard when the viewer starts typing
      * in a field (OK on a search box) and closes it when they leave the field. Android only opens
      * it, and only sends a keyboard's keys to the field, when the app asks; a field the page
@@ -351,7 +436,8 @@ class MainActivity : AppCompatActivity() {
                 web.requestFocus()
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.restartInput(web)
-                imm.showSoftInput(web, InputMethodManager.SHOW_IMPLICIT)
+                // A keyboard is plugged in or paired: type on it, no on-screen keyboard over the page.
+                if (!hasHardwareKeyboard()) imm.showSoftInput(web, InputMethodManager.SHOW_IMPLICIT)
             }
         }
 

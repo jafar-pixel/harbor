@@ -1,3 +1,4 @@
+import { KioskButton } from "@/chrome/kiosk-button";
 import { useEffect, useState, type ReactNode } from "react";
 import { usePreviewNavCustomization } from "@/lib/theme-preview";
 import { Monitor } from "lucide-react";
@@ -134,6 +135,7 @@ export function RoyalTopbar() {
             <SearchPill onOpen={() => setSearchOpen(true)} />
             <NotificationCenter />
             {view !== "live" && <TogetherButton variant="ghost" />}
+            <KioskButton />
             {bigPicture.offer && (
               <button
                 type="button"

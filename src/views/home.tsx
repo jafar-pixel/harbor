@@ -111,6 +111,7 @@ import {
 import type { HomeRow } from "./home/home-types";
 import { mergeLoadedHomeRows } from "./home/merge-loaded-rows";
 import { RowSkeleton } from "./home/row-skeleton";
+import { SetupSources, YourApps } from "./home/your-apps";
 import { AddSourceModal } from "@/components/add-source-modal";
 import type { SourceRow } from "@/lib/custom-sources";
 
@@ -1278,7 +1279,9 @@ export function Home({
             !showHero) &&
             seasonalInvitation}
           {experiencePlacement === "after-hero" && experienceShelf}
+          {!editMode && <SetupSources />}
           {!cwTop && cwBlock}
+          {!editMode && <YourApps />}
           {settings.homeMode !== "classic" && (
             <div data-scroll-anchor="streaming">
               <StreamingRail services={enabledServices} />

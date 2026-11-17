@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { setItemWithRecovery } from "@/lib/storage-recovery";
+import { readActiveId, writeActiveId } from "./active-source";
+import { dedupePlaylists } from "./playlist-dedupe";
 
 export type StoredPlaylist = {
   id: string;
@@ -126,18 +128,26 @@ export function readPlaylists(): StoredPlaylist[] {
     if (raw == null) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    const lists = parsed as StoredPlaylist[];
-    if (raw !== cacheJson) {
-      cache = lists;
-      cacheJson = raw;
+    if (raw === cacheJson) return cache;
+    const { lists, replaced } = dedupePlaylists(parsed as StoredPlaylist[]);
+    if (replaced.size) {
+      // Saved copies of the same provider: keep one, and save that.
+      writePlaylists(lists);
+      return cache;
     }
+    cache = lists;
+    cacheJson = raw;
     return lists;
   } catch {
     return [];
   }
 }
 
-export function writePlaylists(playlists: StoredPlaylist[]): boolean {
+export function writePlaylists(given: StoredPlaylist[]): boolean {
+  const { lists: playlists, replaced } = dedupePlaylists(given);
+  // Live TV was on a copy that is now gone: it moves to the copy that stayed.
+  const active = replaced.size ? readActiveId() : null;
+  if (active && replaced.has(active)) writeActiveId(replaced.get(active)!);
   cache = playlists;
   cacheJson = JSON.stringify(playlists);
   let persisted = false;
