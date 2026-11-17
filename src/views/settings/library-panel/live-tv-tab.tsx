@@ -74,9 +74,7 @@ export function LiveTvTab() {
       <SettingRow
         wide
         label={t("Your sources")}
-        desc={t(
-          "Press a source to watch it. Add, edit or remove playlists (M3U or Xtream), or use your JL Smart List.",
-        )}
+        desc={t("Press a source to watch it. Add, edit or remove playlists (M3U or Xtream).")}
       >
         <LiveSources
           sources={managed}
