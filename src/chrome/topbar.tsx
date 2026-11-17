@@ -14,6 +14,7 @@ import { NotificationCenter } from "@/components/notification-center/notificatio
 import { ThreeLiquidGlassSurface } from "@/components/ThreeLiquidGlassSurface";
 import { RecordingPill } from "@/chrome/recording-pill";
 import { SleepTimerButton } from "@/chrome/sleep-timer-button";
+import { KioskButton } from "@/chrome/kiosk-button";
 import {
   effectiveBinding,
   eventToBinding,
@@ -196,6 +197,7 @@ export function Topbar({ connecting = false }: { connecting?: boolean } = {}) {
               {!onLiveRoot && !kid && <TogetherButton />}
             </div>
           )}
+          {!IS_TAURI && <KioskButton />}
           {IS_TAURI && !settings.useNativeTitleBar && !settings.hybridTitleBar && (
             <div className="ms-1 flex shrink-0 items-center gap-2">
               <Control label={t("chrome.minimize")} onClick={minimize}>

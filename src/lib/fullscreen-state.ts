@@ -66,6 +66,14 @@ export function setWindowFullscreen(v: boolean): void {
   emit();
 }
 
+// The website: the browser leaves full screen by itself (Esc, or its own button), so the app's
+// flag follows it; otherwise the next toggle "exits" and nothing happens.
+if (typeof document !== "undefined" && !isTauri()) {
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement && windowFullscreen) setWindowFullscreen(false);
+  });
+}
+
 export function normalizeFullscreenMode(value: string | null | undefined): FullscreenMode {
   return value === "maximized" || value === "borderless" ? value : "fullscreen";
 }
