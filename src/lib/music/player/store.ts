@@ -3,6 +3,12 @@ import { searchVideos } from "../dj/api";
 import { pauseDj } from "../dj/playhead";
 import { pickVideo } from "../dj/vibes";
 import { PlayerEngine } from "./engine";
+import {
+  getMusicAudioSettingsSnapshot,
+  initializeMusicAudioSettings,
+  subscribeMusicAudioSettings,
+} from "../audio-settings";
+import { webEqPlan } from "../web-eq";
 import { trackKey, type Playable, type PlayerTrack, type RepeatMode } from "./types";
 import { recordRecentSong } from "./recent";
 
@@ -222,6 +228,13 @@ export function attachPlayer(host: HTMLElement): () => void {
     });
     engine.setVolume(state.muted ? 0 : state.volume);
     engine.setCrossfade(state.crossfade);
+    // The website and phone apply the music EQ here; the Windows app applies its own natively.
+    if (!("__TAURI_INTERNALS__" in window)) {
+      const current = engine;
+      const followEq = () => current.setEq(webEqPlan(getMusicAudioSettingsSnapshot().settings));
+      subscribeMusicAudioSettings(followEq);
+      void initializeMusicAudioSettings().then(followEq);
+    }
   }
   engine.attach(host);
   return () => undefined;

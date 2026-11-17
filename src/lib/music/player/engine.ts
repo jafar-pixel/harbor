@@ -1,6 +1,7 @@
 import { crossfade } from "../dj/vibes";
 import { loadYouTube, youtubeFrame, YT_ENDED, YT_PLAYING, type YtPlayer } from "../dj/youtube";
 import type { Playable } from "./types";
+import { dbToGain, sameOriginMedia, type WebEqPlan } from "../web-eq";
 
 /**
  * The shared web player's two decks. Each deck plays a YouTube video (an embed) or a media URL
@@ -22,10 +23,20 @@ export type EngineEvents = {
 
 const TICK_MS = 250;
 
+/** A deck's media routed through the EQ: element -> filters -> preamp -> volume -> speakers. */
+type SlotEq = {
+  source: MediaElementAudioSourceNode;
+  filters: BiquadFilterNode[];
+  pre: GainNode;
+  vol: GainNode;
+};
+
 type Slot = {
   root: HTMLDivElement;
   ytMount: HTMLDivElement;
   media: HTMLVideoElement;
+  /** Set once the element feeds the EQ; an element can never be taken out of it again. */
+  eq: SlotEq | null;
   yt: YtPlayer | null;
   ytReady: Promise<YtPlayer> | null;
   kind: Playable["kind"] | null;
@@ -41,6 +52,10 @@ export class PlayerEngine {
   private wantPlaying = false;
   private fadeSecs = 6;
   private timer: number | null = null;
+  private eqPlan: WebEqPlan | null = null;
+  private audio: AudioContext | null = null;
+  /** Sites that allow the page to process their sound, by origin. */
+  private readonly corsOk = new Map<string, Promise<boolean>>();
 
   /*
    * A phone's browser (iOS above all) pauses a YouTube embed when the viewer switches apps or locks
@@ -66,27 +81,148 @@ export class PlayerEngine {
       root.className = "wp-deck";
       const ytMount = document.createElement("div");
       ytMount.className = "wp-deck-yt";
-      const media = document.createElement("video");
-      media.className = "wp-deck-media";
-      media.playsInline = true;
-      media.preload = "auto";
-      root.append(ytMount, media);
+      root.append(ytMount);
       host.append(root);
-      return { root, ytMount, media, yt: null, ytReady: null, kind: null, loaded: null };
+      return {
+        root,
+        ytMount,
+        media: document.createElement("video"),
+        eq: null,
+        yt: null,
+        ytReady: null,
+        kind: null,
+        loaded: null,
+      };
     };
     this.slots = [make(), make()];
-    this.slots.forEach((slot, i) => {
-      slot.media.addEventListener("ended", () => {
-        if (i === this.live && !this.fade) this.events.ended();
-      });
-      slot.media.addEventListener("error", () => {
-        if (i === this.live && slot.kind === "media" && !this.fade) this.events.failed();
-      });
-    });
+    this.slots.forEach((_, i) => this.freshMedia(i));
     this.show();
     this.timer = window.setInterval(() => this.tick(), TICK_MS);
     document.addEventListener("visibilitychange", this.onVisible);
     window.addEventListener("pageshow", this.onVisible);
+  }
+
+  /** A new media element for deck `i` (also how a deck leaves the EQ: elements can't). */
+  private freshMedia(i: number): void {
+    const slot = this.slots![i];
+    const old = slot.media;
+    const media = document.createElement("video");
+    media.className = "wp-deck-media";
+    media.playsInline = true;
+    media.preload = "auto";
+    media.addEventListener("ended", () => {
+      if (i === this.live && !this.fade && slot.media === media) this.events.ended();
+    });
+    media.addEventListener("error", () => {
+      if (i === this.live && slot.kind === "media" && !this.fade && slot.media === media)
+        this.events.failed();
+    });
+    if (old.isConnected) {
+      old.pause();
+      old.removeAttribute("src");
+      old.load();
+      old.replaceWith(media);
+    } else slot.root.append(media);
+    if (slot.eq) {
+      slot.eq.source.disconnect();
+      slot.eq.vol.disconnect();
+      slot.eq = null;
+    }
+    slot.media = media;
+  }
+
+  /** Whether the page may process the sound at `url` (cached per site). */
+  private canProcess(url: string): Promise<boolean> {
+    const same = sameOriginMedia(url, location.origin);
+    if (same !== null) return Promise.resolve(same);
+    let origin: string;
+    try {
+      origin = new URL(url).origin;
+    } catch {
+      return Promise.resolve(false);
+    }
+    let check = this.corsOk.get(origin);
+    if (!check) {
+      const ac = new AbortController();
+      const timer = window.setTimeout(() => ac.abort(), 4000);
+      check = fetch(url, { mode: "cors", headers: { Range: "bytes=0-1" }, signal: ac.signal })
+        .then((r) => {
+          void r.body?.cancel().catch(() => undefined);
+          return r.ok || r.status === 206;
+        })
+        .catch(() => false)
+        .finally(() => window.clearTimeout(timer));
+      this.corsOk.set(origin, check);
+    }
+    return check;
+  }
+
+  private context(): AudioContext | null {
+    if (this.audio) return this.audio;
+    const Ctor =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return null;
+    try {
+      this.audio = new Ctor();
+    } catch {
+      return null;
+    }
+    return this.audio;
+  }
+
+  /** Puts deck `i`'s element through the EQ (once; it stays there). */
+  private routeEq(i: number): boolean {
+    const slot = this.slots![i];
+    if (slot.eq) return true;
+    const ctx = this.context();
+    if (!ctx) return false;
+    try {
+      const source = ctx.createMediaElementSource(slot.media);
+      const pre = ctx.createGain();
+      const vol = ctx.createGain();
+      slot.eq = { source, filters: [], pre, vol };
+      pre.connect(vol);
+      vol.connect(ctx.destination);
+      this.applyEq(slot.eq);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private applyEq(eq: SlotEq): void {
+    const ctx = this.audio!;
+    eq.source.disconnect();
+    for (const f of eq.filters) f.disconnect();
+    const plan = this.eqPlan;
+    eq.filters = (plan?.filters ?? []).map((f) => {
+      const node = ctx.createBiquadFilter();
+      node.type = f.type;
+      node.frequency.value = f.frequency;
+      node.gain.value = f.gain;
+      node.Q.value = f.q;
+      return node;
+    });
+    let at: AudioNode = eq.source;
+    for (const node of eq.filters) {
+      at.connect(node);
+      at = node;
+    }
+    at.connect(eq.pre);
+    eq.pre.gain.value = plan ? dbToGain(plan.preampDb) : 1;
+  }
+
+  /** The EQ to use from now on (null: off). Songs already playing change at once. */
+  setEq(plan: WebEqPlan | null): void {
+    this.eqPlan = plan;
+    this.slots?.forEach((slot) => {
+      if (slot.eq) this.applyEq(slot.eq);
+    });
+  }
+
+  private resumeAudio(): void {
+    if (this.audio?.state === "suspended") void this.audio.resume().catch(() => undefined);
   }
 
   private youtube(i: number): Promise<YtPlayer> {
@@ -141,8 +277,19 @@ export class PlayerEngine {
       else yt.cueVideoById(p.videoId);
       if (at > 0) yt.seekTo(at, true);
     } else {
+      // Through the EQ when it is on and the song's site allows it. An element already in the EQ
+      // can only play sound the page may process, so any other song gets a fresh element.
+      const eqWanted = !!this.eqPlan || !!slot.eq;
+      const processable = eqWanted ? await this.canProcess(p.url) : false;
+      if (slot.loaded !== id) return;
+      if (slot.eq && !processable) this.freshMedia(i);
+      if (processable && (this.eqPlan || slot.eq)) {
+        slot.media.crossOrigin = "anonymous";
+        if (!this.routeEq(i)) slot.media.removeAttribute("crossorigin");
+      }
       slot.media.src = p.url;
-      slot.media.volume = volume / 100;
+      this.setSlotVolume(i, volume);
+      if (play) this.resumeAudio();
       if (at > 0) slot.media.currentTime = at;
       if (play) await slot.media.play().catch(() => this.events.failed());
     }
@@ -163,7 +310,14 @@ export class PlayerEngine {
   private setSlotVolume(i: number, v: number) {
     const slot = this.slots![i];
     if (slot.kind === "youtube") slot.yt?.setVolume(v);
-    if (slot.kind === "media") slot.media.volume = Math.max(0, Math.min(1, v / 100));
+    if (slot.kind !== "media") return;
+    const level = Math.max(0, Math.min(1, v / 100));
+    // In the EQ the element plays at full level and the EQ sets the volume (some browsers ignore
+    // an element's volume once the page processes its sound).
+    if (slot.eq) {
+      slot.media.volume = 1;
+      slot.eq.vol.gain.value = level;
+    } else slot.media.volume = level;
   }
 
   private show(opacity: [number, number] = this.live === 0 ? [1, 0] : [0, 1]) {
@@ -194,6 +348,7 @@ export class PlayerEngine {
 
   play(): void {
     this.wantPlaying = true;
+    this.resumeAudio();
     this.each((slot, i) => {
       if (i !== this.live && !this.fade) return;
       if (slot.kind === "youtube") slot.yt?.playVideo();
@@ -311,5 +466,7 @@ export class PlayerEngine {
       slot.root.remove();
     });
     this.slots = null;
+    void this.audio?.close().catch(() => undefined);
+    this.audio = null;
   }
 }
