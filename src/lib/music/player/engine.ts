@@ -47,7 +47,13 @@ export class PlayerEngine {
   private slots: [Slot, Slot] | null = null;
   private live = 0;
   private next: Playable | null = null;
-  private fade: { start: number; ms: number } | null = null;
+  /** The crossfade under way: `began` is when the next song was heard playing (null: not yet). */
+  private fade: { requested: number; began: number | null; ms: number } | null = null;
+  /**
+   * The browser wouldn't start the second deck by itself (an iPhone allows a page to start only a
+   * player the viewer tapped). Songs then follow one another on the deck already playing.
+   */
+  private noSecondDeck = false;
   private volume = 80;
   private wantPlaying = false;
   private fadeSecs = 6;
@@ -111,7 +117,7 @@ export class PlayerEngine {
     media.playsInline = true;
     media.preload = "auto";
     media.addEventListener("ended", () => {
-      if (i === this.live && !this.fade && slot.media === media) this.events.ended();
+      if (i === this.live && slot.media === media) this.liveEnded();
     });
     media.addEventListener("error", () => {
       if (i === this.live && slot.kind === "media" && !this.fade && slot.media === media)
@@ -242,7 +248,7 @@ export class PlayerEngine {
             events: {
               onReady: () => resolve(player),
               onStateChange: ({ data }: { data: number }) => {
-                if (data === YT_ENDED && i === this.live && !this.fade) this.events.ended();
+                if (data === YT_ENDED && i === this.live) this.liveEnded();
               },
               onError: () => {
                 if (i === this.live && slot.kind === "youtube" && !this.fade) this.events.failed();
@@ -291,7 +297,12 @@ export class PlayerEngine {
       this.setSlotVolume(i, volume);
       if (play) this.resumeAudio();
       if (at > 0) slot.media.currentTime = at;
-      if (play) await slot.media.play().catch(() => this.events.failed());
+      // The deck being faded in failing to start isn't a broken song (an iPhone refuses to start
+      // a second player by itself); the crossfade gives up and the song plays next on this deck.
+      if (play)
+        await slot.media.play().catch(() => {
+          if (i === this.live && !this.fade) this.events.failed();
+        });
     }
   }
 
@@ -409,6 +420,24 @@ export class PlayerEngine {
     return { position: 0, duration: 0, playing: false };
   }
 
+  /** The live song ended. During a crossfade the next song is already playing and takes over. */
+  private liveEnded(): void {
+    if (this.fade) {
+      if (this.fade.began !== null) return;
+      this.noSecondDeck = true;
+      this.cancelFade();
+    }
+    this.events.ended();
+  }
+
+  /** Drops a crossfade whose next song never started; the live song stays as it was. */
+  private cancelFade(): void {
+    this.fade = null;
+    this.stopSlot(1 - this.live);
+    this.setSlotVolume(this.live, this.volume);
+    this.show();
+  }
+
   private finishFade(advance: boolean) {
     const from = this.live;
     this.stopSlot(from);
@@ -426,7 +455,21 @@ export class PlayerEngine {
     if (!this.wantPlaying) return;
     const f = this.fade;
     if (f) {
-      const p = (Date.now() - f.start) / f.ms;
+      // Hand over only to a next song that is really playing; until then this one plays on at
+      // full volume. A next song that never starts (an iPhone blocking the second deck) means no
+      // crossfade: this song finishes and the next one plays on this deck.
+      if (f.began === null) {
+        if (this.times(1 - this.live).playing) f.began = Date.now();
+        else {
+          // (If this song ends first, liveEnded drops the crossfade and moves on.)
+          if (Date.now() - f.requested > 3000) {
+            this.noSecondDeck = true;
+            this.cancelFade();
+          }
+          return;
+        }
+      }
+      const p = (Date.now() - f.began) / f.ms;
       const [out, inn] = crossfade(p);
       this.setSlotVolume(this.live, out * this.volume);
       this.setSlotVolume(1 - this.live, inn * this.volume);
@@ -438,6 +481,7 @@ export class PlayerEngine {
     if (
       this.next &&
       this.fadeSecs > 0 &&
+      !this.noSecondDeck &&
       now.playing &&
       now.duration > 30 &&
       left > 0 &&
@@ -446,7 +490,7 @@ export class PlayerEngine {
       const incoming = this.next;
       this.next = null;
       const ms = Math.max(1000, (left - 0.3) * 1000);
-      this.fade = { start: Date.now(), ms };
+      this.fade = { requested: Date.now(), began: null, ms };
       this.loadInto(1 - this.live, incoming, 0, true, 0).catch(() => {
         // The next song can't load: finish this one and let the store move on.
         this.fade = null;
