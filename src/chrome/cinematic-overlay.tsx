@@ -1,3 +1,4 @@
+import { KioskButton } from "@/chrome/kiosk-button";
 import { useState } from "react";
 import { usePreviewNavCustomization } from "@/lib/theme-preview";
 import { Monitor } from "lucide-react";
@@ -125,6 +126,7 @@ export function CinematicOverlay() {
             <RecordingPill />
             <NotificationCenter />
             {view !== "live" && <TogetherButton variant="ghost" connectStyle="tab" />}
+            <KioskButton />
             {bigPicture.offer && (
               <IconBtn onClick={bigPicture.open} label={bigPicture.label} active={false}>
                 <Monitor size={15} strokeWidth={2.2} />
