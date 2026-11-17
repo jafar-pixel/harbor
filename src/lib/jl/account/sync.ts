@@ -1,3 +1,4 @@
+import { syncFamilyAddons } from "./family-addons";
 import { syncJlAddons } from "./addon-sync-client";
 import { useEffect, useSyncExternalStore } from "react";
 import { activeProfileId } from "@/lib/active-profile-id";
@@ -233,7 +234,8 @@ export async function autoLinkJlProfile(
     // A device that only has a stand-in name ("Guest 1234") joins the account's one named
     // profile, so it signs in as you instead of a new guest each time.
     const named = profiles.filter((p) => !isStandInName(p.name));
-    if (isStandInName(name) && named.length === 1) linkJlProfile(named[0], context);
+    if ((!name.trim() || isStandInName(name)) && named.length === 1)
+      linkJlProfile(named[0], context);
     return;
   }
   // Never add a stand-in guest profile to the account.
@@ -382,6 +384,11 @@ async function runSync(scope: Scope): Promise<number> {
     profileId: scope.link.profileId,
     assertCurrent: () => assertScope(scope),
   });
+  // The family's shared add-ons (an owner's clone); never holds up the rest of the sync.
+  await syncFamilyAddons({
+    account: scope.account,
+    assertCurrent: () => assertScope(scope),
+  }).catch(() => {});
   const conflicts = await syncJlProfileData({
     account: scope.account,
     localId: scope.localId,

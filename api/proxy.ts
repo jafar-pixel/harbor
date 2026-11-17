@@ -1,6 +1,6 @@
 // Vercel Edge Function behind /api-proxy/<host>/<path> for the JL Media Vision web build.
 // Mirrors src-tauri/relay/harbor-web.nginx: only the API hosts safe-fetch proxies, never video.
-import colleges from "../src/lib/jl/sports/data/colleges.json";
+import colleges from "../src/lib/jl/sports/data/colleges.json" with { type: "json" };
 
 export const config = { runtime: "edge" };
 

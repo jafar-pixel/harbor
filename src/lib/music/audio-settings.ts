@@ -4,6 +4,21 @@ import { clampNumber, normalizePeq, type PeqFilter } from "./parametric-eq";
 import { broadcastWindowState, subscribeWindowState } from "./window-sync";
 
 const AUDIO_CHANNEL = "harbor://music-audio-settings";
+/** The website and phone have no native audio settings; they keep theirs in the browser. */
+const WEB_KEY = "jl.music.audio.web.v1";
+
+function isNativeApp(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
+function readWebAudio(): MusicAudioSettingsValue {
+  try {
+    const raw = localStorage.getItem(WEB_KEY);
+    return normalizeMusicAudio(raw ? (JSON.parse(raw) as Partial<MusicAudioSettingsValue>) : null);
+  } catch {
+    return normalizeMusicAudio(null);
+  }
+}
 
 export const MUSIC_EQ_FREQUENCIES = [
   31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000,
@@ -64,7 +79,10 @@ export const DEFAULT_MUSIC_AUDIO: MusicAudioSettingsValue = {
 // eslint-disable-next-line no-control-regex
 const DEVICE_CONTROL = /[\x00-\x1f]/;
 const deviceName = (value: unknown): string =>
-  typeof value === "string" && value.length > 0 && value.length <= 500 && !DEVICE_CONTROL.test(value)
+  typeof value === "string" &&
+  value.length > 0 &&
+  value.length <= 500 &&
+  !DEVICE_CONTROL.test(value)
     ? value
     : "auto";
 
@@ -147,6 +165,11 @@ export const getMusicAudioSettingsSnapshot = () => snapshot;
 
 export function initializeMusicAudioSettings(force = false): Promise<void> {
   if (initialization && !force) return initialization;
+  if (!isNativeApp()) {
+    publish({ settings: readWebAudio(), ready: true, error: false });
+    initialization = Promise.resolve();
+    return initialization;
+  }
   initialization = invoke<MusicAudioSettingsValue>("music_audio_settings_get").then(
     (settings) => publish({ settings: normalizeMusicAudio(settings), ready: true, error: false }),
     () => {
@@ -182,6 +205,16 @@ export async function saveMusicAudioSettings(
 ): Promise<MusicAudioSettingsValue> {
   if (snapshot.saving) throw new Error("Music audio settings are being saved");
   publish({ saving: true, error: false });
+  if (!isNativeApp()) {
+    const saved = normalizeMusicAudio(settings);
+    try {
+      localStorage.setItem(WEB_KEY, JSON.stringify(saved));
+    } catch {
+      /* private browsing: applies for this visit */
+    }
+    publish({ settings: saved, saving: false, ready: true });
+    return saved;
+  }
   try {
     const saved = normalizeMusicAudio(
       await invoke<MusicAudioSettingsValue>("music_audio_settings_set", {

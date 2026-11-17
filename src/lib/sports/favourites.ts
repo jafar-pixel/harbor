@@ -105,6 +105,26 @@ export function writeFavourites(next: SportsFavourites): boolean {
   return persisted;
 }
 
+/**
+ * The followed sports, leagues and teams as one string for the account sync (keys-sync.ts), or
+ * "" when nothing is followed yet, so a new device takes the account's.
+ */
+export function favouritesForSync(): string {
+  const f = readFavourites();
+  return f.teams.length || f.leagues.length ? JSON.stringify(f) : "";
+}
+
+/** Takes the account's follows; a damaged or empty value leaves this device's alone. */
+export function applyFavouritesFromSync(value: string): void {
+  if (!value) return;
+  try {
+    const next = normalise(JSON.parse(value));
+    if (next.teams.length || next.leagues.length) writeFavourites(next);
+  } catch {
+    /* damaged value: keep this device's follows */
+  }
+}
+
 export function subscribeFavourites(cb: () => void): () => void {
   subs.add(cb);
   return () => {

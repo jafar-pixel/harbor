@@ -19,6 +19,7 @@ import { MusicGenres, type MusicGenreEntry } from "./music/music-genres";
 import { MusicExploreBands } from "./music/music-explore-bands";
 import { MusicBillboardCharts } from "@/components/music/music-discovery-charts";
 import { MusicAudioSettings } from "@/components/music/music-audio-settings";
+import { MusicWebEq } from "@/components/music/music-web-eq";
 import { MusicSpeakers } from "@/components/music/music-speakers";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, LoaderCircle, Music2, X } from "@/components/icons/music-icons";
@@ -1261,7 +1262,12 @@ function MusicViewContent({ active }: { active: boolean }) {
 
             {connectionsPage ? (
               connectionsPage.focusId === "__audio" ? (
-                <MusicAudioSettings connectorId={player.current?.connectorId} />
+                "__TAURI_INTERNALS__" in window ? (
+                  <MusicAudioSettings connectorId={player.current?.connectorId} />
+                ) : (
+                  // The website and phone: the EQ (the rest of these settings are the Windows app's).
+                  <MusicWebEq />
+                )
               ) : connectionsPage.focusId === "__speakers" ? (
                 <MusicSpeakers
                   track={player.current}

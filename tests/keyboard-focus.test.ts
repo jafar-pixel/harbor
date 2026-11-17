@@ -286,3 +286,17 @@ test("search focus overrides coexist with Music styles and reduced-motion suppor
     /@media \(prefers-reduced-motion: reduce\) \{\s*\.music-eq-bars i \{\s*animation: none;/,
   );
 });
+
+test("the TV app's Back ends typing, so the next OK on a field opens the keyboard again", () => {
+  assert.match(navigationSource, /addEventListener\("harbor:local-back", onLocalBack, true\)/);
+  assert.match(navigationSource, /removeEventListener\("harbor:local-back", onLocalBack, true\)/);
+  assert.match(
+    navigationSource,
+    /const onLocalBack = [\s\S]*?hideTvKeyboard\(\)[\s\S]*?exitSearchEditMode\(\);/,
+  );
+  // Reopening a search overlay asks for the keyboard each time, not only the first.
+  assert.match(
+    navigationSource,
+    /\[data-tv-text-auto\]"\)\) \{[\s\S]*?showTvKeyboard\(\);\s*return;/,
+  );
+});

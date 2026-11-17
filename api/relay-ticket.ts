@@ -6,8 +6,11 @@
 // Off unless configured, and never open: the caller must be signed in to a JL account listed in
 // PLAYBACK_RELAY_USERS. Settings (Vercel environment):
 //   PLAYBACK_RELAY_KEY    64 hex characters, the same key the relay uses
-//   PLAYBACK_RELAY_BASE   the relay's public address ending in /secure
-//   PLAYBACK_RELAY_USERS  comma-separated JL account emails or user ids allowed to use it
+//   PLAYBACK_RELAY_BASE   the relay's public address ending in /secure, or "/secure" when the
+//                         relay runs on the same server (server/web-server.ts)
+//   PLAYBACK_RELAY_USERS  comma-separated JL account emails or user ids allowed to use it, or "*"
+//                         for every signed-in JL account (each with its own provider), and
+//                         "family:<family id>" for every member of that JL family
 export const config = { runtime: "edge" };
 
 const TTL_MS = 6 * 60 * 60 * 1000;
@@ -64,6 +67,32 @@ async function signedInUser(req: Request): Promise<{ id: string; email: string }
   return user?.id ? { id: user.id, email: (user.email ?? "").toLowerCase() } : null;
 }
 
+/**
+ * The JL family the signed-in person belongs to (or owns), asked with their own sign-in: the
+ * family's id, or "" when they have none or it can't be checked.
+ */
+async function familyOf(req: Request): Promise<string> {
+  const token = /^Bearer\s+(\S+)$/i.exec(req.headers.get("authorization") ?? "")?.[1];
+  const supabaseUrl = env("VITE_JL_SUPABASE_URL");
+  const anonKey = env("VITE_JL_SUPABASE_ANON_KEY");
+  if (!token || !supabaseUrl || !anonKey) return "";
+  const res = await fetch(new URL("/rest/v1/rpc/my_family", supabaseUrl), {
+    method: "POST",
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "Accept-Profile": "media",
+      "Content-Profile": "media",
+    },
+    body: "{}",
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => null);
+  if (!res?.ok) return "";
+  const family = (await res.json().catch(() => null)) as { id?: unknown } | null;
+  return typeof family?.id === "string" ? family.id.toLowerCase() : "";
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== "POST") return json(405, { error: "method" });
   const secret = env("PLAYBACK_RELAY_KEY");
@@ -72,14 +101,23 @@ export default async function handler(req: Request): Promise<Response> {
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
-  if (!/^[a-f0-9]{64}$/.test(secret) || !base.startsWith("https://") || allowed.length === 0) {
+  const baseOk = base.startsWith("https://") || /^\/[A-Za-z0-9/_-]+$/.test(base);
+  if (!/^[a-f0-9]{64}$/.test(secret) || !baseOk || allowed.length === 0) {
     return json(404, { error: "not-configured" });
   }
   const user = await signedInUser(req);
   if (!user) return json(401, { error: "sign-in" });
-  if (!allowed.includes(user.id.toLowerCase()) && !(user.email && allowed.includes(user.email))) {
-    return json(403, { error: "not-allowed" });
+  const anyone = allowed.includes("*");
+  let ok =
+    anyone ||
+    allowed.includes(user.id.toLowerCase()) ||
+    (!!user.email && allowed.includes(user.email));
+  // The owner's family (the accounts they cloned their setup to) may use it too.
+  if (!ok && allowed.some((a) => a.startsWith("family:"))) {
+    const family = await familyOf(req);
+    ok = !!family && allowed.includes(`family:${family}`);
   }
+  if (!ok) return json(403, { error: "not-allowed" });
 
   const body = (await req.json().catch(() => null)) as { urls?: unknown } | null;
   const urls = Array.isArray(body?.urls) ? body.urls : [];
@@ -92,6 +130,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const key = await crypto.subtle.importKey("raw", hexBytes(secret), "AES-GCM", false, ["encrypt"]);
   const expiresAt = Date.now() + TTL_MS;
-  const tickets = await Promise.all((urls as string[]).map((u) => seal(key, { u, e: expiresAt })));
+  // "s" names the account, so the relay can share its connection fairly between accounts.
+  const tickets = await Promise.all(
+    (urls as string[]).map((u) => seal(key, { u, e: expiresAt, s: user.id })),
+  );
   return json(200, { base, tickets, expiresAt });
 }

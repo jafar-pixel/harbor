@@ -679,7 +679,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
           ? {
               ...p,
               ...patch,
-              name: patch.name != null ? patch.name.trim().slice(0, 32) || p.name : p.name,
+              name: patch.name != null ? patch.name.trim().slice(0, 40) || p.name : p.name,
             }
           : p,
       ),

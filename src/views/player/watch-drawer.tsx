@@ -174,20 +174,22 @@ export function WatchDrawer({
   }, [open]);
 
   if (!open) {
-    // On the TV the remote's Down (or the bar's button) opens it; the desktop keeps its edge tab
-    // for live channels.
-    if (!chromeVisible || nativeTvAvailable() || !live) return null;
+    // The edge tab shows with the player's controls: on the TV for every video (the app's own
+    // controls are on screen there now, so the remote reaches it), on the desktop for live
+    // channels.
+    const tv = nativeTvAvailable();
+    if (!chromeVisible || (!tv && !live)) return null;
     return (
       <button
         type="button"
         onClick={() => {
-          setTab("games");
+          setTab(tv ? startTab : "games");
           setOpen(true);
         }}
         className="pointer-events-auto absolute end-0 top-1/2 z-[150] flex -translate-y-1/2 items-center gap-2 rounded-s-full bg-black/60 py-3 pe-3 ps-4 text-[13px] font-semibold text-white backdrop-blur transition-colors hover:bg-black/80"
       >
         <Star size={15} fill={picks.length ? "currentColor" : "none"} />
-        {t("Today's games")}
+        {tv ? t("Games on now") : t("Today's games")}
         {picks.length > 0 && <span className="tabular-nums text-white/70">{picks.length}</span>}
       </button>
     );

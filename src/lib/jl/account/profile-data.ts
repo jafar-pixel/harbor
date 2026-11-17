@@ -148,13 +148,7 @@ function safePreference(key: string, value: unknown): boolean {
   return typeof value === "string" && /^[\w -]{1,64}$/.test(value);
 }
 
-/** A deliberately explicit data shape: credentials, URLs, headers, PINs and device paths stay local. */
-export function readProfileData(
-  storage: Port,
-  localId: string,
-  settings: Record<string, unknown>,
-  metadata: Record<string, unknown> = {},
-): SyncValues {
+export function profileMetadataValues(metadata: Record<string, unknown>): SyncValues {
   const result: SyncValues = {};
   // A device's stand-in name ("Guest 1234") never replaces the profile's real name.
   if (
@@ -166,6 +160,17 @@ export function readProfileData(
     result["profile:name"] = metadata.name;
   if (typeof metadata.color === "string" && /^#[a-f\d]{6}$/i.test(metadata.color))
     result["profile:color"] = metadata.color;
+  return result;
+}
+
+/** A deliberately explicit data shape: credentials, URLs, headers, PINs and device paths stay local. */
+export function readProfileData(
+  storage: Port,
+  localId: string,
+  settings: Record<string, unknown>,
+  metadata: Record<string, unknown> = {},
+): SyncValues {
+  const result = profileMetadataValues(metadata);
   for (const key of PROFILE_PREFERENCES)
     if (safePreference(key, settings[key])) result[`settings:${key}`] = settings[key];
   for (const [section, prefix, shape] of STORES) {

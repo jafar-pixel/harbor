@@ -262,9 +262,12 @@ jobs:
       - name: Build the TV app's pages
         run: |
           pnpm install --frozen-lockfile
-          pnpm run build
+          node -e "require('node:assert/strict').equal(require('./package.json').version, require('./src-tauri/tauri.jl-dev.conf.json').version)"
+          node --experimental-loader ./scripts/node-test-loader.mjs --test tests/jl-linked-profile-name.test.mjs tests/jl-auto-link-startup.test.mjs tests/jl-profile-data.test.ts tests/jl-sports-follows-sync.test.ts
+          HARBOR_BUILD_ID="${GITHUB_SHA::8}" pnpm run build
+          printf '%s\n' "$GITHUB_SHA" > dist/build-commit.txt
+          tar -czf JL-Media-Vision-Web.tar.gz -C dist .
           python3 android-tv/tools/bundle_site.py dist android-tv/app/src/main/assets/site
-          printf '%s\n' "${{ github.sha }}" > android-tv/app/src/main/assets/site/build-commit.txt
           du -sh android-tv/app/src/main/assets/site
 
       - name: Build APK
@@ -275,11 +278,31 @@ jobs:
           cp android-tv/app/build/outputs/apk/release/app-release.apk JL-Media-Vision-TV.apk
           test -s JL-Media-Vision-TV.apk
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose JL-Media-Vision-TV.apk
-          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging JL-Media-Vision-TV.apk | grep '^package:'
-          # The APK must carry its pages, or it would fall back to the website.
-          unzip -l JL-Media-Vision-TV.apk | grep -q 'assets/site/index.html'
+          version=$(node -p "require('./package.json').version")
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging JL-Media-Vision-TV.apk > apk-badging.txt
+          grep "^package: " apk-badging.txt | grep -F "versionName='$version'"
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          site = Path("android-tv/app/src/main/assets/site")
+          with ZipFile("JL-Media-Vision-TV.apk") as apk:
+              for path in site.rglob("*"):
+                  if path.is_file():
+                      rel = path.relative_to(site).as_posix()
+                      if apk.read("assets/site/" + rel) != (Path("dist") / rel).read_bytes():
+                          raise SystemExit(f"APK and web differ: {rel}")
+          PY
           sha256sum JL-Media-Vision-TV.apk > JL-Media-Vision-TV.apk.sha256
           printf '%s\n' "${{ github.sha }}" > android-tv-build-commit.txt
+
+      - name: Retain the matching web package
+        uses: actions/upload-artifact@v7
+        with:
+          name: jl-web-package
+          path: JL-Media-Vision-Web.tar.gz
+          retention-days: 14
+          if-no-files-found: error
+          compression-level: 0
 
       - name: Retain Android TV APK
         uses: actions/upload-artifact@v7

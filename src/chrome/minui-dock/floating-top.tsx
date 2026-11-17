@@ -1,3 +1,4 @@
+import { KioskButton } from "@/chrome/kiosk-button";
 import { ArrowLeft, Monitor } from "lucide-react";
 import { useContextMenu } from "@/lib/context-menu";
 import { Search } from "@/components/icons/search-icon";
@@ -69,6 +70,7 @@ export function FloatingTop() {
         <RecordingPill />
         <NotificationCenter />
         {!liveActive && <TogetherButton variant="ghost" popoverPlacement="below-right" />}
+        <KioskButton />
         {bigPicture.offer && (
           <PillBtn label={bigPicture.label} onClick={bigPicture.open}>
             <Monitor size={16} strokeWidth={2.2} />
