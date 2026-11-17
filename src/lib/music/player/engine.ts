@@ -42,6 +42,20 @@ export class PlayerEngine {
   private fadeSecs = 6;
   private timer: number | null = null;
 
+  /*
+   * A phone's browser (iOS above all) pauses a YouTube embed when the viewer switches apps or locks
+   * the screen; a web page can't keep it playing there. The viewer never pressed pause, so when
+   * they come back the music carries on by itself instead of sitting paused while the app still
+   * shows it playing.
+   */
+  private readonly onVisible = () => {
+    if (document.visibilityState !== "visible" || !this.wantPlaying || !this.slots) return;
+    const slot = this.slots[this.live];
+    if (this.times(this.live).playing) return;
+    if (slot.kind === "youtube") slot.yt?.playVideo();
+    if (slot.kind === "media") void slot.media.play().catch(() => undefined);
+  };
+
   constructor(private readonly events: EngineEvents) {}
 
   /** Build both decks inside `host` (kept mounted for the app's life). */
@@ -71,6 +85,8 @@ export class PlayerEngine {
     });
     this.show();
     this.timer = window.setInterval(() => this.tick(), TICK_MS);
+    document.addEventListener("visibilitychange", this.onVisible);
+    window.addEventListener("pageshow", this.onVisible);
   }
 
   private youtube(i: number): Promise<YtPlayer> {
@@ -287,6 +303,8 @@ export class PlayerEngine {
 
   destroy(): void {
     if (this.timer) window.clearInterval(this.timer);
+    document.removeEventListener("visibilitychange", this.onVisible);
+    window.removeEventListener("pageshow", this.onVisible);
     this.each((slot) => {
       slot.yt?.destroy();
       slot.media.pause();
