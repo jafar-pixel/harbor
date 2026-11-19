@@ -10,6 +10,7 @@ import {
 import {
   AudioWaveform,
   ChevronDown,
+  Disc3,
   GripVertical,
   ListMusic,
   ListPlus,
@@ -44,6 +45,7 @@ import {
   previous,
   removeAt,
   seek,
+  setAutomix,
   setCrossfade,
   setPlayerView,
   setSleepTimer,
@@ -611,6 +613,19 @@ function Extras({ player }: { player: PlayerState }) {
           </div>
         )}
       </div>
+      {/* DJ mixing: each change on a phrase, in the style that suits the two songs (blend, cut,
+          beat chop, fade down), with what's coming ordered so keys and tempos flow. */}
+      <button
+        type="button"
+        className="wp-chip"
+        data-on={player.automix}
+        aria-pressed={player.automix}
+        title={t("Mix like a DJ: changes on the phrase, matched keys and tempos")}
+        onClick={() => setAutomix(!player.automix)}
+      >
+        <Disc3 size={16} />
+        {player.automix ? t("DJ mix on") : t("DJ mix")}
+      </button>
       <div className="wp-menu-wrap">
         <button
           type="button"

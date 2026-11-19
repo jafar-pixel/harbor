@@ -6,6 +6,7 @@ const YT_BUFFERING = 3;
 import type { Playable } from "./types";
 import { dbToGain, sameOriginMedia, type WebEqPlan } from "../web-eq";
 import { videoAspects } from "../dj/api";
+import { phrasePlan, transitionGains, type TransitionStyle } from "../dj/mixing";
 import { screenZoom } from "../video-zoom";
 
 /**
@@ -14,6 +15,13 @@ import { screenZoom } from "../video-zoom";
  * on the other deck and both picture and sound crossfade. The store (./store) decides what plays;
  * the engine reports time and tells it when a song finished or failed.
  */
+
+/** How the next song comes in when the player mixes like a DJ (null: a plain crossfade). */
+export type MixPlan = {
+  style: TransitionStyle;
+  /** The playing song's tempo: places the change on a phrase and times a beat chop. */
+  bpm?: number;
+};
 
 export type EngineEvents = {
   /** The song on the live deck ended without a crossfade. */
@@ -61,7 +69,13 @@ export class PlayerEngine {
   private live = 0;
   private next: Playable | null = null;
   /** The crossfade under way: `began` is when the next song was heard playing (null: not yet). */
-  private fade: { requested: number; began: number | null; ms: number } | null = null;
+  private fade: {
+    requested: number;
+    began: number | null;
+    ms: number;
+    mix: MixPlan | null;
+  } | null = null;
+  private nextMix: MixPlan | null = null;
   /**
    * The browser wouldn't start the second deck by itself (an iPhone allows a page to start only a
    * player the viewer tapped). Songs then follow one another on the deck already playing.
@@ -456,8 +470,9 @@ export class PlayerEngine {
   }
 
   /** The song after this one, for the crossfade (null: none, stop at the end). */
-  setNext(p: Playable | null): void {
+  setNext(p: Playable | null, mix: MixPlan | null = null): void {
     this.next = p;
+    this.nextMix = p ? mix : null;
   }
 
   setCrossfade(seconds: number): void {
@@ -577,7 +592,10 @@ export class PlayerEngine {
         }
       }
       const p = (Date.now() - f.began) / f.ms;
-      const [out, inn] = crossfade(p);
+      // A DJ mix shapes the change (a blend, a cut on the phrase, a beat chop, a fade down);
+      // otherwise it is the plain equal-power crossfade.
+      const beatPhase = f.mix?.bpm ? (((Date.now() - f.began) / 1000) * f.mix.bpm) / 60 : 0;
+      const [out, inn] = f.mix ? transitionGains(f.mix.style, p, beatPhase) : crossfade(p);
       this.setSlotVolume(this.live, out * this.volume);
       this.setSlotVolume(1 - this.live, inn * this.volume);
       this.show(this.live === 0 ? [out, inn] : [inn, out]);
@@ -585,19 +603,18 @@ export class PlayerEngine {
       return;
     }
     const left = now.duration - now.position;
-    if (
-      this.next &&
-      this.fadeSecs > 0 &&
-      !this.noSecondDeck &&
-      now.playing &&
-      now.duration > 30 &&
-      left > 0 &&
-      left <= this.fadeSecs
-    ) {
+    const mix = this.nextMix;
+    // A DJ mix starts on a phrase (from the tempo) and runs as long as its style needs; a plain
+    // crossfade starts the chosen number of seconds before the end.
+    const plan = mix ? phrasePlan(mix.bpm, now.duration, mix.style) : null;
+    const due = plan ? now.position >= plan.start : this.fadeSecs > 0 && left <= this.fadeSecs;
+    if (this.next && due && !this.noSecondDeck && now.playing && now.duration > 30 && left > 0.5) {
       const incoming = this.next;
       this.next = null;
-      const ms = Math.max(1000, (left - 0.3) * 1000);
-      this.fade = { requested: Date.now(), began: null, ms };
+      this.nextMix = null;
+      const seconds = plan ? Math.min(plan.seconds, left - 0.3) : left - 0.3;
+      const ms = Math.max(1000, seconds * 1000);
+      this.fade = { requested: Date.now(), began: null, ms, mix };
       this.loadInto(1 - this.live, incoming, 0, true, 0).catch(() => {
         // The next song can't load: finish this one and let the store move on.
         this.fade = null;
