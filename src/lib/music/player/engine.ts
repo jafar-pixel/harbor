@@ -103,7 +103,14 @@ export class PlayerEngine {
     this.slots = [make(), make()];
     this.slots.forEach((_, i) => this.freshMedia(i));
     this.show();
-    this.timer = window.setInterval(() => this.tick(), TICK_MS);
+    this.timer = window.setInterval(() => {
+      // A player misbehaving mustn't take the app down: the next tick tries again.
+      try {
+        this.tick();
+      } catch (error) {
+        console.warn("[music] player tick", error);
+      }
+    }, TICK_MS);
     document.addEventListener("visibilitychange", this.onVisible);
     window.addEventListener("pageshow", this.onVisible);
   }
@@ -246,7 +253,13 @@ export class PlayerEngine {
           });
           const player: YtPlayer = new api.Player(frame, {
             events: {
-              onReady: () => resolve(player),
+              // Only a ready player has its controls (setVolume, playVideo...): the deck uses it
+              // from here, not from the moment it is created. Using it earlier threw at every
+              // song's end, when the crossfade set the next deck's volume while it loaded.
+              onReady: () => {
+                slot.yt = player;
+                resolve(player);
+              },
               onStateChange: ({ data }: { data: number }) => {
                 if (data === YT_ENDED && i === this.live) this.liveEnded();
               },
@@ -255,7 +268,6 @@ export class PlayerEngine {
               },
             },
           });
-          slot.yt = player;
         }),
     );
     slot.ytReady.catch(() => {
