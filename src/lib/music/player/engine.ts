@@ -5,6 +5,8 @@ import { loadYouTube, youtubeFrame, YT_ENDED, YT_PLAYING, type YtPlayer } from "
 const YT_BUFFERING = 3;
 import type { Playable } from "./types";
 import { dbToGain, sameOriginMedia, type WebEqPlan } from "../web-eq";
+import { videoAspects } from "../dj/api";
+import { screenZoom } from "../video-zoom";
 
 /**
  * The shared web player's two decks. Each deck plays a YouTube video (an embed) or a media URL
@@ -46,6 +48,8 @@ type Slot = {
   media: HTMLVideoElement;
   /** Set once the element feeds the EQ; an element can never be taken out of it again. */
   eq: SlotEq | null;
+  /** The YouTube video's real shape (width / height), once known. */
+  aspect?: number;
   yt: YtPlayer | null;
   ytReady: Promise<YtPlayer> | null;
   kind: Playable["kind"] | null;
@@ -105,6 +109,7 @@ export class PlayerEngine {
         ytMount,
         media: document.createElement("video"),
         eq: null,
+        aspect: undefined,
         yt: null,
         ytReady: null,
         kind: null,
@@ -271,6 +276,21 @@ export class PlayerEngine {
       const frame = slot.ytMount.querySelector("iframe");
       if (frame) frame.style.cssText = "width:100%;height:100%;border:0";
     });
+    this.zoomVideos();
+  }
+
+  /**
+   * Enlarges each YouTube video past the black bars YouTube adds when its shape doesn't match
+   * the frame (a square album cover in a wide frame), so it fills the card. The deck's frame
+   * cuts off what spills over.
+   */
+  private zoomVideos(): void {
+    this.slots?.forEach((slot) => {
+      const w = slot.root.clientWidth;
+      const h = slot.root.clientHeight;
+      const zoom = slot.kind === "youtube" && h > 0 ? screenZoom(slot.aspect, w / h) : 1;
+      slot.ytMount.style.transform = zoom > 1.01 ? `scale(${zoom})` : "";
+    });
   }
 
   private youtube(i: number): Promise<YtPlayer> {
@@ -329,7 +349,15 @@ export class PlayerEngine {
       yt.setVolume(volume);
       if (play) yt.loadVideoById(p.videoId);
       else yt.cueVideoById(p.videoId);
+      slot.aspect = undefined;
       this.fitVideos();
+      void videoAspects([p.videoId])
+        .then((found) => {
+          if (slot.loaded !== id) return;
+          slot.aspect = found.get(p.videoId);
+          this.zoomVideos();
+        })
+        .catch(() => undefined);
       if (at > 0) yt.seekTo(at, true);
     } else {
       // Through the EQ when it is on and the song's site allows it. An element already in the EQ
