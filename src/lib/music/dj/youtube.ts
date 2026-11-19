@@ -13,6 +13,8 @@ export type YtPlayer = {
   getPlayerState(): number;
   setPlaybackRate?(rate: number): void;
   getAvailablePlaybackRates?(): number[];
+  /** Tells the player its frame's new size (an iPhone's player doesn't notice by itself). */
+  setSize?(width: number, height: number): void;
   destroy(): void;
 };
 

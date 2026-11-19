@@ -68,6 +68,7 @@ export class PlayerEngine {
   private fadeSecs = 6;
   private timer: number | null = null;
   private startWatch = 0;
+  private sizeWatch: ResizeObserver | null = null;
   private eqPlan: WebEqPlan | null = null;
   private audio: AudioContext | null = null;
   /** Sites that allow the page to process their sound, by origin. */
@@ -112,6 +113,13 @@ export class PlayerEngine {
     };
     this.slots = [make(), make()];
     this.slots.forEach((_, i) => this.freshMedia(i));
+    // The decks grow from the bar's thumbnail to full screen and back. YouTube's player keeps the
+    // size it had when the song loaded on an iPhone (the video sat in a corner of a bigger frame),
+    // so it is told each new size.
+    if (typeof ResizeObserver !== "undefined") {
+      this.sizeWatch = new ResizeObserver(() => this.fitVideos());
+      for (const slot of this.slots) this.sizeWatch.observe(slot.root);
+    }
     this.show();
     this.timer = window.setInterval(() => {
       // A player misbehaving mustn't take the app down: the next tick tries again.
@@ -248,6 +256,23 @@ export class PlayerEngine {
     if (this.audio?.state === "suspended") void this.audio.resume().catch(() => undefined);
   }
 
+  /** Gives each ready YouTube player its frame's current size. */
+  private fitVideos(): void {
+    this.slots?.forEach((slot) => {
+      const w = slot.root.clientWidth;
+      const h = slot.root.clientHeight;
+      if (!slot.yt?.setSize || w < 2 || h < 2) return;
+      try {
+        slot.yt.setSize(w, h);
+      } catch {
+        /* the player is being replaced */
+      }
+      // setSize writes the frame's width and height; it keeps filling its deck regardless.
+      const frame = slot.ytMount.querySelector("iframe");
+      if (frame) frame.style.cssText = "width:100%;height:100%;border:0";
+    });
+  }
+
   private youtube(i: number): Promise<YtPlayer> {
     const slot = this.slots![i];
     slot.ytReady ??= loadYouTube().then(
@@ -268,6 +293,7 @@ export class PlayerEngine {
               // song's end, when the crossfade set the next deck's volume while it loaded.
               onReady: () => {
                 slot.yt = player;
+                this.fitVideos();
                 resolve(player);
               },
               onStateChange: ({ data }: { data: number }) => {
@@ -303,6 +329,7 @@ export class PlayerEngine {
       yt.setVolume(volume);
       if (play) yt.loadVideoById(p.videoId);
       else yt.cueVideoById(p.videoId);
+      this.fitVideos();
       if (at > 0) yt.seekTo(at, true);
     } else {
       // Through the EQ when it is on and the song's site allows it. An element already in the EQ
@@ -554,6 +581,8 @@ export class PlayerEngine {
 
   destroy(): void {
     if (this.timer) window.clearInterval(this.timer);
+    this.sizeWatch?.disconnect();
+    window.clearTimeout(this.startWatch);
     document.removeEventListener("visibilitychange", this.onVisible);
     window.removeEventListener("pageshow", this.onVisible);
     this.each((slot) => {
