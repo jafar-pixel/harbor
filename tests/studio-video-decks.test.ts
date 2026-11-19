@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import ts from "typescript";
 import { readStudioDrag, STUDIO_DRAG_TYPE } from "../src/lib/music/studio/drag.ts";
+import * as videoZoom from "../src/lib/music/video-zoom.ts";
 
 type Deck = { song: object | null; playing: boolean };
 type VideoDecks = {
@@ -25,6 +26,7 @@ function load(): VideoDecks {
     "../dj/youtube": { loadYouTube: async () => ({}), youtubeFrame: () => null },
     "../player/store": { pausePlayer: () => {} },
     "./engine": { xfadeGains: () => [1, 1] },
+    "../video-zoom": videoZoom,
   };
   const exports = {} as VideoDecks;
   new Function("require", "exports", compiled)((id: string) => {
