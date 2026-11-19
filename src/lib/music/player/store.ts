@@ -201,6 +201,10 @@ export function attachPlayer(host: HTMLElement): () => void {
         }
         afterSong(true);
       },
+      blocked: () => {
+        // The browser didn't let the song start on its own: show Play, which starts it at once.
+        set({ playing: false, loading: false });
+      },
       advanced: () => {
         failures = 0;
         if (state.sleepAfterSong) {
@@ -453,8 +457,9 @@ export function togglePlay(): void {
     if (state.queue.length) void startAt(0);
     return;
   }
-  // A queue restored from last time has nothing loaded yet.
-  if (state.duration === 0 && !state.loading) {
+  // A queue restored from last time has nothing loaded yet. (A song that is loaded but was kept
+  // from starting plays from the engine, inside this tap: looking it up again would lose the tap.)
+  if (state.duration === 0 && !state.loading && !engine.hasLoaded()) {
     void startAt(state.index, state.position);
     return;
   }

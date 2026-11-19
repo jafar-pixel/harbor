@@ -1,5 +1,8 @@
 import { crossfade } from "../dj/vibes";
 import { loadYouTube, youtubeFrame, YT_ENDED, YT_PLAYING, type YtPlayer } from "../dj/youtube";
+
+/** YouTube's "buffering" state: loading, not refused. */
+const YT_BUFFERING = 3;
 import type { Playable } from "./types";
 import { dbToGain, sameOriginMedia, type WebEqPlan } from "../web-eq";
 
@@ -17,6 +20,12 @@ export type EngineEvents = {
   failed: () => void;
   /** A crossfade finished: the next song is now live. */
   advanced: () => void;
+  /**
+   * The song was asked to play but the browser kept it from starting (a phone allows sound only
+   * straight after a tap, and looking the song up used that tap). It is loaded: one tap on Play
+   * starts it.
+   */
+  blocked?: () => void;
   /** Called every tick with the live deck's time. */
   time: (position: number, duration: number, playing: boolean) => void;
 };
@@ -58,6 +67,7 @@ export class PlayerEngine {
   private wantPlaying = false;
   private fadeSecs = 6;
   private timer: number | null = null;
+  private startWatch = 0;
   private eqPlan: WebEqPlan | null = null;
   private audio: AudioContext | null = null;
   /** Sites that allow the page to process their sound, by origin. */
@@ -357,7 +367,37 @@ export class PlayerEngine {
     this.wantPlaying = play;
     this.stopSlot(1 - this.live);
     this.show();
-    await this.loadInto(this.live, p, at, play, this.volume);
+    const live = this.live;
+    await this.loadInto(live, p, at, play, this.volume);
+    if (play) this.watchStart(live, this.slots[live].loaded);
+  }
+
+  /** After asking a song to play: if it never started (and isn't still loading), say so. */
+  private watchStart(i: number, loaded: string | null): void {
+    window.clearTimeout(this.startWatch);
+    this.startWatch = window.setTimeout(() => {
+      const slot = this.slots?.[i];
+      if (!slot || !this.wantPlaying || this.live !== i || slot.loaded !== loaded) return;
+      if (this.times(i).playing || this.fade) return;
+      if (slot.kind === "youtube") {
+        let state = -1;
+        try {
+          state = slot.yt?.getPlayerState() ?? -1;
+        } catch {
+          /* not ready: counts as not started */
+        }
+        // Buffering or paused by the viewer elsewhere: not a blocked start.
+        if (state === YT_BUFFERING) return;
+      }
+      this.wantPlaying = false;
+      this.events.blocked?.();
+    }, 4000);
+  }
+
+  /** Whether the live deck has a song loaded (Play can start it at once, inside the tap). */
+  hasLoaded(): boolean {
+    const slot = this.slots?.[this.live];
+    return !!slot?.loaded;
   }
 
   /** The song after this one, for the crossfade (null: none, stop at the end). */
