@@ -8,6 +8,7 @@ import android.graphics.Point
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.Display
 import android.view.Gravity
 import android.view.KeyEvent
@@ -35,6 +36,7 @@ import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -467,6 +469,20 @@ class NativePlayer(
         if (mode != Mode.FULL || !view.isControllerFullyVisible) return false
         view.hideController()
         return true
+    }
+
+    /**
+     * Which server a failed stream came from, in adb logcat (tag "JLPlayer"): the host and the
+     * first path segment only. Debrid and add-on links carry the viewer's key further down the
+     * path, so nothing past the first segment is ever logged.
+     */
+    private fun logSourceError(error: PlaybackException) {
+        var cause: Throwable? = error
+        while (cause != null && cause !is HttpDataSource.InvalidResponseCodeException) cause = cause.cause
+        val http = cause as? HttpDataSource.InvalidResponseCodeException
+        val uri = http?.dataSpec?.uri ?: currentUrl?.let { runCatching { Uri.parse(it) }.getOrNull() }
+        val where = uri?.let { "${it.host}/${it.pathSegments.firstOrNull() ?: ""}" } ?: "unknown"
+        Log.w("JLPlayer", "Stream failed: ${http?.responseCode ?: error.errorCodeName} from $where")
     }
 
     fun play(url: String, headers: Map<String, String>, title: String, startMs: Long) {
@@ -1188,6 +1204,7 @@ private fun speedName(speed: Float): String =
         }
 
         override fun onPlayerError(error: PlaybackException) {
+            logSourceError(error)
             val p = player ?: return
             // A live stream that fell out of the playlist window: rejoin at the live edge.
             if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
