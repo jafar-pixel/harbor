@@ -8,7 +8,7 @@ import { useTogether } from "@/lib/together/provider";
 import { useView, type PlayEpisode, type PlayerSrc } from "@/lib/view";
 import { isLivePlaybackSrc } from "@/lib/player/live-src";
 import { playError, streamIdentity, type PickerError } from "@/views/play-picker/picker-utils";
-import { useAutoCandidates } from "@/views/play-picker/use-auto-candidates";
+import { bestPictureFor, useAutoCandidates } from "@/views/play-picker/use-auto-candidates";
 import { useAutoFire } from "@/views/play-picker/use-auto-fire";
 import { usePickHandler } from "@/views/play-picker/use-pick-handler";
 import { useRoomInvite } from "@/views/play-picker/use-room-invite";
@@ -133,6 +133,7 @@ export function useBpStreamPlay(params: {
     preferredLangs: s.preferredLangs,
     hostSource: hostSourceForMedia,
     prefer1080: !!kid,
+    preferBest: bestPictureFor(settings.tvMaxResolution),
     preferPacks: seasonLock,
     season,
     episode: episodeNo,

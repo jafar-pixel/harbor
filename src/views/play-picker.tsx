@@ -76,7 +76,7 @@ import { SourceDrawer } from "./play-picker/source-drawer";
 import { TierStrip } from "./play-picker/tier-strip";
 import { usePickHandler, type ResolvingSelection } from "./play-picker/use-pick-handler";
 import { useActiveKid } from "@/lib/profiles";
-import { useAutoCandidates } from "./play-picker/use-auto-candidates";
+import { bestPictureFor, useAutoCandidates } from "./play-picker/use-auto-candidates";
 import { useAutoFire } from "./play-picker/use-auto-fire";
 import { useRoomInvite } from "./play-picker/use-room-invite";
 import { declaresStream, useAddons } from "./play-picker/use-addons";
@@ -497,6 +497,7 @@ export function PlayPicker({
     preferredLangs,
     hostSource: hostSourceForMedia,
     prefer1080: !!kidProfile,
+    preferBest: bestPictureFor(settings.tvMaxResolution),
     preferPacks: seasonLock,
     season: !isAnimeMetaId ? (episode?.season ?? null) : null,
     episode: !isAnimeMetaId ? (episode?.episode ?? null) : null,

@@ -15,9 +15,29 @@ import { hasInstantMarker, isWatchHub, needsDownload, streamMatchesLangs } from 
 import { titleTokensPresent } from "@/lib/streams/trust";
 import { episodeSpanContains } from "@/lib/episode-span";
 import { isProviderVodStream, sourceOrderRank } from "@/lib/streams/source-order";
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 
 const RES_PREF: Record<string, number> = { "1080p": 0, "720p": 1, "480p": 2, "4K": 3, SD: 4 };
+/** Best picture first, for devices with a real video player (the TV app, the Windows app). */
+const RES_BEST: Record<string, number> = { "4K": 0, "1080p": 1, "720p": 2, "480p": 3, SD: 4 };
+/** The same with the TV's "max resolution" at 1080p: 4K goes after 1080p rather than first. */
+const RES_BEST_1080: Record<string, number> = { "1080p": 0, "4K": 1, "720p": 2, "480p": 3, SD: 4 };
+/** The same with it at 720p. */
+const RES_BEST_720: Record<string, number> = { "720p": 0, "1080p": 1, "4K": 2, "480p": 3, SD: 4 };
 const LIKELY_PACK_BYTES = 12 * 1024 * 1024 * 1024;
+
+/**
+ * Whether the auto-pick should go for the best picture: on the TV app (up to its max-resolution
+ * setting) and in the Windows app, whose players play 4K and HDR. A browser can't play most 4K
+ * files, so there the order stays as it was.
+ */
+export function bestPictureFor(
+  tvMaxResolution: "auto" | "1080p" | "720p",
+): false | "auto" | "1080p" | "720p" {
+  if (nativeTvAvailable()) return tvMaxResolution;
+  if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) return "auto";
+  return false;
+}
 
 export function useAutoCandidates(args: {
   filteredPicker: {
@@ -35,6 +55,11 @@ export function useAutoCandidates(args: {
   preferredLangs: string[];
   hostSource?: SourceDescriptor | null;
   prefer1080?: boolean;
+  /**
+   * Among equally ready copies, the best picture wins (4K first) on a device whose player plays
+   * it; "1080p"/"720p" follow the TV's max-resolution setting. Off in a browser.
+   */
+  preferBest?: false | "auto" | "1080p" | "720p";
   preferPacks?: boolean;
   season?: number | null;
   episode?: number | null;
@@ -57,6 +82,7 @@ export function useAutoCandidates(args: {
     preferredLangs,
     hostSource,
     prefer1080,
+    preferBest,
     preferPacks,
     season,
     episode,
@@ -151,6 +177,13 @@ export function useAutoCandidates(args: {
       if (prefer1080) {
         const dr = (RES_PREF[a.resolution] ?? 5) - (RES_PREF[b.resolution] ?? 5);
         if (dr !== 0) return dr;
+      } else if (preferBest) {
+        // Picture before add-on order: otherwise a 1080p link from one add-on beat a 4K copy
+        // from Torrentio just because of where the add-ons sit.
+        const res =
+          preferBest === "1080p" ? RES_BEST_1080 : preferBest === "720p" ? RES_BEST_720 : RES_BEST;
+        const dr = (res[a.resolution] ?? 5) - (res[b.resolution] ?? 5);
+        if (dr !== 0) return dr;
       }
       if (hasStrongAddon) {
         const at = isTorrentioStream(a) ? 1 : 0;
@@ -214,6 +247,7 @@ export function useAutoCandidates(args: {
     preferredLangs,
     hostSource,
     prefer1080,
+    preferBest,
     preferPacks,
     season,
     episode,
