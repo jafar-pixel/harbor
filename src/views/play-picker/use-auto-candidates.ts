@@ -222,9 +222,25 @@ export function useAutoCandidates(args: {
       ? (filteredPicker.allRaw.find((s) => matchSource(s, sourceEntry)) ?? null)
       : null;
     const instantPlayable = (s: ScoredStream | null) => !!s && (isCached(s) || !!s.url);
+    // Going for the best picture: the release played last time (or the one this series used) is
+    // kept only while it is as good as the best ready copy; a better one (4K Dolby Vision over
+    // last episode's 1080p pack) wins instead of being held back by the habit.
+    const resTable = preferBest
+      ? preferBest === "1080p"
+        ? RES_BEST_1080
+        : preferBest === "720p"
+          ? RES_BEST_720
+          : RES_BEST
+      : null;
+    const bestReady = resTable ? sorted.find((s) => instantPlayable(s) && !isStreamDead(s)) : null;
+    const asGoodAsBest = (s: ScoredStream | null) =>
+      !resTable ||
+      !bestReady ||
+      !s ||
+      (resTable[s.resolution] ?? 5) <= (resTable[bestReady.resolution] ?? 5);
     if (!matchScores) {
-      if (instantPlayable(sourceMatch)) push(sourceMatch);
-      if (instantPlayable(previousMatch)) push(previousMatch);
+      if (instantPlayable(sourceMatch) && asGoodAsBest(sourceMatch)) push(sourceMatch);
+      if (instantPlayable(previousMatch) && asGoodAsBest(previousMatch)) push(previousMatch);
     }
     for (const s of sorted) push(s);
     if (out.length > 0) return out;
