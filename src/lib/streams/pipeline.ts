@@ -73,6 +73,7 @@ function finalizeWithRescue(
     score.activeDebrids,
     preferAac(),
     score.respectAddonOrder === true,
+    score.bestPicture ?? false,
   );
   dlog(`[pipeline] early-leak rescue: restored ${rescued.size} corroborated high-res stream(s)`);
   return { picker: newPicker, rejected: rejected.filter((r) => !rescued.has(r.stream)) };
@@ -263,6 +264,7 @@ export async function runPipeline(
       input.score.activeDebrids,
       preferAac(),
       input.score.respectAddonOrder === true,
+      input.score.bestPicture ?? false,
     );
     const fin = finalizeWithRescue(picker, rejected, input.trust ?? {}, input.score);
     return {
@@ -485,6 +487,7 @@ export async function runPipeline(
     input.score.activeDebrids,
     preferAac(),
     input.score.respectAddonOrder === true,
+    input.score.bestPicture ?? false,
   );
   const fin = finalizeWithRescue(picker, rejected, input.trust ?? {}, input.score);
   restoreCacheVerification(fin.picker);

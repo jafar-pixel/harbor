@@ -1,4 +1,5 @@
 import { addonBasesForOrigin, type Addon } from "@/lib/addons";
+import { bestPictureFor } from "./best-picture";
 import { currentWebPlaybackEnv } from "@/lib/player/web-playable";
 import { isAddonNativeMeta, type Meta } from "@/lib/cinemeta";
 import type { DebridStore } from "@/lib/debrid/types";
@@ -253,7 +254,12 @@ export function buildEpisodePipelineInput(params: {
         : undefined,
       preferAddonId: meta.addonOrigin?.id,
       preferredReleaseGroup: prevGroup,
-      respectAddonOrder: settings.streamSort === "addon",
+      // Where the player plays 4K and HDR (TV and Windows apps) the list is by picture quality, not
+      // add-on order: in add-on order the Shield showed rows of 1080p from its first add-ons with
+      // the 4K Dolby Vision copies far below.
+      respectAddonOrder:
+        settings.streamSort === "addon" && !bestPictureFor(settings.tvMaxResolution),
+      bestPicture: bestPictureFor(settings.tvMaxResolution),
     },
   };
 }

@@ -15,7 +15,9 @@ import { hasInstantMarker, isWatchHub, needsDownload, streamMatchesLangs } from 
 import { titleTokensPresent } from "@/lib/streams/trust";
 import { episodeSpanContains } from "@/lib/episode-span";
 import { isProviderVodStream, sourceOrderRank } from "@/lib/streams/source-order";
-import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
+import { bestPictureFor } from "@/lib/streams/best-picture";
+
+export { bestPictureFor };
 
 const RES_PREF: Record<string, number> = { "1080p": 0, "720p": 1, "480p": 2, "4K": 3, SD: 4 };
 /** Best picture first, for devices with a real video player (the TV app, the Windows app). */
@@ -25,19 +27,6 @@ const RES_BEST_1080: Record<string, number> = { "1080p": 0, "4K": 1, "720p": 2, 
 /** The same with it at 720p. */
 const RES_BEST_720: Record<string, number> = { "720p": 0, "1080p": 1, "4K": 2, "480p": 3, SD: 4 };
 const LIKELY_PACK_BYTES = 12 * 1024 * 1024 * 1024;
-
-/**
- * Whether the auto-pick should go for the best picture: on the TV app (up to its max-resolution
- * setting) and in the Windows app, whose players play 4K and HDR. A browser can't play most 4K
- * files, so there the order stays as it was.
- */
-export function bestPictureFor(
-  tvMaxResolution: "auto" | "1080p" | "720p",
-): false | "auto" | "1080p" | "720p" {
-  if (nativeTvAvailable()) return tvMaxResolution;
-  if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) return "auto";
-  return false;
-}
 
 export function useAutoCandidates(args: {
   filteredPicker: {

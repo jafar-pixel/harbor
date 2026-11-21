@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { bestPictureFor } from "@/lib/streams/best-picture";
 import type { Addon } from "@/lib/addons";
 import {
   QUALITY_ORDER,
@@ -163,7 +164,10 @@ export function useBpStreamFilters(params: {
   ]);
 
   const anyAddonRanked = useMemo(() => (addons ?? []).some((a) => isAddonRanked(a)), [addons]);
-  const addonOrderMode = settings.streamSort === "addon" || anyAddonRanked;
+  // On the TV and Windows apps the list stays in best-picture order (best-picture.ts).
+  const addonOrderMode =
+    (settings.streamSort === "addon" || anyAddonRanked) &&
+    !bestPictureFor(settings.tvMaxResolution);
 
   const displayStreams = useMemo(() => {
     const ordered =

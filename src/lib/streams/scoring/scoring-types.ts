@@ -22,6 +22,8 @@ export type ScoreOptions = {
   preferAddonId?: string;
   preferredReleaseGroup?: string;
   respectAddonOrder?: boolean;
+  /** Where the player plays 4K and HDR: the stream to play is the best ready picture (best-picture.ts). */
+  bestPicture?: import("../best-picture").BestPicture;
   /** The browser this plays in, when it is the web build (see player/web-playable). */
   webPlayback?: import("@/lib/player/web-playable").WebPlaybackEnv;
 };

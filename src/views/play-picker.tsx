@@ -401,7 +401,10 @@ export function PlayPicker({
   ]);
 
   const anyAddonRanked = useMemo(() => (addons ?? []).some((a) => isAddonRanked(a)), [addons]);
-  const addonOrderMode = settings.streamSort === "addon" || anyAddonRanked;
+  // On the TV and Windows apps the list stays in best-picture order (best-picture.ts).
+  const addonOrderMode =
+    (settings.streamSort === "addon" || anyAddonRanked) &&
+    !bestPictureFor(settings.tvMaxResolution);
   const displayStreams = useMemo(() => {
     const all = filteredPicker?.all ?? [];
     const base = addonOrderMode && result ? orderByAddonNative(all, result.raw.addon, addons) : all;
