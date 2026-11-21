@@ -10,7 +10,6 @@ import {
   noteDirectFailure,
 } from "./direct-host-policy";
 import { hasSensitiveRequestHeaders, shouldFallbackToPluginHttp } from "./fetch-fallback-policy";
-import { nativeFetchUrl } from "./native-fetch";
 import {
   isSafeProviderSubtitleUrl,
   SUBTITLE_PUBLIC_NETWORK_HEADER,
@@ -178,22 +177,6 @@ function rewriteForWeb(url: string, init?: RequestInit): { url: string; init?: R
     parsed = new URL(url);
   } catch {
     return { url, init };
-  }
-  // The TV app fetches other sites itself (NativeFetch.kt), like the Windows app does: add-on
-  // lookups (Torrentio, Absolute Cinema...) no longer go through the website's /api-proxy, which
-  // failed for them on the Shield, nor depend on an add-on allowing pages to read it. Only plain
-  // GETs go this way; requests carrying a login (debrid APIs) keep the proxy.
-  if (
-    parsed.origin !== window.location.origin &&
-    (init?.method ?? "GET").toUpperCase() === "GET" &&
-    !init?.body &&
-    !hasSensitiveRequestHeaders(init?.headers)
-  ) {
-    const native = nativeFetchUrl(url, navigator.userAgent);
-    if (native) {
-      const { headers: _dropped, ...rest } = init ?? {};
-      return { url: native, init: rest };
-    }
   }
   if (DIRECT_HOSTS.has(parsed.hostname)) return { url, init };
   const proxiable =
