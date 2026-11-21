@@ -1361,6 +1361,25 @@ export function useKeyboardNavigation(options: TVNavigationOptions = {}) {
         return;
       }
 
+      // A real keyboard (on the Shield, a PC): typing a character on a highlighted search box is
+      // the explicit start of typing, so it goes straight in instead of being swallowed until OK
+      // is pressed. The remote sends only arrows and OK, so moving over a box still never starts
+      // typing by itself.
+      if (
+        active &&
+        activeIsSearch &&
+        !isEditingSearch &&
+        active.hasAttribute("data-search-nav-mode") &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !e.isComposing &&
+        (e.key.length === 1 || e.key === "Backspace")
+      ) {
+        enterSearchEditMode(active);
+        return;
+      }
+
       if (e.key === "Escape" && isEditingSearch) {
         e.preventDefault();
         e.stopPropagation();
