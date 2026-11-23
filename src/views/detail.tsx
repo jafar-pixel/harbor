@@ -1415,7 +1415,10 @@ export function DetailView({
   const smartPlay = useCallback(
     async (forcePicker = false) => {
       if (inSession) claimHost(true);
-      const opts = { autoPlay: !forcePicker && (isTvApp() || settings.instantPlay), resume: !forcePicker };
+      const opts = {
+        autoPlay: !forcePicker && (isTvApp() || settings.instantPlay),
+        resume: !forcePicker,
+      };
       const launch = async (episode: PlayEpisode | undefined) => {
         const stream = () => openPicker(playMeta, episode, opts);
         if (forcePicker) {
