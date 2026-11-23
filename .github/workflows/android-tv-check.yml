@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "android-tv/**"
+      - "src/**"
+      - "tests/**"
       - ".github/workflows/android-tv-check.yml"
 
 permissions:
@@ -15,6 +17,22 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify source lookup and live sports channels
+        run: node --experimental-loader ./scripts/node-test-loader.mjs --test tests/picker-pipeline-concurrency.test.mjs tests/jl-live-sports-channels.test.ts tests/jl-sports-rank.test.ts
+      - name: Bundle the playback code under review into the test APK
+        env:
+          VITE_JL_SUPABASE_URL: ${{ vars.JL_SUPABASE_URL }}
+          VITE_JL_SUPABASE_ANON_KEY: ${{ vars.JL_SUPABASE_ANON_KEY }}
+        run: |
+          pnpm run build
+          python3 android-tv/tools/bundle_site.py dist android-tv/app/src/main/assets/site
+          test -s android-tv/app/src/main/assets/site/index.html
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
