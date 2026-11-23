@@ -335,7 +335,7 @@ function NativePlayerView({
     src,
     snap,
     stremioServerTranscode: settings.stremioServerTranscode,
-    instantPlay: settings.instantPlay,
+    instantPlay: settings.instantPlay || src.autoFired === true,
     inRoom: roomSnapshot.state === "joined",
     debrids,
     selfFrameReadyRef,
