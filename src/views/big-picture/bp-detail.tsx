@@ -1,3 +1,4 @@
+import { isTvApp } from "@/lib/platform";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { Meta } from "@/lib/cinemeta";
 import { type PlayEpisode } from "@/lib/view";
@@ -154,7 +155,7 @@ export function BpDetail({
       (ep.season === mark.ep.season && ep.episode === mark.ep.episode);
     const auto =
       settings.playbackSourcePreference === "online" &&
-      (settings.instantPlay || (fromStrip && settings.seasonSourceLock));
+      (isTvApp() || settings.instantPlay || (fromStrip && settings.seasonSourceLock));
     onSources(meta, ep, onResumeTarget, auto, true);
   };
 
