@@ -313,6 +313,26 @@ function scanTitles(
 
 const BATCH = PARALLEL * 3;
 
+let showIds: Promise<number[]> | null = null;
+
+/** Wikidata's shows, then the named stars' own shows (from their TMDB credits) not yet among them. */
+function showCandidates(key: string, wikidataShows: readonly number[]): Promise<number[]> {
+  if (showIds) return showIds;
+  showIds = showLists(key)
+    .catch(() => ({ series: [] as TvCredit[], tv: [] as TvCredit[] }))
+    .then((lists) => {
+      const ids = [...wikidataShows];
+      const seen = new Set(ids);
+      for (const credit of [...lists.series, ...lists.tv]) {
+        if (seen.has(credit.id)) continue;
+        seen.add(credit.id);
+        ids.push(credit.id);
+      }
+      return ids;
+    });
+  return showIds;
+}
+
 /** One page of a Black Box catalog; empty without a TMDB key or past the end. */
 export async function blackBoxPage(kind: BlackBoxKind, page: number): Promise<Meta[]> {
   const key = loadStoredSettings().tmdbKey?.trim() ?? "";
@@ -343,8 +363,10 @@ export async function blackBoxPage(kind: BlackBoxKind, page: number): Promise<Me
       want,
     );
   } else if (titles) {
-    const fromWikidata = (n: number) => Promise.resolve(titles.tv.slice(n, n + BATCH));
-    kept = await scanTitles(key, "wd-tv", "tv", fromWikidata, kind, want);
+    // Wikidata records few TV casts (about 400 shows), so the named stars' own shows follow.
+    const candidates = showCandidates(key, titles.tv);
+    const fromBoth = async (n: number) => (await candidates).slice(n, n + BATCH);
+    kept = await scanTitles(key, "wd-tv", "tv", fromBoth, kind, want);
   } else {
     const list = (await showLists(key))[kind];
     return list.slice(from, from + BLACK_BOX_PAGE_SIZE).map((s) => seriesMeta(s));
