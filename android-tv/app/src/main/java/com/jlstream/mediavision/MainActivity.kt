@@ -205,6 +205,12 @@ class MainActivity : AppCompatActivity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             lastKeyFromKeyboard = isLetterKeyboard(event)
+            // Typing on a real keyboard: the on-screen one goes away. While it is up Android hands
+            // it the keyboard's letters first, so they landed in it instead of the page's box.
+            if (lastKeyFromKeyboard) {
+                (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager)
+                    .hideSoftInputFromWindow(web.windowToken, 0)
+            }
             // Which device each press came from, for typing problems (adb logcat -s JLKeys). The
             // letter itself is never logged.
             val kind = if (event.isPrintingKey) "char" else KeyEvent.keyCodeToString(event.keyCode)
@@ -434,8 +440,8 @@ class MainActivity : AppCompatActivity() {
      */
     private fun isLetterKeyboard(event: KeyEvent): Boolean {
         val device = event.device ?: return false
-        return !device.isVirtual && device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC &&
-            !event.isFromSource(InputDevice.SOURCE_DPAD)
+        // Not filtered by source: a keyboard with arrow keys reports itself as a D-pad as well.
+        return !device.isVirtual && device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC
     }
 
     private fun tryStart(intent: Intent): Boolean = try {

@@ -132,7 +132,12 @@ export function CinematicOverlay() {
                 <Monitor size={15} strokeWidth={2.2} />
               </IconBtn>
             )}
-            <IconBtn onClick={() => setSearchOpen(true)} label={t("common.search")} active={false}>
+            <IconBtn
+              onClick={() => setSearchOpen(true)}
+              label={t("common.search")}
+              active={false}
+              opensSearch
+            >
               <Search size={15} strokeWidth={2.2} />
             </IconBtn>
             <AccountMenu
@@ -280,17 +285,21 @@ function IconBtn({
   onClick,
   label,
   active,
+  opensSearch,
   children,
 }: {
   onClick: () => void;
   label: string;
   active: boolean;
+  /** Typing a letter on it opens search with that letter (keyboard-navigation.ts). */
+  opensSearch?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-harbor-search={opensSearch || undefined}
       aria-label={label}
       title={label}
       className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${

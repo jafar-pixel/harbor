@@ -193,6 +193,7 @@ export function SideRail() {
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
+              data-harbor-search
               aria-label={t("common.search")}
               className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-elevated/50 hover:text-ink"
             >

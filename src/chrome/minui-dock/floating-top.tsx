@@ -76,7 +76,7 @@ export function FloatingTop() {
             <Monitor size={16} strokeWidth={2.2} />
           </PillBtn>
         )}
-        <PillBtn label={t("common.search")} onClick={() => setSearchOpen(true)}>
+        <PillBtn label={t("common.search")} onClick={() => setSearchOpen(true)} opensSearch>
           <Search size={16} strokeWidth={2.2} />
           <span className="hidden sm:inline">{t("common.search")}</span>
         </PillBtn>
@@ -122,16 +122,20 @@ export function FloatingTop() {
 function PillBtn({
   onClick,
   label,
+  opensSearch,
   children,
 }: {
   onClick: () => void;
   label: string;
+  /** Typing a letter on it opens search with that letter (keyboard-navigation.ts). */
+  opensSearch?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-harbor-search={opensSearch || undefined}
       aria-label={label}
       title={label}
       className="flex h-10 items-center gap-2 rounded-full px-2 text-[13px] font-semibold text-ink-muted transition-colors hover:text-ink"

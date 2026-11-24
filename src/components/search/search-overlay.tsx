@@ -4,7 +4,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { createPortal } from "react-dom";
 import { TvModalClose } from "@/components/tv-modal-close";
-import { tvFocus } from "@/lib/keyboard-navigation";
+import { SEARCH_TYPE_EVENT, tvFocus } from "@/lib/keyboard-navigation";
 import { useT } from "@/lib/i18n";
 import type { Meta } from "@/lib/cinemeta";
 import { useSearch } from "@/lib/search-context";
@@ -108,6 +108,19 @@ export function SearchOverlay() {
     if (query.trim() && results) recordRecent(query);
     closeForNavigation();
   };
+
+  // A letter typed on a real keyboard while a Search button was highlighted opens search with it;
+  // a second letter that lands before the box has focus is added, not lost.
+  useEffect(() => {
+    const onType = (e: Event) => {
+      const text = (e as CustomEvent<{ text?: string }>).detail?.text;
+      if (!text) return;
+      setQuery(open ? query + text : text);
+      setOpen(true);
+    };
+    window.addEventListener(SEARCH_TYPE_EVENT, onType);
+    return () => window.removeEventListener(SEARCH_TYPE_EVENT, onType);
+  }, [open, query, setOpen, setQuery]);
 
   useEffect(() => {
     if (!open) return;
