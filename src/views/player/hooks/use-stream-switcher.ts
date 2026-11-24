@@ -1,3 +1,4 @@
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { PlayerBridge, PlayerSnapshot } from "@/lib/player/bridge";
 import { getPlaybackPosition, usePlaybackFlag } from "@/lib/player/playback-clock";
@@ -113,7 +114,8 @@ export function useStreamSwitcher(params: {
         }
       }
       let nextProxySessionId: string | null = null;
-      const hasProxyHeaders = !!r.data.headers && Object.keys(r.data.headers).length > 0;
+      const hasProxyHeaders =
+        !nativeTvAvailable() && !!r.data.headers && Object.keys(r.data.headers).length > 0;
       if (hasProxyHeaders) {
         try {
           const proxied = await registerStreamProxy(r.data.url, r.data.headers);
@@ -139,6 +141,7 @@ export function useStreamSwitcher(params: {
         const resumeAt = !currentIsStub && current > 5 ? current : savedSec;
         await b.load({
           url: playUrl,
+          headers: nativeTvAvailable() ? r.data.headers : undefined,
           subtitles: r.data.subtitles,
           notWebReady: r.data.notWebReady,
           startAtSec: resumeAt > 5 ? resumeAt : undefined,
