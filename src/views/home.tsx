@@ -112,8 +112,6 @@ import type { HomeRow } from "./home/home-types";
 import { mergeLoadedHomeRows } from "./home/merge-loaded-rows";
 import { RowSkeleton } from "./home/row-skeleton";
 import { SetupSources, YourApps } from "./home/your-apps";
-import { useBlackBox } from "./home/use-black-box";
-import { CatalogShelf } from "./catalogs/catalog-shelf";
 import { AddSourceModal } from "@/components/add-source-modal";
 import type { SourceRow } from "@/lib/custom-sources";
 
@@ -837,12 +835,7 @@ export function Home({
     animeRows,
   ]);
 
-  // The Black Box is Home's main feature: its titles fill the Featured hero and its rows come
-  // right under it. Without a TMDB key it has nothing, and the usual hero shows.
-  const blackBox = useBlackBox();
-
   const heroSlides = useMemo<Slide[]>(() => {
-    if (blackBox.slides.length > 0) return blackBox.slides;
     const pool = (
       heroSourceRow
         ? [
@@ -872,7 +865,7 @@ export function Home({
       if (out.length >= 4) break;
     }
     return out;
-  }, [heroPool, heroSourceRow, blackBox.slides]);
+  }, [heroPool, heroSourceRow]);
 
   const scrollRef = useRef<HTMLElement>(null);
   const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
@@ -1286,13 +1279,6 @@ export function Home({
             !showHero) &&
             seasonalInvitation}
           {experiencePlacement === "after-hero" && experienceShelf}
-          {settings.homeMode !== "classic" && blackBox.catalogs.length > 0 && (
-            <section data-scroll-anchor="black-box" aria-label={t("The Black Box")}>
-              {blackBox.catalogs.map((c) => (
-                <CatalogShelf key={c.key} catalog={c} />
-              ))}
-            </section>
-          )}
           {!editMode && <SetupSources />}
           {!cwTop && cwBlock}
           {!editMode && <YourApps />}

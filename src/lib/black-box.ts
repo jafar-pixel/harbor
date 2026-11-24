@@ -1,6 +1,6 @@
 /**
- * The Black Box: JL's own catalogs of Black film and television (Movies, Series, TV), the Home
- * page's main feature: its hero and the rows under it (views/home/use-black-box.ts). They gather
+ * The Black Box: JL's own catalogs of Black film and television (Movies, Series, TV), named Black
+ * Box beside the addons' catalogs in Catalogs and Discover's catalog picker. They gather
  * the work of the Black actors, actresses and hosts in BLACK_BOX_PEOPLE from TMDB, with the
  * viewer's TMDB key (Settings); without a key there is nothing to show.
  *
@@ -11,6 +11,7 @@
 import type { Meta } from "./cinemeta";
 import {
   BLACK_BOX_PAGE_SIZE,
+  blackBoxCatalogsFor,
   BLACK_BOX_PEOPLE,
   blackBoxMovieParams,
   nameKey,
@@ -134,4 +135,9 @@ export async function blackBoxPage(kind: BlackBoxKind, page: number): Promise<Me
   const list = (await showLists(key))[kind];
   const from = (Math.max(1, page) - 1) * BLACK_BOX_PAGE_SIZE;
   return list.slice(from, from + BLACK_BOX_PAGE_SIZE).map((s) => seriesMeta(s));
+}
+
+/** The Black Box's catalogs in Catalogs' shape, or none without a TMDB key. */
+export function blackBoxCatalogs() {
+  return blackBoxCatalogsFor(!!loadStoredSettings().tmdbKey?.trim());
 }

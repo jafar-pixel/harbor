@@ -6,7 +6,7 @@
 
 /** The `base` of a Black Box catalog; never an addon address. */
 export const BLACK_BOX_BASE = "jl-black-box";
-export const BLACK_BOX_NAME = "The Black Box";
+export const BLACK_BOX_NAME = "Black Box";
 
 export type BlackBoxKind = "movies" | "series" | "tv";
 
@@ -343,9 +343,9 @@ export function isBlackBoxKind(id: string): id is BlackBoxKind {
 }
 
 const CATALOGS: ReadonlyArray<{ kind: BlackBoxKind; type: string; name: string }> = [
-  { kind: "movies", type: "movie", name: "Black Box Movies" },
-  { kind: "series", type: "series", name: "Black Box Series" },
-  { kind: "tv", type: "tv", name: "Black Box TV" },
+  { kind: "movies", type: "movie", name: "Black Box" },
+  { kind: "series", type: "series", name: "Black Box" },
+  { kind: "tv", type: "tv", name: "Black Box" },
 ];
 
 /** The Black Box's entries in Catalogs, or none when there is no TMDB key to list them with. */

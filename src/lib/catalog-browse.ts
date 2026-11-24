@@ -5,8 +5,7 @@ import {
   type CatalogExtra,
 } from "./addons";
 import type { Meta, MetaType } from "./cinemeta";
-// The Black Box lives on Home (its main feature), not in Catalogs; its rows still page through here.
-import { BLACK_BOX_BASE, blackBoxPage, isBlackBoxKind } from "./black-box";
+import { BLACK_BOX_BASE, blackBoxCatalogs, blackBoxPage, isBlackBoxKind } from "./black-box";
 import {
   extensionCatalogueBase,
   extensionCataloguePage,
@@ -87,7 +86,8 @@ export async function listBrowseCatalogs(
   authKey: string | null,
   opts: { pluginRows: boolean },
 ): Promise<BrowseCatalog[]> {
-  const out: BrowseCatalog[] = extensionCatalogs(opts.pluginRows);
+  // Black Box first: JL's own catalog, listed beside the addons' (Netflix and the rest) for each type.
+  const out: BrowseCatalog[] = [...blackBoxCatalogs(), ...extensionCatalogs(opts.pluginRows)];
   const addons = await gatherCatalogAddons(authKey).catch(() => []);
   for (const addon of addons) {
     const base = addon.transportUrl.replace(/\/manifest\.json$/, "");
