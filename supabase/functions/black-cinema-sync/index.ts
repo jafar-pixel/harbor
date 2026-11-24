@@ -7,8 +7,9 @@
 //   refresh  re-reads found titles every few days: popularity (Top Ten, Trending) and providers.
 //   run      lookup, then refresh: what the schedule calls.
 //
-// Called by pg_cron through pg_net with the x-sync-token header (BLACK_CINEMA_SYNC_TOKEN); it
-// does its own authentication, so the JWT check is off. Secrets never leave this function.
+// Called by pg_cron through pg_net with the x-sync-token header: a random token kept in the
+// database's vault (black_cinema_sync_token(), service role only). The function checks it itself,
+// so the JWT check is off. Secrets never leave this function.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { mergeTitles, parseList } from "./seed.mjs";
 
@@ -316,8 +317,17 @@ async function eachLimited<T>(items: T[], n: number, work: (item: T) => Promise<
   );
 }
 
+let syncToken: string | null = null;
+
+async function expectedToken(): Promise<string | null> {
+  if (syncToken) return syncToken;
+  const { data } = await db.rpc("black_cinema_sync_token");
+  syncToken = typeof data === "string" && data.length >= 32 ? data : null;
+  return syncToken;
+}
+
 Deno.serve(async (req) => {
-  const token = Deno.env.get("BLACK_CINEMA_SYNC_TOKEN");
+  const token = await expectedToken();
   if (!token || req.headers.get("x-sync-token") !== token) return json({ error: "forbidden" }, 403);
   const body = await req.json().catch(() => ({}));
   const action = String(body.action ?? "run");
