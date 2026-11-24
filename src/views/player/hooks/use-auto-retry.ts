@@ -1,3 +1,4 @@
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { PlayerBridge, PlayerSnapshot } from "@/lib/player/bridge";
 import {
@@ -305,7 +306,7 @@ export function useAutoRetry(params: {
           if (!current()) return;
           if (r.ok) {
             let url = r.data.webStreamUrl ?? r.data.url;
-            if (r.data.headers && Object.keys(r.data.headers).length > 0) {
+            if (!nativeTvAvailable() && r.data.headers && Object.keys(r.data.headers).length > 0) {
               try {
                 url = (await registerStreamProxy(r.data.url, r.data.headers)).url;
               } catch {
@@ -316,6 +317,7 @@ export function useAutoRetry(params: {
             console.warn(`[player] debrid failover via ${r.via}`);
             void recoveryBridge.load({
               url,
+              headers: nativeTvAvailable() ? r.data.headers : undefined,
               subtitles: src.subtitles,
               notWebReady: r.data.notWebReady ?? src.notWebReady,
             });
