@@ -202,6 +202,7 @@ import { SFX } from "@/lib/sfx";
 import { startMusicTaskbarButtons, syncMusicTaskbarArtwork } from "@/lib/music/taskbar-buttons";
 import { resetMusicForProfile } from "@/lib/music/player";
 import { startMediaSessionWindowTracking } from "@/lib/media-session";
+import { useBlackHistoryMonth } from "@/lib/black-cinema";
 
 const importAnime = () => import("@/views/anime");
 const importCalendar = () => import("@/views/calendar");
@@ -211,6 +212,7 @@ const importAddons = () => import("@/views/addons");
 const importDiscover = () => import("@/views/discover");
 const importCatalogs = () => import("@/views/catalogs");
 const importPlugins = () => import("@/views/plugins");
+const importBlackCinema = () => import("@/views/black-cinema");
 const importAward = () => import("@/views/award");
 const importAnimeAward = () => import("@/views/anime-award");
 const importCuratedList = () => import("@/views/curated-list");
@@ -251,6 +253,7 @@ const AddonsView = lazy(() => importAddons().then((m) => ({ default: m.AddonsVie
 const Discover = lazy(() => importDiscover().then((m) => ({ default: m.Discover })));
 const Catalogs = lazy(() => importCatalogs().then((m) => ({ default: m.Catalogs })));
 const PluginsView = lazy(() => importPlugins().then((m) => ({ default: m.Plugins })));
+const BlackCinemaView = lazy(() => importBlackCinema().then((m) => ({ default: m.BlackCinema })));
 const AwardView = lazy(() => importAward().then((m) => ({ default: m.AwardView })));
 const AnimeAwardView = lazy(() => importAnimeAward().then((m) => ({ default: m.AnimeAwardView })));
 const CuratedListView = lazy(() =>
@@ -1578,6 +1581,8 @@ function Shell({ onReady, compact = false }: { onReady?: () => void; compact?: b
   const catalogsTop = topKind === "catalogs";
   const addonsTop = topKind === "addons" || topKind === "addon-detail";
   const calendarTop = topKind === "calendar";
+  const blackCinemaTop = topKind === "black-cinema";
+  const blackHistoryMonth = useBlackHistoryMonth();
   const wrappedTop = topKind === "wrapped";
   const queueTop = topKind === "queue";
   const serviceTop = topKind === "service";
@@ -1678,6 +1683,7 @@ function Shell({ onReady, compact = false }: { onReady?: () => void; compact?: b
   const gamesAlive = useIdleEvict(gamesTop, stackKinds.includes("games"));
   const catalogsAlive = useIdleEvict(catalogsTop);
   const pluginsAlive = useIdleEvict(pluginsTop);
+  const blackCinemaAlive = useIdleEvict(blackCinemaTop);
   const addonsAlive = useIdleEvict(addonsTop);
   const calendarAlive = useIdleEvict(
     calendarTop,
@@ -1854,7 +1860,14 @@ function Shell({ onReady, compact = false }: { onReady?: () => void; compact?: b
             className={`relative flex min-h-0 min-w-0 flex-1 flex-col ${playerActive ? "invisible" : ""}`}
           >
             <div {...parkLayerProps(homeTop)}>
-              <SpooktoberHome active={homeTop} onReady={onReady} />
+              {/* Black History Month: Black Cinema is Home for February. */}
+              {blackHistoryMonth ? (
+                <Suspense fallback={null}>
+                  <BlackCinemaView active={homeTop} takeover onReady={onReady} />
+                </Suspense>
+              ) : (
+                <SpooktoberHome active={homeTop} onReady={onReady} />
+              )}
             </div>
             {settingsAlive && (
               <div {...layerProps(settingsTop)}>
@@ -1881,6 +1894,13 @@ function Shell({ onReady, compact = false }: { onReady?: () => void; compact?: b
               <div {...layerProps(catalogsTop)}>
                 <Suspense fallback={null}>
                   <Catalogs active={catalogsTop} />
+                </Suspense>
+              </div>
+            )}
+            {blackCinemaAlive && (
+              <div {...layerProps(blackCinemaTop)}>
+                <Suspense fallback={null}>
+                  <BlackCinemaView active={blackCinemaTop} />
                 </Suspense>
               </div>
             )}

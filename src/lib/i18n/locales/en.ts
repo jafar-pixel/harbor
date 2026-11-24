@@ -148,6 +148,7 @@ const en: Record<string, string> = {
   "Build identity. Useful when filing a bug report.":
     "Build identity. Useful when filing a bug report.",
   "nav.home": "Home",
+  "nav.blackCinema": "Black Cinema",
   "nav.discover": "Discover",
   "nav.catalogs": "Catalogs",
   "nav.plugins": "Plugins",
