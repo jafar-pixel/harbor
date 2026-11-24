@@ -1,3 +1,4 @@
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { PlayerBridge, PlayerSnapshot } from "@/lib/player/bridge";
 import {
@@ -5,6 +6,8 @@ import {
   getPlaybackPosition,
   usePlaybackFlag,
 } from "@/lib/player/playback-clock";
+import { isTvApp } from "@/lib/platform";
+import { isLivePlaybackSrc } from "@/lib/player/live-src";
 import { isTruncatedEnd } from "@/lib/player/playback-end";
 import { isLocalUrl } from "@/lib/player/local-url";
 import { clearOnePickerCache } from "@/lib/picker-cache";
@@ -81,7 +84,7 @@ export function useAutoRetry(params: {
     browserPlayback = false,
   } = params;
   const isLocal = isLocalUrl(src.url);
-  const isLive = src.meta.id.startsWith("iptv:");
+  const isLive = isLivePlaybackSrc(src);
   const ENGINE_FIRST_FRAME_GRACE_MS = 20_000;
   const ENGINE_HARD_CEILING_MS = 75_000;
   const ENGINE_COMPLETE_RELOAD_MS = 8_000;
@@ -213,7 +216,7 @@ export function useAutoRetry(params: {
       const currentAttempt = src.attempt ?? 0;
       if (currentAttempt >= MAX_AUTORETRY_ATTEMPTS) {
         console.warn(`[player] giving up after ${currentAttempt} attempts (${reason})`);
-        if (!isP2pEngine && getPlaybackPosition() < 0.5) {
+        if (!isP2pEngine && (!snapRef.current.firstFrameReady || getPlaybackPosition() < 0.5)) {
           setSourceError(
             (prev) =>
               prev ?? {
@@ -303,7 +306,7 @@ export function useAutoRetry(params: {
           if (!current()) return;
           if (r.ok) {
             let url = r.data.webStreamUrl ?? r.data.url;
-            if (r.data.headers && Object.keys(r.data.headers).length > 0) {
+            if (!nativeTvAvailable() && r.data.headers && Object.keys(r.data.headers).length > 0) {
               try {
                 url = (await registerStreamProxy(r.data.url, r.data.headers)).url;
               } catch {
@@ -314,6 +317,7 @@ export function useAutoRetry(params: {
             console.warn(`[player] debrid failover via ${r.via}`);
             void recoveryBridge.load({
               url,
+              headers: nativeTvAvailable() ? r.data.headers : undefined,
               subtitles: src.subtitles,
               notWebReady: r.data.notWebReady ?? src.notWebReady,
             });
@@ -515,6 +519,25 @@ export function useAutoRetry(params: {
     }, 1000);
     return () => window.clearInterval(id);
   }, [snap.status, triggerAutoRetry, src.url, isP2pEngine, engineFailure]);
+
+  const waitingForTvFrame =
+    isTvApp() &&
+    src.autoFired === true &&
+    !isLive &&
+    !isLocal &&
+    !isP2pEngine &&
+    !inRoom &&
+    !snap.firstFrameReady &&
+    !snap.errorCode &&
+    snap.status !== "paused" &&
+    snap.status !== "ended";
+  useEffect(() => {
+    if (!waitingForTvFrame) return;
+    const timer = window.setTimeout(() => {
+      if (!snapRef.current.firstFrameReady) triggerAutoRetry("TV stream produced no picture");
+    }, NEVER_STARTED_CEILING_MS);
+    return () => window.clearTimeout(timer);
+  }, [src.url, waitingForTvFrame, triggerAutoRetry]);
 
   const noVideoSinceRef = useRef<number | null>(null);
   const videoSeenRef = useRef(false);

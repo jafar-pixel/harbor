@@ -1,3 +1,4 @@
+import { isTvApp } from "@/lib/platform";
 import {
   useCallback,
   useEffect,
@@ -572,7 +573,9 @@ export function DetailView({
     void fetchCinemetaMeta(capstanMeta.kind === "series" ? "series" : "movie", id)
       .then((full) => {
         if (cancelled || !full?.videos?.length) return;
-        setCinemetaFull((prev) => (prev && prev.id === meta.id ? { ...prev, videos: full.videos } : full));
+        setCinemetaFull((prev) =>
+          prev && prev.id === meta.id ? { ...prev, videos: full.videos } : full,
+        );
       })
       .catch(() => {});
     return () => {
@@ -1414,7 +1417,10 @@ export function DetailView({
   const smartPlay = useCallback(
     async (forcePicker = false) => {
       if (inSession) claimHost(true);
-      const opts = { autoPlay: !forcePicker && settings.instantPlay, resume: !forcePicker };
+      const opts = {
+        autoPlay: !forcePicker && (isTvApp() || settings.instantPlay),
+        resume: !forcePicker,
+      };
       const launch = async (episode: PlayEpisode | undefined) => {
         const stream = () => openPicker(playMeta, episode, opts);
         if (forcePicker) {

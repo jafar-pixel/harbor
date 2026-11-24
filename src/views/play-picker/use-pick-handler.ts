@@ -1,3 +1,4 @@
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { Meta } from "@/lib/cinemeta";
 import type { DebridStore } from "@/lib/debrid/types";
@@ -280,7 +281,8 @@ export function usePickHandler({
         if (ac.signal.aborted) return;
       }
       markPlaybackTrace(playbackTraceId, "resolve-ready");
-      const hasProxyHeaders = !!r.data.headers && Object.keys(r.data.headers).length > 0;
+      const hasProxyHeaders =
+        !nativeTvAvailable() && !!r.data.headers && Object.keys(r.data.headers).length > 0;
       // Native mpv can consume ordinary debrid URLs directly. Keep the local
       // proxy off the startup path unless the source actually requires custom
       // request headers.
@@ -379,6 +381,7 @@ export function usePickHandler({
               }
             : undefined,
         url: playUrl,
+        headers: nativeTvAvailable() ? r.data.headers : undefined,
         title: episode
           ? episode.name ||
             metaEpisodeName(meta, episode) ||

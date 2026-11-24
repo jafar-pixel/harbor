@@ -1,3 +1,4 @@
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { HarborLoader } from "@/components/harbor-loader";
@@ -162,7 +163,8 @@ export function EpisodePanel({
       }
       markPlaybackTrace(playbackTraceId, "resolve-ready");
       let playUrl = r.data.webStreamUrl ?? r.data.url;
-      const hasProxyHeaders = !!r.data.headers && Object.keys(r.data.headers).length > 0;
+      const hasProxyHeaders =
+        !nativeTvAvailable() && !!r.data.headers && Object.keys(r.data.headers).length > 0;
       if (hasProxyHeaders) {
         try {
           const proxied = await registerStreamProxy(r.data.url, r.data.headers);
@@ -194,6 +196,7 @@ export function EpisodePanel({
         meta,
         episode: ep,
         url: playUrl,
+        headers: nativeTvAvailable() ? r.data.headers : undefined,
         title: stream.parsedTitle ?? stream.title ?? stream.name ?? meta.name,
         notWebReady: !stream.url && !!stream.infoHash,
         playbackTraceId,

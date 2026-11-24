@@ -1,3 +1,4 @@
+import { isTvApp } from "@/lib/platform";
 import { useMemo } from "react";
 import { isStreamDead } from "@/lib/dead-streams";
 import { engineP2pEligible } from "@/lib/torrent/stremio-stream";
@@ -135,6 +136,10 @@ export function useAutoCandidates(args: {
       const an = a.nameAbsent ? 1 : 0;
       const bn = b.nameAbsent ? 1 : 0;
       if (an !== bn) return an - bn;
+      if (isTvApp() && !prefer1080 && a.resolution !== b.resolution) {
+        if (a.resolution === "4K") return -1;
+        if (b.resolution === "4K") return 1;
+      }
       // Among equally ready copies, Real-Debrid and Premiumize go first and TorBox last.
       const aso = sourceOrderRank(a);
       const bso = sourceOrderRank(b);

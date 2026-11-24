@@ -8,6 +8,7 @@ const g = globalThis as unknown as G;
 /** A minimal page and TV app: enough for the bridge to place the video. */
 function fakeTv(under: () => boolean) {
   const modes: string[] = [];
+  const plays: { url: string; headers: string; startMs: number }[] = [];
   const dataset: Record<string, string> = {};
   const listeners = new Map<string, (e: Event) => void>();
   let frame: (() => void) | null = null;
@@ -31,6 +32,10 @@ function fakeTv(under: () => boolean) {
     removeEventListener: (type: string) => listeners.delete(type),
     JLNativePlayer: {
       isAvailable: () => true,
+      play: (url: string, headers: string, _title: string, startMs: number) => {
+        plays.push({ url, headers, startMs });
+        return true;
+      },
       setRect: () => {},
       setMode: (m: string) => modes.push(m),
       canShowUnderPage: under,
@@ -44,7 +49,7 @@ function fakeTv(under: () => boolean) {
   };
   const emit = (type: string) =>
     listeners.get("jl-native-player")?.({ detail: { type } } as unknown as Event);
-  return { modes, dataset, host, flush, emit };
+  return { modes, plays, dataset, host, flush, emit };
 }
 
 test("a video moves under the page once the TV app knows its format", () => {
@@ -88,6 +93,22 @@ test("an app build that throws keeps the video on top", () => {
   bridge.attach(tv.host);
   tv.flush();
   assert.equal(tv.modes.at(-1), "full");
+  bridge.detach();
+  delete g.window;
+  delete g.document;
+});
+
+test("TV playback forwards stream headers and resume position to the native player", async () => {
+  const tv = fakeTv(() => false);
+  const bridge = createNativeTvBridge();
+  bridge.attach(tv.host);
+  const headers = { "User-Agent": "ProviderPlayer", Referer: "https://provider.example/" };
+  await bridge.load({ url: "https://provider.example/movie.mkv", headers, startAtSec: 12.5 });
+  await bridge.load({ url: "https://provider.example/live.m3u8", headers, isLive: true });
+  assert.deepEqual(tv.plays, [
+    { url: "https://provider.example/movie.mkv", headers: JSON.stringify(headers), startMs: 12500 },
+    { url: "https://provider.example/live.m3u8", headers: JSON.stringify(headers), startMs: 0 },
+  ]);
   bridge.detach();
   delete g.window;
   delete g.document;

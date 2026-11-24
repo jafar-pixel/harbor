@@ -1,4 +1,6 @@
 import { GitHubIcon } from "@/components/github-icon";
+import { isTvApp } from "@/lib/platform";
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 import { openUrl } from "@/lib/window";
 import { useT } from "@/lib/i18n";
 import { ROW_DESC } from "../shared";
@@ -10,6 +12,18 @@ const BANNER_BTN =
 
 export function WebBuildBanner() {
   const t = useT();
+  if (isTvApp()) {
+    return (
+      <section className="rounded-[10px] bg-elevated p-7">
+        <h2 className="text-[19px] font-medium text-ink">{t("Android TV")}</h2>
+        <p className={ROW_DESC}>
+          {nativeTvAvailable()
+            ? t("Native video player available")
+            : t("Native video player unavailable")}
+        </p>
+      </section>
+    );
+  }
   return (
     <section className="relative overflow-hidden rounded-[10px] bg-elevated p-7">
       <div className="relative z-10 flex flex-col gap-3">
