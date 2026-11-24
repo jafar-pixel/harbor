@@ -342,10 +342,39 @@ export function isBlackBoxKind(id: string): id is BlackBoxKind {
   return id === "movies" || id === "series" || id === "tv";
 }
 
-const CATALOGS: ReadonlyArray<{ kind: BlackBoxKind; type: string; name: string }> = [
+/** The hand-picked collections (black-box-curated.ts). */
+export type BlackBoxCurated =
+  | "new-2026-movies"
+  | "new-2026-shows"
+  | "decade-2020s"
+  | "decade-2010s"
+  | "decade-2000s"
+  | "classics-90s";
+
+const CURATED_IDS: readonly string[] = [
+  "new-2026-movies",
+  "new-2026-shows",
+  "decade-2020s",
+  "decade-2010s",
+  "decade-2000s",
+  "classics-90s",
+];
+export type BlackBoxCatalogId = BlackBoxKind | BlackBoxCurated;
+
+export function isBlackBoxCatalogId(id: string): id is BlackBoxCatalogId {
+  return isBlackBoxKind(id) || CURATED_IDS.includes(id);
+}
+
+const CATALOGS: ReadonlyArray<{ kind: BlackBoxCatalogId; type: string; name: string }> = [
   { kind: "movies", type: "movie", name: "Black Box" },
   { kind: "series", type: "series", name: "Black Box" },
   { kind: "tv", type: "tv", name: "Black Box" },
+  { kind: "new-2026-movies", type: "movie", name: "Black Box: New in 2026" },
+  { kind: "new-2026-shows", type: "series", name: "Black Box: New in 2026" },
+  { kind: "decade-2020s", type: "movie", name: "Black Box: 2020s" },
+  { kind: "decade-2010s", type: "movie", name: "Black Box: 2010s" },
+  { kind: "decade-2000s", type: "movie", name: "Black Box: 2000s" },
+  { kind: "classics-90s", type: "movie", name: "Black Box: 90s Classics" },
 ];
 
 /** The Black Box's entries in Catalogs, or none when there is no TMDB key to list them with. */

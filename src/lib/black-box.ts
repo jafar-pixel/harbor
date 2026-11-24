@@ -14,6 +14,9 @@
 import type { Meta } from "./cinemeta";
 import {
   BLACK_BOX_PAGE_SIZE,
+  isBlackBoxKind,
+  type BlackBoxCatalogId,
+  type BlackBoxCurated,
   blackBoxPeopleSparql,
   personIdsFromSparql,
   starsBlackLead,
@@ -41,9 +44,19 @@ import {
   type RawSeries,
 } from "./providers/tmdb/tmdb-meta-mappers";
 import { safeFetch } from "./safe-fetch";
+import {
+  CLASSICS_90S,
+  DECADE_2000S,
+  DECADE_2010S,
+  DECADE_2020S,
+  NEW_2026_MOVIES,
+  NEW_2026_SHOWS,
+  pickCurated,
+  type CuratedTitle,
+} from "./black-box-curated";
 import { loadStoredSettings } from "./settings/load";
 
-export { BLACK_BOX_BASE, isBlackBoxKind } from "./black-box-core";
+export { BLACK_BOX_BASE, isBlackBoxCatalogId } from "./black-box-core";
 
 const PEOPLE_STORE = "jl.blackBox.people.v1";
 /** TMDB lookups at once: quick on a TV without tripping TMDB's rate limit. */
@@ -337,6 +350,50 @@ export async function blackBoxPage(kind: BlackBoxKind, page: number): Promise<Me
     return list.slice(from, from + BLACK_BOX_PAGE_SIZE).map((s) => seriesMeta(s));
   }
   return kept.slice(from, want);
+}
+
+const CURATED: Record<BlackBoxCurated, { type: "movie" | "tv"; titles: readonly CuratedTitle[] }> =
+  {
+    "classics-90s": { type: "movie", titles: CLASSICS_90S },
+    "decade-2000s": { type: "movie", titles: DECADE_2000S },
+    "decade-2010s": { type: "movie", titles: DECADE_2010S },
+    "decade-2020s": { type: "movie", titles: DECADE_2020S },
+    "new-2026-movies": { type: "movie", titles: NEW_2026_MOVIES },
+    "new-2026-shows": { type: "tv", titles: NEW_2026_SHOWS },
+  };
+
+const curatedLists = new Map<BlackBoxCurated, Promise<Meta[]>>();
+
+/** A hand-picked collection, in its own order, each title matched on TMDB once per session. */
+function curatedList(key: string, id: BlackBoxCurated): Promise<Meta[]> {
+  const cached = curatedLists.get(id);
+  if (cached) return cached;
+  const { type, titles } = CURATED[id];
+  const list = eachLimited(titles, async (want) => {
+    type Hit = (RawMovie & RawSeries) & { popularity?: number };
+    const data = await get<{ results?: Hit[] }>(key, `search/${type}`, {
+      query: want.title,
+      include_adult: "false",
+    }).catch(() => null);
+    const hit = pickCurated(want, data?.results ?? []);
+    if (!hit?.poster_path) return null;
+    return type === "movie" ? movieMeta(hit) : seriesMeta(hit);
+  }).then((metas) => metas.filter((m): m is Meta => m !== null));
+  curatedLists.set(id, list);
+  // Matched again next time when TMDB didn't answer at all.
+  void list.then((l) => {
+    if (l.length === 0 && curatedLists.get(id) === list) curatedLists.delete(id);
+  });
+  return list;
+}
+
+/** One page of any Black Box catalog: the Black-led catalogs or a hand-picked collection. */
+export async function blackBoxCatalogPage(id: BlackBoxCatalogId, page: number): Promise<Meta[]> {
+  if (isBlackBoxKind(id)) return blackBoxPage(id, page);
+  const key = loadStoredSettings().tmdbKey?.trim() ?? "";
+  if (!key) return [];
+  const from = (Math.max(1, page) - 1) * BLACK_BOX_PAGE_SIZE;
+  return (await curatedList(key, id)).slice(from, from + BLACK_BOX_PAGE_SIZE);
 }
 
 /** The Black Box's catalogs in Catalogs' shape, or none without a TMDB key. */

@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  CLASSICS_90S,
+  DECADE_2000S,
+  DECADE_2010S,
+  DECADE_2020S,
+  NEW_2026_MOVIES,
+  NEW_2026_SHOWS,
+  pickCurated,
+} from "../src/lib/black-box-curated.ts";
+import {
   BLACK_BOX_PEOPLE,
   blackBoxCatalogsFor,
   blackBoxPeopleSparql,
@@ -100,7 +109,17 @@ test("black box: catalogs only with a TMDB key", () => {
   assert.deepEqual(blackBoxCatalogsFor(false), []);
   assert.deepEqual(
     blackBoxCatalogsFor(true).map((c) => `${c.type}:${c.id}`),
-    ["movie:movies", "series:series", "tv:tv"],
+    [
+      "movie:movies",
+      "series:series",
+      "tv:tv",
+      "movie:new-2026-movies",
+      "series:new-2026-shows",
+      "movie:decade-2020s",
+      "movie:decade-2010s",
+      "movie:decade-2000s",
+      "movie:classics-90s",
+    ],
   );
 });
 
@@ -190,5 +209,51 @@ test("black box: Wikidata is asked who is Black, by ethnic group, with their TMD
       },
     }),
     [287],
+  );
+});
+
+test("black box collections: every decade's titles are from that decade, no title twice", () => {
+  const decades: Array<[readonly { title: string; year?: number }[], number]> = [
+    [CLASSICS_90S, 1990],
+    [DECADE_2000S, 2000],
+    [DECADE_2010S, 2010],
+    [DECADE_2020S, 2020],
+  ];
+  for (const [list, from] of decades)
+    for (const c of list) assert.ok(c.year! >= from && c.year! <= from + 9, `${c.title} ${c.year}`);
+  for (const list of [
+    CLASSICS_90S,
+    DECADE_2000S,
+    DECADE_2010S,
+    DECADE_2020S,
+    NEW_2026_MOVIES,
+    NEW_2026_SHOWS,
+  ]) {
+    assert.equal(new Set(list.map((c) => c.title.toLowerCase())).size, list.length);
+  }
+});
+
+test("black box collections: a title means its exact TMDB match from that year", () => {
+  const hits = [
+    { id: 1, title: "Friday", release_date: "1995-04-26", popularity: 40 },
+    { id: 2, title: "Friday", release_date: "2024-01-01", popularity: 90 },
+    { id: 3, title: "Friday After Next", release_date: "2002-11-22", popularity: 30 },
+  ];
+  assert.equal(pickCurated({ title: "Friday", year: 1995 }, hits)?.id, 1);
+  // Festival and wide release a year apart still match.
+  assert.equal(pickCurated({ title: "Friday", year: 1994 }, hits)?.id, 1);
+  assert.equal(pickCurated({ title: "Friday", year: 1980 }, hits), null);
+  // "&" and "and", accents and punctuation don't matter.
+  assert.equal(
+    pickCurated({ title: "His & Hers" }, [{ id: 9, name: "His and Hers", popularity: 5 }])?.id,
+    9,
+  );
+  // Without a year, the best known of the same name.
+  assert.equal(
+    pickCurated({ title: "Cross" }, [
+      { id: 4, name: "Cross", popularity: 80 },
+      { id: 5, name: "Cross", popularity: 3 },
+    ])?.id,
+    4,
   );
 });
