@@ -133,7 +133,7 @@ export function useOnYourIptv(titles: BlackCinemaTitle[] | null): BlackCinemaTit
     // After the page is up: a provider's catalog can be large, and the hub shouldn't wait on it.
     const timer = window.setTimeout(() => {
       void import("./streams/provider-vod")
-        .then((m) => m.providerVodLibraries(controller.signal))
+        .then((m) => m.providerVodLibraries(controller.signal, { xtreamOnly: true }))
         .then((libraries) => {
           if (!controller.signal.aborted) setFound(onYourIptv(titles, libraries));
         })
@@ -147,8 +147,22 @@ export function useOnYourIptv(titles: BlackCinemaTitle[] | null): BlackCinemaTit
   return found;
 }
 
-/** A hub title as the app's title: opens, plays and adds to the library like any other. */
+const metas = new WeakMap<BlackCinemaTitle, Meta>();
+
+/**
+ * A hub title as the app's title, made once per title. Its id is the stored IMDb id when there is
+ * one: with a TMDB id every card asked TMDB for the IMDb id on its own (watch history, sources),
+ * over a thousand requests for the hub, which kept it loading for minutes on a TV.
+ */
 export function blackCinemaMeta(t: BlackCinemaTitle): Meta {
+  const known = metas.get(t);
+  if (known) return known;
+  const meta = makeMeta(t);
+  metas.set(t, meta);
+  return meta;
+}
+
+function makeMeta(t: BlackCinemaTitle): Meta {
   const base =
     t.media_type === "movie"
       ? movieMeta({
@@ -169,5 +183,10 @@ export function blackCinemaMeta(t: BlackCinemaTitle): Meta {
           first_air_date: t.release_date ?? undefined,
           vote_average: t.vote_average ?? undefined,
         });
-  return { ...base, genres: t.genres.length > 0 ? t.genres : base.genres };
+  const imdb = t.imdb_id?.startsWith("tt") ? t.imdb_id : null;
+  return {
+    ...base,
+    ...(imdb ? { id: imdb } : {}),
+    genres: t.genres.length > 0 ? t.genres : base.genres,
+  };
 }

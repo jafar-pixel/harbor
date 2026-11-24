@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { CinemaHero } from "@/components/cinema-hero";
-import { FeedShelf } from "@/components/feed-shelf";
 import { Row } from "@/components/row";
 import { TopRankCard } from "@/components/top-rank-card";
 import type { Meta } from "@/lib/cinemeta";
@@ -14,6 +13,7 @@ import {
 } from "@/lib/black-cinema-core";
 import { useT } from "@/lib/i18n";
 import { useView } from "@/lib/view";
+import { BlackCinemaShelf, FavoriteHeart, NearView, WithHeart } from "./black-cinema/parts";
 
 /**
  * Black Cinema: JL's permanent hub of Black movies and television. New & Featured up top, then Top
@@ -44,13 +44,16 @@ export function BlackCinema({
     [titles, tab],
   );
   void active;
+  const heroSlides = useMemo(() => sections?.featured.map(blackCinemaMeta) ?? [], [sections]);
+  const [heroMeta, setHeroMeta] = useState<Meta | null>(null);
 
-  const shelf = (id: string, title: string, items: BlackCinemaTitle[]) => {
+  // The first rows are built at once; the rest as the page scrolls near them.
+  const shelf = (id: string, title: string, items: BlackCinemaTitle[], eager = false) => {
     const metas = items.map(blackCinemaMeta);
-    return (
-      <FeedShelf
-        key={id}
-        shelf={{ id: `black-cinema-${id}`, title: t(title), kicker: t("Black Cinema") }}
+    const row = (
+      <BlackCinemaShelf
+        title={t(title)}
+        kicker={t("Black Cinema")}
         items={metas}
         scrollKey={`black-cinema:${tab}:${id}`}
         onViewAll={() =>
@@ -63,12 +66,24 @@ export function BlackCinema({
         }
       />
     );
+    return eager ? <div key={id}>{row}</div> : <NearView key={id}>{row}</NearView>;
   };
 
   return (
     <main className="flex-1 overflow-y-auto overflow-x-hidden pb-24">
-      {sections && sections.featured.length > 0 && (
-        <CinemaHero slides={sections.featured.map(blackCinemaMeta)} eyebrow={t("New & Featured")} />
+      {heroSlides.length > 0 && (
+        <div className="relative">
+          <CinemaHero
+            slides={heroSlides}
+            eyebrow={t("New & Featured")}
+            rotateMs={5000}
+            arrows
+            onActiveChange={setHeroMeta}
+          />
+          {heroMeta && (
+            <FavoriteHeart meta={heroMeta} className="absolute end-6 top-24 z-20 size-11" />
+          )}
+        </div>
       )}
       <div className={`flex flex-col gap-8 px-12 ${sections?.featured.length ? "pt-10" : "pt-28"}`}>
         <header className="flex flex-col gap-4">
@@ -116,7 +131,9 @@ export function BlackCinema({
                 scrollKey={`black-cinema:${tab}:top10`}
               >
                 {sections.topTen.map((m, i) => (
-                  <TopRankCard key={m.id} meta={blackCinemaMeta(m)} rank={i + 1} />
+                  <WithHeart key={m.id} meta={blackCinemaMeta(m)}>
+                    <TopRankCard meta={blackCinemaMeta(m)} rank={i + 1} />
+                  </WithHeart>
                 ))}
               </Row>
             )}
@@ -126,8 +143,9 @@ export function BlackCinema({
                 "on-your-iptv",
                 "On Your IPTV",
                 iptv.filter((x) => inTab(x, tab)),
+                true,
               )}
-            {sections.trending.length > 0 && shelf("trending", "Trending", sections.trending)}
+            {sections.trending.length > 0 && shelf("trending", "Trending", sections.trending, true)}
             {sections.newMovies.length > 0 && shelf("new-movies", "New Movies", sections.newMovies)}
             {sections.newShows.length > 0 && shelf("new-shows", "New Shows", sections.newShows)}
             {sections.classics.length > 0 && shelf("classics", "Classics", sections.classics)}

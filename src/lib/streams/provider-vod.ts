@@ -128,10 +128,16 @@ async function catalogFor(
  * waiting at most CATALOG_WAIT_MS per source). Black Cinema reads it to show what the viewer's own
  * provider carries.
  */
-export async function providerVodLibraries(signal: AbortSignal): Promise<VodLibrary[]> {
+export async function providerVodLibraries(
+  signal: AbortSignal,
+  opts: { xtreamOnly?: boolean } = {},
+): Promise<VodLibrary[]> {
   const out: VodLibrary[] = [];
   for (const source of providerVodSources()) {
     if (signal.aborted) break;
+    // A plain M3U file can hold millions of entries; reading it all just to badge a page would
+    // tie up a TV. A provider with a catalog API (Xtream) lists its movies and series cheaply.
+    if (opts.xtreamOnly && !asXtream(source)) continue;
     const { library } = await catalogFor(source, signal).catch(() => ({
       library: { movies: [], series: [] } as VodLibrary,
     }));
