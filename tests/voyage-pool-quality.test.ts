@@ -12,7 +12,11 @@ const generate = read("src/lib/voyage/generate.ts");
 test("every voyage theme ships curated tastemaker picks", () => {
   const ids = [...themes.matchAll(/^\s+id: "(\w+)",$/gm)].map((m) => m[1]);
   assert.ok(ids.length >= 6, `expected the six themes, found ${ids.length}`);
-  const blocks = themes.split(/^\s{4}id: "/m).slice(1);
+  // Black Box directions draw from the Black Box catalog (lib/black-box.ts), not curated seeds.
+  const blocks = themes
+    .split(/^\s{4}id: "/m)
+    .slice(1)
+    .filter((b) => !b.slice(0, b.indexOf("},")).includes('source: "black-box"'));
   for (const b of blocks) {
     const name = b.slice(0, b.indexOf('"'));
     assert.match(b, /seeds: \[/, `theme ${name} has no curated seeds`);
@@ -22,7 +26,10 @@ test("every voyage theme ships curated tastemaker picks", () => {
 });
 
 test("curated seeds are unique within a theme", () => {
-  const blocks = themes.split(/^\s{4}id: "/m).slice(1);
+  const blocks = themes
+    .split(/^\s{4}id: "/m)
+    .slice(1)
+    .filter((b) => !b.slice(0, b.indexOf("},")).includes('source: "black-box"'));
   for (const b of blocks) {
     const name = b.slice(0, b.indexOf('"'));
     const start = b.indexOf("seeds: [");
@@ -47,6 +54,9 @@ test("a genre that rarely leads still gets api picks instead of going empty", ()
 
 test("the pool blends curated and api picks rather than one or the other", () => {
   assert.match(generate, /interleave\(shuffle\(curated\), shuffle\(live\)\)/);
-  const il = generate.slice(generate.indexOf("function interleave"), generate.indexOf("export async function generatePool"));
+  const il = generate.slice(
+    generate.indexOf("function interleave"),
+    generate.indexOf("export async function generatePool"),
+  );
   assert.match(il, /seen\.has\(m\.id\)/, "interleaving must not duplicate a title");
 });

@@ -4,6 +4,25 @@ import type { VoyageTheme } from "./types";
 const MH = (tt: string) => `https://images.metahub.space/background/medium/${tt}/img`;
 
 export const VOYAGE_THEMES: VoyageTheme[] = [
+  // Black Box voyages: every stop a film or show with a Black star (lib/black-box.ts).
+  {
+    id: "blackbox",
+    label: "Black Box",
+    tagline: "Films with Black stars, start to finish.",
+    type: "movie",
+    accent: "oklch(0.78 0.14 75)",
+    backdrop: MH("tt1825683"),
+    source: "black-box",
+  },
+  {
+    id: "blackbox-series",
+    label: "Black Box Series",
+    tagline: "Shows with Black stars, one after another.",
+    type: "series",
+    accent: "oklch(0.72 0.13 30)",
+    backdrop: MH("tt0094898"),
+    source: "black-box",
+  },
   {
     id: "heist",
     label: "The Heist Line",
@@ -170,6 +189,8 @@ export const VOYAGE_THEMES: VoyageTheme[] = [
 ];
 
 export const THEME_PALETTE: Record<string, { from: string; to: string }> = {
+  blackbox: { from: "oklch(0.42 0.10 75)", to: "oklch(0.14 0.03 60)" },
+  "blackbox-series": { from: "oklch(0.40 0.11 30)", to: "oklch(0.14 0.03 20)" },
   heist: GENRE_PALETTE.Crime,
   dark: GENRE_PALETTE.Horror,
   laugh: GENRE_PALETTE.Comedy,

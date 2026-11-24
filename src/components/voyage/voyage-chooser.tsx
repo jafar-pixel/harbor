@@ -42,7 +42,8 @@ export function VoyageChooser({ inline = false }: { inline?: boolean }) {
       </div>
 
       <div className={inline ? "voyage-inline-themes" : "grid grid-cols-1 gap-3 sm:grid-cols-2"}>
-        {VOYAGE_THEMES.map((theme) => (
+        {/* The Black Box directions need the TMDB key its catalog is read with. */}
+        {VOYAGE_THEMES.filter((th) => th.source !== "black-box" || !!settings.tmdbKey?.trim()).map((theme) => (
           <ThemeTile key={theme.id} theme={theme} busy={busy === theme.id} disabled={!!busy} onPick={() => start(theme)} />
         ))}
       </div>
@@ -152,7 +153,7 @@ function ThemeTile({
           className="harbor-tile-genre text-[10px] font-semibold uppercase tracking-[0.18em]"
           style={{ "--tile-accent": theme.accent } as CSSProperties}
         >
-          {theme.genre ?? "Wildcard"}
+          {theme.source === "black-box" ? "Black Box" : (theme.genre ?? "Wildcard")}
         </span>
         <span className="font-display text-[16px] font-medium leading-tight text-ink [text-shadow:0_1px_8px_var(--color-canvas),0_1px_3px_var(--color-canvas)]">{theme.label}</span>
         <span className="line-clamp-1 text-[12px] text-ink-muted [text-shadow:0_1px_6px_var(--color-canvas),0_1px_2px_var(--color-canvas)]">{theme.tagline}</span>

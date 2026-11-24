@@ -86,6 +86,7 @@ export async function listBrowseCatalogs(
   authKey: string | null,
   opts: { pluginRows: boolean },
 ): Promise<BrowseCatalog[]> {
+  // Black Box first: JL's own catalog, listed beside the addons' (Netflix and the rest) for each type.
   const out: BrowseCatalog[] = [...blackBoxCatalogs(), ...extensionCatalogs(opts.pluginRows)];
   const addons = await gatherCatalogAddons(authKey).catch(() => []);
   for (const addon of addons) {

@@ -2,6 +2,7 @@ import { safeFetch } from "@/lib/safe-fetch";
 import { meta as fetchMeta, type Meta } from "@/lib/cinemeta";
 import { watchTitleKey } from "@/lib/playback-history";
 import type { VoyageTheme } from "./types";
+import { blackBoxPage } from "@/lib/black-box";
 
 const BASE = "https://v3-cinemeta.strem.io/catalog";
 const POOL_MAX = 40;
@@ -37,9 +38,7 @@ function leadsWithGenre(m: Meta, genre?: string): boolean {
 async function curatedPool(theme: VoyageTheme, exclude?: PoolExclude): Promise<Meta[]> {
   const ids = theme.seeds ?? [];
   if (ids.length === 0) return [];
-  const got = await Promise.all(
-    ids.map((id) => fetchMeta(theme.type, id, true).catch(() => null)),
-  );
+  const got = await Promise.all(ids.map((id) => fetchMeta(theme.type, id, true).catch(() => null)));
   return got.filter((m): m is Meta => usable(m, exclude));
 }
 
@@ -117,11 +116,38 @@ function interleave(a: Meta[], b: Meta[]): Meta[] {
   return out;
 }
 
+/** Black Box pages this many at a time make up a pool: about 60 titles to steer between. */
+const BLACK_BOX_PAGES = 3;
+
+/** A pool from the Black Box catalog: its best-known titles first, `round` reaching further in. */
+async function blackBoxPool(
+  theme: VoyageTheme,
+  exclude: PoolExclude | undefined,
+  round: number,
+  want: number,
+): Promise<Meta[]> {
+  const kind = theme.type === "series" ? "series" : "movies";
+  const first = round * BLACK_BOX_PAGES + 1;
+  const pages = await Promise.all(
+    Array.from({ length: BLACK_BOX_PAGES }, (_, i) =>
+      blackBoxPage(kind, first + i).catch(() => [] as Meta[]),
+    ),
+  );
+  const seen = new Set<string>();
+  const fresh = pages.flat().filter((m) => {
+    if (!usable(m, exclude) || seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+  return shuffle(fresh).slice(0, want);
+}
+
 export async function generatePool(
   theme: VoyageTheme,
   exclude?: PoolExclude,
   want = POOL_MAX,
 ): Promise<Meta[]> {
+  if (theme.source === "black-box") return blackBoxPool(theme, exclude, 0, want);
   const [curated, live] = await Promise.all([
     curatedPool(theme, exclude),
     livePool(theme, want, exclude),
@@ -136,6 +162,10 @@ export async function deeperPool(
   round: number,
   want = POOL_MAX,
 ): Promise<Meta[]> {
+  if (theme.source === "black-box") {
+    const deeper = await blackBoxPool(theme, exclude, Math.max(1, Math.round(round)), want);
+    return deeper.length > 0 ? deeper : blackBoxPool(theme, exclude, 0, want);
+  }
   const startPage = Math.max(1, Math.round(round)) * Math.max(1, Math.floor(MAX_PAGES / 2));
   const live = await livePool(theme, want, exclude, startPage);
   if (live.length > 0) return shuffle(live).slice(0, want);

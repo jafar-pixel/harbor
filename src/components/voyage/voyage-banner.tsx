@@ -40,17 +40,7 @@ export function VoyageBanner({ pool }: { pool: Meta[] }) {
     closeVoyage();
   }, []);
   const rootRef = useRef<HTMLElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number>();
   const [onScreen, setOnScreen] = useState(true);
-
-  useEffect(() => {
-    const content = contentRef.current;
-    if (!content) return;
-    const observer = new ResizeObserver(() => setHeight(content.getBoundingClientRect().height));
-    observer.observe(content);
-    return () => observer.disconnect();
-  }, []);
   useEffect(() => {
     if (!expanded) return;
     const root = rootRef.current;
@@ -102,13 +92,15 @@ export function VoyageBanner({ pool }: { pool: Meta[] }) {
     <section
       ref={rootRef}
       aria-label={t("Harbor Voyages")}
-      style={{ height }}
       onKeyDown={(e) => {
         if (expanded && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); collapse(); }
       }}
       className={`voyage-card group relative min-h-[172px] w-full overflow-hidden rounded-2xl bg-canvas ring-1 ring-edge-soft ${expanded ? "is-expanded" : ""} ${closing ? "is-closing" : ""}`}
     >
-      <div ref={contentRef}>
+      {/* Sized by its contents. A height measured in script came out in the page's zoomed pixels
+          (the UI scale on #root), so below 100% the block was set shorter than what it holds and
+          cut off its own buttons and the second row of directions. */}
+      <div>
         {expanded ? (
           <VoyageInline active={active} onClose={collapse} />
         ) : (
