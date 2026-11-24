@@ -152,7 +152,7 @@ Last Holiday | 2006 | movie | |
 Glory Road | 2006 | movie | | 
 Something New | 2006 | movie | | 
 Phat Girlz | 2006 | movie | | 
-D\u00e9j\u00e0 Vu | 2006 | movie | | 
+Déjà Vu | 2006 | movie | | 
 Norbit | 2007 | movie | | 
 I Am Legend | 2007 | movie | | 
 First Sunday | 2008 | movie | | 
@@ -249,7 +249,7 @@ Middle of Nowhere | 2012 | movie | |
 Django Unchained | 2012 | movie | | 
 Beasts of the Southern Wild | 2012 | movie | | 
 Selah and the Spades | 2019 | movie | | 
-The Gospel According to Andr\u00e9 | 2017 | movie | | 
+The Gospel According to André | 2017 | movie | | 
 Top Five | 2014 | movie | | 
 Monsters and Men | 2018 | movie | | 
 Creed II | 2018 | movie | | 
@@ -444,7 +444,7 @@ On Becoming a Guinea Fowl | 2024 | movie | |
 Descendant | 2022 | movie | | 
 All In: The Fight for Democracy | 2020 | movie | | 
 Attica | 2021 | movie | | 
-Summer of Soul (\u2026Or, When the Revolution Could Not Be Televised) | 2021 | movie | | 
+Summer of Soul (…Or, When the Revolution Could Not Be Televised) | 2021 | movie | | 
 Miss Juneteenth | 2020 | movie | | 
 The Forty-Year-Old Version | 2020 | movie | | 
 One Night in Miami | 2020 | movie | | 

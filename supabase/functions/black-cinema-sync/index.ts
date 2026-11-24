@@ -110,17 +110,45 @@ type Hit = {
   popularity?: number;
 };
 
-/** The same title within `slack` years of the listed year, the best known first. */
+// Names TMDB puts before a title ("Tyler Perry's Sistas", "Marvel's Luke Cage"); the list may
+// have them or not.
+const PREFIX = /^(tyler perry'?s|marvel'?s|lee daniels'?|carl weber'?s|craig ross jr\.?'?s|terry mcmillan presents:?)\s+/i;
+
+/** A title's matching forms: as written, without a prefix, and without a subtitle. */
+function forms(name: string): { full: Set<string>; short: Set<string> } {
+  const bare = name.replace(PREFIX, "");
+  const full = new Set([norm(name), norm(bare)]);
+  // "Self Made: Inspired by the Life of Madam C.J. Walker", "Summer of Soul (...Or, When ...)".
+  const short = new Set([name, bare].map((n) => norm(n.split(/\s*[:(\u2013\u2014]\s*/)[0])));
+  return { full, short };
+}
+
+/**
+ * The same title within `slack` years of the listed year, the best known first. A match on the
+ * title without its subtitle or prefix also counts, but only within a year, so a same-named film
+ * from another decade is never taken.
+ */
 function pick(row: Row, hits: Hit[], slack: number): Hit | null {
-  const want = norm(row.title);
-  const same = hits.filter((h) => {
-    const names = [h.title, h.name, h.original_title, h.original_name].filter(Boolean) as string[];
-    if (!names.some((n) => norm(n) === want)) return false;
-    const year = Number((h.release_date ?? h.first_air_date ?? "").slice(0, 4));
-    return !year || Math.abs(year - row.release_year) <= slack;
-  });
-  same.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
-  return same[0] ?? null;
+  const want = forms(row.title);
+  const scored = hits
+    .map((h) => {
+      const names = [h.title, h.name, h.original_title, h.original_name].filter(Boolean) as string[];
+      const year = Number((h.release_date ?? h.first_air_date ?? "").slice(0, 4));
+      const gap = year ? Math.abs(year - row.release_year) : 0;
+      const exact = names.some((n) => [...forms(n).full].some((f) => want.full.has(f)));
+      const loose =
+        !exact &&
+        names.some((n) => {
+          const f = forms(n);
+          return [...f.full, ...f.short].some((x) => want.full.has(x) || want.short.has(x));
+        });
+      if (exact && gap <= slack) return { h, rank: 0 };
+      if (loose && gap <= 1) return { h, rank: 1 };
+      return null;
+    })
+    .filter((x): x is { h: Hit; rank: number } => x !== null);
+  scored.sort((a, b) => a.rank - b.rank || (b.h.popularity ?? 0) - (a.h.popularity ?? 0));
+  return scored[0]?.h ?? null;
 }
 
 async function searchTmdb(row: Row): Promise<number | null> {
@@ -131,7 +159,13 @@ async function searchTmdb(row: Row): Promise<number | null> {
   if (hit) return hit.id;
   // Festival, wide and streaming releases often fall in different years.
   const any = await tmdb(`search/${kind}`, { query: row.title });
-  return pick(row, any?.results ?? [], 2)?.id ?? null;
+  const anyHit = pick(row, any?.results ?? [], 2);
+  if (anyHit) return anyHit.id;
+  // Without a prefix the list may carry ("Tyler Perry's She the People" is "She the People").
+  const bare = row.title.replace(PREFIX, "");
+  if (bare === row.title) return null;
+  const again = await tmdb(`search/${kind}`, { query: bare });
+  return pick(row, again?.results ?? [], 2)?.id ?? null;
 }
 
 // ---------- Trakt (what TMDB doesn't know) ----------
