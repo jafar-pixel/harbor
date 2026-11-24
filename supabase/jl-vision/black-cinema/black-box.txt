@@ -1,0 +1,526 @@
+# Black Box collections (src/lib/black-box-curated.ts): Wikipedia's List of Black films of the
+# 2010s, Rotten Tomatoes' 163 Best Black Movies of the 21st Century and the decade round-ups.
+
+## Black Cinema — 1990s Classics
+Boyz n the Hood | 1991 | movie | | 
+Friday | 1995 | movie | | 
+Menace II Society | 1993 | movie | | 
+Juice | 1992 | movie | | 
+Malcolm X | 1992 | movie | | 
+Set It Off | 1996 | movie | | 
+Waiting to Exhale | 1995 | movie | | 
+The Best Man | 1999 | movie | | 
+Love Jones | 1997 | movie | | 
+Soul Food | 1997 | movie | | 
+Poetic Justice | 1993 | movie | | 
+Boomerang | 1992 | movie | | 
+New Jack City | 1991 | movie | | 
+House Party | 1990 | movie | | 
+Higher Learning | 1995 | movie | | 
+White Men Can't Jump | 1992 | movie | | 
+Hangin' with the Homeboys | 1991 | movie | | 
+Eve's Bayou | 1997 | movie | | 
+Belly | 1998 | movie | | 
+The Players Club | 1998 | movie | | 
+How Stella Got Her Groove Back | 1998 | movie | | 
+Above the Rim | 1994 | movie | | 
+Dead Presidents | 1995 | movie | | 
+Bad Boys | 1995 | movie | | 
+Jungle Fever | 1991 | movie | | 
+Daughters of the Dust | 1991 | movie | | 
+A Low Down Dirty Shame | 1994 | movie | | 
+Life | 1999 | movie | | 
+The Nutty Professor | 1996 | movie | | 
+Booty Call | 1997 | movie | | 
+Hoodlum | 1997 | movie | | 
+Jason's Lyric | 1994 | movie | | 
+Crooklyn | 1994 | movie | | 
+Rosewood | 1997 | movie | | 
+What's Love Got to Do with It | 1993 | movie | | 
+Sister Act | 1992 | movie | | 
+Don't Be a Menace to South Central While Drinking Your Juice in the Hood | 1996 | movie | | 
+I Got the Hook Up | 1998 | movie | | 
+The Wood | 1999 | movie | | 
+Fresh | 1994 | movie | | 
+Clockers | 1995 | movie | | 
+He Got Game | 1998 | movie | | 
+Get on the Bus | 1996 | movie | | 
+A Thin Line Between Love and Hate | 1996 | movie | | 
+The Five Heartbeats | 1991 | movie | | 
+CB4 | 1993 | movie | | 
+Mo' Money | 1992 | movie | | 
+Deep Cover | 1992 | movie | | 
+Sugar Hill | 1993 | movie | | 
+Tales from the Hood | 1995 | movie | | 
+The Inkwell | 1994 | movie | | 
+Panther | 1995 | movie | | 
+Sprung | 1997 | movie | | 
+Ghost Dog: The Way of the Samurai | 1999 | movie | | 
+
+## Black Cinema — 2000s
+Love & Basketball | 2000 | movie | | 
+Antwone Fisher | 2002 | movie | | 
+Drumline | 2002 | movie | | 
+Barbershop | 2002 | movie | | 
+Brown Sugar | 2002 | movie | | 
+Training Day | 2001 | movie | | 
+Ali | 2001 | movie | | 
+Baby Boy | 2001 | movie | | 
+Next Friday | 2000 | movie | | 
+Friday After Next | 2002 | movie | | 
+Save the Last Dance | 2001 | movie | | 
+Two Can Play That Game | 2001 | movie | | 
+Paid in Full | 2002 | movie | | 
+Undercover Brother | 2002 | movie | | 
+Bad Boys II | 2003 | movie | | 
+Biker Boyz | 2003 | movie | | 
+Deliver Us from Eva | 2003 | movie | | 
+The Fighting Temptations | 2003 | movie | | 
+Love Don't Cost a Thing | 2003 | movie | | 
+Ray | 2004 | movie | | 
+Hotel Rwanda | 2004 | movie | | 
+Johnson Family Vacation | 2004 | movie | | 
+You Got Served | 2004 | movie | | 
+Hustle & Flow | 2005 | movie | | 
+Diary of a Mad Black Woman | 2005 | movie | | 
+Coach Carter | 2005 | movie | | 
+Beauty Shop | 2005 | movie | | 
+Akeelah and the Bee | 2006 | movie | | 
+Dreamgirls | 2006 | movie | | 
+ATL | 2006 | movie | | 
+The Pursuit of Happyness | 2006 | movie | | 
+Madea's Family Reunion | 2006 | movie | | 
+Stomp the Yard | 2007 | movie | | 
+The Great Debaters | 2007 | movie | | 
+American Gangster | 2007 | movie | | 
+Why Did I Get Married? | 2007 | movie | | 
+This Christmas | 2007 | movie | | 
+Talk to Me | 2007 | movie | | 
+Pride | 2007 | movie | | 
+Daddy's Little Girls | 2007 | movie | | 
+Cadillac Records | 2008 | movie | | 
+The Secret Life of Bees | 2008 | movie | | 
+Precious | 2009 | movie | | 
+Notorious | 2009 | movie | | 
+Obsessed | 2009 | movie | | 
+Good Hair | 2009 | movie | | 
+Dave Chappelle's Block Party | 2005 | movie | | 
+Baadasssss! | 2003 | movie | | 
+Standing in the Shadows of Motown | 2002 | movie | | 
+God Grew Tired of Us | 2006 | movie | | 
+Our Song | 2000 | movie | | 
+The Heart of the Game | 2005 | movie | | 
+Inside Man | 2006 | movie | | 
+The Princess and the Frog | 2009 | movie | | 
+Monster's Ball | 2001 | movie | | 
+Rize | 2005 | movie | | 
+George Washington | 2000 | movie | | 
+Black Dynamite | 2009 | movie | | 
+Remember the Titans | 2000 | movie | | 
+Shaft | 2000 | movie | | 
+Big Momma's House | 2000 | movie | | 
+Bamboozled | 2000 | movie | | 
+Bait | 2000 | movie | | 
+Nutty Professor II: The Klumps | 2000 | movie | | 
+Romeo Must Die | 2000 | movie | | 
+Men of Honor | 2000 | movie | | 
+The Original Kings of Comedy | 2000 | movie | | 
+Disappearing Acts | 2000 | movie | | 
+Rush Hour 2 | 2001 | movie | | 
+Kingdom Come | 2001 | movie | | 
+Dr. Dolittle 2 | 2001 | movie | | 
+How High | 2001 | movie | | 
+The Brothers | 2001 | movie | | 
+Like Mike | 2002 | movie | | 
+John Q | 2002 | movie | | 
+Barbershop 2: Back in Business | 2004 | movie | | 
+Head of State | 2003 | movie | | 
+Honey | 2003 | movie | | 
+Malibu's Most Wanted | 2003 | movie | | 
+Fat Albert | 2004 | movie | | 
+Soul Plane | 2004 | movie | | 
+Breakin' All the Rules | 2004 | movie | | 
+Man on Fire | 2004 | movie | | 
+Woman Thou Art Loosed | 2004 | movie | | 
+Hitch | 2005 | movie | | 
+Four Brothers | 2005 | movie | | 
+Get Rich or Die Tryin' | 2005 | movie | | 
+Roll Bounce | 2005 | movie | | 
+Idlewild | 2006 | movie | | 
+Waist Deep | 2006 | movie | | 
+Last Holiday | 2006 | movie | | 
+Glory Road | 2006 | movie | | 
+Something New | 2006 | movie | | 
+Phat Girlz | 2006 | movie | | 
+D\u00e9j\u00e0 Vu | 2006 | movie | | 
+Norbit | 2007 | movie | | 
+I Am Legend | 2007 | movie | | 
+First Sunday | 2008 | movie | | 
+Meet the Browns | 2008 | movie | | 
+Hancock | 2008 | movie | | 
+Seven Pounds | 2008 | movie | | 
+Miracle at St. Anna | 2008 | movie | | 
+Soul Men | 2008 | movie | | 
+The Express | 2008 | movie | | 
+Lakeview Terrace | 2008 | movie | | 
+Welcome Home Roscoe Jenkins | 2008 | movie | | 
+Next Day Air | 2009 | movie | | 
+Madea Goes to Jail | 2009 | movie | | 
+I Can Do Bad All by Myself | 2009 | movie | | 
+Not Easily Broken | 2009 | movie | | 
+Fighting | 2009 | movie | | 
+
+## Black Cinema — 2010s
+Get Out | 2017 | movie | | 
+Moonlight | 2016 | movie | | 
+Black Panther | 2018 | movie | | 
+Pariah | 2011 | movie | | 
+Mudbound | 2017 | movie | | 
+If Beale Street Could Talk | 2018 | movie | | 
+Beyond the Lights | 2014 | movie | | 
+Selma | 2014 | movie | | 
+Fruitvale Station | 2013 | movie | | 
+12 Years a Slave | 2013 | movie | | 
+Straight Outta Compton | 2015 | movie | | 
+Creed | 2015 | movie | | 
+Hidden Figures | 2016 | movie | | 
+Fences | 2016 | movie | | 
+Girls Trip | 2017 | movie | | 
+Dope | 2015 | movie | | 
+Dear White People | 2014 | movie | | 
+Think Like a Man | 2012 | movie | | 
+The Best Man Holiday | 2013 | movie | | 
+Jumping the Broom | 2011 | movie | | 
+The Hate U Give | 2018 | movie | | 
+BlacKkKlansman | 2018 | movie | | 
+Sorry to Bother You | 2018 | movie | | 
+Us | 2019 | movie | | 
+Harriet | 2019 | movie | | 
+Just Mercy | 2019 | movie | | 
+Queen & Slim | 2019 | movie | | 
+Waves | 2019 | movie | | 
+Dolemite Is My Name | 2019 | movie | | 
+The Last Black Man in San Francisco | 2019 | movie | | 
+Detroit | 2017 | movie | | 
+Widows | 2018 | movie | | 
+The Equalizer | 2014 | movie | | 
+20 Feet from Stardom | 2013 | movie | | 
+Sparkle | 2012 | movie | | 
+Ride Along | 2014 | movie | | 
+Barbershop: The Next Cut | 2016 | movie | | 
+Night School | 2018 | movie | | 
+Little | 2019 | movie | | 
+Black Nativity | 2013 | movie | | 
+O.J.: Made in America | 2016 | movie | | 
+Strong Island | 2017 | movie | | 
+I Am Not Your Negro | 2016 | movie | | 
+Amazing Grace | 2018 | movie | | 
+Whose Streets? | 2017 | movie | | 
+I Am Not a Witch | 2017 | movie | | 
+Night Comes On | 2018 | movie | | 
+Keep on Keepin' On | 2014 | movie | | 
+Spider-Man: Into the Spider-Verse | 2018 | movie | | 
+13TH | 2016 | movie | | 
+Toni Morrison: The Pieces I Am | 2019 | movie | | 
+Hale County This Morning, This Evening | 2018 | movie | | 
+Tangerine | 2015 | movie | | 
+Atlantics | 2019 | movie | | 
+Step | 2017 | movie | | 
+Blindspotting | 2018 | movie | | 
+Southside With You | 2016 | movie | | 
+Clemency | 2019 | movie | | 
+The Central Park Five | 2012 | movie | | 
+The Black Panthers: Vanguard of the Revolution | 2015 | movie | | 
+The Black Power Mixtape 1967-1975 | 2011 | movie | | 
+Premature | 2019 | movie | | 
+Luce | 2019 | movie | | 
+Support the Girls | 2018 | movie | | 
+Miles Davis: Birth of the Cool | 2019 | movie | | 
+Miss Sharon Jones! | 2015 | movie | | 
+Presenting Princess Shaw | 2015 | movie | | 
+Burning Cane | 2019 | movie | | 
+Beats, Rhymes & Life: The Travels of A Tribe Called Quest | 2011 | movie | | 
+What Happened, Miss Simone? | 2015 | movie | | 
+Loving | 2016 | movie | | 
+It Comes at Night | 2017 | movie | | 
+Whitney | 2018 | movie | | 
+Madeline's Madeline | 2018 | movie | | 
+Middle of Nowhere | 2012 | movie | | 
+Django Unchained | 2012 | movie | | 
+Beasts of the Southern Wild | 2012 | movie | | 
+Selah and the Spades | 2019 | movie | | 
+The Gospel According to Andr\u00e9 | 2017 | movie | | 
+Top Five | 2014 | movie | | 
+Monsters and Men | 2018 | movie | | 
+Creed II | 2018 | movie | | 
+Fast Color | 2018 | movie | | 
+Chi-Raq | 2015 | movie | | 
+42 | 2013 | movie | | 
+Get On Up | 2014 | movie | | 
+Marshall | 2017 | movie | | 
+Keanu | 2016 | movie | | 
+The Book of Eli | 2010 | movie | | 
+Brooklyn's Finest | 2010 | movie | | 
+Death at a Funeral | 2010 | movie | | 
+For Colored Girls | 2010 | movie | | 
+I Will Follow | 2010 | movie | | 
+Just Wright | 2010 | movie | | 
+The Karate Kid | 2010 | movie | | 
+Lottery Ticket | 2010 | movie | | 
+Night Catches Us | 2010 | movie | | 
+Our Family Wedding | 2010 | movie | | 
+Preacher's Kid | 2010 | movie | | 
+Speed-Dating | 2010 | movie | | 
+Takers | 2010 | movie | | 
+Why Did I Get Married Too? | 2010 | movie | | 
+35 and Ticking | 2011 | movie | | 
+All Things Fall Apart | 2011 | movie | | 
+Big Mommas: Like Father, Like Son | 2011 | movie | | 
+CornerStore | 2011 | movie | | 
+Everyday Sunshine: The Story of Fishbone | 2011 | movie | | 
+Fast Five | 2011 | movie | | 
+The Heart Specialist | 2011 | movie | | 
+The Help | 2011 | movie | | 
+The Interrupters | 2011 | movie | | 
+Kevin Hart: Laugh at My Pain | 2011 | movie | | 
+Madea's Big Happy Family | 2011 | movie | | 
+Mooz-lum | 2011 | movie | | 
+Politics of Love | 2011 | movie | | 
+Shame | 2011 | movie | | 
+A Beautiful Soul | 2012 | movie | | 
+Changing the Game | 2012 | movie | | 
+Christmas in Compton | 2012 | movie | | 
+Flight | 2012 | movie | | 
+Good Deeds | 2012 | movie | | 
+Joyful Noise | 2012 | movie | | 
+Let It Shine | 2012 | movie | | 
+Madea's Witness Protection | 2012 | movie | | 
+Mama, I Want to Sing! | 2012 | movie | | 
+An Oversimplification of Her Beauty | 2012 | movie | | 
+Red Hook Summer | 2012 | movie | | 
+Red Tails | 2012 | movie | | 
+The Skinny | 2012 | movie | | 
+We the Party | 2012 | movie | | 
+1982 | 2013 | movie | | 
+After Earth | 2013 | movie | | 
+Belle | 2013 | movie | | 
+The Butler | 2013 | movie | | 
+A Haunted House | 2013 | movie | | 
+Kevin Hart: Let Me Explain | 2013 | movie | | 
+Mandela: Long Walk to Freedom | 2013 | movie | | 
+Memphis | 2013 | movie | | 
+Peeples | 2013 | movie | | 
+The Stuart Hall Project | 2013 | movie | | 
+Temptation: Confessions of a Marriage Counselor | 2013 | movie | | 
+About Last Night | 2014 | movie | | 
+Addicted | 2014 | movie | | 
+Blackbird | 2014 | movie | | 
+The Czar of Black Hollywood | 2014 | movie | | 
+Da Sweet Blood of Jesus | 2014 | movie | | 
+Girlhood | 2014 | movie | | 
+Think Like a Man Too | 2014 | movie | | 
+Through a Lens Darkly: Black Photographers and the Emergence of a People | 2014 | movie | | 
+Ayanda | 2015 | movie | | 
+Beasts of No Nation | 2015 | movie | | 
+Bessie | 2015 | movie | | 
+Brotherly Love | 2015 | movie | | 
+Chocolate City | 2015 | movie | | 
+Fifty | 2015 | movie | | 
+Freetown | 2015 | movie | | 
+The Man in 3B | 2015 | movie | | 
+Miles Ahead | 2015 | movie | | 
+The Perfect Guy | 2015 | movie | | 
+Runaway Island | 2015 | movie | | 
+War Room | 2015 | movie | | 
+Bars4Justice | 2016 | movie | | 
+The Birth of a Nation | 2016 | movie | | 
+Fifty Shades of Black | 2016 | movie | | 
+Hunter Gatherer | 2016 | movie | | 
+In the Hour of Chaos | 2016 | movie | | 
+The Weekend | 2016 | movie | | 
+Kiki | 2016 | movie | | 
+Knucklehead | 2016 | movie | | 
+The Perfect Match | 2016 | movie | | 
+Ride Along 2 | 2016 | movie | | 
+The Magnificent Seven | 2016 | movie | | 
+Meet the Blacks | 2016 | movie | | 
+Queen of Katwe | 2016 | movie | | 
+Saving Barbara Sizemore | 2016 | movie | | 
+All Eyez on Me | 2017 | movie | | 
+Boo 2! A Madea Halloween | 2017 | movie | | 
+Burning Sands | 2017 | movie | | 
+Crown Heights | 2017 | movie | | 
+Dayveon | 2017 | movie | | 
+Deidra & Laney Rob a Train | 2017 | movie | | 
+The Immortal Life of Henrietta Lacks | 2017 | movie | | 
+The Incredible Jessica James | 2017 | movie | | 
+Roxanne Roxanne | 2017 | movie | | 
+Sleight | 2017 | movie | | 
+Acrimony | 2018 | movie | | 
+And Breathe Normally | 2018 | movie | | 
+A Boy. A Girl. A Dream. | 2018 | movie | | 
+Brian Banks | 2018 | movie | | 
+Burden | 2018 | movie | | 
+Canal Street | 2018 | movie | | 
+Come Sunday | 2018 | movie | | 
+Crime + Punishment | 2018 | movie | | 
+Farming | 2018 | movie | | 
+The First Purge | 2018 | movie | | 
+Green Book | 2018 | movie | | 
+King in the Wilderness | 2018 | movie | | 
+Mariannes Noires | 2018 | movie | | 
+Matangi/Maya/M.I.A. | 2018 | movie | | 
+Minding the Gap | 2018 | movie | | 
+Monster | 2018 | movie | | 
+Mr. Soul! | 2018 | movie | | 
+Proud Mary | 2018 | movie | | 
+The Public | 2018 | movie | | 
+Quincy | 2018 | movie | | 
+Step Sisters | 2018 | movie | | 
+Tales from the Hood 2 | 2018 | movie | | 
+This One's for the Ladies | 2018 | movie | | 
+Tyrel | 2018 | movie | | 
+What You Gonna Do When the World's on Fire? | 2018 | movie | | 
+Where Hands Touch | 2018 | movie | | 
+A Wrinkle in Time | 2018 | movie | | 
+Yardie | 2018 | movie | | 
+21 Bridges | 2019 | movie | | 
+The Apollo | 2019 | movie | | 
+Black and Blue | 2019 | movie | | 
+Blue Story | 2019 | movie | | 
+Bolden | 2019 | movie | | 
+The Boy Who Harnessed the Wind | 2019 | movie | | 
+Don't Let Go | 2019 | movie | | 
+From Zero to I Love You | 2019 | movie | | 
+Guava Island | 2019 | movie | | 
+Hell on the Border | 2019 | movie | | 
+Horror Noire | 2019 | movie | | 
+The Intruder | 2019 | movie | | 
+A Madea Family Funeral | 2019 | movie | | 
+Native Son | 2019 | movie | | 
+No Lye: An American Beauty Story | 2019 | movie | | 
+Pick | 2019 | movie | | 
+Shaft | 2019 | movie | | 
+See You Yesterday | 2019 | movie | | 
+Thriller | 2019 | movie | | 
+Traveling While Black | 2019 | movie | | 
+What Men Want | 2019 | movie | | 
+
+## Black Cinema — 2020s
+Sinners | 2025 | movie | | 
+Judas and the Black Messiah | 2021 | movie | | 
+American Fiction | 2023 | movie | | 
+The Woman King | 2022 | movie | | 
+Nope | 2022 | movie | | 
+Black Panther: Wakanda Forever | 2022 | movie | | 
+Da 5 Bloods | 2020 | movie | | 
+Ma Rainey's Black Bottom | 2020 | movie | | 
+King Richard | 2021 | movie | | 
+They Cloned Tyrone | 2023 | movie | | 
+One of Them Days | 2025 | movie | | 
+The Six Triple Eight | 2024 | movie | | 
+Rustin | 2023 | movie | | 
+The Color Purple | 2023 | movie | | 
+The Piano Lesson | 2024 | movie | | 
+Bob Marley: One Love | 2024 | movie | | 
+Creed III | 2023 | movie | | 
+Till | 2022 | movie | | 
+The Harder They Fall | 2021 | movie | | 
+Candyman | 2021 | movie | | 
+Respect | 2021 | movie | | 
+Coming 2 America | 2021 | movie | | 
+Nickel Boys | 2024 | movie | | 
+Origin | 2023 | movie | | 
+Bad Boys for Life | 2020 | movie | | 
+Bad Boys: Ride or Die | 2024 | movie | | 
+Soul | 2020 | movie | | 
+Lovers Rock | 2020 | movie | | 
+Zola | 2020 | movie | | 
+Charm City Kings | 2020 | movie | | 
+The Photograph | 2020 | movie | | 
+The Book of Clarence | 2024 | movie | | 
+Exhibiting Forgiveness | 2024 | movie | | 
+On Becoming a Guinea Fowl | 2024 | movie | | 
+Descendant | 2022 | movie | | 
+All In: The Fight for Democracy | 2020 | movie | | 
+Attica | 2021 | movie | | 
+Summer of Soul (\u2026Or, When the Revolution Could Not Be Televised) | 2021 | movie | | 
+Miss Juneteenth | 2020 | movie | | 
+The Forty-Year-Old Version | 2020 | movie | | 
+One Night in Miami | 2020 | movie | | 
+Rye Lane | 2023 | movie | | 
+Time | 2020 | movie | | 
+MLK/FBI | 2020 | movie | | 
+Sing Sing | 2023 | movie | | 
+A Thousand and One | 2023 | movie | | 
+Farewell Amor | 2020 | movie | | 
+The Boy Behind the Door | 2020 | movie | | 
+Earth Mama | 2023 | movie | | 
+Test Pattern | 2021 | movie | | 
+Spider-Man: Across the Spider-Verse | 2023 | movie | | 
+Sylvie's Love | 2020 | movie | | 
+John Lewis: Good Trouble | 2020 | movie | | 
+Black Is King | 2020 | movie | | 
+Uncorked | 2020 | movie | | 
+The Fire Inside | 2024 | movie | | 
+SLY LIVES! (aka The Burden of Black Genius) | 2025 | movie | | 
+Passing | 2021 | movie | | 
+Emergency | 2022 | movie | | 
+Jingle Jangle: A Christmas Journey | 2020 | movie | | 
+All Dirt Roads Taste of Salt | 2023 | movie | | 
+Hedda | 2025 | movie | | 
+The Inspection | 2022 | movie | | 
+The Outside Story | 2020 | movie | | 
+The Blackening | 2022 | movie | | 
+The Angry Black Girl and Her Monster | 2023 | movie | | 
+Copshop | 2021 | movie | | 
+Wendell & Wild | 2022 | movie | | 
+Bad Trip | 2021 | movie | | 
+Unstoppable | 2024 | movie | | 
+Master | 2022 | movie | | 
+Rob Peace | 2024 | movie | | 
+The Banker | 2020 | movie | | 
+Concrete Cowboy | 2020 | movie | | 
+Malcolm & Marie | 2021 | movie | | 
+The United States vs. Billie Holiday | 2021 | movie | | 
+Fatherhood | 2021 | movie | | 
+Space Jam: A New Legacy | 2021 | movie | | 
+Emancipation | 2022 | movie | | 
+Devotion | 2022 | movie | | 
+Breaking | 2022 | movie | | 
+Nanny | 2022 | movie | | 
+Bruiser | 2022 | movie | | 
+The Equalizer 3 | 2023 | movie | | 
+You People | 2023 | movie | | 
+Haunted Mansion | 2023 | movie | | 
+The Burial | 2023 | movie | | 
+Lift | 2024 | movie | | 
+The Deliverance | 2024 | movie | | 
+Rebel Ridge | 2024 | movie | | 
+Shirley | 2024 | movie | | 
+
+## New Black Movies — 2026
+Michael | 2026 | movie | | 
+Your Mother, Your Mother, Your Mother | 2026 | movie | | 
+Misty Green | 2026 | movie | | 
+If I Go Will They Miss Me | 2026 | movie | | 
+They Will Kill You | 2026 | movie | | 
+Stop! That! Train! | 2026 | movie | | 
+Don't Ever Wonder | 2026 | movie | | 
+The Dutchman | 2026 | movie | | 
+I Love Boosters | 2026 | movie | | 
+Strung | 2026 | movie | | 
+
+## Trending Black TV Shows
+A Different World | ? | series | | 
+His & Hers | ? | series | | 
+Beauty in Black | ? | series | | 
+Wonder Man | ? | series | | 
+Hijack | ? | series | | 
+Cross | ? | series | | 
+Paradise | ? | series | | 
+The 'Burbs | ? | series | | 
+The Boroughs | ? | series | | 
+Man on Fire | ? | series | | 
+Fightland | ? | series | | 
+S.W.A.T. Exiles | ? | series | | 
