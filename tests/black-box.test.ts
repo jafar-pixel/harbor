@@ -3,6 +3,9 @@ import test from "node:test";
 import {
   BLACK_BOX_PEOPLE,
   blackBoxCatalogsFor,
+  blackBoxPeopleSparql,
+  personIdsFromSparql,
+  starsBlackLead,
   blackBoxIdsFromSparql,
   blackBoxSparql,
   showKind,
@@ -131,4 +134,61 @@ test("black box: talk, reality and documentary shows are TV, the rest Series", (
   assert.equal(showKind([18, 35]), "series");
   assert.equal(showKind([10767]), "tv");
   assert.equal(showKind([99, 18]), "tv");
+});
+
+test("black box: a title counts only when a Black actor or actress is a lead", () => {
+  const black = new Set([7, 8]);
+  // A Black lead, billed second.
+  assert.equal(
+    starsBlackLead(
+      [
+        { id: 1, order: 0 },
+        { id: 7, order: 1 },
+      ],
+      black,
+    ),
+    true,
+  );
+  // A blockbuster with a Black actor far down the cast: not Black Box.
+  assert.equal(
+    starsBlackLead(
+      [
+        { id: 1, order: 0 },
+        { id: 2, order: 1 },
+        { id: 3, order: 2 },
+        { id: 8, order: 9 },
+      ],
+      black,
+    ),
+    false,
+  );
+  // Billing order decides, not the order the list arrives in.
+  assert.equal(
+    starsBlackLead(
+      [
+        { id: 8, order: 5 },
+        { id: 1, order: 0 },
+        { id: 2, order: 1 },
+        { id: 3, order: 2 },
+      ],
+      black,
+    ),
+    false,
+  );
+  assert.equal(starsBlackLead(undefined, black), false);
+});
+
+test("black box: Wikidata is asked who is Black, by ethnic group, with their TMDB ids", () => {
+  const q = blackBoxPeopleSparql();
+  assert.match(q, /"African Americans"@en/);
+  assert.match(q, /wdt:P172/);
+  assert.match(q, /wdt:P4985/);
+  assert.deepEqual(
+    personIdsFromSparql({
+      results: {
+        bindings: [{ pid: { value: "287" } }, { pid: { value: "287" } }, { pid: { value: "x" } }],
+      },
+    }),
+    [287],
+  );
 });

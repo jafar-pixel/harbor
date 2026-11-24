@@ -440,3 +440,44 @@ export function blackBoxIdsFromSparql(json: unknown): number[] {
 export function showKind(genreIds: readonly number[]): "series" | "tv" {
   return genreIds.some((g) => TV_GENRES.has(g)) ? "tv" : "series";
 }
+
+/** A title is Black Box when a Black actor or actress is among its first this-many billed. */
+export const LEAD_BILLING = 3;
+
+/** A Wikidata query for the TMDB ids of every person of one of BLACK_BOX_GROUPS. */
+export function blackBoxPeopleSparql(): string {
+  const groups = BLACK_BOX_GROUPS.map((g) => `${sparqlString(g)}@en`).join(" ");
+  return [
+    "SELECT DISTINCT ?pid WHERE {",
+    `  VALUES ?label { ${groups} } ?group rdfs:label ?label .`,
+    `  ?person ${ETHNIC_GROUP} ?group ; ${TMDB_PERSON} ?pid .`,
+    "} LIMIT 50000",
+  ].join("\n");
+}
+
+/** TMDB person ids from Wikidata's answer to blackBoxPeopleSparql. */
+export function personIdsFromSparql(json: unknown): number[] {
+  const rows = (json as { results?: { bindings?: unknown[] } })?.results?.bindings;
+  if (!Array.isArray(rows)) return [];
+  const ids = new Set<number>();
+  for (const row of rows) {
+    const id = Number((row as { pid?: { value?: string } }).pid?.value);
+    if (Number.isInteger(id) && id > 0) ids.add(id);
+  }
+  return [...ids];
+}
+
+export type BilledCast = { id: number; order?: number };
+
+/**
+ * Whether a title stars a Black actor or actress: one of its first LEAD_BILLING billed cast
+ * members is in `black`. A Black actor further down the cast doesn't make a blockbuster Black Box.
+ */
+export function starsBlackLead(
+  cast: readonly BilledCast[] | undefined,
+  black: ReadonlySet<number>,
+): boolean {
+  if (!cast?.length) return false;
+  const billed = [...cast].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  return billed.slice(0, LEAD_BILLING).some((c) => black.has(c.id));
+}

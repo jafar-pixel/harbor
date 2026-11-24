@@ -4,15 +4,20 @@
  * the work of the Black actors, actresses and hosts in BLACK_BOX_PEOPLE from TMDB, with the
  * viewer's TMDB key (Settings); without a key there is nothing to show.
  *
- * The titles come from Wikidata: every film and show whose cast includes a person Wikidata records
- * as Black (BLACK_BOX_GROUPS) or one of BLACK_BOX_PEOPLE, best known first, thousands of them; TMDB
- * supplies each page's posters and details. When Wikidata can't be reached, TMDB alone is used:
+ * A title counts when it stars a Black actor or actress: one is among its first LEAD_BILLING billed
+ * cast members on TMDB. Who is Black comes from Wikidata (people of BLACK_BOX_GROUPS) and
+ * BLACK_BOX_PEOPLE. Candidates come from Wikidata (films and shows with such a person anywhere in
+ * the cast, best known first) and each is checked against its TMDB billing before it is shown. When Wikidata can't be reached, TMDB alone is used:
  * Movies from its discover (any of the people in the cast), Series and TV from the people's TV
  * credits. Who each name is on TMDB is looked up by exact name once and kept on the device.
  */
 import type { Meta } from "./cinemeta";
 import {
   BLACK_BOX_PAGE_SIZE,
+  blackBoxPeopleSparql,
+  personIdsFromSparql,
+  starsBlackLead,
+  type BilledCast,
   blackBoxCatalogsFor,
   blackBoxIdsFromSparql,
   blackBoxSparql,
@@ -42,7 +47,7 @@ export { BLACK_BOX_BASE, isBlackBoxKind } from "./black-box-core";
 
 const PEOPLE_STORE = "jl.blackBox.people.v1";
 /** TMDB lookups at once: quick on a TV without tripping TMDB's rate limit. */
-const PARALLEL = 6;
+const PARALLEL = 8;
 
 type PeopleMap = Record<string, number>;
 
@@ -135,19 +140,21 @@ function showLists(key: string): Promise<Record<"series" | "tv", TvCredit[]>> {
 }
 
 const WIKIDATA = "https://query.wikidata.org/sparql";
-const WIKIDATA_STORE = "jl.blackBox.wikidata.v1";
+const WIKIDATA_STORE = "jl.blackBox.wikidata.v2";
 const WIKIDATA_FRESH_MS = 7 * 24 * 60 * 60 * 1000;
-/** Fewer titles than this from Wikidata means it didn't really answer; TMDB alone is used then. */
+/** Fewer than this from Wikidata means it didn't really answer; TMDB alone is used then. */
 const WIKIDATA_ENOUGH = 100;
 
-type WikidataStore = { at: number; movie: number[]; tv: number[] };
+/** Wikidata's answers: Black people's TMDB ids, and candidate films and shows, best known first. */
+type WikidataStore = { at: number; people: number[]; movie: number[]; tv: number[] };
 
 function readWikidata(): WikidataStore | null {
   try {
     const raw = localStorage.getItem(WIKIDATA_STORE);
     const parsed = raw ? (JSON.parse(raw) as WikidataStore) : null;
     if (!parsed || Date.now() - parsed.at > WIKIDATA_FRESH_MS) return null;
-    return Array.isArray(parsed.movie) && Array.isArray(parsed.tv) ? parsed : null;
+    const ok = [parsed.people, parsed.movie, parsed.tv].every(Array.isArray);
+    return ok ? parsed : null;
   } catch {
     return null;
   }
@@ -159,31 +166,34 @@ function writeWikidata(store: WikidataStore): void {
   } catch {}
 }
 
-async function askWikidata(kind: "movie" | "tv", people: readonly number[]): Promise<number[]> {
-  const url = `${WIKIDATA}?format=json&query=${encodeURIComponent(blackBoxSparql(kind, people))}`;
+async function askWikidata(query: string): Promise<unknown> {
+  const url = `${WIKIDATA}?format=json&query=${encodeURIComponent(query)}`;
   const res = await safeFetch(url, { headers: { Accept: "application/sparql-results+json" } });
-  if (!res.ok) return [];
-  return blackBoxIdsFromSparql(await res.json());
+  return res.ok ? res.json() : null;
 }
 
 let wikidata: Promise<WikidataStore | null> | null = null;
 
-/**
- * Every film and show with a Black actor or actress in the cast, from Wikidata, best known first:
- * thousands of titles. Kept on the device for a week; null when Wikidata can't be reached.
- */
+/** Wikidata's answers, kept on the device for a week; null when Wikidata can't be reached. */
 function wikidataTitles(key: string): Promise<WikidataStore | null> {
   if (wikidata) return wikidata;
   const stored = readWikidata();
   if (stored) return (wikidata = Promise.resolve(stored));
   const run = (async () => {
-    const people = await peopleIds(key).catch(() => [] as number[]);
-    const [movie, tv] = await Promise.all([
-      askWikidata("movie", people).catch(() => [] as number[]),
-      askWikidata("tv", people).catch(() => [] as number[]),
+    const named = await peopleIds(key).catch(() => [] as number[]);
+    const [people, movie, tv] = await Promise.all([
+      askWikidata(blackBoxPeopleSparql())
+        .then(personIdsFromSparql)
+        .catch(() => [] as number[]),
+      askWikidata(blackBoxSparql("movie", named))
+        .then(blackBoxIdsFromSparql)
+        .catch(() => [] as number[]),
+      askWikidata(blackBoxSparql("tv", named))
+        .then(blackBoxIdsFromSparql)
+        .catch(() => [] as number[]),
     ]);
-    if (movie.length + tv.length < WIKIDATA_ENOUGH) return null;
-    const store = { at: Date.now(), movie, tv };
+    if (people.length < WIKIDATA_ENOUGH || movie.length + tv.length < WIKIDATA_ENOUGH) return null;
+    const store = { at: Date.now(), people, movie, tv };
     writeWikidata(store);
     return store;
   })();
@@ -195,73 +205,138 @@ function wikidataTitles(key: string): Promise<WikidataStore | null> {
   return run;
 }
 
-type Details = { poster_path?: string | null; adult?: boolean; genres?: Array<{ id: number }> };
-
-async function movieDetails(key: string, id: number): Promise<Meta | null> {
-  const raw = await get<RawMovie & Details>(key, `movie/${id}`).catch(() => null);
-  if (!raw?.id || !raw.poster_path || raw.adult) return null;
-  return movieMeta({ ...raw, genre_ids: raw.genres?.map((g) => g.id) ?? raw.genre_ids });
+/** The TMDB ids of every Black actor and actress known: Wikidata's and the named ones. */
+async function blackPeople(key: string): Promise<Set<number>> {
+  const [titles, named] = await Promise.all([wikidataTitles(key), peopleIds(key).catch(() => [])]);
+  return new Set([...(titles?.people ?? []), ...named]);
 }
 
-type ShowScan = { next: number; series: Meta[]; tv: Meta[]; queue: Promise<void> };
-let showScan: { ids: number[]; scan: ShowScan } | null = null;
+type Details = {
+  poster_path?: string | null;
+  adult?: boolean;
+  genres?: Array<{ id: number }>;
+  credits?: { cast?: BilledCast[] };
+  aggregate_credits?: { cast?: BilledCast[] };
+};
 
 /**
- * Shows are split into Series and TV by their genres, which only their details carry, so both
- * catalogs read through the same list in order, a batch at a time, until the one asked for has
- * `want` titles or the list ends.
+ * Reads candidate titles in order, a batch at a time, keeping those that star a Black actor or
+ * actress, until a catalog has `want` titles or the candidates run out. One scan per catalog
+ * source; Series and TV share theirs, since a show's kind is only known from its details.
  */
-function scanShows(
+type Scan = {
+  next: number;
+  ended: boolean;
+  kept: Record<BlackBoxKind, Meta[]>;
+  queue: Promise<void>;
+};
+
+const scans = new Map<string, Scan>();
+
+function scanFor(id: string): Scan {
+  let scan = scans.get(id);
+  if (!scan) {
+    scan = {
+      next: 0,
+      ended: false,
+      kept: { movies: [], series: [], tv: [] },
+      queue: Promise.resolve(),
+    };
+    scans.set(id, scan);
+  }
+  return scan;
+}
+
+async function keepIfStarring(
   key: string,
-  ids: number[],
-  kind: "series" | "tv",
+  type: "movie" | "tv",
+  id: number,
+  black: ReadonlySet<number>,
+): Promise<{ kind: BlackBoxKind; meta: Meta } | null> {
+  const credits = type === "movie" ? "credits" : "aggregate_credits";
+  const raw = await get<(RawMovie & RawSeries) & Details>(key, `${type}/${id}`, {
+    append_to_response: credits,
+  }).catch(() => null);
+  if (!raw?.id || !raw.poster_path || raw.adult) return null;
+  const cast = type === "movie" ? raw.credits?.cast : raw.aggregate_credits?.cast;
+  if (!starsBlackLead(cast, black)) return null;
+  const genreIds = raw.genres?.map((g) => g.id) ?? raw.genre_ids ?? [];
+  if (type === "movie") return { kind: "movies", meta: movieMeta({ ...raw, genre_ids: genreIds }) };
+  return { kind: showKind(genreIds), meta: seriesMeta({ ...raw, genre_ids: genreIds }) };
+}
+
+function scanTitles(
+  key: string,
+  scanId: string,
+  type: "movie" | "tv",
+  candidates: (from: number) => Promise<number[]>,
+  kind: BlackBoxKind,
   want: number,
 ): Promise<Meta[]> {
-  if (showScan?.ids !== ids) {
-    showScan = { ids, scan: { next: 0, series: [], tv: [], queue: Promise.resolve() } };
-  }
-  const scan = showScan.scan;
+  const scan = scanFor(scanId);
   const run = scan.queue.then(async () => {
-    while (scan[kind].length < want && scan.next < ids.length) {
-      const batch = ids.slice(scan.next, scan.next + PARALLEL * 2);
+    if (scan.kept[kind].length >= want || scan.ended) return;
+    const black = await blackPeople(key);
+    if (black.size === 0) return;
+    while (scan.kept[kind].length < want && !scan.ended) {
+      const batch = await candidates(scan.next);
+      if (batch.length === 0) {
+        scan.ended = true;
+        break;
+      }
       scan.next += batch.length;
-      const shows = await eachLimited(batch, (id) =>
-        get<RawSeries & Details>(key, `tv/${id}`).catch(() => null),
-      );
-      for (const raw of shows) {
-        if (!raw?.id || !raw.poster_path || raw.adult) continue;
-        const genreIds = raw.genres?.map((g) => g.id) ?? raw.genre_ids ?? [];
-        scan[showKind(genreIds)].push(seriesMeta({ ...raw, genre_ids: genreIds }));
+      const found = await eachLimited(batch, (id) => keepIfStarring(key, type, id, black));
+      const seen = new Set(scan.kept[kind].map((m) => m.id));
+      for (const f of found) {
+        if (!f || seen.has(f.meta.id)) continue;
+        seen.add(f.meta.id);
+        scan.kept[f.kind].push(f.meta);
       }
     }
   });
   scan.queue = run.catch(() => {});
-  return run.then(() => scan[kind]);
+  return run.then(() => scan.kept[kind]);
 }
+
+const BATCH = PARALLEL * 3;
 
 /** One page of a Black Box catalog; empty without a TMDB key or past the end. */
 export async function blackBoxPage(kind: BlackBoxKind, page: number): Promise<Meta[]> {
   const key = loadStoredSettings().tmdbKey?.trim() ?? "";
   if (!key) return [];
-  const p = Math.max(1, page);
-  const from = (p - 1) * BLACK_BOX_PAGE_SIZE;
+  const from = (Math.max(1, page) - 1) * BLACK_BOX_PAGE_SIZE;
+  const want = from + BLACK_BOX_PAGE_SIZE;
   const titles = await wikidataTitles(key);
+  let kept: Meta[];
   if (kind === "movies") {
-    if (titles && titles.movie.length > 0) {
-      const ids = titles.movie.slice(from, from + BLACK_BOX_PAGE_SIZE);
-      const metas = await eachLimited(ids, (id) => movieDetails(key, id));
-      return metas.filter((m): m is Meta => m !== null);
-    }
-    const ids = await peopleIds(key);
-    if (ids.length === 0) return [];
-    return tmdbDiscover(key, "movie", blackBoxMovieParams(ids, p));
+    // Wikidata's films, best known first; without it, TMDB's films with the named people.
+    const fromWikidata = (n: number) => Promise.resolve(titles?.movie.slice(n, n + BATCH) ?? []);
+    const fromTmdb = async (n: number) => {
+      const ids = await peopleIds(key);
+      if (ids.length === 0) return [];
+      const metas = await tmdbDiscover(
+        key,
+        "movie",
+        blackBoxMovieParams(ids, Math.floor(n / 20) + 1),
+      );
+      return metas.map((m) => Number(String(m.id).replace(/\D+/g, ""))).filter((id) => id > 0);
+    };
+    kept = await scanTitles(
+      key,
+      titles ? "wd-movie" : "tmdb-movie",
+      "movie",
+      titles ? fromWikidata : fromTmdb,
+      kind,
+      want,
+    );
+  } else if (titles) {
+    const fromWikidata = (n: number) => Promise.resolve(titles.tv.slice(n, n + BATCH));
+    kept = await scanTitles(key, "wd-tv", "tv", fromWikidata, kind, want);
+  } else {
+    const list = (await showLists(key))[kind];
+    return list.slice(from, from + BLACK_BOX_PAGE_SIZE).map((s) => seriesMeta(s));
   }
-  if (titles && titles.tv.length > 0) {
-    const shown = await scanShows(key, titles.tv, kind, from + BLACK_BOX_PAGE_SIZE);
-    return shown.slice(from, from + BLACK_BOX_PAGE_SIZE);
-  }
-  const list = (await showLists(key))[kind];
-  return list.slice(from, from + BLACK_BOX_PAGE_SIZE).map((s) => seriesMeta(s));
+  return kept.slice(from, want);
 }
 
 /** The Black Box's catalogs in Catalogs' shape, or none without a TMDB key. */
