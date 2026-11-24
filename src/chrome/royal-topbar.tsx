@@ -324,6 +324,7 @@ function SearchPill({ onOpen }: { onOpen: () => void }) {
     <button
       type="button"
       onClick={onOpen}
+      data-harbor-search
       aria-label={t("common.search")}
       className="group hidden h-9 items-center gap-2.5 rounded-full border border-[color-mix(in_srgb,var(--color-accent)_16%,var(--color-edge))] bg-surface/50 ps-3 pe-2 text-ink-subtle transition-colors duration-150 hover:border-[color-mix(in_srgb,var(--color-accent)_42%,transparent)] hover:bg-surface/80 hover:text-ink-muted sm:flex"
     >

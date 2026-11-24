@@ -10,10 +10,14 @@ export async function hydrateShortEpg(
   creds: XtreamCreds,
   channels: IptvChannel[],
   base: EpgIndex | null,
+  signal?: AbortSignal,
 ): Promise<EpgIndex | null> {
   const byChannel = new Map<string, EpgProgram[]>(base?.byChannel ?? []);
   let added = false;
   for (const ch of channels) {
+    // Stops when the screen that asked goes away: one lookup per channel otherwise kept running
+    // (and piling up with each refresh) through whatever was watched next.
+    if (signal?.aborted) return null;
     const key = ch.tvgId || ch.id;
     if (byChannel.get(key)?.length) continue;
     const streamId = streamIdOf(ch);

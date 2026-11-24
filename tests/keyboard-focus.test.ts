@@ -300,3 +300,10 @@ test("the TV app's Back ends typing, so the next OK on a field opens the keyboar
     /\[data-tv-text-auto\]"\)\) \{[\s\S]*?showTvKeyboard\(\);\s*return;/,
   );
 });
+
+test("a real keyboard's character on a highlighted search box starts typing in it", () => {
+  assert.match(
+    navigationSource,
+    /active\.hasAttribute\("data-search-nav-mode"\) &&[\s\S]*?\(e\.key\.length === 1 \|\| e\.key === "Backspace"\)[\s\S]*?enterSearchEditMode\(active\);\s*return;/,
+  );
+});

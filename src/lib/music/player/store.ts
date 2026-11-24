@@ -2,7 +2,8 @@ import { useSyncExternalStore } from "react";
 import { searchVideos } from "../dj/api";
 import { pauseDj } from "../dj/playhead";
 import { pickVideo } from "../dj/vibes";
-import { PlayerEngine } from "./engine";
+import { harmonicOrder, transitionStyle, type MixSong } from "../dj/mixing";
+import { PlayerEngine, type MixPlan } from "./engine";
 import {
   getMusicAudioSettingsSnapshot,
   initializeMusicAudioSettings,
@@ -201,6 +202,10 @@ export function attachPlayer(host: HTMLElement): () => void {
         }
         afterSong(true);
       },
+      blocked: () => {
+        // The browser didn't let the song start on its own: show Play, which starts it at once.
+        set({ playing: false, loading: false });
+      },
       advanced: () => {
         failures = 0;
         if (state.sleepAfterSong) {
@@ -259,15 +264,46 @@ function fadeFor(current: PlayerTrack | null, upcoming: PlayerTrack | null): num
   return phraseSeconds(current?.bpm ?? upcoming?.bpm) ?? Math.max(state.crossfade, 8);
 }
 
+function mixSong(t: PlayerTrack | null | undefined): MixSong {
+  return { bpm: t?.bpm, key: t?.camelot };
+}
+
+/** With DJ mixing on: how the next song comes in, from both songs' tempo and key. */
+function mixPlan(current: PlayerTrack | null, upcoming: PlayerTrack | null): MixPlan | null {
+  if (!state.automix || !current || !upcoming) return null;
+  return {
+    style: transitionStyle(mixSong(current), mixSong(upcoming)),
+    bpm: current.bpm,
+  };
+}
+
 async function prepareNext() {
   const i = nextIndex();
-  engine?.setCrossfade(fadeFor(currentTrack(), i >= 0 ? (state.queue[i] ?? null) : null));
+  const current = currentTrack();
+  engine?.setCrossfade(fadeFor(current, i >= 0 ? (state.queue[i] ?? null) : null));
   const track = i >= 0 && i !== state.index ? state.queue[i] : null;
   if (!track) {
-    engine?.setNext(state.repeat === "one" && currentTrack() ? await safe(currentTrack()!) : null);
+    const again = state.repeat === "one" && current ? await safe(current) : null;
+    engine?.setNext(again, mixPlan(current, again ? current : null));
     return;
   }
-  engine?.setNext(await safe(track));
+  engine?.setNext(await safe(track), mixPlan(current, track));
+}
+
+/**
+ * DJ order for what's coming: songs whose key or tempo is known are reordered so each flows into
+ * the next (keys that sit together, tempos close); the rest keep their place after them.
+ */
+function orderUpcomingForMixing(): void {
+  const at = state.index;
+  if (at < 0 || at >= state.queue.length - 2) return;
+  const upcoming = state.queue.slice(at + 1);
+  const ordered = harmonicOrder(
+    mixSong(state.queue[at]),
+    upcoming.map((t) => ({ t, ...mixSong(t) })),
+  ).map((x) => x.t);
+  if (ordered.every((t, i) => t === upcoming[i])) return;
+  set({ queue: [...state.queue.slice(0, at + 1), ...ordered] });
 }
 
 async function safe(track: PlayerTrack): Promise<Playable | null> {
@@ -398,6 +434,7 @@ export function playNow(track: Omit<PlayerTrack, "key">): void {
 /** Turn Automix on or off: phrase-long transitions timed to each song's tempo. */
 export function setAutomix(on: boolean): void {
   set({ automix: on });
+  if (on) orderUpcomingForMixing();
   void prepareNext();
 }
 
@@ -453,8 +490,9 @@ export function togglePlay(): void {
     if (state.queue.length) void startAt(0);
     return;
   }
-  // A queue restored from last time has nothing loaded yet.
-  if (state.duration === 0 && !state.loading) {
+  // A queue restored from last time has nothing loaded yet. (A song that is loaded but was kept
+  // from starting plays from the engine, inside this tap: looking it up again would lose the tap.)
+  if (state.duration === 0 && !state.loading && !engine.hasLoaded()) {
     void startAt(state.index, state.position);
     return;
   }

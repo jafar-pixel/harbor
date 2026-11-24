@@ -1,7 +1,13 @@
 import { crossfade } from "../dj/vibes";
 import { loadYouTube, youtubeFrame, YT_ENDED, YT_PLAYING, type YtPlayer } from "../dj/youtube";
+
+/** YouTube's "buffering" state: loading, not refused. */
+const YT_BUFFERING = 3;
 import type { Playable } from "./types";
 import { dbToGain, sameOriginMedia, type WebEqPlan } from "../web-eq";
+import { videoAspects } from "../dj/api";
+import { phrasePlan, transitionGains, type TransitionStyle } from "../dj/mixing";
+import { screenZoom } from "../video-zoom";
 
 /**
  * The shared web player's two decks. Each deck plays a YouTube video (an embed) or a media URL
@@ -10,6 +16,13 @@ import { dbToGain, sameOriginMedia, type WebEqPlan } from "../web-eq";
  * the engine reports time and tells it when a song finished or failed.
  */
 
+/** How the next song comes in when the player mixes like a DJ (null: a plain crossfade). */
+export type MixPlan = {
+  style: TransitionStyle;
+  /** The playing song's tempo: places the change on a phrase and times a beat chop. */
+  bpm?: number;
+};
+
 export type EngineEvents = {
   /** The song on the live deck ended without a crossfade. */
   ended: () => void;
@@ -17,6 +30,12 @@ export type EngineEvents = {
   failed: () => void;
   /** A crossfade finished: the next song is now live. */
   advanced: () => void;
+  /**
+   * The song was asked to play but the browser kept it from starting (a phone allows sound only
+   * straight after a tap, and looking the song up used that tap). It is loaded: one tap on Play
+   * starts it.
+   */
+  blocked?: () => void;
   /** Called every tick with the live deck's time. */
   time: (position: number, duration: number, playing: boolean) => void;
 };
@@ -37,6 +56,8 @@ type Slot = {
   media: HTMLVideoElement;
   /** Set once the element feeds the EQ; an element can never be taken out of it again. */
   eq: SlotEq | null;
+  /** The YouTube video's real shape (width / height), once known. */
+  aspect?: number;
   yt: YtPlayer | null;
   ytReady: Promise<YtPlayer> | null;
   kind: Playable["kind"] | null;
@@ -47,11 +68,25 @@ export class PlayerEngine {
   private slots: [Slot, Slot] | null = null;
   private live = 0;
   private next: Playable | null = null;
-  private fade: { start: number; ms: number } | null = null;
+  /** The crossfade under way: `began` is when the next song was heard playing (null: not yet). */
+  private fade: {
+    requested: number;
+    began: number | null;
+    ms: number;
+    mix: MixPlan | null;
+  } | null = null;
+  private nextMix: MixPlan | null = null;
+  /**
+   * The browser wouldn't start the second deck by itself (an iPhone allows a page to start only a
+   * player the viewer tapped). Songs then follow one another on the deck already playing.
+   */
+  private noSecondDeck = false;
   private volume = 80;
   private wantPlaying = false;
   private fadeSecs = 6;
   private timer: number | null = null;
+  private startWatch = 0;
+  private sizeWatch: ResizeObserver | null = null;
   private eqPlan: WebEqPlan | null = null;
   private audio: AudioContext | null = null;
   /** Sites that allow the page to process their sound, by origin. */
@@ -88,6 +123,7 @@ export class PlayerEngine {
         ytMount,
         media: document.createElement("video"),
         eq: null,
+        aspect: undefined,
         yt: null,
         ytReady: null,
         kind: null,
@@ -96,8 +132,22 @@ export class PlayerEngine {
     };
     this.slots = [make(), make()];
     this.slots.forEach((_, i) => this.freshMedia(i));
+    // The decks grow from the bar's thumbnail to full screen and back. YouTube's player keeps the
+    // size it had when the song loaded on an iPhone (the video sat in a corner of a bigger frame),
+    // so it is told each new size.
+    if (typeof ResizeObserver !== "undefined") {
+      this.sizeWatch = new ResizeObserver(() => this.fitVideos());
+      for (const slot of this.slots) this.sizeWatch.observe(slot.root);
+    }
     this.show();
-    this.timer = window.setInterval(() => this.tick(), TICK_MS);
+    this.timer = window.setInterval(() => {
+      // A player misbehaving mustn't take the app down: the next tick tries again.
+      try {
+        this.tick();
+      } catch (error) {
+        console.warn("[music] player tick", error);
+      }
+    }, TICK_MS);
     document.addEventListener("visibilitychange", this.onVisible);
     window.addEventListener("pageshow", this.onVisible);
   }
@@ -111,7 +161,7 @@ export class PlayerEngine {
     media.playsInline = true;
     media.preload = "auto";
     media.addEventListener("ended", () => {
-      if (i === this.live && !this.fade && slot.media === media) this.events.ended();
+      if (i === this.live && slot.media === media) this.liveEnded();
     });
     media.addEventListener("error", () => {
       if (i === this.live && slot.kind === "media" && !this.fade && slot.media === media)
@@ -225,6 +275,38 @@ export class PlayerEngine {
     if (this.audio?.state === "suspended") void this.audio.resume().catch(() => undefined);
   }
 
+  /** Gives each ready YouTube player its frame's current size. */
+  private fitVideos(): void {
+    this.slots?.forEach((slot) => {
+      const w = slot.root.clientWidth;
+      const h = slot.root.clientHeight;
+      if (!slot.yt?.setSize || w < 2 || h < 2) return;
+      try {
+        slot.yt.setSize(w, h);
+      } catch {
+        /* the player is being replaced */
+      }
+      // setSize writes the frame's width and height; it keeps filling its deck regardless.
+      const frame = slot.ytMount.querySelector("iframe");
+      if (frame) frame.style.cssText = "width:100%;height:100%;border:0";
+    });
+    this.zoomVideos();
+  }
+
+  /**
+   * Enlarges each YouTube video past the black bars YouTube adds when its shape doesn't match
+   * the frame (a square album cover in a wide frame), so it fills the card. The deck's frame
+   * cuts off what spills over.
+   */
+  private zoomVideos(): void {
+    this.slots?.forEach((slot) => {
+      const w = slot.root.clientWidth;
+      const h = slot.root.clientHeight;
+      const zoom = slot.kind === "youtube" && h > 0 ? screenZoom(slot.aspect, w / h) : 1;
+      slot.ytMount.style.transform = zoom > 1.01 ? `scale(${zoom})` : "";
+    });
+  }
+
   private youtube(i: number): Promise<YtPlayer> {
     const slot = this.slots![i];
     slot.ytReady ??= loadYouTube().then(
@@ -240,16 +322,22 @@ export class PlayerEngine {
           });
           const player: YtPlayer = new api.Player(frame, {
             events: {
-              onReady: () => resolve(player),
+              // Only a ready player has its controls (setVolume, playVideo...): the deck uses it
+              // from here, not from the moment it is created. Using it earlier threw at every
+              // song's end, when the crossfade set the next deck's volume while it loaded.
+              onReady: () => {
+                slot.yt = player;
+                this.fitVideos();
+                resolve(player);
+              },
               onStateChange: ({ data }: { data: number }) => {
-                if (data === YT_ENDED && i === this.live && !this.fade) this.events.ended();
+                if (data === YT_ENDED && i === this.live) this.liveEnded();
               },
               onError: () => {
                 if (i === this.live && slot.kind === "youtube" && !this.fade) this.events.failed();
               },
             },
           });
-          slot.yt = player;
         }),
     );
     slot.ytReady.catch(() => {
@@ -275,6 +363,15 @@ export class PlayerEngine {
       yt.setVolume(volume);
       if (play) yt.loadVideoById(p.videoId);
       else yt.cueVideoById(p.videoId);
+      slot.aspect = undefined;
+      this.fitVideos();
+      void videoAspects([p.videoId])
+        .then((found) => {
+          if (slot.loaded !== id) return;
+          slot.aspect = found.get(p.videoId);
+          this.zoomVideos();
+        })
+        .catch(() => undefined);
       if (at > 0) yt.seekTo(at, true);
     } else {
       // Through the EQ when it is on and the song's site allows it. An element already in the EQ
@@ -291,7 +388,12 @@ export class PlayerEngine {
       this.setSlotVolume(i, volume);
       if (play) this.resumeAudio();
       if (at > 0) slot.media.currentTime = at;
-      if (play) await slot.media.play().catch(() => this.events.failed());
+      // The deck being faded in failing to start isn't a broken song (an iPhone refuses to start
+      // a second player by itself); the crossfade gives up and the song plays next on this deck.
+      if (play)
+        await slot.media.play().catch(() => {
+          if (i === this.live && !this.fade) this.events.failed();
+        });
     }
   }
 
@@ -334,12 +436,43 @@ export class PlayerEngine {
     this.wantPlaying = play;
     this.stopSlot(1 - this.live);
     this.show();
-    await this.loadInto(this.live, p, at, play, this.volume);
+    const live = this.live;
+    await this.loadInto(live, p, at, play, this.volume);
+    if (play) this.watchStart(live, this.slots[live].loaded);
+  }
+
+  /** After asking a song to play: if it never started (and isn't still loading), say so. */
+  private watchStart(i: number, loaded: string | null): void {
+    window.clearTimeout(this.startWatch);
+    this.startWatch = window.setTimeout(() => {
+      const slot = this.slots?.[i];
+      if (!slot || !this.wantPlaying || this.live !== i || slot.loaded !== loaded) return;
+      if (this.times(i).playing || this.fade) return;
+      if (slot.kind === "youtube") {
+        let state = -1;
+        try {
+          state = slot.yt?.getPlayerState() ?? -1;
+        } catch {
+          /* not ready: counts as not started */
+        }
+        // Buffering or paused by the viewer elsewhere: not a blocked start.
+        if (state === YT_BUFFERING) return;
+      }
+      this.wantPlaying = false;
+      this.events.blocked?.();
+    }, 4000);
+  }
+
+  /** Whether the live deck has a song loaded (Play can start it at once, inside the tap). */
+  hasLoaded(): boolean {
+    const slot = this.slots?.[this.live];
+    return !!slot?.loaded;
   }
 
   /** The song after this one, for the crossfade (null: none, stop at the end). */
-  setNext(p: Playable | null): void {
+  setNext(p: Playable | null, mix: MixPlan | null = null): void {
     this.next = p;
+    this.nextMix = p ? mix : null;
   }
 
   setCrossfade(seconds: number): void {
@@ -409,6 +542,24 @@ export class PlayerEngine {
     return { position: 0, duration: 0, playing: false };
   }
 
+  /** The live song ended. During a crossfade the next song is already playing and takes over. */
+  private liveEnded(): void {
+    if (this.fade) {
+      if (this.fade.began !== null) return;
+      this.noSecondDeck = true;
+      this.cancelFade();
+    }
+    this.events.ended();
+  }
+
+  /** Drops a crossfade whose next song never started; the live song stays as it was. */
+  private cancelFade(): void {
+    this.fade = null;
+    this.stopSlot(1 - this.live);
+    this.setSlotVolume(this.live, this.volume);
+    this.show();
+  }
+
   private finishFade(advance: boolean) {
     const from = this.live;
     this.stopSlot(from);
@@ -426,8 +577,25 @@ export class PlayerEngine {
     if (!this.wantPlaying) return;
     const f = this.fade;
     if (f) {
-      const p = (Date.now() - f.start) / f.ms;
-      const [out, inn] = crossfade(p);
+      // Hand over only to a next song that is really playing; until then this one plays on at
+      // full volume. A next song that never starts (an iPhone blocking the second deck) means no
+      // crossfade: this song finishes and the next one plays on this deck.
+      if (f.began === null) {
+        if (this.times(1 - this.live).playing) f.began = Date.now();
+        else {
+          // (If this song ends first, liveEnded drops the crossfade and moves on.)
+          if (Date.now() - f.requested > 3000) {
+            this.noSecondDeck = true;
+            this.cancelFade();
+          }
+          return;
+        }
+      }
+      const p = (Date.now() - f.began) / f.ms;
+      // A DJ mix shapes the change (a blend, a cut on the phrase, a beat chop, a fade down);
+      // otherwise it is the plain equal-power crossfade.
+      const beatPhase = f.mix?.bpm ? (((Date.now() - f.began) / 1000) * f.mix.bpm) / 60 : 0;
+      const [out, inn] = f.mix ? transitionGains(f.mix.style, p, beatPhase) : crossfade(p);
       this.setSlotVolume(this.live, out * this.volume);
       this.setSlotVolume(1 - this.live, inn * this.volume);
       this.show(this.live === 0 ? [out, inn] : [inn, out]);
@@ -435,18 +603,18 @@ export class PlayerEngine {
       return;
     }
     const left = now.duration - now.position;
-    if (
-      this.next &&
-      this.fadeSecs > 0 &&
-      now.playing &&
-      now.duration > 30 &&
-      left > 0 &&
-      left <= this.fadeSecs
-    ) {
+    const mix = this.nextMix;
+    // A DJ mix starts on a phrase (from the tempo) and runs as long as its style needs; a plain
+    // crossfade starts the chosen number of seconds before the end.
+    const plan = mix ? phrasePlan(mix.bpm, now.duration, mix.style) : null;
+    const due = plan ? now.position >= plan.start : this.fadeSecs > 0 && left <= this.fadeSecs;
+    if (this.next && due && !this.noSecondDeck && now.playing && now.duration > 30 && left > 0.5) {
       const incoming = this.next;
       this.next = null;
-      const ms = Math.max(1000, (left - 0.3) * 1000);
-      this.fade = { start: Date.now(), ms };
+      this.nextMix = null;
+      const seconds = plan ? Math.min(plan.seconds, left - 0.3) : left - 0.3;
+      const ms = Math.max(1000, seconds * 1000);
+      this.fade = { requested: Date.now(), began: null, ms, mix };
       this.loadInto(1 - this.live, incoming, 0, true, 0).catch(() => {
         // The next song can't load: finish this one and let the store move on.
         this.fade = null;
@@ -458,6 +626,8 @@ export class PlayerEngine {
 
   destroy(): void {
     if (this.timer) window.clearInterval(this.timer);
+    this.sizeWatch?.disconnect();
+    window.clearTimeout(this.startWatch);
     document.removeEventListener("visibilitychange", this.onVisible);
     window.removeEventListener("pageshow", this.onVisible);
     this.each((slot) => {

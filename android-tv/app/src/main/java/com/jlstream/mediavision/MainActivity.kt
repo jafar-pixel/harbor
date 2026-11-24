@@ -4,12 +4,12 @@ import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var root: FrameLayout
     private lateinit var nativePlayer: NativePlayer
     private lateinit var site: BundledSite
+    private lateinit var nativeFetch: NativeFetch
     private var fullscreenView: View? = null
     private var fullscreenCallback: WebChromeClient.CustomViewCallback? = null
 
@@ -47,6 +48,9 @@ class MainActivity : AppCompatActivity() {
 
     /** Whether the WebView is on an app page; the bridge reads it off the main thread. */
     @Volatile private var onAppPage = false
+
+    /** The last key press came from a keyboard with letters (see [isLetterKeyboard]). */
+    @Volatile private var lastKeyFromKeyboard = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         CrashLog.take(this)?.let(::showLastCrash)
         nativePlayer = NativePlayer(this, root, web, ::dispatchPlayerEvent)
         site = BundledSite(assets)
+        nativeFetch = NativeFetch(::fetchReady)
 
         CookieManager.getInstance().setAcceptCookie(true)
         with(web.settings) {
@@ -130,14 +135,14 @@ class MainActivity : AppCompatActivity() {
                 nativePlayer.cssScale = newScale
             }
 
-            // Provider requests the page routes through the app (see NativeFetch). Called off the
-            // main thread, so the blocking fetch is fine here.
+            // Answers to requests the TV made for the page (see NativeFetch); only handed over here,
+            // the waiting happened on NativeFetch's own threads.
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 // The app's pages come from this APK's own copy (BundledSite), not the website.
                 if (request.url.host == appHost) return site.serve(request.method, request.url)
                 if (request.url.host != NativeFetch.HOST) return null
                 if (!onAppPage || request.method != "GET") return NativeFetch.refused()
-                return NativeFetch.handle(request.url)
+                return nativeFetch.take(request.url)
             }
         }
         web.webChromeClient = object : WebChromeClient() {
@@ -179,6 +184,13 @@ class MainActivity : AppCompatActivity() {
         web.evaluateJavascript("window.dispatchEvent(new CustomEvent('jl-native-player', {detail: $detail}))", null)
     }
 
+    /** Tells the page a [NativeFetch] answer is ready to read, or why the request failed. */
+    private fun fetchReady(id: String, error: String?) {
+        val script = "window.__jlNativeFetchDone&&window.__jlNativeFetchDone(" +
+            JSONObject.quote(id) + "," + (error?.let(JSONObject::quote) ?: "null") + ")"
+        runOnUiThread { if (isAppUrl(web.url)) web.evaluateJavascript(script, null) }
+    }
+
     private fun exitFullscreen() {
         val view = fullscreenView ?: return
         root.removeView(view)
@@ -190,6 +202,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            lastKeyFromKeyboard = isLetterKeyboard(event)
+            // Typing on a real keyboard: the on-screen one goes away. While it is up Android hands
+            // it the keyboard's letters first, so they landed in it instead of the page's box.
+            if (lastKeyFromKeyboard) {
+                (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager)
+                    .hideSoftInputFromWindow(web.windowToken, 0)
+            }
+        }
         val back = event.keyCode == KeyEvent.KEYCODE_BACK || event.keyCode == KeyEvent.KEYCODE_ESCAPE
         if (back) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
@@ -406,10 +427,16 @@ class MainActivity : AppCompatActivity() {
         site?.let { startActivity(Intent(this, BrowserActivity::class.java).setData(Uri.parse(it))) }
     }
 
-    private fun hasHardwareKeyboard(): Boolean {
-        val config = resources.configuration
-        return config.keyboard == Configuration.KEYBOARD_QWERTY &&
-            config.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO
+    /**
+     * Whether a key press came from a keyboard with letters rather than a remote or controller.
+     * Android's own "a keyboard is attached" flag can't decide this: a phone remote app, some
+     * controllers and a paired keyboard left on a shelf all set it, and the remote then had no
+     * on-screen keyboard to type with. What matters is what the viewer is pressing right now.
+     */
+    private fun isLetterKeyboard(event: KeyEvent): Boolean {
+        val device = event.device ?: return false
+        // Not filtered by source: a keyboard with arrow keys reports itself as a D-pad as well.
+        return !device.isVirtual && device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC
     }
 
     private fun tryStart(intent: Intent): Boolean = try {
@@ -436,8 +463,10 @@ class MainActivity : AppCompatActivity() {
                 web.requestFocus()
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.restartInput(web)
-                // A keyboard is plugged in or paired: type on it, no on-screen keyboard over the page.
-                if (!hasHardwareKeyboard()) imm.showSoftInput(web, InputMethodManager.SHOW_IMPLICIT)
+                // Opened from a keyboard with letters: type on it, no on-screen keyboard over the page.
+                // From the remote: an explicit request (flags 0), which Android honours even while it
+                // believes a keyboard is attached, where an implicit one is dropped.
+                if (!lastKeyFromKeyboard) imm.showSoftInput(web, 0)
             }
         }
 
@@ -559,10 +588,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** `window.JLNativeFetch`: tells the page it can route provider requests through [NativeFetch]. */
+    /** `window.JLNativeFetch`: the page's requests that the TV makes itself ([NativeFetch]). */
     private inner class FetchBridge {
         @JavascriptInterface
         fun isAvailable(): Boolean = onAppPage
+
+        /** Starts a request and returns its id, or "" off the app's pages or for a bad request. */
+        @JavascriptInterface
+        fun start(json: String?): String = if (onAppPage) nativeFetch.start(json) else ""
+
+        @JavascriptInterface
+        fun cancel(id: String?) = nativeFetch.cancel(id)
     }
 
     companion object {

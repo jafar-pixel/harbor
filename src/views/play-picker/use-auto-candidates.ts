@@ -15,8 +15,17 @@ import { hasInstantMarker, isWatchHub, needsDownload, streamMatchesLangs } from 
 import { titleTokensPresent } from "@/lib/streams/trust";
 import { episodeSpanContains } from "@/lib/episode-span";
 import { isProviderVodStream, sourceOrderRank } from "@/lib/streams/source-order";
+import { bestPictureFor } from "@/lib/streams/best-picture";
+
+export { bestPictureFor };
 
 const RES_PREF: Record<string, number> = { "1080p": 0, "720p": 1, "480p": 2, "4K": 3, SD: 4 };
+/** Best picture first, for devices with a real video player (the TV app, the Windows app). */
+const RES_BEST: Record<string, number> = { "4K": 0, "1080p": 1, "720p": 2, "480p": 3, SD: 4 };
+/** The same with the TV's "max resolution" at 1080p: 4K goes after 1080p rather than first. */
+const RES_BEST_1080: Record<string, number> = { "1080p": 0, "4K": 1, "720p": 2, "480p": 3, SD: 4 };
+/** The same with it at 720p. */
+const RES_BEST_720: Record<string, number> = { "720p": 0, "1080p": 1, "4K": 2, "480p": 3, SD: 4 };
 const LIKELY_PACK_BYTES = 12 * 1024 * 1024 * 1024;
 
 export function useAutoCandidates(args: {
@@ -35,6 +44,11 @@ export function useAutoCandidates(args: {
   preferredLangs: string[];
   hostSource?: SourceDescriptor | null;
   prefer1080?: boolean;
+  /**
+   * Among equally ready copies, the best picture wins (4K first) on a device whose player plays
+   * it; "1080p"/"720p" follow the TV's max-resolution setting. Off in a browser.
+   */
+  preferBest?: false | "auto" | "1080p" | "720p";
   preferPacks?: boolean;
   season?: number | null;
   episode?: number | null;
@@ -57,6 +71,7 @@ export function useAutoCandidates(args: {
     preferredLangs,
     hostSource,
     prefer1080,
+    preferBest,
     preferPacks,
     season,
     episode,
@@ -151,6 +166,13 @@ export function useAutoCandidates(args: {
       if (prefer1080) {
         const dr = (RES_PREF[a.resolution] ?? 5) - (RES_PREF[b.resolution] ?? 5);
         if (dr !== 0) return dr;
+      } else if (preferBest) {
+        // Picture before add-on order: otherwise a 1080p link from one add-on beat a 4K copy
+        // from Torrentio just because of where the add-ons sit.
+        const res =
+          preferBest === "1080p" ? RES_BEST_1080 : preferBest === "720p" ? RES_BEST_720 : RES_BEST;
+        const dr = (res[a.resolution] ?? 5) - (res[b.resolution] ?? 5);
+        if (dr !== 0) return dr;
       }
       if (hasStrongAddon) {
         const at = isTorrentioStream(a) ? 1 : 0;
@@ -189,9 +211,25 @@ export function useAutoCandidates(args: {
       ? (filteredPicker.allRaw.find((s) => matchSource(s, sourceEntry)) ?? null)
       : null;
     const instantPlayable = (s: ScoredStream | null) => !!s && (isCached(s) || !!s.url);
+    // Going for the best picture: the release played last time (or the one this series used) is
+    // kept only while it is as good as the best ready copy; a better one (4K Dolby Vision over
+    // last episode's 1080p pack) wins instead of being held back by the habit.
+    const resTable = preferBest
+      ? preferBest === "1080p"
+        ? RES_BEST_1080
+        : preferBest === "720p"
+          ? RES_BEST_720
+          : RES_BEST
+      : null;
+    const bestReady = resTable ? sorted.find((s) => instantPlayable(s) && !isStreamDead(s)) : null;
+    const asGoodAsBest = (s: ScoredStream | null) =>
+      !resTable ||
+      !bestReady ||
+      !s ||
+      (resTable[s.resolution] ?? 5) <= (resTable[bestReady.resolution] ?? 5);
     if (!matchScores) {
-      if (instantPlayable(sourceMatch)) push(sourceMatch);
-      if (instantPlayable(previousMatch)) push(previousMatch);
+      if (instantPlayable(sourceMatch) && asGoodAsBest(sourceMatch)) push(sourceMatch);
+      if (instantPlayable(previousMatch) && asGoodAsBest(previousMatch)) push(previousMatch);
     }
     for (const s of sorted) push(s);
     if (out.length > 0) return out;
@@ -214,6 +252,7 @@ export function useAutoCandidates(args: {
     preferredLangs,
     hostSource,
     prefer1080,
+    preferBest,
     preferPacks,
     season,
     episode,

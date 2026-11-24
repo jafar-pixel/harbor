@@ -23,6 +23,7 @@ import {
   STUCK_AUTORETRY_MS,
 } from "../player-utils";
 import { GENUINE_FAILURE_WINDOW_MS, type EngineStats } from "@/lib/torrent/engine-stats";
+import { nativeTvAvailable } from "@/lib/player/native-tv/shell";
 
 type OpenPicker = (
   meta: Meta,
@@ -523,7 +524,10 @@ export function useAutoRetry(params: {
     noVideoSinceRef.current = null;
   }, [src.url]);
   useEffect(() => {
-    const hasVideo = snap.videoWidth > 0 && snap.videoHeight > 0;
+    // The TV app's player says when the picture shows ("first-frame") rather than reporting the
+    // video's size; without this every Shield stream counted as a black screen and was dropped
+    // after a few seconds (a 4K Dolby Vision copy before its picture came up).
+    const hasVideo = (snap.videoWidth > 0 && snap.videoHeight > 0) || snap.firstFrameReady;
     if (hasVideo) {
       videoSeenRef.current = true;
       noVideoSinceRef.current = null;
@@ -538,9 +542,11 @@ export function useAutoRetry(params: {
       noVideoSinceRef.current = Date.now();
       return;
     }
-    const graceMs = isP2pEngine
-      ? Math.max(BLACK_SCREEN_GRACE_MS, ENGINE_FIRST_FRAME_GRACE_MS)
-      : BLACK_SCREEN_GRACE_MS;
+    // On the TV a 4K HDR stream can take longer than a few seconds to show its first picture.
+    const graceMs =
+      isP2pEngine || nativeTvAvailable()
+        ? Math.max(BLACK_SCREEN_GRACE_MS, ENGINE_FIRST_FRAME_GRACE_MS)
+        : BLACK_SCREEN_GRACE_MS;
     if (Date.now() - noVideoSinceRef.current > graceMs) {
       if (!isP2pEngine || engineFailure) {
         triggerAutoRetry("audio plays but no video frames (black screen)");
@@ -550,6 +556,7 @@ export function useAutoRetry(params: {
     snap.status,
     snap.videoWidth,
     snap.videoHeight,
+    snap.firstFrameReady,
     triggerAutoRetry,
     src.url,
     isP2pEngine,

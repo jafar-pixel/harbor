@@ -1,3 +1,4 @@
+import { AiSearchError } from "@/lib/ai-errors";
 import { claudeAccount } from "@/lib/claude";
 import { jlAccountContext, jlFunction } from "@/lib/jl/account/client";
 import { askClaudeDj } from "./claude-dj";
@@ -37,9 +38,30 @@ export async function call<T>(name: string, body: unknown): Promise<T> {
   return data;
 }
 
-export function askDj(ask: DjAsk): Promise<DjSet> {
+/** The viewer's own AI key can't be used (rejected, or out of credits). */
+function ownKeyUnusable(error: unknown): boolean {
+  return (
+    error instanceof AiSearchError &&
+    (error.messageKey === "Your API key was rejected. Check it in Settings, AI search." ||
+      error.messageKey ===
+        "Your account is out of credits for this model. Pick a free model or top up.")
+  );
+}
+
+export async function askDj(ask: DjAsk): Promise<DjSet> {
   const claude = claudeAccount();
-  return claude ? askClaudeDj(claude, ask) : call<DjSet>("music-dj", ask);
+  if (!claude) return call<DjSet>("music-dj", ask);
+  try {
+    return await askClaudeDj(claude, ask);
+  } catch (error) {
+    // A rejected or empty own key mustn't stop the music ("Play here" from another device, the
+    // DJ's next songs): the JL account's own DJ answers instead. Other problems are reported.
+    if (ownKeyUnusable(error) && jlAccountContext()) {
+      console.warn("[dj] own AI key unusable, using the JL DJ:", (error as Error).message);
+      return call<DjSet>("music-dj", ask);
+    }
+    throw error;
+  }
 }
 
 const searches = new Map<string, Promise<VideoResult[]>>();

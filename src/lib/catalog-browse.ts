@@ -5,6 +5,7 @@ import {
   type CatalogExtra,
 } from "./addons";
 import type { Meta, MetaType } from "./cinemeta";
+import { BLACK_BOX_BASE, blackBoxCatalogs, blackBoxPage, isBlackBoxKind } from "./black-box";
 import {
   extensionCatalogueBase,
   extensionCataloguePage,
@@ -85,7 +86,7 @@ export async function listBrowseCatalogs(
   authKey: string | null,
   opts: { pluginRows: boolean },
 ): Promise<BrowseCatalog[]> {
-  const out: BrowseCatalog[] = extensionCatalogs(opts.pluginRows);
+  const out: BrowseCatalog[] = [...blackBoxCatalogs(), ...extensionCatalogs(opts.pluginRows)];
   const addons = await gatherCatalogAddons(authKey).catch(() => []);
   for (const addon of addons) {
     const base = addon.transportUrl.replace(/\/manifest\.json$/, "");
@@ -115,6 +116,11 @@ export function browseFetcher(
   cat: BrowseCatalog,
   genre: string | null,
 ): (page: number, loaded?: number) => Promise<Meta[]> {
+  if (cat.base === BLACK_BOX_BASE) {
+    const kind = cat.id;
+    return (page: number) =>
+      isBlackBoxKind(kind) ? blackBoxPage(kind, page) : Promise.resolve([]);
+  }
   if (isExtensionCatalogueBase(cat.base)) {
     return (page: number) => extensionCataloguePage(cat.base, cat.id, cat.type as MetaType, page);
   }

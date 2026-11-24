@@ -4,6 +4,9 @@ import { pauseDj } from "../dj/playhead";
 import { loadYouTube, youtubeFrame, YT_ENDED, YT_PLAYING, type YtPlayer } from "../dj/youtube";
 import { pausePlayer } from "../player/store";
 import { xfadeGains, type XfadeCurve } from "./engine";
+import { SCREEN_ASPECT, screenZoom } from "../video-zoom";
+
+export { SCREEN_ASPECT, screenZoom };
 
 /**
  * DJ Studio's video decks: two YouTube players (your YouTube Music songs, music videos) mixed
@@ -168,7 +171,6 @@ function apply() {
 }
 
 /** The video screen's shape (.sv-screen). */
-export const SCREEN_ASPECT = 16 / 9;
 /** How far either side of centre the picture takes to blend; past it one deck fills the screen. */
 const PICTURE_BLEND = 0.35;
 
@@ -197,12 +199,6 @@ export function screenMix(
   const t = Math.max(0, Math.min(1, (x + PICTURE_BLEND) / (2 * PICTURE_BLEND)));
   const s = t * t * (3 - 2 * t);
   return [1 - s, s];
-}
-
-/** How much to enlarge a video so it fills the screen past YouTube's black bars. */
-export function screenZoom(aspect: number | undefined, screen = SCREEN_ASPECT): number {
-  if (!aspect || !Number.isFinite(aspect) || aspect <= 0) return 1;
-  return Math.min(2.4, Math.max(aspect / screen, screen / aspect));
 }
 
 export async function loadVideoDeck(i: 0 | 1, song: VideoSong): Promise<void> {

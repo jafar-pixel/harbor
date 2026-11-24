@@ -828,6 +828,12 @@ function clearTvFocusRing(except?: HTMLElement) {
   }
 }
 
+/**
+ * Asks the search overlay to open with `detail.text` in its box: a letter typed on a real keyboard
+ * while a Search button (`data-harbor-search`) was highlighted.
+ */
+export const SEARCH_TYPE_EVENT = "harbor:search-type";
+
 function setSearchNavMode(el: HTMLElement) {
   if (!isSearchLikeField(el)) return;
 
@@ -1358,6 +1364,40 @@ export function useKeyboardNavigation(options: TVNavigationOptions = {}) {
           activeSearchEditEl = null;
           runBack();
         }
+        return;
+      }
+
+      // A real keyboard on a highlighted Search button (the search pill, a dock's search icon):
+      // a letter or digit opens search with it already typed, as typing into a search bar does.
+      // Only letters and digits, so punctuation shortcuts ("/" to search) keep working; the remote
+      // sends no characters, so it never gets here.
+      if (
+        active?.hasAttribute("data-harbor-search") &&
+        !e.isComposing &&
+        /^[\p{L}\p{N}]$/u.test(e.key)
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.dispatchEvent(new CustomEvent(SEARCH_TYPE_EVENT, { detail: { text: e.key } }));
+        return;
+      }
+
+      // A real keyboard (on the Shield, a PC): typing a character on a highlighted search box is
+      // the explicit start of typing, so it goes straight in instead of being swallowed until OK
+      // is pressed. The remote sends only arrows and OK, so moving over a box still never starts
+      // typing by itself.
+      if (
+        active &&
+        activeIsSearch &&
+        !isEditingSearch &&
+        active.hasAttribute("data-search-nav-mode") &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !e.isComposing &&
+        (e.key.length === 1 || e.key === "Backspace")
+      ) {
+        enterSearchEditMode(active);
         return;
       }
 

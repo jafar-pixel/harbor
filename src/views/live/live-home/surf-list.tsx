@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock, Heart, Radio, Search, Tv, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { startTyping } from "@/lib/keyboard-navigation";
+import { useFavorites } from "@/lib/iptv/favorites";
 import type { EpgIndex, IptvChannel } from "@/lib/iptv/types";
 import { buildNowItem, type NowItem } from "./use-live-home";
 import { fmtClock } from "./now-format";
@@ -42,6 +43,7 @@ export function SurfList({
   onTune: (channel: IptvChannel) => void;
 }) {
   const t = useT();
+  const favorites = useFavorites();
   const shown = tabs.filter((tab) => tab.items.length > 0);
   const [tabKey, setTabKey] = useState(shown[0]?.key ?? "");
   // Search is a chip like the tabs: focusing it doesn't start typing; OK opens the box.
@@ -132,6 +134,13 @@ export function SurfList({
             type="button"
             aria-label={t("Search channels")}
             onClick={() => setSearching(true)}
+            onKeyDown={(e) => {
+              // A letter typed on a real keyboard opens the box with it already in.
+              if (e.ctrlKey || e.metaKey || e.altKey || !/^[\p{L}\p{N}]$/u.test(e.key)) return;
+              e.preventDefault();
+              setQuery(e.key);
+              setSearching(true);
+            }}
             className={chip(false)}
           >
             <Search size={14} />
@@ -169,8 +178,9 @@ export function SurfList({
           const left = it.current
             ? Math.max(0, Math.round((it.current.endMs - nowMs) / 60000))
             : null;
+          const fav = favorites.has(it.channel.id);
           return (
-            <li key={it.channel.id}>
+            <li key={it.channel.id} className="flex items-center gap-1">
               <button
                 type="button"
                 aria-current={on || undefined}
@@ -182,7 +192,7 @@ export function SurfList({
                     dwell.current = window.setTimeout(() => onTune(it.channel), REST_TUNE_MS);
                 }}
                 onBlur={() => window.clearTimeout(dwell.current)}
-                className={`flex w-full items-center gap-3 rounded-xl p-2 text-start outline-none focus-visible:ring-2 focus-visible:ring-white/85 ${PRESS} ${
+                className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-start outline-none focus-visible:ring-2 focus-visible:ring-white/85 ${PRESS} ${
                   on ? "bg-white/15" : "hover:bg-white/10 focus-visible:bg-white/10"
                 }`}
               >
@@ -212,6 +222,18 @@ export function SurfList({
                     </span>
                   )}
                 </span>
+              </button>
+              {/* Right from a channel: add it to Favorites or take it out, search results included. */}
+              <button
+                type="button"
+                aria-label={fav ? t("Remove from favorites") : t("Add to favorites")}
+                aria-pressed={fav}
+                onClick={() => favorites.toggle(it.channel)}
+                className={`grid size-10 shrink-0 place-items-center rounded-full outline-none focus-visible:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/85 ${PRESS} ${
+                  fav ? "text-danger" : "text-white/45 hover:text-white"
+                }`}
+              >
+                <Heart size={17} strokeWidth={fav ? 0 : 1.9} fill={fav ? "currentColor" : "none"} />
               </button>
             </li>
           );

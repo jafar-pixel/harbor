@@ -10,6 +10,7 @@ import {
 import {
   AudioWaveform,
   ChevronDown,
+  Disc3,
   GripVertical,
   ListMusic,
   ListPlus,
@@ -44,6 +45,7 @@ import {
   previous,
   removeAt,
   seek,
+  setAutomix,
   setCrossfade,
   setPlayerView,
   setSleepTimer,
@@ -320,6 +322,14 @@ function useStageOverSlot(
     const slot = slotRef.current;
     const main = mainRef.current;
     if (!active || !stage || !slot) return;
+    // The app's size setting zooms the page (#root). Some engines (iPhone, older Android
+    // WebViews) enlarge an embed's box but not the page inside it, so YouTube's player filled 90%
+    // of its box, in the top-left corner. Full screen cancels the zoom on the stage itself, so the
+    // box and the page inside it always agree; the placement below is measured, so it still lands
+    // exactly on the slot.
+    const rootZoom = parseFloat(document.getElementById("root")?.style.zoom || "") || 1;
+    const stageStyle = stage.style as CSSStyleDeclaration & { zoom?: string };
+    if (rootZoom !== 1) stageStyle.zoom = String(1 / rootZoom);
     let frame = 0;
     let tries = 0;
     const place = () => {
@@ -393,6 +403,7 @@ function useStageOverSlot(
       for (const name of ["--wp-full-x", "--wp-full-y", "--wp-full-w", "--wp-full-h"])
         stage.style.removeProperty(name);
       stage.style.clipPath = "";
+      stageStyle.zoom = "";
     };
   }, [active, stageRef, slotRef, mainRef]);
 }
@@ -602,6 +613,19 @@ function Extras({ player }: { player: PlayerState }) {
           </div>
         )}
       </div>
+      {/* DJ mixing: each change on a phrase, in the style that suits the two songs (blend, cut,
+          beat chop, fade down), with what's coming ordered so keys and tempos flow. */}
+      <button
+        type="button"
+        className="wp-chip"
+        data-on={player.automix}
+        aria-pressed={player.automix}
+        title={t("Mix like a DJ: changes on the phrase, matched keys and tempos")}
+        onClick={() => setAutomix(!player.automix)}
+      >
+        <Disc3 size={16} />
+        {player.automix ? t("DJ mix on") : t("DJ mix")}
+      </button>
       <div className="wp-menu-wrap">
         <button
           type="button"

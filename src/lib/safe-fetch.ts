@@ -10,6 +10,7 @@ import {
   noteDirectFailure,
 } from "./direct-host-policy";
 import { hasSensitiveRequestHeaders, shouldFallbackToPluginHttp } from "./fetch-fallback-policy";
+import { nativeFetch, nativeFetchAvailable, nativeFetchCanSend } from "./native-fetch";
 import {
   isSafeProviderSubtitleUrl,
   SUBTITLE_PUBLIC_NETWORK_HEADER,
@@ -170,6 +171,39 @@ function webProxyAvailable(): boolean {
   return proxyOriginCache;
 }
 
+function isProxiableHost(hostname: string): boolean {
+  return (
+    PROXY_HOSTS.has(hostname) ||
+    RUNTIME_PROXY_HOSTS.has(hostname) ||
+    PROXY_SUFFIXES.some((s) => hostname.endsWith(s))
+  );
+}
+
+/**
+ * Inside the Android TV app, a request the website would send through its /api-proxy goes from
+ * the TV itself (native-fetch.ts), the way the Windows app makes it, so the TV doesn't depend on
+ * the website's server. Other sites are tried from the page first, which is cancellable and costs
+ * no bridge crossing, and from the TV when the page can't read them (no CORS header, plain http).
+ * Null outside the TV app, for the app's own addresses, and for requests the TV can't send.
+ */
+function tvFetch(url: string, init?: RequestInit): Promise<Response> | null {
+  if (!nativeFetchAvailable() || !nativeFetchCanSend(url, init)) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.origin === window.location.origin) return null;
+  if (isProxiableHost(parsed.hostname) && !DIRECT_HOSTS.has(parsed.hostname))
+    return nativeFetch(url, init);
+  if (!isIdempotent(init?.method)) return null;
+  return fetch(url, init).catch((error: unknown) => {
+    if (init?.signal?.aborted || isCancellation(error)) throw error;
+    return nativeFetch(url, init);
+  });
+}
+
 function rewriteForWeb(url: string, init?: RequestInit): { url: string; init?: RequestInit } {
   if (isTauri) return { url, init };
   let parsed: URL;
@@ -179,11 +213,7 @@ function rewriteForWeb(url: string, init?: RequestInit): { url: string; init?: R
     return { url, init };
   }
   if (DIRECT_HOSTS.has(parsed.hostname)) return { url, init };
-  const proxiable =
-    PROXY_HOSTS.has(parsed.hostname) ||
-    RUNTIME_PROXY_HOSTS.has(parsed.hostname) ||
-    PROXY_SUFFIXES.some((s) => parsed.hostname.endsWith(s));
-  if (!proxiable) return { url, init };
+  if (!isProxiableHost(parsed.hostname)) return { url, init };
   const localDev = /^(?:localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
   if (!webProxyAvailable() && !(localDev && DEV_PROXY_HOSTS.has(parsed.hostname)))
     return { url, init };
@@ -540,6 +570,8 @@ function tauriStringFetch(input: string, init?: RequestInit): Promise<Response> 
 }
 
 function webStringFetch(input: string, init?: RequestInit): Promise<Response> {
+  const tv = tvFetch(input, init);
+  if (tv) return tv;
   const rewritten = rewriteForWeb(input, init);
   return fetch(rewritten.url, rewritten.init);
 }
@@ -604,6 +636,8 @@ export const safeFetchStream: typeof fetch = (input, init) => {
   }
   if (isTauri) return pluginHttpFetch(input, init);
   if (typeof input === "string") {
+    const tv = tvFetch(input, init);
+    if (tv) return tv;
     const rewritten = rewriteForWeb(input, init);
     return fetch(rewritten.url, rewritten.init);
   }
