@@ -21,6 +21,7 @@ android {
         targetSdk = 35
         versionCode = runNumber.toInt()
         versionName = webPackage["version"] as String
+        manifestPlaceholders["appLabel"] = "JL Media Vision"
         // Use the same production app address as phones, tablets and desktop browsers.
         buildConfigField("String", "APP_URL", "\"https://watch.jl-stream.com/\"")
     }
@@ -37,6 +38,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".playbacktest"
+            versionNameSuffix = "-playback-test"
+            manifestPlaceholders["appLabel"] = "JL Playback Test"
+        }
         release {
             isMinifyEnabled = false
             signingConfig = if (keystoreFile != null) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
