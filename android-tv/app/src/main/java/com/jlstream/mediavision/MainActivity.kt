@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var root: FrameLayout
     private lateinit var nativePlayer: NativePlayer
     private lateinit var site: BundledSite
+    private lateinit var nativeFetch: NativeFetch
     private var fullscreenView: View? = null
     private var fullscreenCallback: WebChromeClient.CustomViewCallback? = null
 
@@ -62,6 +63,7 @@ class MainActivity : AppCompatActivity() {
         CrashLog.take(this)?.let(::showLastCrash)
         nativePlayer = NativePlayer(this, root, web, ::dispatchPlayerEvent)
         site = BundledSite(assets)
+        nativeFetch = NativeFetch(::fetchReady)
 
         CookieManager.getInstance().setAcceptCookie(true)
         with(web.settings) {
@@ -130,14 +132,14 @@ class MainActivity : AppCompatActivity() {
                 nativePlayer.cssScale = newScale
             }
 
-            // Provider requests the page routes through the app (see NativeFetch). Called off the
-            // main thread, so the blocking fetch is fine here.
+            // Answers to requests the TV made for the page (see NativeFetch); only handed over here,
+            // the waiting happened on NativeFetch's own threads.
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 // The app's pages come from this APK's own copy (BundledSite), not the website.
                 if (request.url.host == appHost) return site.serve(request.method, request.url)
                 if (request.url.host != NativeFetch.HOST) return null
                 if (!onAppPage || request.method != "GET") return NativeFetch.refused()
-                return NativeFetch.handle(request.url)
+                return nativeFetch.take(request.url)
             }
         }
         web.webChromeClient = object : WebChromeClient() {
@@ -177,6 +179,13 @@ class MainActivity : AppCompatActivity() {
         if (!isAppUrl(web.url)) return
         detail.optString("type").takeIf { it.isNotEmpty() && it != "position" }?.let { PageTrail.noteCall("→ $it") }
         web.evaluateJavascript("window.dispatchEvent(new CustomEvent('jl-native-player', {detail: $detail}))", null)
+    }
+
+    /** Tells the page a [NativeFetch] answer is ready to read, or why the request failed. */
+    private fun fetchReady(id: String, error: String?) {
+        val script = "window.__jlNativeFetchDone&&window.__jlNativeFetchDone(" +
+            JSONObject.quote(id) + "," + (error?.let(JSONObject::quote) ?: "null") + ")"
+        runOnUiThread { if (isAppUrl(web.url)) web.evaluateJavascript(script, null) }
     }
 
     private fun exitFullscreen() {
@@ -559,10 +568,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** `window.JLNativeFetch`: tells the page it can route provider requests through [NativeFetch]. */
+    /** `window.JLNativeFetch`: the page's requests that the TV makes itself ([NativeFetch]). */
     private inner class FetchBridge {
         @JavascriptInterface
         fun isAvailable(): Boolean = onAppPage
+
+        /** Starts a request and returns its id, or "" off the app's pages or for a bad request. */
+        @JavascriptInterface
+        fun start(json: String?): String = if (onAppPage) nativeFetch.start(json) else ""
+
+        @JavascriptInterface
+        fun cancel(id: String?) = nativeFetch.cancel(id)
     }
 
     companion object {
