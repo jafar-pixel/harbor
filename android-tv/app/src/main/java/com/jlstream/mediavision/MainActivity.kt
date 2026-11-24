@@ -164,7 +164,8 @@ class MainActivity : AppCompatActivity() {
                 }
                 // The page's timing reports ("[sports-perf] ..."), into adb logcat under "JLPage" on
                 // every Android TV; WebView's own console logging isn't there on all of them.
-                if (message.message().startsWith("[sports-perf]")) Log.i("JLPage", message.message())
+                if (message.message().startsWith("[sports-perf]") || message.message().startsWith("[keys]"))
+                    Log.i("JLPage", message.message())
                 return super.onConsoleMessage(message)
             }
         }
@@ -202,7 +203,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_DOWN) lastKeyFromKeyboard = isLetterKeyboard(event)
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            lastKeyFromKeyboard = isLetterKeyboard(event)
+            // Which device each press came from, for typing problems (adb logcat -s JLKeys). The
+            // letter itself is never logged.
+            val kind = if (event.isPrintingKey) "char" else KeyEvent.keyCodeToString(event.keyCode)
+            Log.i("JLKeys", "$kind from ${event.device?.name ?: "?"} letters=$lastKeyFromKeyboard focus=${currentFocus?.javaClass?.simpleName}")
+        }
         val back = event.keyCode == KeyEvent.KEYCODE_BACK || event.keyCode == KeyEvent.KEYCODE_ESCAPE
         if (back) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
