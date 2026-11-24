@@ -9,6 +9,8 @@ export type VoyageTheme = {
   accent: string;
   backdrop?: string;
   seeds?: string[];
+  /** Where the films come from: Cinemeta's top list by default, or the Black Box catalog. */
+  source?: "black-box";
 };
 
 export type VoyagePhase = "building" | "sailing";
