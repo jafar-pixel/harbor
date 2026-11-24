@@ -38,6 +38,8 @@ import androidx.media3.common.util.Util
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -197,7 +199,8 @@ class NativePlayer(
     /** The hero rect in CSS pixels (x, y, w, h), or null when the page hasn't sent one. */
     private var heroRect: DoubleArray? = null
     private var readySent = false
-    private var renderedFrame = false
+    // Read on the playback thread too (StartupFailFast).
+    @Volatile private var renderedFrame = false
     /** The stream the player has loaded, so asking for it again keeps it rather than reconnecting. */
     private var currentUrl: String? = null
     /** The window's preferredDisplayModeId before playback changed it; null while unchanged. */
@@ -532,7 +535,7 @@ class NativePlayer(
             .setTargetBufferBytes(bufferBytesFor(Runtime.getRuntime().maxMemory(), deviceRamBytes()))
             .build()
         val p = ExoPlayer.Builder(activity)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(http))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(http).setLoadErrorHandlingPolicy(StartupFailFast()))
             .setLoadControl(load)
             .setBandwidthMeter(DefaultBandwidthMeter.getSingletonInstance(activity))
             .setRenderersFactory(renderersFactory())
@@ -1285,6 +1288,20 @@ private fun speedName(speed: Float): String =
             val from = out.size
             super.buildTextRenderers(context, output, outputLooper, extensionRendererMode, out)
             for (i in from until out.size) out[i] = DelayedTextRenderer(out[i], sync)
+        }
+    }
+
+    /**
+     * A source that can't be reached before its picture shows fails at once instead of being
+     * retried. Media3 retries a network error about three more times by default, waiting out the
+     * read timeout each time, so a dead source (an add-on's playback link that never answers) spun
+     * for two minutes before the page could try the next one. Once the picture is up the default
+     * retries stay, so a Wi-Fi hiccup mid-film is still ridden out.
+     */
+    private inner class StartupFailFast : DefaultLoadErrorHandlingPolicy() {
+        override fun getRetryDelayMsFor(info: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
+            if (!renderedFrame && info.exception is HttpDataSource.HttpDataSourceException) return C.TIME_UNSET
+            return super.getRetryDelayMsFor(info)
         }
     }
 

@@ -25,15 +25,13 @@ export function useXtreamEpgFallback(
       setAugmented(null);
       return;
     }
-    let cancelled = false;
-    hydrateShortEpg(creds, subset, base)
+    const controller = new AbortController();
+    hydrateShortEpg(creds, subset, base, controller.signal)
       .then((idx) => {
-        if (!cancelled && idx && idx !== base) setAugmented(idx);
+        if (!controller.signal.aborted && idx && idx !== base) setAugmented(idx);
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [creds, baseEmpty, subset, base]);
 
   return augmented && baseEmpty ? augmented : base;
