@@ -6,6 +6,7 @@ import {
   inTab,
   isBlackHistoryMonth,
   isReleased,
+  onYourIptv,
   type BlackCinemaTitle,
 } from "../src/lib/black-cinema-core.ts";
 
@@ -109,4 +110,50 @@ test("black cinema: Black History Month is February", () => {
   assert.equal(isBlackHistoryMonth(new Date(2027, 1, 28)), true);
   assert.equal(isBlackHistoryMonth(new Date(2027, 2, 1)), false);
   assert.equal(isBlackHistoryMonth(new Date(2027, 0, 31)), false);
+});
+
+test("black cinema: On Your IPTV is what the provider's library carries", () => {
+  const byId = title({ title: "Sinners", release_year: 2025, tmdb_id: 1233413, popularity: 50 });
+  const byName = title({
+    title: "Love & Basketball",
+    release_year: 2000,
+    tmdb_id: 1,
+    popularity: 9,
+  });
+  const show = title({ title: "Insecure", media_type: "series", release_year: 2016, tmdb_id: 2 });
+  const missing = title({ title: "Not Carried", release_year: 2010, tmdb_id: 3 });
+  const movie = (t: string, year: number | null, tmdbId?: number) => ({
+    id: t,
+    title: t,
+    year,
+    logo: null,
+    group: null,
+    url: "http://x",
+    playlistId: "p",
+    playlistName: "P",
+    tmdbId,
+  });
+  const libraries = [
+    {
+      movies: [movie("Sinners (2025) 4K", 2025, 1233413), movie("Love and Basketball", 2000)],
+      series: [
+        {
+          id: "s",
+          title: "Insecure",
+          logo: null,
+          group: null,
+          playlistId: "p",
+          playlistName: "P",
+          episodes: [],
+          seasons: [1],
+          year: 2016,
+        },
+      ],
+    },
+  ];
+  assert.deepEqual(
+    onYourIptv([byId, byName, show, missing], libraries).map((t) => t.title),
+    ["Sinners", "Love & Basketball", "Insecure"],
+  );
+  assert.deepEqual(onYourIptv([byId], [{ movies: [], series: [] }]), []);
 });

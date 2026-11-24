@@ -123,6 +123,23 @@ async function catalogFor(
   return { library, xtream: null };
 }
 
+/**
+ * Every channel source's movie and series library, loaded the way the picker loads them (cached,
+ * waiting at most CATALOG_WAIT_MS per source). Black Cinema reads it to show what the viewer's own
+ * provider carries.
+ */
+export async function providerVodLibraries(signal: AbortSignal): Promise<VodLibrary[]> {
+  const out: VodLibrary[] = [];
+  for (const source of providerVodSources()) {
+    if (signal.aborted) break;
+    const { library } = await catalogFor(source, signal).catch(() => ({
+      library: { movies: [], series: [] } as VodLibrary,
+    }));
+    out.push(library);
+  }
+  return out;
+}
+
 function playable(
   source: IptvPlaylistSource,
   query: ProviderVodQuery,

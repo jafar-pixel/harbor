@@ -4,10 +4,11 @@ import { FeedShelf } from "@/components/feed-shelf";
 import { Row } from "@/components/row";
 import { TopRankCard } from "@/components/top-rank-card";
 import type { Meta } from "@/lib/cinemeta";
-import { blackCinemaMeta, useBlackCinemaTitles } from "@/lib/black-cinema";
+import { blackCinemaMeta, useBlackCinemaTitles, useOnYourIptv } from "@/lib/black-cinema";
 import {
   BLACK_CINEMA_TABS,
   blackCinemaSections,
+  inTab,
   type BlackCinemaTab,
   type BlackCinemaTitle,
 } from "@/lib/black-cinema-core";
@@ -37,6 +38,7 @@ export function BlackCinema({
   const { openGrid } = useView();
   const { titles, error } = useBlackCinemaTitles();
   const [tab, setTab] = useState<BlackCinemaTab>("all");
+  const iptv = useOnYourIptv(titles);
   const sections = useMemo(
     () => (titles ? blackCinemaSections(titles, tab, new Date()) : null),
     [titles, tab],
@@ -118,6 +120,13 @@ export function BlackCinema({
                 ))}
               </Row>
             )}
+            {/* What the viewer's own IPTV provider carries: plays straight from it. */}
+            {iptv.length > 0 &&
+              shelf(
+                "on-your-iptv",
+                "On Your IPTV",
+                iptv.filter((x) => inTab(x, tab)),
+              )}
             {sections.trending.length > 0 && shelf("trending", "Trending", sections.trending)}
             {sections.newMovies.length > 0 && shelf("new-movies", "New Movies", sections.newMovies)}
             {sections.newShows.length > 0 && shelf("new-shows", "New Shows", sections.newShows)}

@@ -5,6 +5,9 @@
  * filled in from the master list in supabase/jl-vision/black-cinema.
  */
 
+import type { VodLibrary } from "./iptv/vod";
+import { matchVodMovies, matchVodSeries } from "./iptv/vod-lookup";
+
 export type BlackCinemaTitle = {
   id: number;
   title: string;
@@ -205,6 +208,32 @@ export function blackCinemaSections(
     .slice(0, 8);
 
   return { topTen, trending, newMovies, newShows, classics, rows, featured };
+}
+
+/**
+ * The hub titles the viewer's own IPTV provider carries in its movie and series library: the same
+ * TMDB id, or the same title within a year (the picker's rule, iptv/vod-lookup.ts), best known first.
+ */
+export function onYourIptv(
+  titles: readonly BlackCinemaTitle[],
+  libraries: readonly VodLibrary[],
+): BlackCinemaTitle[] {
+  if (libraries.every((l) => l.movies.length + l.series.length === 0)) return [];
+  return titles
+    .filter((t) => {
+      const query = {
+        type: t.media_type,
+        title: t.title,
+        year: t.release_year,
+        tmdbId: t.tmdb_id,
+      } as const;
+      return libraries.some((l) =>
+        t.media_type === "movie"
+          ? matchVodMovies(l.movies, query).length > 0
+          : matchVodSeries(l.series, query).length > 0,
+      );
+    })
+    .sort(byPopularity);
 }
 
 /** February: Black History Month, when the hub takes over Home. */

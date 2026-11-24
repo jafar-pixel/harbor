@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from "react";
 import type { Meta } from "./cinemeta";
-import { isBlackHistoryMonth, type BlackCinemaTitle } from "./black-cinema-core";
+import { isBlackHistoryMonth, onYourIptv, type BlackCinemaTitle } from "./black-cinema-core";
 import { movieMeta, seriesMeta } from "./providers/tmdb/tmdb-meta-mappers";
 
 const STORE = "jl.blackCinema.titles.v1";
@@ -119,6 +119,32 @@ export function useBlackHistoryMonth(): boolean {
     };
   }, []);
   return on;
+}
+
+/**
+ * The hub titles the viewer's IPTV provider carries (onYourIptv), once its libraries have loaded:
+ * an empty list until then, and when no provider is set up.
+ */
+export function useOnYourIptv(titles: BlackCinemaTitle[] | null): BlackCinemaTitle[] {
+  const [found, setFound] = useState<BlackCinemaTitle[]>([]);
+  useEffect(() => {
+    if (!titles?.length) return;
+    const controller = new AbortController();
+    // After the page is up: a provider's catalog can be large, and the hub shouldn't wait on it.
+    const timer = window.setTimeout(() => {
+      void import("./streams/provider-vod")
+        .then((m) => m.providerVodLibraries(controller.signal))
+        .then((libraries) => {
+          if (!controller.signal.aborted) setFound(onYourIptv(titles, libraries));
+        })
+        .catch(() => {});
+    }, 3000);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [titles]);
+  return found;
 }
 
 /** A hub title as the app's title: opens, plays and adds to the library like any other. */
