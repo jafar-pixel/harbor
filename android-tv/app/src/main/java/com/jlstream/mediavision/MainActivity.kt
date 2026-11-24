@@ -4,12 +4,12 @@ import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -48,6 +48,9 @@ class MainActivity : AppCompatActivity() {
 
     /** Whether the WebView is on an app page; the bridge reads it off the main thread. */
     @Volatile private var onAppPage = false
+
+    /** The last key press came from a keyboard with letters (see [isLetterKeyboard]). */
+    @Volatile private var lastKeyFromKeyboard = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -199,6 +202,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) lastKeyFromKeyboard = isLetterKeyboard(event)
         val back = event.keyCode == KeyEvent.KEYCODE_BACK || event.keyCode == KeyEvent.KEYCODE_ESCAPE
         if (back) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
@@ -415,10 +419,16 @@ class MainActivity : AppCompatActivity() {
         site?.let { startActivity(Intent(this, BrowserActivity::class.java).setData(Uri.parse(it))) }
     }
 
-    private fun hasHardwareKeyboard(): Boolean {
-        val config = resources.configuration
-        return config.keyboard == Configuration.KEYBOARD_QWERTY &&
-            config.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO
+    /**
+     * Whether a key press came from a keyboard with letters rather than a remote or controller.
+     * Android's own "a keyboard is attached" flag can't decide this: a phone remote app, some
+     * controllers and a paired keyboard left on a shelf all set it, and the remote then had no
+     * on-screen keyboard to type with. What matters is what the viewer is pressing right now.
+     */
+    private fun isLetterKeyboard(event: KeyEvent): Boolean {
+        val device = event.device ?: return false
+        return !device.isVirtual && device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC &&
+            !event.isFromSource(InputDevice.SOURCE_DPAD)
     }
 
     private fun tryStart(intent: Intent): Boolean = try {
@@ -445,8 +455,10 @@ class MainActivity : AppCompatActivity() {
                 web.requestFocus()
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.restartInput(web)
-                // A keyboard is plugged in or paired: type on it, no on-screen keyboard over the page.
-                if (!hasHardwareKeyboard()) imm.showSoftInput(web, InputMethodManager.SHOW_IMPLICIT)
+                // Opened from a keyboard with letters: type on it, no on-screen keyboard over the page.
+                // From the remote: an explicit request (flags 0), which Android honours even while it
+                // believes a keyboard is attached, where an implicit one is dropped.
+                if (!lastKeyFromKeyboard) imm.showSoftInput(web, 0)
             }
         }
 
