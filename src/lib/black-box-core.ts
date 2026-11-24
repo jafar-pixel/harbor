@@ -371,3 +371,72 @@ export function blackBoxCatalogsFor(hasTmdbKey: boolean): Array<{
     genres: [],
   }));
 }
+
+/**
+ * Wikidata's English names for the ethnic groups (property P172) that put a person in the Black
+ * Box. Matched by name rather than by item id; a name Wikidata doesn't use simply matches no one.
+ */
+export const BLACK_BOX_GROUPS = [
+  "African Americans",
+  "Black people",
+  "Black British people",
+  "Black Canadians",
+  "Afro-Caribbean people",
+  "Afro-Latin Americans",
+  "Afro-Brazilians",
+  "Afro-Cubans",
+  "Afro-Puerto Ricans",
+  "Nigerian Americans",
+  "Jamaican Americans",
+  "Haitian Americans",
+  "Ghanaian Americans",
+  "Ethiopian Americans",
+  "Black Africans",
+] as const;
+
+// Wikidata properties: cast member, ethnic group, and the TMDB ids of a person, film and show.
+const CAST = "wdt:P161";
+const ETHNIC_GROUP = "wdt:P172";
+const TMDB_PERSON = "wdt:P4985";
+const TMDB_ID = { movie: "wdt:P4947", tv: "wdt:P4983" } as const;
+
+const sparqlString = (s: string) => `"${s.replace(/["\\]/g, "")}"`;
+
+/**
+ * A Wikidata query for every film (or show) with a TMDB id whose cast includes a person of one of
+ * BLACK_BOX_GROUPS or one of `tmdbPeople`, each with its Wikipedia link count: how widely known it
+ * is, the order the catalog shows them in.
+ */
+export function blackBoxSparql(kind: "movie" | "tv", tmdbPeople: readonly number[]): string {
+  const groups = BLACK_BOX_GROUPS.map((g) => `${sparqlString(g)}@en`).join(" ");
+  const people = tmdbPeople.map((id) => sparqlString(String(id))).join(" ");
+  const named = people ? `UNION { VALUES ?pid { ${people} } ?person ${TMDB_PERSON} ?pid . }` : "";
+  return [
+    "SELECT ?tmdb (MAX(?links) AS ?n) WHERE {",
+    `  { VALUES ?label { ${groups} } ?group rdfs:label ?label . ?person ${ETHNIC_GROUP} ?group . }`,
+    `  ${named}`,
+    `  ?work ${CAST} ?person ; ${TMDB_ID[kind]} ?tmdb ; wikibase:sitelinks ?links .`,
+    "} GROUP BY ?tmdb ORDER BY DESC(?n) LIMIT 20000",
+  ].join("\n");
+}
+
+/** TMDB ids from a Wikidata answer, best known first, each once. */
+export function blackBoxIdsFromSparql(json: unknown): number[] {
+  const rows = (json as { results?: { bindings?: unknown[] } })?.results?.bindings;
+  if (!Array.isArray(rows)) return [];
+  const scored: Array<[number, number]> = [];
+  const seen = new Set<number>();
+  for (const row of rows) {
+    const r = row as { tmdb?: { value?: string }; n?: { value?: string } };
+    const id = Number(r.tmdb?.value);
+    if (!Number.isInteger(id) || id <= 0 || seen.has(id)) continue;
+    seen.add(id);
+    scored.push([id, Number(r.n?.value) || 0]);
+  }
+  return scored.sort((a, b) => b[1] - a[1]).map(([id]) => id);
+}
+
+/** TMDB's genre ids on a show's details: unscripted ones make it TV, the rest Series. */
+export function showKind(genreIds: readonly number[]): "series" | "tv" {
+  return genreIds.some((g) => TV_GENRES.has(g)) ? "tv" : "series";
+}

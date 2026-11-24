@@ -3,6 +3,9 @@ import test from "node:test";
 import {
   BLACK_BOX_PEOPLE,
   blackBoxCatalogsFor,
+  blackBoxIdsFromSparql,
+  blackBoxSparql,
+  showKind,
   blackBoxMovieParams,
   nameKey,
   pickPerson,
@@ -96,4 +99,36 @@ test("black box: catalogs only with a TMDB key", () => {
     blackBoxCatalogsFor(true).map((c) => `${c.type}:${c.id}`),
     ["movie:movies", "series:series", "tv:tv"],
   );
+});
+
+test("black box: Wikidata is asked for films with a Black cast member and a TMDB id", () => {
+  const q = blackBoxSparql("movie", [287, 5292]);
+  assert.match(q, /"African Americans"@en/);
+  assert.match(q, /wdt:P172/);
+  assert.match(q, /wdt:P161/);
+  assert.match(q, /wdt:P4947/);
+  assert.match(q, /VALUES \?pid \{ "287" "5292" \}/);
+  assert.match(blackBoxSparql("tv", []), /wdt:P4983/);
+  assert.doesNotMatch(blackBoxSparql("tv", []), /\?pid/);
+});
+
+test("black box: Wikidata's answer becomes TMDB ids, best known first, each once", () => {
+  const ids = blackBoxIdsFromSparql({
+    results: {
+      bindings: [
+        { tmdb: { value: "10" }, n: { value: "5" } },
+        { tmdb: { value: "20" }, n: { value: "80" } },
+        { tmdb: { value: "10" }, n: { value: "90" } },
+        { tmdb: { value: "tt0001" }, n: { value: "99" } },
+      ],
+    },
+  });
+  assert.deepEqual(ids, [20, 10]);
+  assert.deepEqual(blackBoxIdsFromSparql(null), []);
+});
+
+test("black box: talk, reality and documentary shows are TV, the rest Series", () => {
+  assert.equal(showKind([18, 35]), "series");
+  assert.equal(showKind([10767]), "tv");
+  assert.equal(showKind([99, 18]), "tv");
 });
