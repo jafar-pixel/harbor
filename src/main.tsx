@@ -17,7 +17,6 @@ import { hdrOverlayEmitAction } from "@/lib/hdr-overlay";
 import { PipApp } from "@/views/pip";
 import { VideoPipApp } from "@/views/video-pip";
 import "@/lib/awards-history-eager";
-import { installTvKeyTrace } from "@/lib/tv-key-trace";
 import "@/index.css";
 import { installPressFeedback } from "@/lib/press-feedback";
 import "flag-icons/css/flag-icons.min.css";
@@ -27,9 +26,6 @@ import { captureSharedLink } from "@/lib/shared-link";
 import { captureSpotifyCallback } from "@/lib/music/spotify-web/auth";
 import { captureYouTubeCallback } from "@/lib/music/youtube-web/auth";
 import { watchForStaleBuild } from "@/lib/stale-build";
-
-// Before the app's own key handlers, so it sees each key first (see tv-key-trace.ts).
-installTvKeyTrace();
 
 // The remote's OK shows on buttons (see lib/press-feedback.ts).
 installPressFeedback();
