@@ -44,6 +44,7 @@ import {
 
 export type View =
   | "home"
+  | "black-cinema"
   | "settings"
   | "anime"
   | "discover"
@@ -181,6 +182,7 @@ export type MetaFilter =
 
 export type Frame =
   | { kind: "home" }
+  | { kind: "black-cinema" }
   | { kind: "settings" }
   | { kind: "anime" }
   | { kind: "discover" }
@@ -437,6 +439,8 @@ function frameKey(f: Frame): string {
       return "catalogs";
     case "plugins":
       return "plugins";
+    case "black-cinema":
+      return "black-cinema";
     case "addons":
       return "addons";
     case "addon-detail":
@@ -611,6 +615,7 @@ export function ViewProvider({ children }: { children: ReactNode }) {
       if (f.kind === "discover" || f.kind === "queue") return "discover";
       if (f.kind === "catalogs") return "catalogs";
       if (f.kind === "plugins") return "plugins";
+      if (f.kind === "black-cinema") return "black-cinema";
       if (f.kind === "calendar") return "calendar";
       if (f.kind === "wrapped") return "wrapped";
       if (f.kind === "movies") return "movies";
@@ -875,6 +880,11 @@ export function ViewProvider({ children }: { children: ReactNode }) {
           scrollMem.current.clear();
           rowScrollMem.current.clear();
           return [{ kind: "plugins" }];
+        }
+        if (v === "black-cinema") {
+          scrollMem.current.clear();
+          rowScrollMem.current.clear();
+          return [{ kind: "black-cinema" }];
         }
         if (v === "addons") {
           scrollMem.current.clear();

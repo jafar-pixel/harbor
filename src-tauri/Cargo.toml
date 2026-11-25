@@ -1,6 +1,6 @@
 [package]
 name = "harbor"
-version = "0.9.134"
+version = "0.9.135"
 description = "JL Media Vision desktop media center"
 edition = "2021"
 

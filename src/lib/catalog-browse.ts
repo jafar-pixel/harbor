@@ -5,7 +5,12 @@ import {
   type CatalogExtra,
 } from "./addons";
 import type { Meta, MetaType } from "./cinemeta";
-import { BLACK_BOX_BASE, blackBoxCatalogs, blackBoxPage, isBlackBoxKind } from "./black-box";
+import {
+  BLACK_BOX_BASE,
+  blackBoxCatalogPage,
+  blackBoxCatalogs,
+  isBlackBoxCatalogId,
+} from "./black-box";
 import {
   extensionCatalogueBase,
   extensionCataloguePage,
@@ -120,7 +125,7 @@ export function browseFetcher(
   if (cat.base === BLACK_BOX_BASE) {
     const kind = cat.id;
     return (page: number) =>
-      isBlackBoxKind(kind) ? blackBoxPage(kind, page) : Promise.resolve([]);
+      isBlackBoxCatalogId(kind) ? blackBoxCatalogPage(kind, page) : Promise.resolve([]);
   }
   if (isExtensionCatalogueBase(cat.base)) {
     return (page: number) => extensionCataloguePage(cat.base, cat.id, cat.type as MetaType, page);

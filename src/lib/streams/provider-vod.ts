@@ -18,7 +18,11 @@ import {
   type VodLookupQuery,
 } from "@/lib/iptv/vod-lookup";
 import { fetchXtreamSeriesEpisodes } from "@/lib/iptv/xtream-vod";
-import { getXtreamVodSnapshot, loadXtreamVodLibrary } from "@/lib/iptv/xtream-vod-library";
+import {
+  getXtreamVodSnapshot,
+  loadXtreamVodLibrary,
+  subscribeXtreamVodLibrary,
+} from "@/lib/iptv/xtream-vod-library";
 import { dlog } from "@/lib/debug";
 import { PROVIDER_VOD_ADDON_ID, PROVIDER_VOD_LABEL } from "./source-order";
 import type { Stream } from "./types";
@@ -121,6 +125,24 @@ async function catalogFor(
     m3uLibraries.set(loaded, library);
   }
   return { library, xtream: null };
+}
+
+/**
+ * The provider movie and series catalogs (Xtream) the app already holds in memory. Nothing is
+ * loaded: Black Cinema reads these to show what the viewer's own provider carries, and must never
+ * pull a large catalog itself.
+ */
+export function providerVodSnapshots(): VodLibrary[] {
+  return providerVodSources()
+    .map((source) => asXtream(source))
+    .filter((source): source is IptvPlaylistSource => source !== null)
+    .map((source) => getXtreamVodSnapshot(source.id).library)
+    .filter((library) => library.movies.length + library.series.length > 0);
+}
+
+/** Called whenever a provider's catalog in memory changes. */
+export function subscribeProviderVodSnapshots(listener: () => void): () => void {
+  return subscribeXtreamVodLibrary(listener);
 }
 
 function playable(

@@ -1,0 +1,734 @@
+# Black Cinema master list (JL Media Vision), as supplied by the owner.
+# One title per line: Title | Year | movie/series | Network | Tags (comma separated)
+# "## Section" lines set the default category for the lines under them.
+# Titles named inside the list's notes are included as titles too.
+
+## Black Cinema — 1990s Classics
+Malcolm X | 1992 | movie | | Black History & Biographies, Spike Lee Collection
+Boomerang | 1992 | movie | | Black Romance & Relationships
+New Jack City | 1991 | movie | | Black Crime & Urban Drama
+Poetic Justice | 1993 | movie | | Black Romance & Relationships
+Tales from the Hood | 1995 | movie | | Black Horror & Science Fiction
+Dead Presidents | 1995 | movie | | Black Crime & Urban Drama
+The Watermelon Woman | 1996 | movie | | Black Independent Cinema
+Soul Food | 1997 | movie | | Black Family Entertainment
+The Best Man | 1999 | movie | | Black Romance & Relationships
+The Wood | 1999 | movie | | Black Romance & Relationships
+
+## New Black Movies — 2026
+Once Upon a Time in Harlem | 2026 | movie | NEON | Black Documentaries, Black History & Biographies
+Is God Is | 2026 | movie | Amazon MGM | Black Action & Thrillers
+By Any Means | 2026 | movie | | Black Crime & Urban Drama, Black History & Biographies
+Misty Green | 2026 | movie | A24 |
+I Love Boosters | 2026 | movie | NEON | Black Crime & Urban Drama
+You, Me & Tuscany | 2026 | movie | Peacock | Black Romance & Relationships
+Michael | 2026 | movie | Lionsgate | Black Music & Hip-Hop, Black History & Biographies
+The Dutchman | 2026 | movie | | Black Action & Thrillers
+Why Did I Get Married Again? | 2026 | movie | Netflix | Black Romance & Relationships, Tyler Perry Collection
+Mary J. Blige Presents: Be Happy | 2026 | movie | Lifetime | Black Romance & Relationships
+Soul Patrol | 2026 | movie | | Black Documentaries
+If I Go Will They Miss Me | 2026 | movie | | Black Independent Cinema
+Terry McMillan Presents: Paradise with You | 2026 | movie | Lifetime | Black Romance & Relationships
+Tyler Perry's The Gospel of Christmas | 2026 | movie | Netflix | Black Christmas & Holiday Movies, Tyler Perry Collection
+Give Me Some Sugah | 2026 | movie | Netflix |
+14th | 2026 | movie | Netflix |
+A Memorable Christmas | 2026 | movie | AspireTV | Black Christmas & Holiday Movies
+Tapping Into Christmas | 2026 | movie | OWN | Black Christmas & Holiday Movies
+
+## Black Cinema — 2000s
+Love & Basketball | 2000 | movie | | Black Romance & Relationships, Black Sports Cinema
+The Original Kings of Comedy | 2000 | movie | | Black Stand-Up Comedy, Spike Lee Collection
+Big Momma's House | 2000 | movie | |
+Shaft | 2000 | movie | | Black Action & Thrillers
+Remember the Titans | 2000 | movie | | Black Sports Cinema
+Bamboozled | 2000 | movie | | Spike Lee Collection
+The Women of Brewster Place | 1989 | series | ABC | Black Family Entertainment
+Our Song | 2000 | movie | | Black Independent Cinema
+Baby Boy | 2001 | movie | | Black Crime & Urban Drama
+The Brothers | 2001 | movie | | Black Romance & Relationships
+Two Can Play That Game | 2001 | movie | | Black Romance & Relationships
+Ali | 2001 | movie | | Black Sports Cinema, Black History & Biographies
+Training Day | 2001 | movie | | Black Crime & Urban Drama
+Hardball | 2001 | movie | | Black Sports Cinema
+Bones | 2001 | movie | | Black Horror & Science Fiction
+The Wash | 2001 | movie | |
+Kingdom Come | 2001 | movie | | Black Family Entertainment
+Carmen: A Hip Hopera | 2001 | movie | MTV | Black Music & Hip-Hop
+Barbershop | 2002 | movie | |
+Drumline | 2002 | movie | | HBCU Movies & Television, Black Music & Hip-Hop
+Brown Sugar | 2002 | movie | | Black Romance & Relationships, Black Music & Hip-Hop
+Antwone Fisher | 2002 | movie | |
+John Q | 2002 | movie | |
+Friday After Next | 2002 | movie | | Black Christmas & Holiday Movies
+Paid in Full | 2002 | movie | | Black Crime & Urban Drama
+All About the Benjamins | 2002 | movie | | Black Action & Thrillers
+The Transporter | 2002 | movie | | Black Action & Thrillers
+Like Mike | 2002 | movie | | Black Sports Cinema, Black Family Entertainment
+Civil Brand | 2002 | movie | | Black Independent Cinema
+Undercover Brother | 2002 | movie | |
+Deliver Us from Eva | 2003 | movie | | Black Romance & Relationships
+Love Don't Cost a Thing | 2003 | movie | | Black Romance & Relationships
+Bad Boys II | 2003 | movie | | Black Action & Thrillers
+The Fighting Temptations | 2003 | movie | | Black Music & Hip-Hop
+Honey | 2003 | movie | | Black Music & Hip-Hop
+Malibu's Most Wanted | 2003 | movie | |
+Cradle 2 the Grave | 2003 | movie | | Black Action & Thrillers
+Ride or Die | 2003 | movie | | Black Crime & Urban Drama
+The Gospel of John | 2003 | movie | |
+Dysfunktional Family | 2003 | movie | | Black Stand-Up Comedy
+Ray | 2004 | movie | | Black Music & Hip-Hop, Black History & Biographies
+You Got Served | 2004 | movie | | Black Music & Hip-Hop
+Soul Plane | 2004 | movie | |
+White Chicks | 2004 | movie | |
+Barbershop 2: Back in Business | 2004 | movie | |
+The Cookout | 2004 | movie | | Black Family Entertainment
+Woman Thou Art Loosed | 2004 | movie | |
+The Seat Filler | 2004 | movie | | Black Romance & Relationships
+Johnson Family Vacation | 2004 | movie | | Black Family Entertainment
+Fat Albert | 2004 | movie | | Black Family Entertainment
+Hotel Rwanda | 2004 | movie | | Black History & Biographies, African & Caribbean Cinema
+Coach Carter | 2005 | movie | | Black Sports Cinema
+Hustle & Flow | 2005 | movie | | Black Music & Hip-Hop
+Diary of a Mad Black Woman | 2005 | movie | | Tyler Perry Collection
+Get Rich or Die Tryin' | 2005 | movie | | Black Music & Hip-Hop, Black Crime & Urban Drama
+Four Brothers | 2005 | movie | | Black Crime & Urban Drama
+Beauty Shop | 2005 | movie | |
+Roll Bounce | 2005 | movie | | Black Family Entertainment
+The Gospel | 2005 | movie | | Black Music & Hip-Hop
+Guess Who | 2005 | movie | | Black Romance & Relationships
+The Longest Yard | 2005 | movie | | Black Sports Cinema
+State Property 2 | 2005 | movie | | Black Crime & Urban Drama
+ATL | 2006 | movie | |
+Akeelah and the Bee | 2006 | movie | | Black Family Entertainment
+Dreamgirls | 2006 | movie | | Black Music & Hip-Hop
+Madea's Family Reunion | 2006 | movie | | Tyler Perry Collection
+The Pursuit of Happyness | 2006 | movie | | Black History & Biographies
+Waist Deep | 2006 | movie | | Black Crime & Urban Drama
+Idlewild | 2006 | movie | | Black Music & Hip-Hop
+Something New | 2006 | movie | | Black Romance & Relationships
+Last Holiday | 2006 | movie | |
+Gridiron Gang | 2006 | movie | | Black Sports Cinema
+The Last King of Scotland | 2006 | movie | | African & Caribbean Cinema, Black History & Biographies
+Phat Girlz | 2006 | movie | |
+Stomp the Yard | 2007 | movie | | HBCU Movies & Television
+The Great Debaters | 2007 | movie | | HBCU Movies & Television, Black History & Biographies
+American Gangster | 2007 | movie | | Black Crime & Urban Drama
+Why Did I Get Married? | 2007 | movie | | Tyler Perry Collection, Black Romance & Relationships
+Daddy's Little Girls | 2007 | movie | | Tyler Perry Collection
+This Christmas | 2007 | movie | | Black Christmas & Holiday Movies
+Talk to Me | 2007 | movie | | Black History & Biographies
+Pride | 2007 | movie | | Black Sports Cinema
+Norbit | 2007 | movie | |
+I Think I Love My Wife | 2007 | movie | | Black Romance & Relationships
+Cadillac Records | 2008 | movie | | Black Music & Hip-Hop
+The Secret Life of Bees | 2008 | movie | |
+Meet the Browns | 2008 | movie | | Tyler Perry Collection
+The Family That Preys | 2008 | movie | | Tyler Perry Collection
+First Sunday | 2008 | movie | |
+Welcome Home Roscoe Jenkins | 2008 | movie | | Black Family Entertainment
+The Express | 2008 | movie | | Black Sports Cinema, Black History & Biographies
+The Longshots | 2008 | movie | | Black Sports Cinema
+Miracle at St. Anna | 2008 | movie | | Spike Lee Collection
+A Raisin in the Sun | 2008 | movie | ABC |
+Not Easily Broken | 2009 | movie | | Black Romance & Relationships
+Notorious | 2009 | movie | | Black Music & Hip-Hop, Black History & Biographies
+Precious | 2009 | movie | |
+The Princess and the Frog | 2009 | movie | Disney | Black Family Entertainment
+Madea Goes to Jail | 2009 | movie | | Tyler Perry Collection
+I Can Do Bad All by Myself | 2009 | movie | | Tyler Perry Collection
+Black Dynamite | 2009 | movie | | Black Action & Thrillers
+Next Day Air | 2009 | movie | | Black Crime & Urban Drama
+Hurricane Season | 2009 | movie | | Black Sports Cinema
+Good Hair | 2009 | movie | | Black Documentaries
+Invictus | 2009 | movie | | Black Sports Cinema, African & Caribbean Cinema
+
+## Black Cinema — 2010s
+For Colored Girls | 2010 | movie | | Tyler Perry Collection
+Why Did I Get Married Too? | 2010 | movie | | Tyler Perry Collection, Black Romance & Relationships
+The Book of Eli | 2010 | movie | | Black Action & Thrillers
+Just Wright | 2010 | movie | | Black Sports Cinema, Black Romance & Relationships
+Lottery Ticket | 2010 | movie | |
+Takers | 2010 | movie | | Black Action & Thrillers
+Death at a Funeral | 2010 | movie | |
+Night Catches Us | 2010 | movie | |
+The Karate Kid | 2010 | movie | | Black Family Entertainment
+Stomp the Yard: Homecoming | 2010 | movie | | HBCU Movies & Television
+The Help | 2011 | movie | | Black History & Biographies
+Jumping the Broom | 2011 | movie | | Black Romance & Relationships
+Pariah | 2011 | movie | | Black Independent Cinema
+Madea's Big Happy Family | 2011 | movie | | Tyler Perry Collection
+The Last Fall | 2012 | movie | | Black Sports Cinema
+Mooz-lum | 2011 | movie | | Black Independent Cinema
+The Grace Card | 2011 | movie | |
+Think Like a Man | 2012 | movie | | Black Romance & Relationships
+Red Tails | 2012 | movie | | Black History & Biographies, Black Action & Thrillers
+Django Unchained | 2012 | movie | |
+Sparkle | 2012 | movie | | Black Music & Hip-Hop
+Good Deeds | 2012 | movie | | Tyler Perry Collection
+Madea's Witness Protection | 2012 | movie | | Tyler Perry Collection
+Middle of Nowhere | 2012 | movie | | Black Independent Cinema
+Alex Cross | 2012 | movie | | Black Action & Thrillers
+Flight | 2012 | movie | |
+The Best Man Holiday | 2013 | movie | | Black Christmas & Holiday Movies, Black Romance & Relationships
+Fruitvale Station | 2013 | movie | |
+12 Years a Slave | 2013 | movie | | Black History & Biographies
+The Butler | 2013 | movie | | Black History & Biographies
+42 | 2013 | movie | | Black Sports Cinema, Black History & Biographies
+Mandela: Long Walk to Freedom | 2013 | movie | | Black History & Biographies, African & Caribbean Cinema
+Baggage Claim | 2013 | movie | | Black Romance & Relationships
+Temptation: Confessions of a Marriage Counselor | 2013 | movie | | Tyler Perry Collection
+A Madea Christmas | 2013 | movie | | Tyler Perry Collection, Black Christmas & Holiday Movies
+Black Nativity | 2013 | movie | | Black Christmas & Holiday Movies, Black Music & Hip-Hop
+Belle | 2013 | movie | | Black History & Biographies
+Selma | 2014 | movie | | Black History & Biographies
+Get On Up | 2014 | movie | | Black Music & Hip-Hop, Black History & Biographies
+Think Like a Man Too | 2014 | movie | | Black Romance & Relationships
+About Last Night | 2014 | movie | | Black Romance & Relationships
+Ride Along | 2014 | movie | |
+Top Five | 2014 | movie | |
+Dear White People | 2014 | movie | |
+Beyond the Lights | 2014 | movie | | Black Romance & Relationships, Black Music & Hip-Hop
+No Good Deed | 2014 | movie | | Black Action & Thrillers
+Addicted | 2014 | movie | |
+Annie | 2014 | movie | | Black Family Entertainment
+Creed | 2015 | movie | | Black Sports Cinema
+Straight Outta Compton | 2015 | movie | | Black Music & Hip-Hop, Black History & Biographies
+Dope | 2015 | movie | |
+The Perfect Guy | 2015 | movie | | Black Action & Thrillers
+The Wedding Ringer | 2015 | movie | |
+War Room | 2015 | movie | |
+Chi-Raq | 2015 | movie | | Spike Lee Collection
+Bessie | 2015 | movie | HBO | Black Music & Hip-Hop, Black History & Biographies
+Brotherly Love | 2015 | movie | |
+The Man in 3B | 2015 | movie | |
+Moonlight | 2016 | movie | |
+Hidden Figures | 2016 | movie | | Black History & Biographies
+Fences | 2016 | movie | |
+The Birth of a Nation | 2016 | movie | | Black History & Biographies
+Loving | 2016 | movie | | Black History & Biographies
+Barbershop: The Next Cut | 2016 | movie | |
+Ride Along 2 | 2016 | movie | |
+Almost Christmas | 2016 | movie | | Black Christmas & Holiday Movies
+Southside with You | 2016 | movie | | Black Romance & Relationships, Black History & Biographies
+When the Bough Breaks | 2016 | movie | | Black Action & Thrillers
+Queen of Katwe | 2016 | movie | Disney | Black Sports Cinema, African & Caribbean Cinema
+Get Out | 2017 | movie | | Black Horror & Science Fiction
+Girls Trip | 2017 | movie | |
+Marshall | 2017 | movie | | Black History & Biographies
+Mudbound | 2017 | movie | Netflix |
+Detroit | 2017 | movie | | Black History & Biographies
+All Eyez on Me | 2017 | movie | | Black Music & Hip-Hop, Black History & Biographies
+Roman J. Israel, Esq. | 2017 | movie | |
+The Quad | 2017 | series | BET | HBCU Movies & Television
+Burning Sands | 2017 | movie | Netflix | HBCU Movies & Television
+Deidra & Laney Rob a Train | 2017 | movie | Netflix |
+Roxanne Roxanne | 2018 | movie | Netflix | Black Music & Hip-Hop, Black History & Biographies
+Black Panther | 2018 | movie | | Black Horror & Science Fiction, Black Action & Thrillers
+Creed II | 2018 | movie | | Black Sports Cinema
+BlacKkKlansman | 2018 | movie | | Spike Lee Collection, Black History & Biographies
+If Beale Street Could Talk | 2018 | movie | | Black Romance & Relationships
+The Hate U Give | 2018 | movie | |
+Sorry to Bother You | 2018 | movie | | Black Horror & Science Fiction
+SuperFly | 2018 | movie | | Black Crime & Urban Drama
+Acrimony | 2018 | movie | | Tyler Perry Collection, Black Action & Thrillers
+Nobody's Fool | 2018 | movie | | Tyler Perry Collection
+Proud Mary | 2018 | movie | | Black Action & Thrillers
+Blindspotting | 2018 | movie | |
+Widows | 2018 | movie | | Black Crime & Urban Drama
+Queen & Slim | 2019 | movie | | Black Crime & Urban Drama, Black Romance & Relationships
+Harriet | 2019 | movie | | Black History & Biographies
+Us | 2019 | movie | | Black Horror & Science Fiction
+Just Mercy | 2019 | movie | | Black History & Biographies
+Dolemite Is My Name | 2019 | movie | Netflix | Black History & Biographies
+Little | 2019 | movie | |
+Shaft | 2019 | movie | | Black Action & Thrillers
+What Men Want | 2019 | movie | |
+The Last Black Man in San Francisco | 2019 | movie | | Black Independent Cinema
+The Intruder | 2019 | movie | | Black Action & Thrillers
+Black and Blue | 2019 | movie | | Black Action & Thrillers
+The Best of Enemies | 2019 | movie | | Black History & Biographies
+See You Yesterday | 2019 | movie | Netflix | Black Horror & Science Fiction, Spike Lee Collection
+Waves | 2019 | movie | |
+
+## Black Cinema — 2020s
+Bad Boys for Life | 2020 | movie | | Black Action & Thrillers
+Soul | 2020 | movie | Disney | Black Family Entertainment, Black Music & Hip-Hop
+Ma Rainey's Black Bottom | 2020 | movie | Netflix | Black Music & Hip-Hop
+One Night in Miami | 2020 | movie | Prime Video | Black History & Biographies
+Da 5 Bloods | 2020 | movie | Netflix | Spike Lee Collection
+The Photograph | 2020 | movie | | Black Romance & Relationships
+Jingle Jangle: A Christmas Journey | 2020 | movie | Netflix | Black Christmas & Holiday Movies, Black Family Entertainment
+The Banker | 2020 | movie | Apple TV+ | Black History & Biographies
+Project Power | 2020 | movie | Netflix | Black Action & Thrillers, Black Horror & Science Fiction
+Uncorked | 2020 | movie | Netflix |
+Antebellum | 2020 | movie | | Black Horror & Science Fiction
+His House | 2020 | movie | Netflix | Black Horror & Science Fiction, African & Caribbean Cinema
+Miss Juneteenth | 2020 | movie | | Black Independent Cinema
+The Forty-Year-Old Version | 2020 | movie | Netflix | Black Music & Hip-Hop
+Fatal Affair | 2020 | movie | Netflix | Black Action & Thrillers
+A Fall from Grace | 2020 | movie | Netflix | Tyler Perry Collection
+Sylvie's Love | 2020 | movie | Prime Video | Black Romance & Relationships
+King Richard | 2021 | movie | | Black Sports Cinema, Black History & Biographies
+Judas and the Black Messiah | 2021 | movie | | Black History & Biographies
+The Harder They Fall | 2021 | movie | Netflix | Black Action & Thrillers
+Coming 2 America | 2021 | movie | Prime Video |
+Respect | 2021 | movie | | Black Music & Hip-Hop, Black History & Biographies
+Candyman | 2021 | movie | | Black Horror & Science Fiction
+The United States vs. Billie Holiday | 2021 | movie | Hulu | Black Music & Hip-Hop, Black History & Biographies
+Fatherhood | 2021 | movie | Netflix | Black Family Entertainment
+Space Jam: A New Legacy | 2021 | movie | | Black Family Entertainment, Black Sports Cinema
+Passing | 2021 | movie | Netflix |
+Bruised | 2021 | movie | Netflix | Black Sports Cinema
+The Underground Railroad | 2021 | series | Prime Video | Black History & Biographies
+American Skin | 2021 | movie | |
+A Journal for Jordan | 2021 | movie | | Black Romance & Relationships
+Black Panther: Wakanda Forever | 2022 | movie | | Black Action & Thrillers, Black Horror & Science Fiction
+The Woman King | 2022 | movie | | Black History & Biographies, African & Caribbean Cinema
+Nope | 2022 | movie | | Black Horror & Science Fiction
+Till | 2022 | movie | | Black History & Biographies
+Emancipation | 2022 | movie | Apple TV+ | Black History & Biographies
+Devotion | 2022 | movie | | Black History & Biographies
+A Jazzman's Blues | 2022 | movie | Netflix | Tyler Perry Collection, Black Music & Hip-Hop
+The Inspection | 2022 | movie | |
+Honk for Jesus. Save Your Soul. | 2022 | movie | |
+Alice | 2022 | movie | | Black History & Biographies
+Emergency | 2022 | movie | Prime Video |
+Day Shift | 2022 | movie | Netflix | Black Action & Thrillers, Black Horror & Science Fiction
+The Man from Toronto | 2022 | movie | Netflix | Black Action & Thrillers
+Me Time | 2022 | movie | Netflix |
+Creed III | 2023 | movie | | Black Sports Cinema
+The Color Purple | 2023 | movie | | Black Music & Hip-Hop
+American Fiction | 2023 | movie | |
+They Cloned Tyrone | 2023 | movie | Netflix | Black Horror & Science Fiction
+Rustin | 2023 | movie | Netflix | Black History & Biographies
+The Little Mermaid | 2023 | movie | Disney | Black Family Entertainment
+The Blackening | 2023 | movie | | Black Horror & Science Fiction
+The Burial | 2023 | movie | Prime Video |
+The Perfect Find | 2023 | movie | Netflix | Black Romance & Relationships
+A Thousand and One | 2023 | movie | | Black Independent Cinema
+The Book of Clarence | 2024 | movie | |
+Origin | 2023 | movie | |
+The Other Black Girl | 2023 | series | Hulu | Black Action & Thrillers
+The Equalizer 3 | 2023 | movie | | Black Action & Thrillers
+The Underdoggs | 2024 | movie | Prime Video | Black Sports Cinema
+Bad Boys: Ride or Die | 2024 | movie | | Black Action & Thrillers
+Bob Marley: One Love | 2024 | movie | | Black Music & Hip-Hop, Black History & Biographies, African & Caribbean Cinema
+Shirley | 2024 | movie | Netflix | Black History & Biographies
+Beverly Hills Cop: Axel F | 2024 | movie | Netflix | Black Action & Thrillers
+The Deliverance | 2024 | movie | Netflix | Black Horror & Science Fiction
+The Six Triple Eight | 2024 | movie | Netflix | Tyler Perry Collection, Black History & Biographies
+Daughters | 2024 | movie | Netflix | Black Documentaries
+Mea Culpa | 2024 | movie | Netflix | Tyler Perry Collection, Black Action & Thrillers
+Divorce in the Black | 2024 | movie | Prime Video | Tyler Perry Collection
+The Piano Lesson | 2024 | movie | Netflix |
+The Supremes at Earl's All-You-Can-Eat | 2024 | movie | Hulu |
+Exhibiting Forgiveness | 2024 | movie | | Black Independent Cinema
+Nickel Boys | 2024 | movie | |
+The Fire Inside | 2024 | movie | | Black Sports Cinema
+Luther: Never Too Much | 2024 | movie | | Black Music & Hip-Hop, Black Documentaries
+Hard Truths | 2024 | movie | |
+Sinners | 2025 | movie | | Black Horror & Science Fiction, Black Music & Hip-Hop
+One of Them Days | 2025 | movie | |
+The Electric State | 2025 | movie | Netflix | Black Horror & Science Fiction
+The Woman in the Yard | 2025 | movie | | Black Horror & Science Fiction
+Tyler Perry's Duplicity | 2025 | movie | Prime Video | Tyler Perry Collection, Black Action & Thrillers
+Straw | 2025 | movie | Netflix | Tyler Perry Collection
+The Old Guard 2 | 2025 | movie | Netflix | Black Action & Thrillers
+Highest 2 Lowest | 2025 | movie | Apple TV+ | Spike Lee Collection, Black Crime & Urban Drama
+The Smashing Machine | 2025 | movie | | Black Sports Cinema
+Him | 2025 | movie | | Black Horror & Science Fiction, Black Sports Cinema
+The Long Walk | 2025 | movie | |
+The Pickup | 2025 | movie | Prime Video | Black Action & Thrillers
+The Shadow's Edge | 2025 | movie | | Black Action & Thrillers
+Hedda | 2025 | movie | Prime Video |
+The Last Rodeo | 2025 | movie | |
+Sarah's Oil | 2025 | movie | | Black History & Biographies
+
+## BET & BET+ Originals
+College Hill | 2004 | series | BET | HBCU Movies & Television
+American Gangster | 2006 | series | BET | Black Documentaries, Black Crime & Urban Drama
+The Game | 2006 | series | BET | Black Sports Cinema
+Sunday Best | 2007 | series | BET | Black Music & Hip-Hop
+Reed Between the Lines | 2011 | series | BET | Classic Black Sitcoms
+Real Husbands of Hollywood | 2013 | series | BET |
+Being Mary Jane | 2013 | series | BET | Black Romance & Relationships
+The New Edition Story | 2017 | series | BET | Black Music & Hip-Hop, Black History & Biographies
+Tales | 2017 | series | BET | Black Crime & Urban Drama, Black Music & Hip-Hop
+The Bobby Brown Story | 2018 | series | BET | Black Music & Hip-Hop, Black History & Biographies
+Carl Weber's The Family Business | 2018 | series | BET+ | Black Crime & Urban Drama
+Boomerang | 2019 | series | BET | Black Romance & Relationships
+First Wives Club | 2019 | series | BET+ |
+Bigger | 2019 | series | BET+ |
+Sistas | 2019 | series | BET | Tyler Perry Collection
+The Oval | 2019 | series | BET | Tyler Perry Collection
+Ruthless | 2020 | series | BET+ | Tyler Perry Collection, Black Action & Thrillers
+Bruh | 2020 | series | BET+ | Tyler Perry Collection
+Twenties | 2020 | series | BET |
+Assisted Living | 2020 | series | BET | Tyler Perry Collection, Classic Black Sitcoms
+All the Queen's Men | 2021 | series | BET+ | Black Crime & Urban Drama
+The Ms. Pat Show | 2021 | series | BET+ | Classic Black Sitcoms
+Sacrifice | 2021 | series | BET+ | Black Action & Thrillers
+Kingdom Business | 2022 | series | BET+ | Black Music & Hip-Hop
+The Black Hamptons | 2022 | series | BET+ |
+Zatima | 2022 | series | BET+ | Tyler Perry Collection, Black Romance & Relationships
+Haus of Vicious | 2022 | series | BET+ |
+I Got a Story to Tell | 2022 | series | BET+ |
+Average Joe | 2023 | series | BET+ | Black Crime & Urban Drama
+Caught Up | 2023 | series | BET+ |
+The Michael Blackson Show | 2023 | series | BET+ |
+Love & Murder: Atlanta Playboy | 2023 | series | BET+ | Black Crime & Urban Drama
+Churchy | 2024 | series | BET+ |
+Perimeter | 2024 | series | BET+ |
+The Family Business: New Orleans | 2025 | series | BET+ | Black Crime & Urban Drama
+Divorced Sistas | 2025 | series | BET | Tyler Perry Collection
+Lil Kev | 2025 | series | BET | Black Family Entertainment
+The Hospital | 2025 | series | BET+ |
+
+## ALLBLK Originals
+The Rich and the Ruthless | 2017 | series | ALLBLK |
+5th Ward | 2018 | series | ALLBLK | Black Crime & Urban Drama
+Bronx SIU | 2018 | series | ALLBLK | Black Crime & Urban Drama
+A House Divided | 2019 | series | ALLBLK | Black Family Entertainment
+Monogamy | 2018 | series | ALLBLK | Black Romance & Relationships
+Craig Ross Jr.'s Monogamy | 2018 | series | ALLBLK | Black Romance & Relationships
+Stuck with You | 2020 | series | ALLBLK | Black Romance & Relationships
+Double Cross | 2020 | series | ALLBLK | Black Crime & Urban Drama
+For the Love of Jason | 2020 | series | ALLBLK | Black Romance & Relationships
+A Closer Look | 2020 | series | ALLBLK | Black Documentaries
+Millennials | 2021 | series | ALLBLK |
+Á La Carte | 2022 | series | ALLBLK | Black Romance & Relationships
+Snap | 2022 | series | ALLBLK | Black Action & Thrillers
+Send Help | 2022 | series | ALLBLK |
+Wicked City | 2022 | series | ALLBLK | Black Horror & Science Fiction
+Kold x Windy | 2023 | series | ALLBLK | Black Music & Hip-Hop, Black Crime & Urban Drama
+Hush | 2022 | series | ALLBLK | Black Action & Thrillers
+Judge Me Not | 2023 | series | ALLBLK |
+Involved | 2023 | series | ALLBLK |
+Partners in Rhyme | 2021 | series | ALLBLK | Black Music & Hip-Hop
+The Other Side of the Game | 2024 | series | ALLBLK | Black Crime & Urban Drama
+The Barnes Bunch | 2024 | series | ALLBLK | Black Family Entertainment
+Deb's House | 2024 | series | ALLBLK | Black Music & Hip-Hop
+
+## Starz Black Entertainment
+Power | 2014 | series | Starz | Black Crime & Urban Drama
+Survivor's Remorse | 2014 | series | Starz | Black Sports Cinema
+P-Valley | 2020 | series | Starz |
+Power Book II: Ghost | 2020 | series | Starz | Black Crime & Urban Drama
+Power Book III: Raising Kanan | 2021 | series | Starz | Black Crime & Urban Drama
+BMF | 2021 | series | Starz | Black Crime & Urban Drama
+Run the World | 2021 | series | Starz |
+Blindspotting | 2021 | series | Starz |
+Power Book IV: Force | 2022 | series | Starz | Black Crime & Urban Drama
+Becoming Elizabeth | 2022 | series | Starz | Black History & Biographies
+The Serpent Queen | 2022 | series | Starz | Black History & Biographies
+Three Women | 2024 | series | Starz |
+The BMF Documentary: Blowing Money Fast | 2022 | series | Starz | Black Documentaries, Black Crime & Urban Drama
+Fat Joe Talks | 2024 | series | Starz | Black Music & Hip-Hop
+
+## Netflix
+The Get Down | 2016 | series | Netflix | Black Music & Hip-Hop
+Luke Cage | 2016 | series | Netflix | Black Horror & Science Fiction, Black Action & Thrillers
+Dear White People | 2017 | series | Netflix | HBCU Movies & Television
+She's Gotta Have It | 2017 | series | Netflix | Spike Lee Collection, Black Romance & Relationships
+Seven Seconds | 2018 | series | Netflix | Black Crime & Urban Drama
+On My Block | 2018 | series | Netflix |
+All About the Washingtons | 2018 | series | Netflix | Classic Black Sitcoms
+When They See Us | 2019 | series | Netflix | Black History & Biographies
+Family Reunion | 2019 | series | Netflix | Black Family Entertainment
+Raising Dion | 2019 | series | Netflix | Black Horror & Science Fiction, Black Family Entertainment
+Top Boy | 2019 | series | Netflix | Black Crime & Urban Drama
+Rhythm + Flow | 2019 | series | Netflix | Black Music & Hip-Hop
+BlackAF | 2020 | series | Netflix |
+Self Made | 2020 | series | Netflix | Black History & Biographies
+Gentefied | 2020 | series | Netflix |
+The Upshaws | 2021 | series | Netflix |
+Colin in Black & White | 2021 | series | Netflix | Black Sports Cinema, Black History & Biographies
+High on the Hog | 2021 | series | Netflix | Black Documentaries
+True Story | 2021 | series | Netflix | Black Action & Thrillers
+Naomi Osaka | 2021 | series | Netflix | Black Sports Cinema, Black Documentaries
+First Kill | 2022 | series | Netflix | Black Horror & Science Fiction
+From Scratch | 2022 | series | Netflix | Black Romance & Relationships
+The Vince Staples Show | 2024 | series | Netflix |
+Survival of the Thickest | 2023 | series | Netflix |
+Supacell | 2024 | series | Netflix | Black Horror & Science Fiction
+Beauty in Black | 2024 | series | Netflix | Tyler Perry Collection
+The Madness | 2024 | series | Netflix | Black Action & Thrillers
+Receiver | 2024 | series | Netflix | Black Sports Cinema, Black Documentaries
+Starting 5 | 2024 | series | Netflix | Black Sports Cinema, Black Documentaries
+Forever | 2025 | series | Netflix | Black Romance & Relationships
+The Residence | 2025 | series | Netflix |
+Tyler Perry's She the People | 2025 | series | Netflix | Tyler Perry Collection
+A Different World | 2026 | series | Netflix | HBCU Movies & Television, Trending Black TV Shows
+
+## HBO / HBO Max
+The Wire | 2002 | series | HBO | Black Crime & Urban Drama
+The Corner | 2000 | series | HBO | Black Crime & Urban Drama
+Def Poetry Jam | 2002 | series | HBO | Black Stand-Up Comedy
+Treme | 2010 | series | HBO | Black Music & Hip-Hop
+Insecure | 2016 | series | HBO | Black Romance & Relationships
+The Night Of | 2016 | series | HBO | Black Crime & Urban Drama
+Random Acts of Flyness | 2018 | series | HBO |
+A Black Lady Sketch Show | 2019 | series | HBO |
+Watchmen | 2019 | series | HBO | Black Horror & Science Fiction
+Lovecraft Country | 2020 | series | HBO | Black Horror & Science Fiction
+I May Destroy You | 2020 | series | HBO |
+Betty | 2020 | series | HBO |
+South Side | 2019 | series | HBO Max |
+The Shop | 2018 | series | HBO |
+The Sex Lives of College Girls | 2021 | series | HBO Max |
+Rap Sh!t | 2022 | series | HBO Max | Black Music & Hip-Hop
+We Own This City | 2022 | series | HBO | Black Crime & Urban Drama
+Winning Time | 2022 | series | HBO | Black Sports Cinema
+The Idol | 2023 | series | HBO | Black Music & Hip-Hop
+The Gilded Age | 2022 | series | HBO | Black History & Biographies
+Duster | 2025 | series | HBO Max | Black Crime & Urban Drama
+Lanterns | 2026 | series | HBO | Black Horror & Science Fiction, Trending Black TV Shows
+
+## Prime Video
+Hand of God | 2015 | series | Prime Video | Black Action & Thrillers
+Them | 2021 | series | Prime Video | Black Horror & Science Fiction
+Harlem | 2021 | series | Prime Video | Black Romance & Relationships
+Riches | 2022 | series | Prime Video | Black Family Entertainment
+A League of Their Own | 2022 | series | Prime Video | Black Sports Cinema
+I'm a Virgo | 2023 | series | Prime Video | Black Horror & Science Fiction
+Swarm | 2023 | series | Prime Video | Black Action & Thrillers
+The Consultant | 2023 | series | Prime Video | Black Action & Thrillers
+The Horror of Dolores Roach | 2023 | series | Prime Video | Black Horror & Science Fiction
+The Boys | 2019 | series | Prime Video | Black Horror & Science Fiction
+Mr. & Mrs. Smith | 2024 | series | Prime Video | Black Action & Thrillers, Black Romance & Relationships
+Cross | 2024 | series | Prime Video | Black Crime & Urban Drama
+The Sticky | 2024 | series | Prime Video | Black Crime & Urban Drama
+Clean Slate | 2025 | series | Prime Video |
+The Bondsman | 2025 | series | Prime Video | Black Horror & Science Fiction
+
+## FX / FXX / Hulu
+The Shield | 2002 | series | FX | Black Crime & Urban Drama
+Atlanta | 2016 | series | FX |
+Snowfall | 2017 | series | FX | Black Crime & Urban Drama
+Pose | 2018 | series | FX |
+Wu-Tang: An American Saga | 2019 | series | Hulu | Black Music & Hip-Hop, Black History & Biographies
+Woke | 2020 | series | Hulu |
+Hip Hop Uncovered | 2021 | series | FX | Black Music & Hip-Hop, Black Documentaries
+Black Cake | 2023 | series | Hulu |
+UnPrisoned | 2023 | series | Hulu |
+The 1619 Project | 2023 | series | Hulu | Black History & Biographies, Black Documentaries
+Class of '09 | 2023 | series | FX | Black Crime & Urban Drama
+Clipped | 2024 | series | FX | Black Sports Cinema
+The Drop: A Snowfall Saga | 2026 | series | FX | Black Crime & Urban Drama, Black Music & Hip-Hop, Trending Black TV Shows
+
+## OWN Original Series
+Iyanla: Fix My Life | 2012 | series | OWN |
+The Haves and the Have Nots | 2013 | series | OWN | Tyler Perry Collection
+Love Thy Neighbor | 2013 | series | OWN | Tyler Perry Collection, Classic Black Sitcoms
+If Loving You Is Wrong | 2014 | series | OWN | Tyler Perry Collection
+Greenleaf | 2016 | series | OWN | Black Family Entertainment
+Queen Sugar | 2016 | series | OWN | Black Family Entertainment
+The Paynes | 2018 | series | OWN | Tyler Perry Collection
+Love Is | 2018 | series | OWN | Black Romance & Relationships
+Ready to Love | 2018 | series | OWN | Black Romance & Relationships
+Love & Marriage: Huntsville | 2019 | series | OWN |
+Ambitions | 2019 | series | OWN |
+David Makes Man | 2019 | series | OWN |
+Cherish the Day | 2020 | series | OWN | Black Romance & Relationships
+Delilah | 2021 | series | OWN |
+The Kings of Napa | 2022 | series | OWN | Black Family Entertainment
+All Rise | 2019 | series | OWN |
+Love & Marriage: D.C. | 2022 | series | OWN |
+Love & Marriage: Detroit | 2023 | series | OWN |
+
+## Bounce TV
+Family Time | 2012 | series | Bounce TV | Classic Black Sitcoms
+The Rickey Smiley Show | 2012 | series | Bounce TV | Classic Black Sitcoms
+The Last Call | 2019 | series | Bounce TV |
+Mann & Wife | 2015 | series | Bounce TV | Classic Black Sitcoms
+Saints & Sinners | 2016 | series | Bounce TV | Black Crime & Urban Drama
+In the Cut | 2015 | series | Bounce TV | Classic Black Sitcoms
+Everybody Hates Chris | 2005 | series | UPN | Classic Black Sitcoms
+Johnson | 2021 | series | Bounce TV |
+Finding Happy | 2022 | series | Bounce TV |
+Act Your Age | 2023 | series | Bounce TV | Classic Black Sitcoms
+Mind Your Business | 2024 | series | Bounce TV | Classic Black Sitcoms
+
+## TV One
+Unsung | 2008 | series | TV One | Black Music & Hip-Hop, Black Documentaries
+Life After | 2009 | series | TV One | Black Documentaries
+Fatal Attraction | 2013 | series | TV One | Black Crime & Urban Drama, Black Documentaries
+R&B Divas: Atlanta | 2012 | series | TV One | Black Music & Hip-Hop
+R&B Divas: Los Angeles | 2013 | series | TV One | Black Music & Hip-Hop
+Born Again Virgin | 2015 | series | TV One |
+Here We Go Again | 2016 | series | TV One | Classic Black Sitcoms
+The Next 15 | 2016 | series | TV One |
+Unsung Hollywood | 2014 | series | TV One | Black History & Biographies, Black Documentaries
+Uncensored | 2018 | series | TV One | Black History & Biographies
+For My Man | 2015 | series | TV One | Black Crime & Urban Drama
+ATL Homicide | 2018 | series | TV One | Black Crime & Urban Drama, Black Documentaries
+Payback | 2022 | series | TV One | Black Crime & Urban Drama
+
+## Peacock / NBC
+The Carmichael Show | 2015 | series | NBC | Classic Black Sitcoms
+This Is Us | 2016 | series | NBC | Black Family Entertainment
+Marlon | 2017 | series | NBC | Classic Black Sitcoms
+Good Girls | 2018 | series | NBC | Black Crime & Urban Drama
+Kenan | 2021 | series | NBC | Classic Black Sitcoms
+Young Rock | 2021 | series | NBC | Black History & Biographies
+Bel-Air | 2022 | series | Peacock | Trending Black TV Shows
+The Best Man: The Final Chapters | 2022 | series | Peacock | Black Romance & Relationships
+Bust Down | 2022 | series | Peacock |
+The Calling | 2022 | series | Peacock | Black Crime & Urban Drama
+Found | 2023 | series | NBC | Black Crime & Urban Drama
+The Irrational | 2023 | series | NBC | Black Crime & Urban Drama
+Fight Night: The Million Dollar Heist | 2024 | series | Peacock | Black Crime & Urban Drama, Black Sports Cinema
+Grosse Pointe Garden Society | 2025 | series | NBC |
+The 'Burbs | 2026 | series | Peacock | Trending Black TV Shows
+
+## ABC
+My Wife and Kids | 2001 | series | ABC | Classic Black Sitcoms
+Scandal | 2012 | series | ABC | Black Action & Thrillers
+Black-ish | 2014 | series | ABC | Classic Black Sitcoms, Black Family Entertainment
+How to Get Away with Murder | 2014 | series | ABC | Black Action & Thrillers
+Grown-ish | 2018 | series | Freeform |
+For the People | 2018 | series | ABC |
+Mixed-ish | 2019 | series | ABC | Classic Black Sitcoms
+Queens | 2021 | series | ABC | Black Music & Hip-Hop
+Abbott Elementary | 2021 | series | ABC | Classic Black Sitcoms, Trending Black TV Shows
+The Wonder Years | 2021 | series | ABC | Black Family Entertainment
+The Rookie: Feds | 2022 | series | ABC | Black Crime & Urban Drama
+High Potential | 2024 | series | ABC | Black Crime & Urban Drama
+
+## FOX
+The Bernie Mac Show | 2001 | series | FOX | Classic Black Sitcoms
+Wanda at Large | 2003 | series | FOX | Classic Black Sitcoms
+The Cleveland Show | 2009 | series | FOX | Black Family Entertainment
+Empire | 2015 | series | FOX | Black Music & Hip-Hop
+Rosewood | 2015 | series | FOX | Black Crime & Urban Drama
+Star | 2016 | series | FOX | Black Music & Hip-Hop
+Rel | 2018 | series | FOX | Classic Black Sitcoms
+Our Kind of People | 2021 | series | FOX |
+The Big Leap | 2021 | series | FOX |
+The Cleaning Lady | 2022 | series | FOX | Black Crime & Urban Drama
+Alert: Missing Persons Unit | 2023 | series | FOX | Black Crime & Urban Drama
+The Jennifer Hudson Show | 2022 | series | FOX |
+
+## CBS / Paramount+ / Showtime
+Soul Food | 2000 | series | Showtime | Black Family Entertainment
+The District | 2000 | series | CBS | Black Crime & Urban Drama
+The Neighborhood | 2018 | series | CBS | Classic Black Sitcoms
+The Chi | 2018 | series | Showtime | Black Crime & Urban Drama
+Black Monday | 2019 | series | Showtime |
+The Equalizer | 2021 | series | CBS | Black Action & Thrillers
+The Man Who Fell to Earth | 2022 | series | Showtime | Black Horror & Science Fiction
+The First Lady | 2022 | series | Showtime | Black History & Biographies
+East New York | 2022 | series | CBS | Black Crime & Urban Drama
+The Game | 2021 | series | Paramount+ |
+Lawmen: Bass Reeves | 2023 | series | Paramount+ | Black History & Biographies, Black Action & Thrillers
+The Curse | 2023 | series | Showtime |
+Elsbeth | 2024 | series | CBS | Black Crime & Urban Drama
+Watson | 2025 | series | CBS | Black Crime & Urban Drama
+Beyond the Gates | 2025 | series | CBS |
+
+## Apple TV+
+Truth Be Told | 2019 | series | Apple TV+ | Black Crime & Urban Drama
+See | 2019 | series | Apple TV+ | Black Horror & Science Fiction
+Swagger | 2021 | series | Apple TV+ | Black Sports Cinema
+The Last Days of Ptolemy Grey | 2022 | series | Apple TV+ |
+Surface | 2022 | series | Apple TV+ | Black Action & Thrillers
+Echo 3 | 2022 | series | Apple TV+ | Black Action & Thrillers
+The Big Door Prize | 2023 | series | Apple TV+ |
+The Changeling | 2023 | series | Apple TV+ | Black Horror & Science Fiction
+Hijack | 2023 | series | Apple TV+ | Black Action & Thrillers
+Lessons in Chemistry | 2023 | series | Apple TV+ | Black History & Biographies
+The New Look | 2024 | series | Apple TV+ | Black History & Biographies
+Lady in the Lake | 2024 | series | Apple TV+ |
+The Big Cigar | 2024 | series | Apple TV+ | Black History & Biographies
+Government Cheese | 2025 | series | Apple TV+ |
+Dope Thief | 2025 | series | Apple TV+ | Black Crime & Urban Drama
+
+## Classic Black Sitcoms
+Girlfriends | 2000 | series | UPN |
+The Parkers | 1999 | series | UPN |
+The Hughleys | 1998 | series | ABC |
+One on One | 2001 | series | UPN |
+The Proud Family | 2001 | series | Disney Channel | Black Family Entertainment
+Half & Half | 2002 | series | UPN |
+All of Us | 2003 | series | UPN |
+Eve | 2003 | series | UPN |
+Cuts | 2005 | series | UPN |
+The Boondocks | 2005 | series | Adult Swim |
+Lincoln Heights | 2007 | series | ABC Family | Black Family Entertainment
+Meet the Browns | 2009 | series | TBS | Tyler Perry Collection
+Are We There Yet? | 2010 | series | TBS | Black Family Entertainment
+Black Lightning | 2018 | series | The CW | Black Horror & Science Fiction
+All American | 2018 | series | The CW | Black Sports Cinema
+All American: Homecoming | 2022 | series | The CW | Black Sports Cinema, HBCU Movies & Television
+Naomi | 2022 | series | The CW | Black Horror & Science Fiction
+The Proud Family: Louder and Prouder | 2022 | series | Disney+ | Black Family Entertainment
+
+## Tubi Black Cinema
+The Stepmother | 2022 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+The Stepmother 2 | 2022 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+The Stepmother 3 | 2023 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+The Assistant | 2023 | movie | Tubi | Black Independent Cinema
+The Pass | 2023 | movie | Tubi | Black Independent Cinema
+The Dirty D | 2022 | series | Tubi | Black Independent Cinema
+The Secret Society | 2021 | movie | Tubi | Black Independent Cinema, Black Crime & Urban Drama
+Secret Society 2: Never Enough | 2022 | movie | Tubi | Black Independent Cinema, Black Crime & Urban Drama
+Secret Society 3: 'Til Death | 2023 | movie | Tubi | Black Independent Cinema, Black Crime & Urban Drama
+Dutch | 2021 | movie | Tubi | Black Independent Cinema, Black Crime & Urban Drama
+Dutch II: Angel's Revenge | 2024 | movie | Tubi | Black Independent Cinema, Black Crime & Urban Drama
+Dutch III: International Gangster | 2025 | movie | Tubi | Black Independent Cinema, Black Crime & Urban Drama
+Plug Love | 2017 | movie | Tubi | Black Independent Cinema, Black Romance & Relationships
+First Lady | 2018 | movie | Tubi | Black Independent Cinema, Black Crime & Urban Drama
+First Lady II: Maria's Revenge | 2019 | movie | Tubi | Black Independent Cinema, Black Crime & Urban Drama
+Street Code Broken | 2022 | movie | Tubi | Black Independent Cinema, Black Crime & Urban Drama
+The Bag Girls | 2020 | movie | Tubi | Black Independent Cinema
+The Bag Girls 2 | 2022 | movie | Tubi | Black Independent Cinema
+The Mark | 2021 | movie | Tubi | Black Independent Cinema
+The Millennial | 2022 | movie | Tubi | Black Independent Cinema
+The Matchmaker | 2021 | movie | Tubi | Black Independent Cinema, Black Romance & Relationships
+The Deadly Getaway | 2024 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+Cinnamon | 2023 | movie | Tubi | Black Independent Cinema, Black Crime & Urban Drama
+Murder City | 2023 | movie | Tubi | Black Independent Cinema, Black Crime & Urban Drama
+The Reading | 2023 | movie | Tubi | Black Independent Cinema, Black Horror & Science Fiction
+Bid for Love | 2022 | movie | Tubi | Black Independent Cinema, Black Romance & Relationships
+Call Her King | 2023 | movie | Tubi | Black Independent Cinema
+Love, Marry, Kill | 2023 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+A Message from Brianna | 2021 | movie | Tubi | Black Independent Cinema
+Hello | 2022 | movie | Tubi | Black Independent Cinema
+Stalked Within | 2022 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+The Missing | 2022 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+One Night Stay | 2024 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+Deadly Entanglement | 2023 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+The Despaired | 2023 | movie | Tubi | Black Independent Cinema
+Lethal Legacy | 2023 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+The Accused | 2025 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+Fatal Detour | 2025 | movie | Tubi | Black Independent Cinema, Black Action & Thrillers
+Son of the Preacher | 2025 | movie | Tubi | Black Independent Cinema
+
+## Black Sports Cinema
+Juwanna Mann | 2002 | movie | |
+Glory Road | 2006 | movie | |
+Race | 2016 | movie | | Black History & Biographies
+The Last Dance | 2020 | series | ESPN | Black Documentaries
+National Champions | 2021 | movie | |
+They Call Me Magic | 2022 | series | Apple TV+ | Black Documentaries
+Mike | 2022 | series | Hulu | Black History & Biographies
+Big George Foreman | 2023 | movie | | Black History & Biographies
+
+## Black Movie Franchises
+Bad Boys | 1995 | movie | | Black Action & Thrillers
+Friday | 1995 | movie | |
+Next Friday | 2000 | movie | |
+Big Momma's House 2 | 2006 | movie | |
+Big Mommas: Like Father, Like Son | 2011 | movie | |
+Beverly Hills Cop | 1984 | movie | | Black Action & Thrillers
+Beverly Hills Cop II | 1987 | movie | | Black Action & Thrillers
+Beverly Hills Cop III | 1994 | movie | | Black Action & Thrillers
+Coming to America | 1988 | movie | |
+Shaft | 1971 | movie | | Black Action & Thrillers
+Shaft's Big Score! | 1972 | movie | | Black Action & Thrillers
+Shaft in Africa | 1973 | movie | | Black Action & Thrillers
+Boo! A Madea Halloween | 2016 | movie | | Tyler Perry Collection
+Boo 2! A Madea Halloween | 2017 | movie | | Tyler Perry Collection
+A Madea Family Funeral | 2019 | movie | | Tyler Perry Collection
+A Madea Homecoming | 2022 | movie | Netflix | Tyler Perry Collection
+A Different World | 1987 | series | NBC | HBCU Movies & Television, Classic Black Sitcoms

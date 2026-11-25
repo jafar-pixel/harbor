@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useSportsEnabled } from "@/lib/sports/enabled";
 import { usePluginCataloguesAvailable } from "@/lib/streams/plugins/available";
 import { SportsNavIcon } from "@/components/icons/sports-nav-icon";
-import { Popcorn, Puzzle } from "lucide-react";
+import { Clapperboard, Popcorn, Puzzle } from "lucide-react";
 import { NavGlyph } from "@/components/icons/nav-glyph";
 import { NavLottie } from "@/components/icons/nav-lottie";
 import lotHome from "@/assets/lottie/nav/home.json";
@@ -54,6 +54,7 @@ function CalendarNavIcon({ active }: { active: boolean }) {
 
 export type NavItemId =
   | "home"
+  | "black-cinema"
   | "discover"
   | "catalogs"
   | "plugins"
@@ -99,6 +100,15 @@ const NAV_ITEMS_ALL: NavItem[] = [
       <NavLottie data={lotHome} hovered={hovered} fallback={<HomeIcon active={active} />} />
     ),
     view: "home",
+  },
+  {
+    // Black Cinema hub, right under Home (views/black-cinema.tsx).
+    id: "black-cinema",
+    label: "nav.blackCinema",
+    render: (active) => (
+      <Clapperboard size={26} strokeWidth={2.2} className={active ? "" : "opacity-70"} />
+    ),
+    view: "black-cinema",
   },
   {
     id: "discover",
@@ -315,22 +325,40 @@ export function useAvailableNavItems(): NavItem[] {
   );
 }
 
+/**
+ * `ordered` with every id of `defaults` it lacks put back after the id it follows in `defaults`:
+ * an item added to the app (Black Cinema, under Home) appears in its place in a menu the viewer
+ * rearranged, not at the bottom.
+ */
+export function placeNewNavIds<T extends string>(ordered: readonly T[], defaults: readonly T[]): T[] {
+  const out = [...ordered];
+  for (let i = 0; i < defaults.length; i++) {
+    const id = defaults[i];
+    if (out.includes(id)) continue;
+    let at = 0;
+    for (let j = i - 1; j >= 0; j--) {
+      const k = out.indexOf(defaults[j]);
+      if (k >= 0) {
+        at = k + 1;
+        break;
+      }
+    }
+    out.splice(at, 0, id);
+  }
+  return out;
+}
+
 export function applyNavCustomization(items: NavItem[], cfg: NavCustomization): NavItem[] {
   const shown = items
     .filter((it) => !cfg.hidden.includes(it.id))
     .map((it) => (cfg.renamed[it.id] ? { ...it, label: cfg.renamed[it.id] } : it));
   if (cfg.order.length === 0) return shown;
   const byId = new Map<string, NavItem>(shown.map((it) => [it.id, it]));
-  const ordered: NavItem[] = [];
-  for (const id of cfg.order) {
-    const it = byId.get(id);
-    if (it) ordered.push(it);
-  }
-  const inOrder = new Set(cfg.order);
-  for (const it of shown) {
-    if (!inOrder.has(it.id)) ordered.push(it);
-  }
-  return ordered;
+  const ids = placeNewNavIds(
+    cfg.order.filter((id) => byId.has(id)),
+    shown.map((it) => it.id as string),
+  );
+  return ids.map((id) => byId.get(id)!);
 }
 
 export function effectiveNavOrder(cfg: NavCustomization): NavItemId[] {
@@ -340,11 +368,7 @@ export function effectiveNavOrder(cfg: NavCustomization): NavItemId[] {
   for (const id of cfg.order) {
     if (known.has(id)) out.push(id as NavItemId);
   }
-  const seen = new Set<string>(out);
-  for (const id of all) {
-    if (!seen.has(id)) out.push(id);
-  }
-  return out;
+  return placeNewNavIds(out, all);
 }
 
 export function moveNavItem(

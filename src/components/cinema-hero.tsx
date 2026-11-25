@@ -1,4 +1,4 @@
-import { ChevronRight, Info } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { Play } from "@/components/icons/play-filled";
 import { useEffect, useRef, useState } from "react";
 import { ImdbIcon } from "@/components/icons/imdb-icon";
@@ -32,9 +32,18 @@ const CINEMA_VIDEO_CLASS =
 export function CinemaHero({
   slides,
   eyebrow = "Featured film",
+  rotateMs = ROTATE_MS,
+  arrows = false,
+  onActiveChange,
 }: {
   slides: Meta[];
   eyebrow?: string;
+  /** How long each slide shows before the next. */
+  rotateMs?: number;
+  /** Previous and next buttons at the sides. */
+  arrows?: boolean;
+  /** The slide showing, for things laid over the hero. */
+  onActiveChange?: (meta: Meta) => void;
 }) {
   const t = useT();
   const [active, setActive] = useState(0);
@@ -60,9 +69,15 @@ export function CinemaHero({
 
   useEffect(() => {
     if (paused || dragging || !inViewport || !pageVisible || slides.length < 2) return;
-    const id = setInterval(() => setActive((a) => (a + 1) % slides.length), ROTATE_MS);
+    const id = setInterval(() => setActive((a) => (a + 1) % slides.length), rotateMs);
     return () => clearInterval(id);
-  }, [paused, dragging, inViewport, pageVisible, slides.length]);
+    // `active` restarts the wait after a manual change, so an arrow press gets a full slide.
+  }, [paused, dragging, inViewport, pageVisible, slides.length, rotateMs, active]);
+
+  useEffect(() => {
+    const meta = slides[active];
+    if (meta) onActiveChange?.(meta);
+  }, [active, slides, onActiveChange]);
 
   useEffect(() => {
     if (active >= slides.length) setActive(0);
@@ -183,6 +198,26 @@ export function CinemaHero({
           })}
         </div>
       </div>
+      {arrows && slides.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setActive((a) => (a - 1 + slides.length) % slides.length)}
+            aria-label={t("Previous")}
+            className="absolute start-4 top-1/2 z-10 grid size-12 -translate-y-1/2 place-items-center rounded-full bg-canvas/55 text-ink ring-1 ring-edge-soft/60 backdrop-blur-md transition-colors hover:bg-canvas/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+          >
+            <ChevronLeft size={24} strokeWidth={2.2} className="rtl:rotate-180" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setActive((a) => (a + 1) % slides.length)}
+            aria-label={t("Next")}
+            className="absolute end-4 top-1/2 z-10 grid size-12 -translate-y-1/2 place-items-center rounded-full bg-canvas/55 text-ink ring-1 ring-edge-soft/60 backdrop-blur-md transition-colors hover:bg-canvas/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+          >
+            <ChevronRight size={24} strokeWidth={2.2} className="rtl:rotate-180" />
+          </button>
+        </>
+      )}
       {slides.length > 1 && (
         <div className="absolute bottom-7 left-1/2 z-10 flex -translate-x-1/2 gap-2.5">
           {slides.map((_, i) => (
