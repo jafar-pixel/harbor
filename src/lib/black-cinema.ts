@@ -82,6 +82,11 @@ function refresh(): Promise<BlackCinemaTitle[]> {
  * The hub's titles: the device's copy at once (null until there is one), and a fresh copy from
  * the database when the device's is missing or older than a few hours.
  */
+/** Timings for the TV's log (adb logcat -s JLPage): where the hub's opening time goes. */
+export function blackCinemaPerf(step: string): void {
+  console.info(`[black-cinema] ${step} at ${Math.round(performance.now())} ms`);
+}
+
 export function useBlackCinemaTitles(): { titles: BlackCinemaTitle[] | null; error: boolean } {
   const [titles, setTitles] = useState<BlackCinemaTitle[] | null>(
     () => readStored()?.titles ?? null,
@@ -122,26 +127,41 @@ export function useBlackHistoryMonth(): boolean {
 }
 
 /**
- * The hub titles the viewer's IPTV provider carries (onYourIptv), once its libraries have loaded:
- * an empty list until then, and when no provider is set up.
+ * The hub titles the viewer's IPTV provider carries (onYourIptv), from the provider catalogs the
+ * app already holds in memory (its Movies and Series pages load them). The hub never loads a
+ * catalog itself: a large provider's runs to hundreds of thousands of entries, and reading one
+ * kept a TV busy for minutes. Empty until a catalog is there; it fills in when one arrives.
  */
 export function useOnYourIptv(titles: BlackCinemaTitle[] | null): BlackCinemaTitle[] {
   const [found, setFound] = useState<BlackCinemaTitle[]>([]);
   useEffect(() => {
     if (!titles?.length) return;
-    const controller = new AbortController();
-    // After the page is up: a provider's catalog can be large, and the hub shouldn't wait on it.
-    const timer = window.setTimeout(() => {
-      void import("./streams/provider-vod")
-        .then((m) => m.providerVodLibraries(controller.signal, { xtreamOnly: true }))
-        .then((libraries) => {
-          if (!controller.signal.aborted) setFound(onYourIptv(titles, libraries));
-        })
-        .catch(() => {});
-    }, 3000);
+    let cancelled = false;
+    let stop = () => {};
+    let timer = 0;
+    void import("./streams/provider-vod").then((m) => {
+      if (cancelled) return;
+      const update = () => {
+        window.clearTimeout(timer);
+        // After the page is up, and once per burst of catalog updates.
+        timer = window.setTimeout(() => {
+          if (cancelled) return;
+          const libraries = m.providerVodSnapshots();
+          const started = performance.now();
+          setFound(onYourIptv(titles, libraries));
+          const items = libraries.reduce((n, l) => n + l.movies.length + l.series.length, 0);
+          blackCinemaPerf(
+            `IPTV row: ${items} provider titles matched in ${Math.round(performance.now() - started)} ms`,
+          );
+        }, 1500);
+      };
+      stop = m.subscribeProviderVodSnapshots(update);
+      update();
+    });
     return () => {
+      cancelled = true;
       window.clearTimeout(timer);
-      controller.abort();
+      stop();
     };
   }, [titles]);
   return found;

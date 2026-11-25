@@ -3,7 +3,12 @@ import { CinemaHero } from "@/components/cinema-hero";
 import { Row } from "@/components/row";
 import { TopRankCard } from "@/components/top-rank-card";
 import type { Meta } from "@/lib/cinemeta";
-import { blackCinemaMeta, useBlackCinemaTitles, useOnYourIptv } from "@/lib/black-cinema";
+import {
+  blackCinemaMeta,
+  blackCinemaPerf,
+  useBlackCinemaTitles,
+  useOnYourIptv,
+} from "@/lib/black-cinema";
 import {
   BLACK_CINEMA_TABS,
   blackCinemaSections,
@@ -37,6 +42,10 @@ export function BlackCinema({
   }, [onReady]);
   const { openGrid } = useView();
   const { titles, error } = useBlackCinemaTitles();
+  useEffect(() => blackCinemaPerf("opened"), []);
+  useEffect(() => {
+    if (titles) blackCinemaPerf(`${titles.length} titles ready`);
+  }, [titles]);
   const [tab, setTab] = useState<BlackCinemaTab>("all");
   const iptv = useOnYourIptv(titles);
   const sections = useMemo(

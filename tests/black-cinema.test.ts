@@ -157,3 +157,30 @@ test("black cinema: On Your IPTV is what the provider's library carries", () => 
   );
   assert.deepEqual(onYourIptv([byId], [{ movies: [], series: [] }]), []);
 });
+
+test("black cinema: a 100,000-film provider catalog is matched quickly, not scanned per title", () => {
+  const titles = Array.from({ length: 940 }, (_, i) =>
+    title({ title: `Hub Film ${i}`, release_year: 2000 + (i % 25), tmdb_id: 500_000 + i }),
+  );
+  const movies = Array.from({ length: 100_000 }, (_, i) => ({
+    id: `m${i}`,
+    title: `Provider Film ${i}`,
+    year: 2000 + (i % 25),
+    logo: null,
+    group: null,
+    url: "http://x",
+    playlistId: "p",
+    playlistName: "P",
+    // Providers rarely carry TMDB ids: the title is what has to be compared.
+    tmdbId: undefined as number | undefined,
+  }));
+  movies.push({ ...movies[0], id: "hit", title: "Hub Film 7", year: 2007 });
+  const started = performance.now();
+  const found = onYourIptv(titles, [{ movies, series: [] }]);
+  const ms = performance.now() - started;
+  assert.deepEqual(
+    found.map((t) => t.title),
+    ["Hub Film 7"],
+  );
+  assert.ok(ms < 3000, `took ${Math.round(ms)} ms`);
+});

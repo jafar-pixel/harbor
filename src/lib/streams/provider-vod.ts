@@ -18,7 +18,11 @@ import {
   type VodLookupQuery,
 } from "@/lib/iptv/vod-lookup";
 import { fetchXtreamSeriesEpisodes } from "@/lib/iptv/xtream-vod";
-import { getXtreamVodSnapshot, loadXtreamVodLibrary } from "@/lib/iptv/xtream-vod-library";
+import {
+  getXtreamVodSnapshot,
+  loadXtreamVodLibrary,
+  subscribeXtreamVodLibrary,
+} from "@/lib/iptv/xtream-vod-library";
 import { dlog } from "@/lib/debug";
 import { PROVIDER_VOD_ADDON_ID, PROVIDER_VOD_LABEL } from "./source-order";
 import type { Stream } from "./types";
@@ -124,26 +128,21 @@ async function catalogFor(
 }
 
 /**
- * Every channel source's movie and series library, loaded the way the picker loads them (cached,
- * waiting at most CATALOG_WAIT_MS per source). Black Cinema reads it to show what the viewer's own
- * provider carries.
+ * The provider movie and series catalogs (Xtream) the app already holds in memory. Nothing is
+ * loaded: Black Cinema reads these to show what the viewer's own provider carries, and must never
+ * pull a large catalog itself.
  */
-export async function providerVodLibraries(
-  signal: AbortSignal,
-  opts: { xtreamOnly?: boolean } = {},
-): Promise<VodLibrary[]> {
-  const out: VodLibrary[] = [];
-  for (const source of providerVodSources()) {
-    if (signal.aborted) break;
-    // A plain M3U file can hold millions of entries; reading it all just to badge a page would
-    // tie up a TV. A provider with a catalog API (Xtream) lists its movies and series cheaply.
-    if (opts.xtreamOnly && !asXtream(source)) continue;
-    const { library } = await catalogFor(source, signal).catch(() => ({
-      library: { movies: [], series: [] } as VodLibrary,
-    }));
-    out.push(library);
-  }
-  return out;
+export function providerVodSnapshots(): VodLibrary[] {
+  return providerVodSources()
+    .map((source) => asXtream(source))
+    .filter((source): source is IptvPlaylistSource => source !== null)
+    .map((source) => getXtreamVodSnapshot(source.id).library)
+    .filter((library) => library.movies.length + library.series.length > 0);
+}
+
+/** Called whenever a provider's catalog in memory changes. */
+export function subscribeProviderVodSnapshots(listener: () => void): () => void {
+  return subscribeXtreamVodLibrary(listener);
 }
 
 function playable(

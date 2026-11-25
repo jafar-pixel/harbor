@@ -5,8 +5,8 @@
  * filled in from the master list in supabase/jl-vision/black-cinema.
  */
 
-import type { VodLibrary } from "./iptv/vod";
-import { matchVodMovies, matchVodSeries } from "./iptv/vod-lookup";
+import type { VodLibrary, VodMovie, VodSeries } from "./iptv/vod";
+import { matchVodMovies, matchVodSeries, vodTitleKey } from "./iptv/vod-lookup";
 
 export type BlackCinemaTitle = {
   id: number;
@@ -219,6 +219,7 @@ export function onYourIptv(
   libraries: readonly VodLibrary[],
 ): BlackCinemaTitle[] {
   if (libraries.every((l) => l.movies.length + l.series.length === 0)) return [];
+  const indexes = libraries.map(vodIndex);
   return titles
     .filter((t) => {
       const query = {
@@ -227,13 +228,52 @@ export function onYourIptv(
         year: t.release_year,
         tmdbId: t.tmdb_id,
       } as const;
-      return libraries.some((l) =>
-        t.media_type === "movie"
-          ? matchVodMovies(l.movies, query).length > 0
-          : matchVodSeries(l.series, query).length > 0,
-      );
+      const key = vodTitleKey(t.title);
+      // Only the provider titles sharing the TMDB id or the title key are compared, with the
+      // picker's own rule: a catalog of 100,000 films is never scanned once per hub title.
+      return indexes.some((ix) => {
+        if (t.media_type === "movie") {
+          const near = [
+            ...(ix.movies.byTmdb.get(t.tmdb_id ?? -1) ?? []),
+            ...(ix.movies.byKey.get(key) ?? []),
+          ];
+          return near.length > 0 && matchVodMovies(near, query).length > 0;
+        }
+        const near = [
+          ...(ix.series.byTmdb.get(t.tmdb_id ?? -1) ?? []),
+          ...(ix.series.byKey.get(key) ?? []),
+        ];
+        return near.length > 0 && matchVodSeries(near, query).length > 0;
+      });
     })
     .sort(byPopularity);
+}
+
+type Buckets<T> = { byTmdb: Map<number, T[]>; byKey: Map<string, T[]> };
+const vodIndexes = new WeakMap<
+  VodLibrary,
+  { movies: Buckets<VodMovie>; series: Buckets<VodSeries> }
+>();
+
+function buckets<T extends { title: string; tmdbId?: number }>(items: readonly T[]): Buckets<T> {
+  const byTmdb = new Map<number, T[]>();
+  const byKey = new Map<string, T[]>();
+  for (const item of items) {
+    if (item.tmdbId != null) byTmdb.set(item.tmdbId, [...(byTmdb.get(item.tmdbId) ?? []), item]);
+    const key = vodTitleKey(item.title);
+    if (key) byKey.set(key, [...(byKey.get(key) ?? []), item]);
+  }
+  return { byTmdb, byKey };
+}
+
+/** A provider library grouped by TMDB id and title key, made once per library. */
+function vodIndex(library: VodLibrary) {
+  let ix = vodIndexes.get(library);
+  if (!ix) {
+    ix = { movies: buckets(library.movies), series: buckets(library.series) };
+    vodIndexes.set(library, ix);
+  }
+  return ix;
 }
 
 /** February: Black History Month, when the hub takes over Home. */

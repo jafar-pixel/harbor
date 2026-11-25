@@ -164,7 +164,8 @@ class MainActivity : AppCompatActivity() {
                 }
                 // The page's timing reports ("[sports-perf] ..."), into adb logcat under "JLPage" on
                 // every Android TV; WebView's own console logging isn't there on all of them.
-                if (message.message().startsWith("[sports-perf]")) Log.i("JLPage", message.message())
+                val text = message.message()
+                if (text.startsWith("[sports-perf]") || text.startsWith("[black-cinema]")) Log.i("JLPage", text)
                 return super.onConsoleMessage(message)
             }
         }
