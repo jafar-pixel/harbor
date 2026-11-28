@@ -791,7 +791,15 @@ export function ViewProvider({ children }: { children: ReactNode }) {
         if (!frame || frame.kind !== "player") return s;
         if (!!frame.src.pipDocked === docked && !!frame.src.proPip === (docked && proPip)) return s;
         const next = s.slice();
-        next[at] = { ...frame, src: { ...frame.src, pipDocked: docked, proPip: docked && proPip } };
+        next[at] = {
+          ...frame,
+          src: {
+            ...frame.src,
+            pipDocked: docked,
+            proPip: docked && proPip,
+            ...(proPip && frame.src.sportsDocked ? { sportsDocked: false } : {}),
+          },
+        };
         return next;
       }, false);
     },
