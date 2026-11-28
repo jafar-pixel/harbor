@@ -17,6 +17,7 @@ android {
 
     defaultConfig {
         applicationId = "com.jlstream.mediavision"
+        manifestPlaceholders["appLabel"] = "JL Media Vision"
         minSdk = 24
         targetSdk = 35
         versionCode = runNumber.toInt()
@@ -37,6 +38,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".proverify"
+            versionNameSuffix = "-pro-verification"
+            manifestPlaceholders["appLabel"] = "JL Pro Verification"
+        }
         release {
             isMinifyEnabled = false
             signingConfig = if (keystoreFile != null) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
