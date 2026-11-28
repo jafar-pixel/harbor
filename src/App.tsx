@@ -1,3 +1,4 @@
+import { useJlProAccess } from "@/lib/jl/account/pro-access";
 import { SportsSearchOverlay } from "@/views/sports/sports-search-overlay";
 import { JlAccountWorkspaceBoundary } from "@/components/jl-account-workspace-boundary";
 import { GAMES_IN_NAV } from "@/chrome/nav-items";
@@ -873,6 +874,7 @@ function Shell({ onReady, compact = false }: { onReady?: () => void; compact?: b
   const { open: searchOpen, setOpen: setSearchOpen } = useSearch();
   const bigPicture = useBigPicture().active;
   const bigPictureBootChecked = useRef(false);
+  const proAccess = useJlProAccess();
   const uiScaleRef = useRef(settings.uiScale);
   const dmmCastDownloadRef = useRef(settings.dmmCastDownload);
   dmmCastDownloadRef.current = settings.dmmCastDownload;
@@ -1049,10 +1051,11 @@ function Shell({ onReady, compact = false }: { onReady?: () => void; compact?: b
     // Autostart is a launch-only decision. Consume the check on the first run
     // whatever the outcome, so turning the setting on later does not drop the
     // user straight into Big Picture.
+    if (proAccess === "checking") return;
     const alreadyBooted = bigPictureBootChecked.current;
     bigPictureBootChecked.current = true;
     const go = shouldAutoStartBigPicture({
-      autoStart: settings.bigPictureAutoStart,
+      autoStart: proAccess === "allowed",
       alreadyBooted,
       kidProfileActive: kid !== null,
     });
@@ -1066,7 +1069,7 @@ function Shell({ onReady, compact = false }: { onReady?: () => void; compact?: b
       return;
     }
     enterBigPicture();
-  }, [settings.bigPictureAutoStart, settings.bigPictureDisplay, kid]);
+  }, [proAccess, settings.bigPictureDisplay, kid]);
 
   useKeyboardNavigation({
     enabled: settings.tvNavigation && !player && !picker && !bigPicture,

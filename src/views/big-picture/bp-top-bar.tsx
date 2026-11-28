@@ -1,3 +1,4 @@
+import { Clapperboard, Music2, Tv } from "lucide-react";
 import { NavGlyph } from "@/components/icons/nav-glyph";
 import { AnimeIcon } from "@/components/icons/anime-icon";
 import { HomeIcon } from "@/components/icons/home-icon";
@@ -18,9 +19,6 @@ import { BpStatus } from "./bp-status";
 import { BpProfileMenu } from "./bp-profile-menu";
 import { useBpT } from "./bp-i18n";
 import jlMark from "@/assets/brand/jl-mark.webp";
-import { isTvApp } from "@/lib/platform";
-import { HarborMark } from "@/components/icons/harbor-mark";
-import { useHarborLogo } from "@/lib/harbor-logo";
 import { goBigPictureTab, type BigPictureTabKind } from "@/lib/big-picture";
 
 function useClock(): string {
@@ -66,9 +64,12 @@ const TABS: BpTab[] = [
   // adding one. Live TV owns its own setup screen when there is nothing yet.
   {
     kind: "live",
-    label: "Live TV",
+    label: "Live TV Guide",
     icon: () => <NavGlyph name="livetv" className="h-[26px] w-[26px] p-[2px]" />,
   },
+  { kind: "iptv-vod", label: "IPTV Movies & Series", icon: () => <Tv size={24} /> },
+  { kind: "music", label: "Music Hub", icon: () => <Music2 size={24} /> },
+  { kind: "black-cinema", label: "Black Cinema", icon: () => <Clapperboard size={24} /> },
   {
     kind: "sports",
     label: "Sports",
@@ -125,6 +126,7 @@ function visibleTabs(gate: BpTabGate): BpTab[] {
   return TABS.filter((tab) => {
     if (tab.hiddenByAnime && gate.animeHidden) return false;
     if (tab.kind === "sports" && gate.sportsDeclined) return false;
+    if (gate.locked && ["iptv-vod", "music", "black-cinema"].includes(tab.kind)) return false;
     if (gate.locked && tab.parentalKey && gate.hiddenTabs[tab.parentalKey]) return false;
     return true;
   });
@@ -244,9 +246,6 @@ function BpShoulderHint({ label }: { label: string }) {
 export function BpTopBar({ active }: { active: BigPictureTabKind }) {
   const t = useBpT();
   const clock = useClock();
-  const { mark: customMark, wordmark: customWordmark } = useHarborLogo();
-  const tvBrand = isTvApp();
-  const brandMark = tvBrand ? jlMark : customMark;
   const usingPad = useGamepads().length > 0;
   const gate = useBpTabGate();
   const tabs = useMemo(() => visibleTabs(gate), [gate]);
@@ -307,42 +306,15 @@ export function BpTopBar({ active }: { active: BigPictureTabKind }) {
       />
 
       <div className="pointer-events-none relative col-start-1 flex items-center gap-[clamp(7px,0.7vw,13px)] justify-self-start">
-        {brandMark ? (
-          <img
-            src={brandMark}
-            alt=""
-            draggable={false}
-            className="h-[clamp(28px,3.4vh,44px)] w-auto shrink-0 object-contain"
-          />
-        ) : (
-          <HarborMark className="h-[clamp(28px,3.4vh,44px)] w-[clamp(28px,3.4vh,44px)] shrink-0" />
-        )}
-        {tvBrand ? (
-          <span className="whitespace-nowrap text-[clamp(14px,1.45vw,28px)] font-semibold leading-none tracking-tight text-ink">
-            JL MediaVision <span className="text-ink-muted">Pro</span>
-          </span>
-        ) : customWordmark ? (
-          <img
-            src={customWordmark}
-            alt=""
-            draggable={false}
-            className="h-[clamp(22px,2.7vh,36px)] w-auto object-contain"
-          />
-        ) : (
-          <span
-            className="hidden whitespace-nowrap text-[clamp(24px,3vh,40px)] font-medium leading-none tracking-tight text-ink [&_*]:text-inherit min-[1500px]:inline"
-            style={{ fontFamily: '"Fraunces", "Iowan Old Style", "Georgia", serif' }}
-          >
-            Harb
-            <span
-              className="inline-block"
-              style={{ transform: "rotate(7deg)", transformOrigin: "50% 65%" }}
-            >
-              o
-            </span>
-            r
-          </span>
-        )}
+        <img
+          src={jlMark}
+          alt=""
+          draggable={false}
+          className="h-[clamp(28px,3.4vh,44px)] w-auto shrink-0 object-contain"
+        />
+        <span className="whitespace-nowrap text-[clamp(14px,1.45vw,28px)] font-semibold leading-none tracking-tight text-ink">
+          JL MediaVision <span className="text-ink-muted">Pro</span>
+        </span>
       </div>
 
       <nav

@@ -8,6 +8,9 @@ export type BigPictureRoute =
   | { kind: "shows" }
   | { kind: "movies" }
   | { kind: "live" }
+  | { kind: "iptv-vod" }
+  | { kind: "music" }
+  | { kind: "black-cinema" }
   | { kind: "sports" }
   | { kind: "sports-event"; game: SportsGame }
   | { kind: "discover" }
@@ -96,6 +99,9 @@ export type BigPictureTabKind =
   | "shows"
   | "movies"
   | "live"
+  | "iptv-vod"
+  | "music"
+  | "black-cinema"
   | "sports"
   | "search"
   | "library"

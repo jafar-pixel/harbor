@@ -88,7 +88,7 @@ export function BpMovies({ onSelect }: { onSelect: (m: Meta) => void }) {
   return (
     <div ref={pageRef} className="relative flex h-full flex-col">
       <div data-bp-page-hero className={`relative z-20 shrink-0 ${BP_PAGE_TOP}`}>
-        <BpSpotlight phase={phase} />
+        <BpSpotlight phase={phase} showPreview />
       </div>
       <BpRail railRef={railRef} entries={entries} activeRow={activeRow} railShift={railShift} />
     </div>

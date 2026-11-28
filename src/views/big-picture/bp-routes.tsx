@@ -32,6 +32,13 @@ export function BpRouteFallback() {
  * time anyone presses a direction the module is already resolved and lazy
  * settles without ever showing a fallback.
  */
+export const BpBlackCinema = lazy(() =>
+  import("./bp-black-cinema").then((m) => ({ default: m.BpBlackCinema })),
+);
+export const BpMusic = lazy(() => import("./bp-music").then((m) => ({ default: m.BpMusic })));
+export const BpIptvVod = lazy(() =>
+  import("./bp-iptv-vod").then((m) => ({ default: m.BpIptvVod })),
+);
 export const BpAnime = lazy(() => import("./bp-anime").then((m) => ({ default: m.BpAnime })));
 export const BpShows = lazy(() => import("./bp-shows").then((m) => ({ default: m.BpShows })));
 export const BpMovies = lazy(() => import("./bp-movies").then((m) => ({ default: m.BpMovies })));

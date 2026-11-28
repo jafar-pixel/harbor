@@ -158,7 +158,9 @@ function BpSportsPage() {
         <BpSportsBackdrop
           subject={{ game: focused, group: mode === "explore" && browsed !== "" ? browsed : group }}
         />
-        {anyLive && !tuning && <BpSportsWatchLoader onReady={publishWatch} />}
+        {anyLive && !tuning && (
+          <BpSportsWatchLoader onReady={publishWatch} previewGame={active ? focused : null} />
+        )}
 
         {tuning ? (
           <div className="relative z-10 flex min-h-0 flex-1 flex-col">
