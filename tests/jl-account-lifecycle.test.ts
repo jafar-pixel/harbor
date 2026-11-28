@@ -444,3 +444,41 @@ test("reload handoff observes the committed identity and suppresses old provider
   assert.equal(observed, "a");
   assert.equal(notified, false);
 });
+
+test("Pro membership requests select the public schema without changing the media default", async () => {
+  const schemas: Array<[string | null, string | null]> = [];
+  const client = make(async (input, init) => {
+    if (String(input).includes("/auth/")) return json(token("a", 5000));
+    const headers = new Headers(init?.headers);
+    schemas.push([headers.get("Accept-Profile"), headers.get("Content-Profile")]);
+    return json(true);
+  });
+  await client.signIn("a", "password");
+  assert.equal(await client.rpc("jl_has_pro_access", {}, undefined, "public"), true);
+  await client.rpc("get_secrets");
+  assert.deepEqual(schemas, [
+    ["public", "public"],
+    ["media", "media"],
+  ]);
+});
+
+test("sign-out parks a compressed workspace when the uncompressed backup exceeds quota", () => {
+  const s = storage();
+  const key = "harbor.settings.primary";
+  const value = JSON.stringify({ name: "Café 🎬", settings: "value".repeat(4000) });
+  s.setItem(key, value);
+  s.setItem(WORKSPACE_OWNER, "a");
+  const save = s.setItem;
+  const snapshotKey = "jl.account.workspace.v1.a";
+  s.setItem = (name, data) => {
+    if (name === snapshotKey && data.length > 2048) {
+      throw new DOMException("storage full", "QuotaExceededError");
+    }
+    save(name, data);
+  };
+  switchJlWorkspace(s, "a", null);
+  assert.equal(s.getItem(key), null);
+  assert.ok(s.getItem(snapshotKey)?.startsWith("gzip:"));
+  switchJlWorkspace(s, null, "a");
+  assert.equal(s.getItem(key), value);
+});

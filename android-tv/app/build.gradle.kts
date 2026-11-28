@@ -39,9 +39,11 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".proverify"
+            // CI runners generate different debug keys. Give each build its own install slot.
+            val attempt = System.getenv("GITHUB_RUN_ATTEMPT") ?: "1"
+            applicationIdSuffix = ".proverify.b${runNumber}a$attempt"
             versionNameSuffix = "-pro-verification"
-            manifestPlaceholders["appLabel"] = "JL Pro Verification"
+            manifestPlaceholders["appLabel"] = "JL Pro Verification $runNumber"
         }
         release {
             isMinifyEnabled = false

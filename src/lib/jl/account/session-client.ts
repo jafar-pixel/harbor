@@ -335,6 +335,7 @@ export function createJlSessionClient(options: {
     path: string,
     init: RequestInit,
     expected: JlAccountContext | null,
+    schema: "media" | "public" = "media",
   ): Promise<Response> {
     if (!expected) throw new Error("Not signed in");
     assertCurrent(expected);
@@ -345,8 +346,8 @@ export function createJlSessionClient(options: {
     headers.set("apikey", anonKey);
     headers.set("Authorization", `Bearer ${session.accessToken}`);
     if (base === "rest") {
-      headers.set("Accept-Profile", "media");
-      headers.set("Content-Profile", "media");
+      headers.set("Accept-Profile", schema);
+      headers.set("Content-Profile", schema);
     }
     if (typeof init.body === "string" && !headers.has("Content-Type"))
       headers.set("Content-Type", "application/json");
@@ -389,8 +390,15 @@ export function createJlSessionClient(options: {
     fn: string,
     args: Record<string, unknown> = {},
     expected = context(),
+    schema: "media" | "public" = "media",
   ): Promise<T> {
-    const res = await rest(`rpc/${fn}`, { method: "POST", body: JSON.stringify(args) }, expected);
+    const res = await authed(
+      "rest",
+      `rpc/${fn}`,
+      { method: "POST", body: JSON.stringify(args) },
+      expected,
+      schema,
+    );
     if (!res.ok) throw new Error(`JL request failed (${res.status})`);
     const text = await res.text();
     if (expected) assertCurrent(expected);

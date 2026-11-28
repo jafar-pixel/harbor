@@ -26,7 +26,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Verify Pro navigation and playback
-        run: node --experimental-loader ./scripts/node-test-loader.mjs --test tests/big-picture.test.ts tests/sports-playback.test.ts tests/native-tv-under-page.test.ts
+        run: node --experimental-loader ./scripts/node-test-loader.mjs --test tests/big-picture.test.ts tests/sports-playback.test.ts tests/native-tv-under-page.test.ts tests/jl-account-lifecycle.test.ts
       - name: Bundle the frontend under review into the APK
         env:
           VITE_JL_SUPABASE_URL: ${{ vars.JL_SUPABASE_URL }}

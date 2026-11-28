@@ -14,7 +14,7 @@ export function useJlProAccess(enabled = true): Access {
       return;
     }
     let active = true;
-    void jlRpc<boolean>("jl_has_pro_access").then(
+    void jlRpc<boolean>("jl_has_pro_access", {}, undefined, "public").then(
       (allowed) => {
         if (active) setResult({ userId, access: allowed === true ? "allowed" : "denied" });
       },

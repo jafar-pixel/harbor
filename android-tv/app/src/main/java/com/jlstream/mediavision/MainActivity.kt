@@ -170,7 +170,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        if (BuildConfig.APPLICATION_ID.endsWith(".proverify")) {
+        if (BuildConfig.VERSION_NAME.endsWith("-pro-verification")) {
             Log.i("JLPage", "Pro verification startup: version=${BuildConfig.VERSION_NAME}, bundled=${site.available}")
             if (site.available) {
                 val entry = Uri.parse(BuildConfig.APP_URL).buildUpon()
