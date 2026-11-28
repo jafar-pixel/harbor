@@ -177,7 +177,7 @@ export function BigPictureShell() {
 function BpProShell() {
   const t = useT();
   const { active, stack } = useBigPicture();
-  const { picker, player } = useView();
+  const { picker, player, setPipDocked, exitPlayback } = useView();
   const route = stack[stack.length - 1] ?? { kind: "home" as const };
   const rootRef = useRef<HTMLDivElement | null>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
@@ -185,7 +185,7 @@ function BpProShell() {
   const chrome = bigPictureChromeState({
     active,
     kidProfileActive: kid !== null,
-    playbackOpen: Boolean(picker || player),
+    playbackOpen: Boolean(picker || (player && !player.proPip)),
   });
   const playing = chrome.hidden;
   const [quickOpen, setQuickOpen] = useState(false);
@@ -483,6 +483,30 @@ function BpProShell() {
               -webkit-mask-image: linear-gradient(to bottom, transparent, black 22vh);
             }
           `}</style>
+          {player?.proPip && browsing && (
+            <div
+              className="absolute bottom-[calc(max(1rem,env(safe-area-inset-bottom))+clamp(83px,15.75vw,247.5px)+0.5rem)] end-[max(1rem,env(safe-area-inset-right))] z-40 flex gap-2"
+              data-bp-row
+              aria-label={t("Picture in picture")}
+            >
+              <button
+                type="button"
+                data-bp-focusable
+                className="rounded-full bg-canvas px-4 py-2 text-sm font-semibold"
+                onClick={() => setPipDocked(false)}
+              >
+                {t("Expand")}
+              </button>
+              <button
+                type="button"
+                data-bp-focusable
+                className="rounded-full bg-canvas px-4 py-2 text-sm font-semibold"
+                onClick={exitPlayback}
+              >
+                {t("Close")}
+              </button>
+            </div>
+          )}
           <BpTopBar active={activeTab} />
           <main
             key={routeId}

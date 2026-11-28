@@ -95,6 +95,7 @@ export type PlayerSrc = {
   sportsDocked?: boolean;
   /** The video moved to its own window, so the player keeps the session but yields the page. */
   pipDocked?: boolean;
+  proPip?: boolean;
   /** Official provider iframe; handled separately from native/media stream playback. */
   officialBroadcast?: import("./sports/esports-streams").EsportsStream;
   meta: Meta;
@@ -394,7 +395,7 @@ type ViewValue = {
   canGoForward: boolean;
   goForward: () => void;
   exitPlayback: () => void;
-  setPipDocked: (docked: boolean) => void;
+  setPipDocked: (docked: boolean, proPip?: boolean) => void;
   exitPickerToDetail: (m: Meta) => void;
   exitPlayer: () => void;
   /** Moves the playing video into the hub hero and goes back to the hub it came from. */
@@ -783,14 +784,14 @@ export function ViewProvider({ children }: { children: ReactNode }) {
   /** Detached PiP yields the page without ending playback, so the frame stays on the
    *  stack and only stops being the one on screen. */
   const setPipDocked = useCallback(
-    (docked: boolean) => {
+    (docked: boolean, proPip = false) => {
       setNavStack((s) => {
         const at = s.length - 1;
         const frame = s[at];
         if (!frame || frame.kind !== "player") return s;
-        if (!!frame.src.pipDocked === docked) return s;
+        if (!!frame.src.pipDocked === docked && !!frame.src.proPip === (docked && proPip)) return s;
         const next = s.slice();
-        next[at] = { ...frame, src: { ...frame.src, pipDocked: docked } };
+        next[at] = { ...frame, src: { ...frame.src, pipDocked: docked, proPip: docked && proPip } };
         return next;
       }, false);
     },

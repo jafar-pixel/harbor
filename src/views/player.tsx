@@ -152,7 +152,7 @@ export function PlayerView({ src, ...dock }: { src: PlayerSrc } & HeroDockProps)
 
 function NativePlayerView({
   src,
-  docked: heroDocked = false,
+  docked: pinned = false,
   dockMode = "hero",
   dockStyle,
 }: { src: PlayerSrc } & HeroDockProps) {
@@ -168,6 +168,8 @@ function NativePlayerView({
     dockPlayer,
     expandDock,
   } = useView();
+  const proPip = src.pipDocked === true && src.proPip === true;
+  const heroDocked = pinned || proPip;
   const docked = !!src.sportsDocked;
   const [dockMinimized, setDockMinimized] = useState(false);
   // Wallpaper: the video plays behind the page, under the theme's dimming, with a small control pill.
@@ -190,6 +192,9 @@ function NativePlayerView({
   }, [docked, src.pipDocked, setAppChromeHidden]);
   const { settings, update } = useSettings();
   const bigPictureActive = useBigPicture().active;
+  useEffect(() => {
+    if (proPip && !bigPictureActive) setPipDocked(false);
+  }, [bigPictureActive, proPip, setPipDocked]);
   const isKid = useActiveKid() != null;
   const t = useT();
   const chromeTheme = resolveChromeTheme(settings.theme, settings.playerChromeTheme);
@@ -324,7 +329,11 @@ function NativePlayerView({
   const [now, setNow] = useState(() => Date.now());
   // Detached PiP keeps this view mounted so the session survives, and only yields the
   // page underneath, the way a docked sports broadcast already does.
-  const { pipMode, togglePipMode, exitPip } = usePipMode({
+  const {
+    pipMode,
+    togglePipMode: toggleSystemPip,
+    exitPip,
+  } = usePipMode({
     bridgeRef,
     setChromeHidden,
     onDetach: () => setPipDocked(true),
@@ -668,7 +677,20 @@ function NativePlayerView({
     openPicker,
   });
   closePlayerRef.current = () => void closePlayer();
+  const togglePipMode = useCallback(async () => {
+    if (!bigPictureActive || inRoom) {
+      await toggleSystemPip();
+      return;
+    }
+    setPipDocked(!proPip, true);
+    if (!proPip) await exitAnyFullscreen();
+  }, [bigPictureActive, inRoom, proPip, setPipDocked, toggleSystemPip]);
   const backFromPlayer = useCallback(async () => {
+    if (bigPictureActive && !inRoom) {
+      setPipDocked(true, true);
+      await exitAnyFullscreen();
+      return;
+    }
     // A live channel keeps playing in a picture-in-picture window while the viewer browses;
     // the player stays mounted behind the page and ends when that window is closed.
     if (isLivePlaybackSrc(src) && engine === "html5" && !src.pipDocked && bridgeRef.current) {
@@ -694,15 +716,25 @@ function NativePlayerView({
       return;
     }
     await closePlayer();
-  }, [src, engine, bridgeRef, setPipDocked, replacePlayerSrc, closePlayer, dockPlayer]);
+  }, [
+    src,
+    engine,
+    bridgeRef,
+    setPipDocked,
+    replacePlayerSrc,
+    closePlayer,
+    dockPlayer,
+    bigPictureActive,
+    inRoom,
+  ]);
   // Closing the picture-in-picture window of a live channel ends it.
   useEffect(() => {
-    if (!src.pipDocked || engine !== "html5") return;
+    if (!src.pipDocked || proPip || engine !== "html5") return;
     const timer = window.setInterval(() => {
       if (!bridgeRef.current?.pipActive?.()) void closePlayer();
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [src.pipDocked, engine, bridgeRef, closePlayer]);
+  }, [src.pipDocked, proPip, engine, bridgeRef, closePlayer]);
   useEffect(() => {
     const onLocalBack = (e: Event) => {
       // In the hero, Back belongs to the page being browsed.
@@ -1722,25 +1754,28 @@ function NativePlayerView({
     <main
       ref={stageRef}
       data-harbor-player
-      data-detached={src.pipDocked || undefined}
-      inert={src.pipDocked || undefined}
+      data-detached={(src.pipDocked && !proPip) || undefined}
+      inert={(src.pipDocked && !proPip) || undefined}
       data-docked={docked}
       data-native-dock={nativeDock}
       data-audio-only={docked && dockMinimized}
       data-hero-docked={heroDocked ? "" : undefined}
+      data-pro-pip={proPip || undefined}
       dir="ltr"
       className={
-        wallpaper
-          ? `pointer-events-none fixed inset-0 -z-[15] overflow-hidden ${stageBg}`
-          : heroDocked
-            ? `fixed z-[45] overflow-hidden ${stageBg}`
-            : `fixed z-[100] overflow-hidden ${docked ? "sports-player-dock" : "inset-0"} ${stageBg}`
+        proPip
+          ? `pointer-events-none fixed z-[910] bottom-[max(1rem,env(safe-area-inset-bottom))] end-[max(1rem,env(safe-area-inset-right))] w-[clamp(148px,28vw,440px)] aspect-video overflow-hidden rounded-xl border border-white/20 bg-black shadow-2xl ${stageBg}`
+          : wallpaper
+            ? `pointer-events-none fixed inset-0 -z-[15] overflow-hidden ${stageBg}`
+            : heroDocked
+              ? `fixed z-[45] overflow-hidden ${stageBg}`
+              : `fixed z-[100] overflow-hidden ${docked ? "sports-player-dock" : "inset-0"} ${stageBg}`
       }
       style={{
         ...(screenLocked ? { cursor: "default" } : cursorStyle),
         ...dockDrag.style,
         ...(heroDocked ? dockStyle : {}),
-        ...(src.pipDocked ? { visibility: "hidden", pointerEvents: "none" } : {}),
+        ...(src.pipDocked && !proPip ? { visibility: "hidden", pointerEvents: "none" } : {}),
       }}
       onMouseMove={wakeChrome}
       onMouseEnter={wakeChrome}
@@ -1840,7 +1875,7 @@ function NativePlayerView({
         />
       )}
       {/* The TV app's native video covers the web controls in the hero; its bar replaces them. */}
-      {!docked && !hdrStageActive && !(heroDocked && nativeTv) && !wallpaper && (
+      {!proPip && !docked && !hdrStageActive && !(heroDocked && nativeTv) && !wallpaper && (
         <PlayerOverlayLayers {...overlayProps} />
       )}
       {wallpaper && (
@@ -1853,7 +1888,7 @@ function NativePlayerView({
           onStop={() => void closePlayer()}
         />
       )}
-      {heroDocked && nativeTv && (
+      {!proPip && heroDocked && nativeTv && (
         <NativeHeroBar
           title={src.meta.name}
           playing={playing}
@@ -1864,7 +1899,7 @@ function NativePlayerView({
           englishDub={englishDub}
         />
       )}
-      {!docked && !hdrStageActive && !wallpaper && !(heroDocked && nativeTv) && (
+      {!proPip && !docked && !hdrStageActive && !wallpaper && !(heroDocked && nativeTv) && (
         <PlayerInteractionLockControls
           enabled={screenLockEnabled}
           locked={screenLocked}
