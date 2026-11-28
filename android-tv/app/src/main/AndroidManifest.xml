@@ -3,6 +3,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Installs JL Media Vision's own updates (AppUpdater); Android asks the viewer once. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Android TV (NVIDIA Shield, Google TV); runs on phones/tablets too. -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
