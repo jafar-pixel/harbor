@@ -78,6 +78,14 @@ export function isTvApp(): boolean {
   return /JLMediaVisionTV/.test(navigator.userAgent || "");
 }
 
+/** The side-by-side Shield build opens Pro directly, including its sign-in gate. */
+export function isProVerificationTv(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    /\bJLMediaVisionTV\/[^\s]+-pro-verification(?:\s|$)/.test(navigator.userAgent)
+  );
+}
+
 export function isMobileDevice(): boolean {
   if (typeof navigator === "undefined" || typeof window === "undefined") return false;
   // A television reports Android and answers the touch heuristics below with a

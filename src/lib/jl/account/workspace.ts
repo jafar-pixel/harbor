@@ -1,6 +1,9 @@
+import { compressSync, decompressSync, strFromU8, strToU8 } from "fflate";
+
 /** A complete local roster belongs to one JL account. Profile data stays under its original IDs. */
 export const WORKSPACE_OWNER = "jl.account.workspace.owner.v1";
 const PREFIX = "jl.account.workspace.v1.";
+const COMPRESSED = "gzip:";
 const KEYS = [
   "harbor.profiles.v1",
   "harbor.settings.shared",
@@ -79,9 +82,25 @@ function empty(): Snapshot {
     [SCOPED_MARK]: "1",
   };
 }
+function saveSnapshot(storage: Port, key: string, snapshot: Snapshot): void {
+  const json = JSON.stringify(snapshot);
+  try {
+    storage.setItem(key, json);
+  } catch (error) {
+    if (!(error instanceof Error) || error.name !== "QuotaExceededError") throw error;
+    // The active workspace remains intact until its backup fits on this device.
+    const compressed = COMPRESSED + btoa(strFromU8(compressSync(strToU8(json)), true));
+    if (compressed.length >= json.length) throw error;
+    storage.setItem(key, compressed);
+  }
+}
+
 function parse(raw: string | null): Snapshot | null {
   if (!raw) return null;
-  const value = JSON.parse(raw) as Snapshot;
+  const json = raw.startsWith(COMPRESSED)
+    ? strFromU8(decompressSync(strToU8(atob(raw.slice(COMPRESSED.length)), true)))
+    : raw;
+  const value = JSON.parse(json) as Snapshot;
   if (
     !value ||
     typeof value !== "object" ||
@@ -128,7 +147,7 @@ export function switchJlWorkspace(
   const current = capture(storage);
   const firstAdoption = !oldOwner && !previousUser && !!nextUser && knownOwners.size === 0;
   const target = firstAdoption ? current : (parse(storage.getItem(PREFIX + next)) ?? empty());
-  storage.setItem(PREFIX + previous, JSON.stringify(firstAdoption ? empty() : current));
+  saveSnapshot(storage, PREFIX + previous, firstAdoption ? empty() : current);
   try {
     restore(storage, target);
     storage.setItem(WORKSPACE_OWNER, next);

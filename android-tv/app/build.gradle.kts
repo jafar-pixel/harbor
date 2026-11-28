@@ -17,6 +17,7 @@ android {
 
     defaultConfig {
         applicationId = "com.jlstream.mediavision"
+        manifestPlaceholders["appLabel"] = "JL Media Vision"
         minSdk = 24
         targetSdk = 35
         versionCode = runNumber.toInt()
@@ -37,6 +38,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // CI runners generate different debug keys. Give each build its own install slot.
+            val attempt = System.getenv("GITHUB_RUN_ATTEMPT") ?: "1"
+            applicationIdSuffix = ".proverify.b${runNumber}a$attempt"
+            versionNameSuffix = "-pro-verification"
+            manifestPlaceholders["appLabel"] = "JL Pro Verification $runNumber"
+        }
         release {
             isMinifyEnabled = false
             signingConfig = if (keystoreFile != null) signingConfigs.getByName("release") else signingConfigs.getByName("debug")

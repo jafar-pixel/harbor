@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChannelStatsVersion } from "@/lib/iptv/channel-stats";
+import { detectCountry } from "@/lib/iptv/country-detect";
 import { useFavorites } from "@/lib/iptv/favorites";
 import { useSettings } from "@/lib/settings";
 import { BP_LIVE_TRACK, BpGuideCell, BpGuideCellSkeleton } from "./bp-live-cell";
@@ -11,13 +12,7 @@ import { useBpLive, useBpLiveArt, type NowItem } from "./use-bp-live";
 
 const HYDRATE_CAP = 16;
 
-export function BpLiveRow({
-  lead,
-  autofocusFirst,
-}: {
-  lead: BpRowLead;
-  autofocusFirst?: boolean;
-}) {
+export function BpLiveRow({ lead, autofocusFirst }: { lead: BpRowLead; autofocusFirst?: boolean }) {
   const live = useBpLive();
   const { settings } = useSettings();
   const favorites = useFavorites();
@@ -61,8 +56,8 @@ export function BpLiveRow({
   const cells = useMemo(
     () =>
       rankBpLive({
-        channels: live.channels,
-        guide: live.guide,
+        channels: live.channels.filter((channel) => detectCountry(channel)?.code === "US"),
+        guide: live.guide.filter(({ channel }) => detectCountry(channel)?.code === "US"),
         epg: live.epg,
         tvgCounts: live.tvgCounts,
         nowMs: live.nowMs,
@@ -123,7 +118,7 @@ export function BpLiveRow({
   // Configured but resolved to nothing. An empty rail row would stand in as a
   // dead step, so the row leaves the rail entirely rather than rendering a
   // spinner nobody can act on.
-  if (live.channels.length === 0) return null;
+  if (cells.length === 0) return null;
 
   return (
     <section

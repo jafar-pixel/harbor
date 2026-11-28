@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import * as fflate from "fflate";
 import { deferred, loadSource, memoryStorage } from "./desktop-026-acceptance-fixtures.mjs";
 
 test("026 workspace round trip isolates accounts while preserving original profile and configured addon bytes", () => {
-  const { switchJlWorkspace } = loadSource("lib/jl/account/workspace.ts");
+  const { switchJlWorkspace } = loadSource("lib/jl/account/workspace.ts", { fflate });
   const rosterA = JSON.stringify({
     activeId: "stable-a",
     profiles: [{ id: "stable-a", name: "Same name", isPrimary: true }],
@@ -232,7 +233,7 @@ test("026 stable profile links never attach another owner or infer identity from
 
 test("026 session persistence failure rolls back the workspace before any identity notification or reload", async () => {
   const sessionModule = loadSource("lib/jl/account/session-client.ts");
-  const workspace = loadSource("lib/jl/account/workspace.ts");
+  const workspace = loadSource("lib/jl/account/workspace.ts", { fflate });
   for (const action of ["switch", "sign-out"]) {
     const roster = '{"activeId":"profile-a","profiles":[{"id":"profile-a","isPrimary":true}]}';
     const originalSession = JSON.stringify({
@@ -282,7 +283,7 @@ test("026 session persistence failure rolls back the workspace before any identi
 });
 
 test("026 upgrade never reclassifies a known previous account roster as anonymous local data", () => {
-  const { switchJlWorkspace } = loadSource("lib/jl/account/workspace.ts");
+  const { switchJlWorkspace } = loadSource("lib/jl/account/workspace.ts", { fflate });
   const roster =
     '{"activeId":"previous-account-profile","profiles":[{"id":"previous-account-profile","isPrimary":true}]}';
   const storage = memoryStorage({
@@ -305,7 +306,7 @@ test("026 upgrade never reclassifies a known previous account roster as anonymou
 
 test("026 actual client cold startup reconciles legacy ownership before returning a saved identity", () => {
   const session = loadSource("lib/jl/account/session-client.ts"),
-    workspace = loadSource("lib/jl/account/workspace.ts");
+    workspace = loadSource("lib/jl/account/workspace.ts", { fflate });
   const roster =
     '{"activeId":"a-private-profile","profiles":[{"id":"a-private-profile","isPrimary":true}]}';
   const storage = memoryStorage({

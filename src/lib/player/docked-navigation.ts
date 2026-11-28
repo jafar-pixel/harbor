@@ -13,6 +13,7 @@ export function preservePreviewMode(previous: PlayerSrc, next: PlayerSrc): Playe
   return {
     ...next,
     ...(previous.sportsDocked === undefined ? {} : { sportsDocked: previous.sportsDocked }),
+    ...(previous.proPip === undefined ? {} : { proPip: previous.proPip }),
     ...(previous.pipDocked === undefined ? {} : { pipDocked: previous.pipDocked }),
   };
 }
@@ -23,7 +24,8 @@ export function navigateUnderPreview(
   navigate: (pages: Frame[]) => Frame[],
 ): Frame[] {
   const dock = stack.at(-1);
-  if (dock?.kind !== "player" || !(dock.src.sportsDocked || dock.src.pipDocked)) return navigate(stack);
+  if (dock?.kind !== "player" || !(dock.src.sportsDocked || dock.src.pipDocked))
+    return navigate(stack);
   const pages = withoutTrailingPlayers(stack);
   const next = navigate(pages);
   // Starting/replacing playback takes ownership of the single player surface.
@@ -33,5 +35,7 @@ export function navigateUnderPreview(
 
 export function previewPageStack(stack: Frame[]): Frame[] {
   const last = stack.at(-1);
-  return last?.kind === "player" && (last.src.sportsDocked || last.src.pipDocked) ? withoutTrailingPlayers(stack) : stack;
+  return last?.kind === "player" && (last.src.sportsDocked || last.src.pipDocked)
+    ? withoutTrailingPlayers(stack)
+    : stack;
 }

@@ -1,3 +1,5 @@
+import { JlAccountForm } from "@/components/jl-account-form";
+import { useJlProAccess } from "@/lib/jl/account/pro-access";
 import {
   Suspense,
   useCallback,
@@ -36,6 +38,9 @@ import { BpHintBar, type BpAction } from "./bp-hint-bar";
 import { BpHome } from "./bp-home";
 import {
   BpAddon,
+  BpBlackCinema,
+  BpIptvVod,
+  BpMusic,
   BpAnime,
   BpCollection,
   BpCollectionDetail,
@@ -93,6 +98,9 @@ const HINTS: Record<string, BpAction[]> = {
   shows: ["select", "back", "tabs"],
   movies: ["select", "back", "tabs"],
   live: ["select", "back", "tabs"],
+  "iptv-vod": ["select", "back", "tabs"],
+  music: ["select", "back", "tabs"],
+  "black-cinema": ["select", "back", "tabs"],
   sports: ["select", "back", "tabs"],
   "sports-event": ["select", "back"],
   discover: ["select", "back", "tabs"],
@@ -126,9 +134,50 @@ type BpSourcesTarget = {
 };
 
 export function BigPictureShell() {
+  const { active } = useBigPicture();
+  const access = useJlProAccess(active);
+  if (!active) return null;
+  if (access === "allowed") return <BpProShell />;
+  return (
+    <section
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="jl-pro-access-title"
+      className="fixed inset-0 z-[1000] grid place-items-center overflow-y-auto bg-canvas p-6 text-ink"
+    >
+      <div className="flex w-full max-w-md flex-col gap-5">
+        <h1 id="jl-pro-access-title" className="text-3xl font-semibold">
+          JL MediaVision Pro
+        </h1>
+        {access === "signed-out" ? (
+          <JlAccountForm intro="Sign in with your invited JL account." />
+        ) : (
+          <p role="status">
+            {access === "checking"
+              ? "Checking Pro access…"
+              : access === "unavailable"
+                ? "Pro access could not be checked. Reopen Pro to try again."
+                : "Pro is invitation only. Ask Jafar to approve your JL account."}
+          </p>
+        )}
+        {!bpTvShell() && (
+          <button
+            type="button"
+            className="self-start rounded-full border border-edge px-4 py-2"
+            onClick={() => exitBigPicture()}
+          >
+            Back
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function BpProShell() {
   const t = useT();
   const { active, stack } = useBigPicture();
-  const { picker, player } = useView();
+  const { picker, player, setPipDocked, exitPlayback } = useView();
   const route = stack[stack.length - 1] ?? { kind: "home" as const };
   const rootRef = useRef<HTMLDivElement | null>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
@@ -136,7 +185,7 @@ export function BigPictureShell() {
   const chrome = bigPictureChromeState({
     active,
     kidProfileActive: kid !== null,
-    playbackOpen: Boolean(picker || player),
+    playbackOpen: Boolean(picker || (player && !player.proPip)),
   });
   const playing = chrome.hidden;
   const [quickOpen, setQuickOpen] = useState(false);
@@ -434,6 +483,30 @@ export function BigPictureShell() {
               -webkit-mask-image: linear-gradient(to bottom, transparent, black 22vh);
             }
           `}</style>
+          {player?.proPip && browsing && (
+            <div
+              className="absolute bottom-[calc(max(1rem,env(safe-area-inset-bottom))+clamp(83px,15.75vw,247.5px)+0.5rem)] end-[max(1rem,env(safe-area-inset-right))] z-40 flex gap-2"
+              data-bp-row
+              aria-label={t("Picture in picture")}
+            >
+              <button
+                type="button"
+                data-bp-focusable
+                className="rounded-full bg-canvas px-4 py-2 text-sm font-semibold"
+                onClick={() => setPipDocked(false)}
+              >
+                {t("Expand")}
+              </button>
+              <button
+                type="button"
+                data-bp-focusable
+                className="rounded-full bg-canvas px-4 py-2 text-sm font-semibold"
+                onClick={exitPlayback}
+              >
+                {t("Close")}
+              </button>
+            </div>
+          )}
           <BpTopBar active={activeTab} />
           <main
             key={routeId}
@@ -459,6 +532,11 @@ export function BigPictureShell() {
               {route.kind === "shows" && <BpShows onSelect={openDetail} />}
               {route.kind === "movies" && <BpMovies onSelect={openDetail} />}
               {route.kind === "live" && <BpLive />}
+              {route.kind === "iptv-vod" && tabOrder.includes("iptv-vod") && <BpIptvVod />}
+              {route.kind === "music" && tabOrder.includes("music") && <BpMusic />}
+              {route.kind === "black-cinema" && tabOrder.includes("black-cinema") && (
+                <BpBlackCinema onSelect={openDetail} />
+              )}
               {route.kind === "sports" && <BpSports />}
               {route.kind === "sports-event" && <BpSportsEvent game={route.game} />}
               {route.kind === "discover" && <BpDiscover onSelect={openDetail} />}

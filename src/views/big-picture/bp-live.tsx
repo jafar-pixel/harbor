@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useChannelStatsVersion } from "@/lib/iptv/channel-stats";
+import { detectCountry } from "@/lib/iptv/country-detect";
 import { useFavorites } from "@/lib/iptv/favorites";
 import { useGroupPrefs } from "@/lib/iptv/group-order";
 import { usePinnedOrder } from "@/lib/iptv/pins";
@@ -51,7 +52,12 @@ export function BpLive() {
   const { settings } = useSettings();
   const [key, setKey] = useBpPersistedState<string>("liveCategory", ALL_KEY);
 
+  const usaChannels = useMemo(
+    () => live.channels.filter((channel) => detectCountry(channel)?.code === "US"),
+    [live.channels],
+  );
   const categories = useMemo<BpLiveCategory[]>(() => {
+    const usaIds = new Set(usaChannels.map((channel) => channel.id));
     const rails = [...live.rails, ...live.categoryRails];
     const fav = rails.find((rail) => rail.key === FAV_KEY);
     // Favourites is pinned to slot zero here rather than taken from the rail
@@ -62,9 +68,9 @@ export function BpLive() {
         label: "Favorites",
         translateLabel: true,
         star: true,
-        channels: fav?.channels ?? [],
+        channels: fav?.channels.filter((channel) => usaIds.has(channel.id)) ?? [],
       },
-      { key: ALL_KEY, label: "All", translateLabel: true, channels: live.channels },
+      { key: ALL_KEY, label: "USA", channels: usaChannels },
     ];
     const hidden = new Set(groupPrefs.hidden);
     for (const rail of rails) {
@@ -77,8 +83,8 @@ export function BpLive() {
       // to use-live-home.
       const channels =
         rail.group != null
-          ? live.channels.filter((c) => (c.group ?? UNCATEGORIZED) === rail.group)
-          : rail.channels;
+          ? usaChannels.filter((c) => (c.group ?? UNCATEGORIZED) === rail.group)
+          : rail.channels.filter((channel) => usaIds.has(channel.id));
       if (channels.length === 0) continue;
       out.push({
         key: rail.key,
@@ -88,7 +94,7 @@ export function BpLive() {
       });
     }
     return out;
-  }, [live.channels, live.rails, live.categoryRails, groupPrefs.hidden]);
+  }, [usaChannels, live.rails, live.categoryRails, groupPrefs.hidden]);
 
   const category =
     categories.find((c) => c.key === key) ??
@@ -144,39 +150,38 @@ export function BpLive() {
 
   return (
     <div className="flex h-full flex-col">
-      {!showSetup &&
-        activeSource && (
-          // The mask stays on this tall container, never on the filter row: it is
-          // a horizontal fade and clips nothing vertically, so the segment ring
-          // has room, and the source button sits at the gutter well clear of the
-          // fade so it never dims.
-          <div
-            className="flex shrink-0 flex-col gap-[clamp(7px,0.9vh,15px)] px-[var(--bp-gutter)] pb-[clamp(7px,0.96vh,16px)]"
-            style={{
-              paddingTop: BAND_TOP,
-              maskImage: EDGE_MASK,
-              WebkitMaskImage: EDGE_MASK,
-            }}
-          >
-            <BpLiveSourceButton
-              name={activeSource.name}
-              channelCount={live.channels.length}
-              onOpen={() => openSources(false)}
-            />
-            <BpLiveFilters
-              items={categories.map((c) => ({
-                key: c.key,
-                label: c.label,
-                translateLabel: c.translateLabel,
-                count: c.channels.length,
-                star: c.star,
-                flagCode: c.flagCode,
-              }))}
-              activeKey={catKey}
-              onSelect={setKey}
-            />
-          </div>
-        )}
+      {!showSetup && activeSource && (
+        // The mask stays on this tall container, never on the filter row: it is
+        // a horizontal fade and clips nothing vertically, so the segment ring
+        // has room, and the source button sits at the gutter well clear of the
+        // fade so it never dims.
+        <div
+          className="flex shrink-0 flex-col gap-[clamp(7px,0.9vh,15px)] px-[var(--bp-gutter)] pb-[clamp(7px,0.96vh,16px)]"
+          style={{
+            paddingTop: BAND_TOP,
+            maskImage: EDGE_MASK,
+            WebkitMaskImage: EDGE_MASK,
+          }}
+        >
+          <BpLiveSourceButton
+            name={activeSource.name}
+            channelCount={live.channels.length}
+            onOpen={() => openSources(false)}
+          />
+          <BpLiveFilters
+            items={categories.map((c) => ({
+              key: c.key,
+              label: c.label,
+              translateLabel: c.translateLabel,
+              count: c.channels.length,
+              star: c.star,
+              flagCode: c.flagCode,
+            }))}
+            activeKey={catKey}
+            onSelect={setKey}
+          />
+        </div>
+      )}
 
       {showSetup && (
         // First run stands alone with no band above it, so it owns the top-bar

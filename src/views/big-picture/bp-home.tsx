@@ -49,7 +49,9 @@ export function BpHome({ onSelect }: { onSelect: (m: Meta) => void }) {
   const services = useMemo(
     () =>
       settings.tmdbKey
-        ? (Object.keys(settings.streaming) as StreamingService[]).filter((s) => settings.streaming[s])
+        ? (Object.keys(settings.streaming) as StreamingService[]).filter(
+            (s) => settings.streaming[s],
+          )
         : [],
     [settings.tmdbKey, settings.streaming],
   );
@@ -131,7 +133,9 @@ export function BpHome({ onSelect }: { onSelect: (m: Meta) => void }) {
           {t("Couldn't load your catalogs")}
         </h2>
         <p className="max-w-md text-[clamp(13px,1.85vh,21px)] text-ink-muted">
-          {t("Harbor couldn't reach the catalog servers. Check the connection and reopen Big Picture.")}
+          {t(
+            "Harbor couldn't reach the catalog servers. Check the connection and reopen Big Picture.",
+          )}
         </p>
       </div>
     );
@@ -264,28 +268,28 @@ export function BpHome({ onSelect }: { onSelect: (m: Meta) => void }) {
 
   return (
     <div ref={pageRef} className="relative flex h-full flex-col">
-      {/* data-bp-home-hero is the anchor for --bp-hero-give in bp-tokens, which
-          is television only. Home is the one surface that keeps expanded={true}
-          forever instead of collapsing the hero off row 0, so it is the one
-          surface whose row band does not fit above --bp-hint-h at 641px. The
-          attribute stays on this wrapper rather than on the spotlight so the
-          give is inherited rather than restated, and nothing here is inside the
-          rail, so no rail-row parent chain is touched. */}
-      <div data-bp-home-hero className="relative z-20 shrink-0 pt-[var(--bp-page-top)]">
-        <div className="relative">
-          <div
-            className={`motion-reduce:transition-none ${
-              identityUp
-                ? "opacity-0 transition-opacity duration-[180ms] ease-[var(--bp-ease-in)]"
-                : "opacity-100 transition-opacity duration-[300ms] delay-[140ms] ease-[var(--bp-ease)]"
-            }`}
-          >
-            <BpSpotlight phase={phase} />
+      <BpRail
+        railRef={railRef}
+        entries={entries}
+        activeRow={activeRow}
+        railShift={railShift}
+        header={
+          <div data-bp-home-hero className="relative z-20 shrink-0 pt-[var(--bp-page-top)]">
+            <div className="relative">
+              <div
+                className={`motion-reduce:transition-none ${
+                  identityUp
+                    ? "opacity-0 transition-opacity duration-[180ms] ease-[var(--bp-ease-in)]"
+                    : "opacity-100 transition-opacity duration-[300ms] delay-[140ms] ease-[var(--bp-ease)]"
+                }`}
+              >
+                <BpSpotlight phase={phase} />
+              </div>
+              <BpBandIdentity band={band} art={bandArt} up={identityUp} />
+            </div>
           </div>
-          <BpBandIdentity band={band} art={bandArt} up={identityUp} />
-        </div>
-      </div>
-      <BpRail railRef={railRef} entries={entries} activeRow={activeRow} railShift={railShift} />
+        }
+      />
     </div>
   );
 }

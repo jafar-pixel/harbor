@@ -1,4 +1,7 @@
-import { useMemo } from "react";
+import { BpTrailer } from "./bp-trailer";
+import { useBpT } from "./bp-i18n";
+import { Film, Play } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { Meta } from "@/lib/cinemeta";
 import type { TmdbDetail } from "@/lib/providers/tmdb/tmdb-details";
 import { useProxiedImageSrc } from "@/lib/remote-image-proxy";
@@ -27,7 +30,14 @@ const COPY_W = "max-w-[min(40vw,470px)]";
 const TITLE =
   "line-clamp-2 font-display text-[clamp(36px,5.6vh,54px)] font-semibold leading-[1.12] tracking-[-0.02em] text-ink drop-shadow-[0_3px_16px_rgba(0,0,0,0.6)]";
 
-export function BpSpotlight(_props: { phase?: BpPagePhase }) {
+export function BpSpotlight({
+  onOpenDetails,
+}: {
+  phase?: BpPagePhase;
+  onOpenDetails?: (meta: Meta) => void;
+}) {
+  const t = useBpT();
+  const [preview, setPreview] = useState<{ ytId: string; title: string } | null>(null);
   // The copy is NOT settled. It updates on the frame focus lands.
   //
   // This file used to hold it on BP_META_SETTLE_MS so it could never arrive
@@ -48,11 +58,7 @@ export function BpSpotlight(_props: { phase?: BpPagePhase }) {
   const mark = useProxiedImageSrc(meta?.providerBadge?.logo);
   // No ref: the spotlight is on screen by definition, so the score prefetch runs
   // at once instead of waiting on an intersection that already happened.
-  const { badges } = useBpCardBadges(
-    meta ?? EMPTY_META,
-    undefined,
-    detail?.imdbId ?? null,
-  );
+  const { badges } = useBpCardBadges(meta ?? EMPTY_META, undefined, detail?.imdbId ?? null);
 
   // Every visible field goes through the gate as one subject. Gating the meta
   // alone left the logo, the scores and the overview reading off the live title
@@ -67,6 +73,9 @@ export function BpSpotlight(_props: { phase?: BpPagePhase }) {
     if (!meta) return null;
     return {
       meta,
+      artwork: detail?.backdrop ?? meta.background ?? meta.poster,
+      portrait: !detail?.backdrop && !meta.background,
+      trailerId: detail?.trailerYtId ?? meta.trailerStreams?.[0]?.ytId,
       facts,
       badges,
       logo: detail?.logo ?? meta.logo ?? heroLogo,
@@ -79,6 +88,8 @@ export function BpSpotlight(_props: { phase?: BpPagePhase }) {
   }, [meta, detail, facts, badges, heroLogo]);
 
   const { shown, on } = useBpCopyGate(subject, `card:${meta?.id ?? ""}`);
+
+  const artwork = useProxiedImageSrc(onOpenDetails ? shown?.artwork : undefined);
 
   if (!shown) return <div data-bp-hero-box className={HERO_H} />;
 
@@ -94,77 +105,130 @@ export function BpSpotlight(_props: { phase?: BpPagePhase }) {
     >
       <div
         data-bp-xfade
-        className={`relative flex h-full flex-col justify-end gap-0 px-[var(--bp-gutter)] pb-[clamp(27px,3.6vh,58px)] ${
-          on ? BP_COPY_IN : BP_COPY_OUT
-        }`}
+        className={`relative h-full px-[var(--bp-gutter)] pb-[clamp(22px,3vh,46px)] ${
+          onOpenDetails
+            ? "grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-[clamp(18px,3vw,56px)] max-[650px]:grid-cols-1 max-[650px]:content-end"
+            : "flex flex-col justify-end gap-0"
+        } ${on ? BP_COPY_IN : BP_COPY_OUT}`}
       >
-        {mark && (
-          <img
-            src={mark}
-            alt=""
-            decoding="async"
-            data-bp-hero-mark
-            className="mb-[18px] block h-[clamp(19px,3.2vh,29px)] w-auto self-start object-contain opacity-[0.85]"
-          />
+        {onOpenDetails && (
+          <div className="relative aspect-video max-h-[36vh] overflow-hidden rounded-2xl border border-white/15 bg-[var(--bp-panel)] shadow-2xl max-[650px]:hidden">
+            {artwork && (
+              <img
+                src={artwork}
+                alt=""
+                decoding="async"
+                className={`size-full ${shown.portrait ? "object-contain" : "object-cover"}`}
+              />
+            )}
+          </div>
         )}
+        <div className={onOpenDetails ? "relative min-w-0" : "contents"}>
+          {mark && (
+            <img
+              src={mark}
+              alt=""
+              decoding="async"
+              data-bp-hero-mark
+              className="mb-[18px] block h-[clamp(19px,3.2vh,29px)] w-auto self-start object-contain opacity-[0.85]"
+            />
+          )}
 
-        {logo ? (
-          <>
-          <img
-            src={logo}
-            alt=""
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-              const h = e.currentTarget.nextElementSibling;
-              if (h instanceof HTMLElement) h.removeAttribute("hidden");
-            }}
-            // This block is keyed on the promoted title, so the logo is a fresh
-            // element on every title change and its decode would otherwise land
-            // synchronously in the frame that mounts it, beside the backdrop
-            // commit and the copy fade.
-            decoding="async"
-            data-bp-hero-logo
-            className="max-h-[clamp(104px,16.2vh,188px)] w-auto max-w-[min(32vw,380px)] self-start object-contain drop-shadow-[0_5px_22px_rgba(0,0,0,0.7)]"
-          />
-          <h1 hidden data-bp-hero-title className={`${TITLE} ${COPY_W}`}>
-            {shown.meta.name}
-          </h1>
-          </>
-        ) : (
-          <h1 data-bp-hero-title className={`${TITLE} ${COPY_W}`}>{shown.meta.name}</h1>
-        )}
+          {logo ? (
+            <>
+              <img
+                src={logo}
+                alt=""
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                  const h = e.currentTarget.nextElementSibling;
+                  if (h instanceof HTMLElement) h.removeAttribute("hidden");
+                }}
+                // This block is keyed on the promoted title, so the logo is a fresh
+                // element on every title change and its decode would otherwise land
+                // synchronously in the frame that mounts it, beside the backdrop
+                // commit and the copy fade.
+                decoding="async"
+                data-bp-hero-logo
+                className="max-h-[clamp(104px,16.2vh,188px)] w-auto max-w-[min(32vw,380px)] self-start object-contain drop-shadow-[0_5px_22px_rgba(0,0,0,0.7)]"
+              />
+              <h1 hidden data-bp-hero-title className={`${TITLE} ${COPY_W}`}>
+                {shown.meta.name}
+              </h1>
+            </>
+          ) : (
+            <h1 data-bp-hero-title className={`${TITLE} ${COPY_W}`}>
+              {shown.meta.name}
+            </h1>
+          )}
 
-        <div data-bp-hero-meta className="mt-[14px] flex flex-wrap items-center gap-x-[16px] gap-y-1 text-[clamp(15.5px,1.8vh,21px)] font-semibold tracking-[0.015em] text-ink-subtle">
-          {/* Not a hardcoded IMDb value. For a kitsu or mal meta,
+          <div
+            data-bp-hero-meta
+            className="mt-[14px] flex flex-wrap items-center gap-x-[16px] gap-y-1 text-[clamp(15.5px,1.8vh,21px)] font-semibold tracking-[0.015em] text-ink-subtle"
+          >
+            {/* Not a hardcoded IMDb value. For a kitsu or mal meta,
               meta.imdbRating holds the anime score, and drawing that beside the
               IMDb mark told the user a MAL 8.2 was an IMDb 8.2. */}
-          <BpScoreChips badges={shown.badges} />
-          {tmdbScore && (
-            <span className="flex items-center gap-[6px] tabular-nums text-ink">
-              <img src={tmdbIcon} alt="TMDB" className="h-[1.6em] w-auto shrink-0 rounded-[3px]" />
-              {tmdbScore}
-            </span>
+            <BpScoreChips badges={shown.badges} />
+            {tmdbScore && (
+              <span className="flex items-center gap-[6px] tabular-nums text-ink">
+                <img
+                  src={tmdbIcon}
+                  alt="TMDB"
+                  className="h-[1.6em] w-auto shrink-0 rounded-[3px]"
+                />
+                {tmdbScore}
+              </span>
+            )}
+            {shown.facts.map((f) => (
+              <span key={f} className="flex items-center">
+                {f}
+              </span>
+            ))}
+          </div>
+
+          <div className="pointer-events-none absolute inset-0 translate-y-[clamp(26px,4vh,58px)]">
+            <MetaAwardsCorner meta={shown.meta} imdbId={imdbId} />
+          </div>
+
+          {overview && (
+            <p
+              data-bp-hero-desc
+              className={`mt-[18px] line-clamp-2 text-[clamp(16px,2vh,23px)] leading-[1.55] text-ink-muted ${COPY_W}`}
+            >
+              {overview}
+            </p>
           )}
-          {shown.facts.map((f) => (
-            <span key={f} className="flex items-center">
-              {f}
-            </span>
-          ))}
+          {onOpenDetails && (
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                data-bp-focusable
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-accent px-5 font-semibold text-canvas"
+                onClick={() => onOpenDetails(shown.meta)}
+              >
+                <Film size={17} aria-hidden />
+                {t("View details")}
+              </button>
+              {shown.trailerId && (
+                <button
+                  type="button"
+                  data-bp-focusable
+                  className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/25 bg-canvas/60 px-5 font-semibold"
+                  onClick={() => {
+                    if (shown.trailerId)
+                      setPreview({ ytId: shown.trailerId, title: shown.meta.name });
+                  }}
+                >
+                  <Play size={17} aria-hidden />
+                  {t("Watch Trailer")}
+                </button>
+              )}
+            </div>
+          )}
         </div>
-
-        <div className="pointer-events-none absolute inset-0 translate-y-[clamp(26px,4vh,58px)]">
-          <MetaAwardsCorner meta={shown.meta} imdbId={imdbId} />
-        </div>
-
-        {overview && (
-          <p
-            data-bp-hero-desc
-            className={`mt-[18px] line-clamp-2 text-[clamp(16px,2vh,23px)] leading-[1.55] text-ink-muted ${COPY_W}`}
-          >
-            {overview}
-          </p>
-        )}
       </div>
+      {preview && <BpTrailer {...preview} onClose={() => setPreview(null)} />}
     </div>
   );
 }

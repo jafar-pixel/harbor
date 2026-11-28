@@ -10,6 +10,7 @@ type Store = {
   collectionCategory: string;
   collectionSource: string;
   sportsMode: string;
+  blackCinemaTab: string;
 };
 
 const store: Store = {
@@ -19,6 +20,7 @@ const store: Store = {
   collectionCategory: "All",
   collectionSource: "all",
   sportsMode: "for-you",
+  blackCinemaTab: "all",
 };
 
 export function resetBpViewState(): void {
@@ -28,6 +30,7 @@ export function resetBpViewState(): void {
   store.collectionCategory = "All";
   store.collectionSource = "all";
   store.sportsMode = "for-you";
+  store.blackCinemaTab = "all";
 }
 
 export function useBpPersistedState<T extends string>(

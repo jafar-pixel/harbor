@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { goBigPictureTab } from "@/lib/big-picture";
+import { detectCountry } from "@/lib/iptv/country-detect";
+import type { IptvChannel } from "@/lib/iptv/types";
 import { usePlaylists } from "@/lib/iptv/playlists-store";
 import type { SportsGame } from "@/lib/sports/espn-types";
 import { matchChannelsForGameAsync, type ChannelMatch } from "@/lib/sports/iptv-match";
@@ -7,6 +9,7 @@ import type { EsportsStream } from "@/lib/sports/esports-streams";
 import { setAttachedStream, useAttachments } from "@/views/sports/source-store";
 import { fixtureLabelOf } from "@/views/sports/watch-flow";
 import { useSportsChannelIndex } from "@/views/sports/watch-sources";
+import { BpGuidePortal } from "../bp-guide-portal";
 import { useBpT } from "../bp-i18n";
 import {
   setBpWatchFixture,
@@ -239,7 +242,9 @@ export function useBpSportsWatch(
 
 export function BpSportsWatchLoader({
   onReady,
+  previewGame,
 }: {
+  previewGame: SportsGame | null;
   onReady: (watch: ((game: SportsGame) => boolean) | null) => void;
 }) {
   const index = useSportsChannelIndex();
@@ -251,5 +256,42 @@ export function BpSportsWatchLoader({
     onReady(stable);
     return () => onReady(null);
   }, [stable, onReady]);
-  return null;
+  const [preview, setPreview] = useState<{ game: SportsGame; channel: IptvChannel } | null>(null);
+  useEffect(() => {
+    if (!previewGame || previewGame.state !== "in") return;
+    const request = new AbortController();
+    const dwell = window.setTimeout(() => {
+      void matchChannelsForGameAsync(
+        previewGame,
+        index,
+        { broadcastNames: previewGame.broadcasts, limit: 8 },
+        request.signal,
+      )
+        .then((matches) => {
+          if (request.signal.aborted) return;
+          const match = matches.find(
+            ({ channel, tier, failing }) =>
+              tier === "exact" && !failing && detectCountry(channel)?.code === "US",
+          );
+          setPreview(match ? { game: previewGame, channel: match.channel } : null);
+        })
+        .catch(() => {});
+    }, 500);
+    return () => {
+      window.clearTimeout(dwell);
+      request.abort();
+    };
+  }, [previewGame, index]);
+
+  if (!preview || preview.game !== previewGame) return null;
+  return (
+    <BpGuidePortal
+      channel={preview.channel}
+      program={null}
+      title={fixtureLabelOf(preview.game)}
+      meta={preview.channel.name}
+      nowMs={Date.now()}
+      dimmed={false}
+    />
+  );
 }

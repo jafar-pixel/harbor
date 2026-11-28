@@ -5,6 +5,7 @@ import type { Meta } from "@/lib/cinemeta";
 import { useT } from "@/lib/i18n";
 import { matchesVodSearch, vodSearchText } from "@/lib/iptv/vod-match";
 import { sortChannelsByGroupRelevance } from "@/lib/iptv/group-relevance";
+import { usaVodLibrary } from "@/lib/iptv/vod-region";
 import { getCachedPlaylist } from "@/lib/iptv/store";
 import type { IptvPlaylistSource } from "@/lib/iptv/types";
 import {
@@ -31,7 +32,13 @@ type Tab = "movies" | "series";
 const PAGE_SIZE = 60;
 const SCROLL_SETTLE_DELAY_MS = 250;
 
-export function PlaylistVodView({ active }: { active: boolean }) {
+export function PlaylistVodView({
+  active,
+  usaOnly = false,
+}: {
+  active: boolean;
+  usaOnly?: boolean;
+}) {
   const t = useT();
   const { settings } = useSettings();
   const { openPlayer } = useView();
@@ -54,9 +61,13 @@ export function PlaylistVodView({ active }: { active: boolean }) {
 
   const names = useMemo(() => new Map(sources.map((s) => [s.id, s.name] as const)), [sources]);
   const library = useMemo(() => {
-    if (isXtream) return xtream.library;
-    return playlist ? buildVodLibrary([playlist], names) : { movies: [], series: [] };
-  }, [isXtream, names, playlist, xtream.library]);
+    const all = isXtream
+      ? xtream.library
+      : playlist
+        ? buildVodLibrary([playlist], names)
+        : { movies: [], series: [] };
+    return usaOnly ? usaVodLibrary(all) : all;
+  }, [isXtream, names, playlist, xtream.library, usaOnly]);
   const loading = isXtream ? xtream.loading : state.kind === "loading";
   const error = isXtream ? xtream.error : state.kind === "error" ? state.message : null;
   const fetchedAt = isXtream ? xtream.fetchedAt : (playlist?.fetchedAt ?? null);

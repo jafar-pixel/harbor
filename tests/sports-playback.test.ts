@@ -100,3 +100,16 @@ test("new playback replaces the dock and normal full-screen playback retains nav
     [{ kind: "manga" }],
   );
 });
+
+test("Pro picture-in-picture survives hub navigation without reloading playback", () => {
+  const pip = { ...source, pipDocked: true, proPip: true };
+  const dock: Frame = { kind: "player", src: pip };
+  const stack: Frame[] = [{ kind: "live" }, dock];
+  const music = navigateUnderPreview(stack, () => [{ kind: "music" }]);
+  assert.equal(music.at(-1), dock);
+  assert.deepEqual(previewPageStack(music), [{ kind: "music" }]);
+  assert.equal(playerLoadIdentity(pip, pip.url), playerLoadIdentity(source, source.url));
+  const next = preservePreviewMode(pip, { ...source, url: "https://example.com/next" });
+  assert.equal(next.pipDocked, true);
+  assert.equal(next.proPip, true);
+});

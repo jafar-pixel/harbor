@@ -155,7 +155,12 @@ export function createNativeTvBridge(
     setVideoUnder(false);
     if (docked()) {
       const r = host.getBoundingClientRect();
-      p.setRect(r.left, r.top, r.width, Math.max(0, r.height - NATIVE_HERO_BAR_PX));
+      p.setRect(
+        r.left,
+        r.top,
+        r.width,
+        Math.max(0, r.height - (host.closest("[data-pro-pip]") ? 0 : NATIVE_HERO_BAR_PX)),
+      );
       p.setMode("hero");
     } else {
       // On the TV, Back from full screen moves the video into the hub hero, so the native side

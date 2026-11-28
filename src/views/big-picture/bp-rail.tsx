@@ -22,10 +22,12 @@ export function BpRail({
   railRef,
   entries,
   activeRow,
+  header,
 }: {
   railRef: RefObject<HTMLDivElement | null>;
   entries: readonly BpRailEntry[];
   activeRow: number;
+  header?: ReactNode;
   railShift: number;
 }) {
   const overWallpaper = useBigPictureRoute().kind === "home";
@@ -67,6 +69,7 @@ export function BpRail({
         data-bp-wallpaper-scroll={overWallpaper ? "" : undefined}
         className="absolute inset-0 flex flex-col gap-[var(--bp-row-gap)] overflow-y-auto overflow-x-hidden overscroll-contain py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
+        {header}
         {entries.map((entry, i) => (
           <BpRailRow
             key={entry.key}

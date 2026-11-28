@@ -170,8 +170,21 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        if (savedInstanceState != null) web.restoreState(savedInstanceState)
-        else web.loadUrl(BuildConfig.APP_URL)
+        if (BuildConfig.VERSION_NAME.endsWith("-pro-verification")) {
+            Log.i("JLPage", "Pro verification startup: version=${BuildConfig.VERSION_NAME}, bundled=${site.available}")
+            if (site.available) {
+                val entry = Uri.parse(BuildConfig.APP_URL).buildUpon()
+                    .appendQueryParameter("jl_build", BuildConfig.VERSION_CODE.toString())
+                    .build()
+                web.loadUrl(entry.toString())
+            } else {
+                web.loadDataWithBaseURL(null, "<h1>JL MediaVision Pro</h1><p>This build is missing the Pro interface.</p>", "text/html", "UTF-8", null)
+            }
+        } else if (savedInstanceState != null) {
+            web.restoreState(savedInstanceState)
+        } else {
+            web.loadUrl(BuildConfig.APP_URL)
+        }
     }
 
     private fun isAppUrl(url: String?): Boolean {
