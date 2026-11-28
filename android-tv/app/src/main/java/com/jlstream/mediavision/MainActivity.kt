@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var root: FrameLayout
     private lateinit var nativePlayer: NativePlayer
     private lateinit var site: BundledSite
+    private lateinit var updater: AppUpdater
     private lateinit var nativeFetch: NativeFetch
     private var fullscreenView: View? = null
     private var fullscreenCallback: WebChromeClient.CustomViewCallback? = null
@@ -66,6 +67,7 @@ class MainActivity : AppCompatActivity() {
         CrashLog.take(this)?.let(::showLastCrash)
         nativePlayer = NativePlayer(this, root, web, ::dispatchPlayerEvent)
         site = BundledSite(assets)
+        updater = AppUpdater(this)
         nativeFetch = NativeFetch(::fetchReady)
 
         CookieManager.getInstance().setAcceptCookie(true)
@@ -367,6 +369,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         nativePlayer.matchDisplayMode()
+        updater.check()
     }
 
     override fun onStop() {
@@ -377,6 +380,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        updater.release()
         nativePlayer.release()
         web.destroy()
         super.onDestroy()
