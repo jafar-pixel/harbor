@@ -17,6 +17,8 @@ import {
 import { BpStatus } from "./bp-status";
 import { BpProfileMenu } from "./bp-profile-menu";
 import { useBpT } from "./bp-i18n";
+import jlMark from "@/assets/brand/jl-mark.webp";
+import { isTvApp } from "@/lib/platform";
 import { HarborMark } from "@/components/icons/harbor-mark";
 import { useHarborLogo } from "@/lib/harbor-logo";
 import { goBigPictureTab, type BigPictureTabKind } from "@/lib/big-picture";
@@ -243,6 +245,8 @@ export function BpTopBar({ active }: { active: BigPictureTabKind }) {
   const t = useBpT();
   const clock = useClock();
   const { mark: customMark, wordmark: customWordmark } = useHarborLogo();
+  const tvBrand = isTvApp();
+  const brandMark = tvBrand ? jlMark : customMark;
   const usingPad = useGamepads().length > 0;
   const gate = useBpTabGate();
   const tabs = useMemo(() => visibleTabs(gate), [gate]);
@@ -303,9 +307,9 @@ export function BpTopBar({ active }: { active: BigPictureTabKind }) {
       />
 
       <div className="pointer-events-none relative col-start-1 flex items-center gap-[clamp(7px,0.7vw,13px)] justify-self-start">
-        {customMark ? (
+        {brandMark ? (
           <img
-            src={customMark}
+            src={brandMark}
             alt=""
             draggable={false}
             className="h-[clamp(28px,3.4vh,44px)] w-auto shrink-0 object-contain"
@@ -313,7 +317,11 @@ export function BpTopBar({ active }: { active: BigPictureTabKind }) {
         ) : (
           <HarborMark className="h-[clamp(28px,3.4vh,44px)] w-[clamp(28px,3.4vh,44px)] shrink-0" />
         )}
-        {customWordmark ? (
+        {tvBrand ? (
+          <span className="whitespace-nowrap text-[clamp(14px,1.45vw,28px)] font-semibold leading-none tracking-tight text-ink">
+            JL MediaVision <span className="text-ink-muted">Pro</span>
+          </span>
+        ) : customWordmark ? (
           <img
             src={customWordmark}
             alt=""
