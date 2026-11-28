@@ -48,7 +48,7 @@ import {
 import { synchronizeMediaServer } from "@/lib/media-server/sync";
 import { setNativeMemoryActive } from "@/lib/native-memory";
 import { useOverlayPinned } from "@/lib/overlay-pin";
-import { isMobileWeb, isRemoteRoute } from "@/lib/platform";
+import { isMobileWeb, isProVerificationTv, isRemoteRoute } from "@/lib/platform";
 import { makeSafeTauriUnlisten } from "@/lib/tauri-unlisten";
 import { activeLayout } from "@/lib/theme";
 import { useThemePreview } from "@/lib/theme-preview";
@@ -1051,11 +1051,12 @@ function Shell({ onReady, compact = false }: { onReady?: () => void; compact?: b
     // Autostart is a launch-only decision. Consume the check on the first run
     // whatever the outcome, so turning the setting on later does not drop the
     // user straight into Big Picture.
-    if (proAccess === "checking") return;
+    const forceProEntry = isProVerificationTv();
+    if (!forceProEntry && proAccess === "checking") return;
     const alreadyBooted = bigPictureBootChecked.current;
     bigPictureBootChecked.current = true;
     const go = shouldAutoStartBigPicture({
-      autoStart: proAccess === "allowed",
+      autoStart: forceProEntry || proAccess === "allowed",
       alreadyBooted,
       kidProfileActive: kid !== null,
     });
