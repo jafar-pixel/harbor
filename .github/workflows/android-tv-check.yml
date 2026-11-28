@@ -46,6 +46,14 @@ jobs:
           gradle-version: "8.11.1"
       - name: Compile and test the TV wrapper
         run: gradle -p android-tv testDebugUnitTest assembleDebug --no-daemon
+      - name: Verify the Pro build installs beside older builds
+        shell: bash
+        run: |
+          apk=android-tv/app/build/outputs/apk/debug/app-debug.apk
+          badging=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk")
+          package_id="com.jlstream.mediavision.proverify.b${GITHUB_RUN_NUMBER}a${GITHUB_RUN_ATTEMPT}"
+          [[ "$badging" == *"package: name='$package_id'"* ]]
+          [[ "$badging" == *"application-label:'JL Pro Verification ${GITHUB_RUN_NUMBER}'"* ]]
       - uses: actions/upload-artifact@v7
         with:
           name: jl-tv-debug-verification
